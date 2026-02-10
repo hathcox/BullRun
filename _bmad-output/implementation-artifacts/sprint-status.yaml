@@ -1,0 +1,151 @@
+# generated: 2026-02-10
+# project: BullRun
+# project_key: bullrun
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-02-10
+project: BullRun
+project_key: bullrun
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # === Epic 1: Price Engine (Phase 1, Weeks 1-4) ===
+  epic-1: in-progress
+  1-1-base-trend-generation: ready-for-dev
+  1-2-noise-layer: ready-for-dev
+  1-3-event-spike-integration: ready-for-dev
+  1-4-mean-reversion: ready-for-dev
+  1-5-stock-tier-configuration: ready-for-dev
+  1-6-debug-overlay: ready-for-dev
+  epic-1-retrospective: optional
+
+  # === Epic 2: Trading System (Phase 1, Weeks 1-4) ===
+  epic-2: in-progress
+  2-1-buy-execution: ready-for-dev
+  2-2-sell-execution: ready-for-dev
+  2-3-short-execution: ready-for-dev
+  2-4-portfolio-tracking: ready-for-dev
+  2-5-capital-management: ready-for-dev
+  epic-2-retrospective: optional
+
+  # === Epic 3: Chart Rendering (Phase 1, Weeks 1-4) ===
+  epic-3: in-progress
+  3-1-real-time-price-chart: ready-for-dev
+  3-2-trading-hud: ready-for-dev
+  3-3-stock-selection-sidebar: ready-for-dev
+  3-4-positions-panel: ready-for-dev
+  epic-3-retrospective: optional
+
+  # === Epic 4: Round Management (Phase 1-2, Weeks 3-6) ===
+  epic-4: in-progress
+  4-1-round-timer: ready-for-dev
+  4-2-market-open-phase: ready-for-dev
+  4-3-auto-liquidation: ready-for-dev
+  4-4-margin-call-check: ready-for-dev
+  4-5-round-transition: ready-for-dev
+  epic-4-retrospective: optional
+
+  # === Epic 5: Event System (Phase 1-2, Weeks 4-7) ===
+  epic-5: in-progress
+  5-1-event-scheduler: ready-for-dev
+  5-2-core-market-events: ready-for-dev
+  5-3-tier-specific-events: ready-for-dev
+  5-4-global-market-events: ready-for-dev
+  5-5-event-visual-signals: ready-for-dev
+  epic-5-retrospective: optional
+
+  # === Epic 6: Run Structure (Phase 2, Weeks 5-8) ===
+  epic-6: in-progress
+  6-1-act-round-progression: ready-for-dev
+  6-2-tier-transitions: ready-for-dev
+  6-3-escalating-profit-targets: ready-for-dev
+  6-4-stock-pool-management: ready-for-dev
+  6-5-win-state: ready-for-dev
+  epic-6-retrospective: optional
+
+  # === Epic 7: Draft Shop (Phase 2, Weeks 6-8) ===
+  epic-7: backlog
+  7-1-shop-ui: backlog
+  7-2-item-pool-generation: backlog
+  7-3-purchase-flow: backlog
+  7-4-item-inventory-display: backlog
+  epic-7-retrospective: optional
+
+  # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
+  epic-8: backlog
+  8-1-trading-tools-framework: backlog
+  8-2-core-trading-tools: backlog
+  8-3-advanced-trading-tools: backlog
+  8-4-market-intel-items: backlog
+  8-5-passive-perks: backlog
+  8-6-item-balance-and-synergy-tracking: backlog
+  epic-8-retrospective: optional
+
+  # === Epic 9: Meta-Progression (Phase 3, Weeks 9-12) ===
+  epic-9: backlog
+  9-1-reputation-currency: backlog
+  9-2-office-visual-progression: backlog
+  9-3-stock-unlocks: backlog
+  9-4-shop-item-unlocks: backlog
+  9-5-broker-perks: backlog
+  9-6-save-load-system: backlog
+  epic-9-retrospective: optional
+
+  # === Epic 10: UI/UX Polish (Phase 3, Weeks 11-12) ===
+  epic-10: backlog
+  10-1-trade-execution-feedback: backlog
+  10-2-big-win-celebrations: backlog
+  10-3-margin-call-drama: backlog
+  10-4-chart-visual-polish: backlog
+  10-5-screen-transitions: backlog
+  10-6-tutorial-first-run: backlog
+  epic-10-retrospective: optional
+
+  # === Epic 11: Audio (Phase 3, Weeks 11-12) ===
+  epic-11: backlog
+  11-1-dynamic-music-system: backlog
+  11-2-trading-sound-effects: backlog
+  11-3-ambient-soundscapes: backlog
+  11-4-event-audio-cues: backlog
+  epic-11-retrospective: optional
+
+  # === Epic 12: Ship Prep (Phase 4, Weeks 13-16) ===
+  epic-12: backlog
+  12-1-controller-support: backlog
+  12-2-steam-integration: backlog
+  12-3-settings-menu: backlog
+  12-4-performance-optimization: backlog
+  12-5-balance-pass: backlog
+  12-6-final-qa-and-build: backlog
+  epic-12-retrospective: optional
