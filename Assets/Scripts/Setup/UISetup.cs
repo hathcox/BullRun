@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Setup class that generates UI Canvas hierarchies during F5 rebuild.
-/// Creates Trading HUD (top bar) and Stock Sidebar (left panel).
+/// Creates Trading HUD (top bar), Stock Sidebar (left panel), and Round Timer.
 /// [SetupClass(SetupPhase.SceneComposition)] attribute to be enabled when SetupPipeline exists.
 /// </summary>
 // [SetupClass(SetupPhase.SceneComposition, 50)] // Uncomment when SetupPipeline infrastructure exists
@@ -304,6 +304,163 @@ public static class UISetup
         #endif
 
         return positionPanel;
+    }
+
+    /// <summary>
+    /// Generates the Market Open preview overlay panel.
+    /// Shows act/round, stock list, news headline, profit target, and countdown.
+    /// </summary>
+    public static MarketOpenUI ExecuteMarketOpenUI()
+    {
+        var overlayParent = new GameObject("MarketOpenOverlay");
+
+        // Create Canvas
+        var canvasGo = new GameObject("MarketOpenCanvas");
+        canvasGo.transform.SetParent(overlayParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100; // Above everything during preview
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Full-screen darkened background
+        var bgGo = CreatePanel("MarketOpenBg", canvasGo.transform);
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.92f);
+
+        // CanvasGroup for fade-in
+        var canvasGroup = bgGo.AddComponent<CanvasGroup>();
+
+        // Center panel
+        var centerPanel = new GameObject("CenterPanel");
+        centerPanel.transform.SetParent(bgGo.transform, false);
+        var centerRect = centerPanel.AddComponent<RectTransform>();
+        centerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        centerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        centerRect.pivot = new Vector2(0.5f, 0.5f);
+        centerRect.sizeDelta = new Vector2(500f, 400f);
+
+        var vlg = centerPanel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 16f;
+        vlg.padding = new RectOffset(20, 20, 20, 20);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Act/Round header
+        var headerGo = CreateLabel("Header", centerPanel.transform, "ACT 1 — ROUND 1",
+            new Color(0f, 1f, 0.533f, 1f), 28);
+        headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // Stock list
+        var stocksLabelGo = CreateLabel("StocksLabel", centerPanel.transform, "AVAILABLE STOCKS", LabelColor, 12);
+        var stockListGo = CreateLabel("StockList", centerPanel.transform, "Loading...", ValueColor, 16);
+        stockListGo.GetComponent<RectTransform>().sizeDelta = new Vector2(400f, 120f);
+
+        // Headline
+        var headlineGo = CreateLabel("Headline", centerPanel.transform, "\"Markets await direction\"",
+            new Color(0.8f, 0.85f, 1f, 1f), 18);
+        headlineGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
+
+        // Target label
+        CreateLabel("TargetLabel", centerPanel.transform, "PROFIT TARGET", LabelColor, 12);
+
+        // Target value (large, prominent)
+        var targetGo = CreateLabel("TargetValue", centerPanel.transform, "$0",
+            new Color(1f, 0.85f, 0.2f, 1f), 36);
+        targetGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // Countdown text
+        var countdownGo = CreateLabel("Countdown", centerPanel.transform, "Trading begins in 7...",
+            LabelColor, 14);
+
+        // Initialize MarketOpenUI MonoBehaviour
+        var marketOpenUI = overlayParent.AddComponent<MarketOpenUI>();
+        marketOpenUI.Initialize(
+            bgGo,
+            headerGo.GetComponent<Text>(),
+            stockListGo.GetComponent<Text>(),
+            headlineGo.GetComponent<Text>(),
+            targetGo.GetComponent<Text>(),
+            countdownGo.GetComponent<Text>(),
+            canvasGroup
+        );
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] MarketOpenUI created: full-screen overlay");
+        #endif
+
+        return marketOpenUI;
+    }
+
+    /// <summary>
+    /// Generates the Round Timer UI positioned near the top bar.
+    /// Shows countdown text and progress bar with urgency color transitions.
+    /// </summary>
+    public static RoundTimerUI ExecuteRoundTimer()
+    {
+        var timerParent = new GameObject("RoundTimer");
+
+        // Create Canvas
+        var canvasGo = new GameObject("RoundTimerCanvas");
+        canvasGo.transform.SetParent(timerParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 25; // Above HUD
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Timer container — centered at top, below top bar
+        var containerGo = new GameObject("TimerContainer");
+        containerGo.transform.SetParent(canvasGo.transform, false);
+        var containerRect = containerGo.AddComponent<RectTransform>();
+        containerRect.anchorMin = new Vector2(0.5f, 1f);
+        containerRect.anchorMax = new Vector2(0.5f, 1f);
+        containerRect.pivot = new Vector2(0.5f, 1f);
+        containerRect.anchoredPosition = new Vector2(0f, -(TopBarHeight + 8f));
+        containerRect.sizeDelta = new Vector2(160f, 50f);
+
+        // Background panel
+        var bgImage = containerGo.AddComponent<Image>();
+        bgImage.color = new Color(0.05f, 0.07f, 0.18f, 0.85f);
+
+        // Vertical layout
+        var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 2f;
+        vlg.padding = new RectOffset(8, 8, 4, 4);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Timer text — "0:45" format
+        var timerTextGo = CreateLabel("TimerText", containerGo.transform, "1:00",
+            new Color(0f, 1f, 0.533f, 1f), 24);
+        timerTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // Progress bar
+        var progressFill = CreateProgressBar("TimerProgress", containerGo.transform);
+        progressFill.fillAmount = 1f;
+        progressFill.color = new Color(0f, 1f, 0.533f, 1f);
+
+        // Initialize RoundTimerUI MonoBehaviour
+        var roundTimerUI = timerParent.AddComponent<RoundTimerUI>();
+        roundTimerUI.Initialize(timerTextGo.GetComponent<Text>(), progressFill);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] RoundTimerUI created: centered below top bar");
+        #endif
+
+        return roundTimerUI;
     }
 
     private static GameObject CreatePanel(string name, Transform parent)

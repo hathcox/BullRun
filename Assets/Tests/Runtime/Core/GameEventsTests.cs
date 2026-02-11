@@ -214,5 +214,147 @@ namespace BullRun.Tests.Core
 
             EventBus.Clear();
         }
+
+        // --- Round State Events Tests (Story 4.1 Task 5) ---
+
+        [Test]
+        public void RoundStartedEvent_StoresAllFields()
+        {
+            var evt = new RoundStartedEvent
+            {
+                RoundNumber = 2,
+                Act = 1,
+                MarginCallTarget = 150f,
+                TimeLimit = 60f
+            };
+
+            Assert.AreEqual(2, evt.RoundNumber);
+            Assert.AreEqual(1, evt.Act);
+            Assert.AreEqual(150f, evt.MarginCallTarget, 0.01f);
+            Assert.AreEqual(60f, evt.TimeLimit, 0.01f);
+        }
+
+        [Test]
+        public void RoundStartedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            RoundStartedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<RoundStartedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new RoundStartedEvent
+            {
+                RoundNumber = 1,
+                Act = 1,
+                TimeLimit = 60f
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(1, received.RoundNumber);
+            Assert.AreEqual(60f, received.TimeLimit, 0.01f);
+
+            EventBus.Clear();
+        }
+
+        [Test]
+        public void TradingPhaseEndedEvent_StoresAllFields()
+        {
+            var evt = new TradingPhaseEndedEvent
+            {
+                RoundNumber = 3,
+                TimeExpired = true
+            };
+
+            Assert.AreEqual(3, evt.RoundNumber);
+            Assert.IsTrue(evt.TimeExpired);
+        }
+
+        [Test]
+        public void TradingPhaseEndedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            TradingPhaseEndedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<TradingPhaseEndedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new TradingPhaseEndedEvent
+            {
+                RoundNumber = 1,
+                TimeExpired = true
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(1, received.RoundNumber);
+            Assert.IsTrue(received.TimeExpired);
+
+            EventBus.Clear();
+        }
+
+        // --- MarketOpenEvent Tests (Story 4.2 Task 5) ---
+
+        [Test]
+        public void MarketOpenEvent_StoresAllFields()
+        {
+            var evt = new MarketOpenEvent
+            {
+                RoundNumber = 2,
+                Act = 1,
+                StockIds = new[] { 0, 1, 2 },
+                TickerSymbols = new[] { "ACME", "MOON", "STAR" },
+                StartingPrices = new[] { 100f, 2.50f, 75f },
+                TierNames = new[] { "MidValue", "Penny", "LowValue" },
+                ProfitTarget = 350f,
+                Headline = "Markets rally on optimism"
+            };
+
+            Assert.AreEqual(2, evt.RoundNumber);
+            Assert.AreEqual(1, evt.Act);
+            Assert.AreEqual(3, evt.StockIds.Length);
+            Assert.AreEqual("ACME", evt.TickerSymbols[0]);
+            Assert.AreEqual(100f, evt.StartingPrices[0], 0.01f);
+            Assert.AreEqual("MidValue", evt.TierNames[0]);
+            Assert.AreEqual(350f, evt.ProfitTarget, 0.01f);
+            Assert.AreEqual("Markets rally on optimism", evt.Headline);
+        }
+
+        [Test]
+        public void MarketOpenEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            MarketOpenEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<MarketOpenEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new MarketOpenEvent
+            {
+                RoundNumber = 1,
+                Act = 1,
+                StockIds = new[] { 0, 1 },
+                ProfitTarget = 200f,
+                Headline = "Test headline"
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(1, received.RoundNumber);
+            Assert.AreEqual(200f, received.ProfitTarget, 0.01f);
+            Assert.AreEqual("Test headline", received.Headline);
+
+            EventBus.Clear();
+        }
     }
 }

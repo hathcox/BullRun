@@ -19,6 +19,7 @@ public class StockInstance
     public float CurrentPrice { get; set; }
     public TrendDirection TrendDirection { get; private set; }
     public float TrendPerSecond { get; private set; }
+    public StockTier Tier { get; private set; }
     public StockTierConfig TierConfig { get; private set; }
 
     // Noise state — random walk accumulator for smooth noise
@@ -39,6 +40,7 @@ public class StockInstance
         TickerSymbol = tickerSymbol;
         CurrentPrice = startingPrice;
         TrendDirection = trendDirection;
+        Tier = tier;
         TierConfig = StockTierData.GetTierConfig(tier);
 
         // Noise from tier config

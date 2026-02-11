@@ -11,4 +11,7 @@ public static class GameConfig
 
     // Short selling: margin collateral as percentage of position value
     public static readonly float ShortMarginRequirement = 0.5f;
+
+    // Market Open preview duration before trading begins
+    public static readonly float MarketOpenDurationSeconds = 7f;
 }

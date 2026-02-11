@@ -76,3 +76,39 @@ public struct StockSelectedEvent
     public int StockId;
     public string TickerSymbol;
 }
+
+/// <summary>
+/// Fired when the MarketOpen preview phase begins.
+/// UI subscribes to display stock preview, headline, and profit target.
+/// </summary>
+public struct MarketOpenEvent
+{
+    public int RoundNumber;
+    public int Act;
+    public int[] StockIds;
+    public string[] TickerSymbols;
+    public float[] StartingPrices;
+    public string[] TierNames;
+    public float ProfitTarget;
+    public string Headline;
+}
+
+/// <summary>
+/// Fired when a trading round starts.
+/// </summary>
+public struct RoundStartedEvent
+{
+    public int RoundNumber;
+    public int Act;
+    public float MarginCallTarget;
+    public float TimeLimit;
+}
+
+/// <summary>
+/// Fired when the trading phase ends (timer expired or manual end).
+/// </summary>
+public struct TradingPhaseEndedEvent
+{
+    public int RoundNumber;
+    public bool TimeExpired;
+}

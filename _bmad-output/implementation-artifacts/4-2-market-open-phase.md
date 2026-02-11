@@ -1,6 +1,6 @@
 # Story 4.2: Market Open Phase
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,34 +20,34 @@ so that I can plan my strategy for the round.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create MarketOpenState (AC: 1, 6)
-  - [ ] On Enter: initialize round stocks via PriceGenerator, set preview timer (5-10s from GameConfig)
-  - [ ] On Update: countdown preview timer
-  - [ ] On timer expiry: transition to TradingState
-  - [ ] Publish `MarketOpenEvent` on Enter with round details
-  - [ ] File: `Scripts/Runtime/Core/GameStates/MarketOpenState.cs`
-- [ ] Task 2: Create MarketOpenUI screen (AC: 2, 3, 4, 5)
-  - [ ] Center panel showing:
+- [x] Task 1: Create MarketOpenState (AC: 1, 6)
+  - [x] On Enter: initialize round stocks via PriceGenerator, set preview timer (5-10s from GameConfig)
+  - [x] On Update: countdown preview timer
+  - [x] On timer expiry: transition to TradingState
+  - [x] Publish `MarketOpenEvent` on Enter with round details
+  - [x] File: `Scripts/Runtime/Core/GameStates/MarketOpenState.cs`
+- [x] Task 2: Create MarketOpenUI screen (AC: 2, 3, 4, 5)
+  - [x] Center panel showing:
     - Act and round header: "ACT 2 — ROUND 3"
     - Stock list: ticker symbols with starting prices and tier indicators
     - News headline: randomly selected hint text relevant to round events
     - Profit target: "$600" in large prominent text
-  - [ ] Animated entrance (fade in or slide up)
-  - [ ] File: `Scripts/Runtime/UI/MarketOpenUI.cs`
-- [ ] Task 3: Create news headline system (AC: 3)
-  - [ ] Define headline templates in a data class
-  - [ ] Headlines hint at round conditions: "Tech sector showing strength", "Analysts warn of volatility ahead", "Penny stocks see unusual volume"
-  - [ ] Select headline based on round's stock tier and scheduled events (loose hints, not spoilers)
-  - [ ] File: `Scripts/Setup/Data/NewsHeadlineData.cs` (new)
-- [ ] Task 4: Add preview duration to GameConfig (AC: 1)
-  - [ ] Add `MarketOpenDurationSeconds` = 7f (default, tunable)
-  - [ ] File: `Scripts/Setup/Data/GameConfig.cs` (extend)
-- [ ] Task 5: Define MarketOpenEvent (AC: 6)
-  - [ ] `MarketOpenEvent`: RoundNumber, Act, StockIds, ProfitTarget, Headline
-  - [ ] Add to `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 6: Add MarketOpenUI to UISetup (AC: 2)
-  - [ ] Generate overlay panel that appears during MarketOpen state
-  - [ ] File: `Scripts/Setup/UISetup.cs` (extend)
+  - [x] Animated entrance (fade in or slide up)
+  - [x] File: `Scripts/Runtime/UI/MarketOpenUI.cs`
+- [x] Task 3: Create news headline system (AC: 3)
+  - [x] Define headline templates in a data class
+  - [x] Headlines hint at round conditions: "Tech sector showing strength", "Analysts warn of volatility ahead", "Penny stocks see unusual volume"
+  - [x] Select headline based on round's stock tier and scheduled events (loose hints, not spoilers)
+  - [x] File: `Scripts/Setup/Data/NewsHeadlineData.cs` (new)
+- [x] Task 4: Add preview duration to GameConfig (AC: 1)
+  - [x] Add `MarketOpenDurationSeconds` = 7f (default, tunable)
+  - [x] File: `Scripts/Setup/Data/GameConfig.cs` (extend)
+- [x] Task 5: Define MarketOpenEvent (AC: 6)
+  - [x] `MarketOpenEvent`: RoundNumber, Act, StockIds, ProfitTarget, Headline
+  - [x] Add to `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 6: Add MarketOpenUI to UISetup (AC: 2)
+  - [x] Generate overlay panel that appears during MarketOpen state
+  - [x] File: `Scripts/Setup/UISetup.cs` (extend)
 
 ## Dev Notes
 
@@ -104,8 +104,74 @@ The headline gives flavor and a loose directional hint. It's NOT a guaranteed pr
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- `[MarketOpenState] Enter: Act X, Round Y, Preview Zs` — logged on market open phase start
+- `[MarketOpenState] Exit: transitioning to Trading` — logged on transition to trading
+- `[Setup] MarketOpenUI created: full-screen overlay` — logged during F5 setup
 
 ### Completion Notes List
 
+- MarketOpenState implements IGameState with configurable preview timer (default 7s)
+- On Enter: initializes round stocks via PriceGenerator.InitializeRound(), publishes MarketOpenEvent
+- On timer expiry: sets TradingState.NextConfig and transitions to TradingState automatically
+- Uses same testable AdvanceTime pattern as TradingState (from Story 4.1 review)
+- Debug.Assert guards NextConfig to prevent silent failures
+- Static accessors (ActiveTimeRemaining, IsActive) for UI one-way reads
+- MarketOpenUI is a full-screen overlay with fade-in animation (CanvasGroup alpha)
+- Displays: Act/Round header, stock tickers with prices and tier indicators, news headline in quotes, profit target in large yellow text, countdown
+- Subscribes to MarketOpenEvent to populate data, hides on RoundStartedEvent
+- NewsHeadlineData provides 4 headline pools (Bullish, Bearish, Volatile, Neutral) with 5 headlines each
+- GetHeadline(stocks, random) overload detects volatile conditions (mixed bull/bear) to select VolatileHeadlines
+- MarketOpenEvent includes RoundNumber, Act, StockIds, TickerSymbols, StartingPrices, TierNames, ProfitTarget, Headline
+- GameConfig.MarketOpenDurationSeconds = 7f added
+- UISetup.ExecuteMarketOpenUI() generates overlay at sortingOrder 100 (above all game UI)
+
+### Change Log
+
+- 2026-02-11: Story 4.2 implemented — MarketOpenState, MarketOpenUI, NewsHeadlineData, MarketOpenEvent, GameConfig extension, UISetup extension
+- 2026-02-11: Code review fixes — AC2 stock display (tickers/prices/tiers), volatile headline selection, no-op test replaced, dead code removed
+
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-02-11
+**Review Outcome:** Changes Requested (5 HIGH/MEDIUM issues, 2 LOW)
+**Reviewer Model:** Claude Opus 4.6
+
+### Action Items
+
+- [x] [HIGH] AC2 not implemented: BuildStockList showed only count, not ticker symbols/prices/tiers [MarketOpenUI.cs:108-117]
+- [x] [HIGH] VolatileHeadlines pool never used — dead code, GetHeadline had no volatile path [NewsHeadlineData.cs:47-63]
+- [x] [MED] No-op test AdvanceTime_WhenExpired_SetsTradingStateNextConfig asserted Assert.IsTrue(true) [MarketOpenStateTests.cs:157-167]
+- [x] [MED] BuildStockListDetailed was dead code — never called from any production path [MarketOpenUI.cs:122-135]
+- [x] [MED] Tier indicators not shown — Task 2 required tier display but neither BuildStockList method showed it [MarketOpenUI.cs]
+- [ ] [LOW] No test for MarketOpenState.Enter with null PriceGenerator [MarketOpenState.cs:43-66]
+- [ ] [LOW] TODO comment left in production code suggesting incomplete work [MarketOpenUI.cs:113-116]
+
+### Resolution Summary
+
+All 5 HIGH and MEDIUM issues fixed automatically:
+- MarketOpenEvent now carries TickerSymbols[], StartingPrices[], TierNames[] arrays
+- MarketOpenState populates stock detail arrays from PriceGenerator.ActiveStocks
+- MarketOpenUI.BuildStockList rewritten to display "ACME  $150.00  [MidValue]" format
+- Dead BuildStockListDetailed removed; TODO comment removed
+- NewsHeadlineData.GetHeadline(stocks, random) overload added with volatile detection
+- StockInstance.Tier property added for tier enum access
+- No-op test replaced with real assertion verifying event detail arrays
+- All affected tests updated (MarketOpenUITests, MarketOpenStateTests, GameEventsTests, NewsHeadlineDataTests)
+
 ### File List
+
+- `Assets/Scripts/Runtime/Core/GameStates/MarketOpenState.cs` (new)
+- `Assets/Scripts/Runtime/UI/MarketOpenUI.cs` (new)
+- `Assets/Scripts/Setup/Data/NewsHeadlineData.cs` (new)
+- `Assets/Scripts/Setup/Data/GameConfig.cs` (modified — added MarketOpenDurationSeconds)
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` (modified — added MarketOpenEvent with stock detail fields)
+- `Assets/Scripts/Setup/UISetup.cs` (modified — added ExecuteMarketOpenUI method)
+- `Assets/Scripts/Runtime/PriceEngine/StockInstance.cs` (modified — added Tier property)
+- `Assets/Tests/Runtime/Core/GameStates/MarketOpenStateTests.cs` (new — 13 tests)
+- `Assets/Tests/Runtime/PriceEngine/NewsHeadlineDataTests.cs` (new — 14 tests)
+- `Assets/Tests/Runtime/UI/MarketOpenUITests.cs` (new — 6 tests)
+- `Assets/Tests/Runtime/Core/GameEventsTests.cs` (modified — added 2 MarketOpenEvent tests)
