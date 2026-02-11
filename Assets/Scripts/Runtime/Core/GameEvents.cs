@@ -66,3 +66,13 @@ public struct RunStartedEvent
 {
     public float StartingCapital;
 }
+
+/// <summary>
+/// Fired when the player selects a stock from the sidebar or via keyboard shortcut.
+/// ChartRenderer subscribes to switch the displayed stock.
+/// </summary>
+public struct StockSelectedEvent
+{
+    public int StockId;
+    public string TickerSymbol;
+}

@@ -61,10 +61,10 @@ development_status:
 
   # === Epic 3: Chart Rendering (Phase 1, Weeks 1-4) ===
   epic-3: in-progress
-  3-1-real-time-price-chart: ready-for-dev
-  3-2-trading-hud: ready-for-dev
-  3-3-stock-selection-sidebar: ready-for-dev
-  3-4-positions-panel: ready-for-dev
+  3-1-real-time-price-chart: in-progress
+  3-2-trading-hud: in-progress
+  3-3-stock-selection-sidebar: in-progress
+  3-4-positions-panel: in-progress
   epic-3-retrospective: optional
 
   # === Epic 4: Round Management (Phase 1-2, Weeks 3-6) ===

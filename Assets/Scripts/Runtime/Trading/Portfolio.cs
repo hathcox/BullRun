@@ -28,13 +28,13 @@ public class Portfolio
     }
 
     /// <summary>
-    /// Unsubscribes from PriceUpdatedEvent and clears cached prices.
+    /// Unsubscribes from PriceUpdatedEvent to stop receiving new price updates.
+    /// Retains last cached prices so GetTotalValue() still works after unsubscribing.
     /// Must be called before discarding a Portfolio to prevent memory leaks via static EventBus.
     /// </summary>
     public void UnsubscribeFromPriceUpdates()
     {
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdated);
-        _latestPrices.Clear();
     }
 
     private void OnPriceUpdated(PriceUpdatedEvent e)
