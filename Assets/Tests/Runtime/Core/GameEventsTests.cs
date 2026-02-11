@@ -136,5 +136,83 @@ namespace BullRun.Tests.Core
 
             EventBus.Clear();
         }
+        // --- Capital Events Tests (Story 2.5 Task 5) ---
+
+        [Test]
+        public void RoundEndedEvent_StoresAllFields()
+        {
+            var evt = new RoundEndedEvent
+            {
+                RoundNumber = 3,
+                TotalProfit = 150.50f,
+                FinalCash = 1150.50f
+            };
+
+            Assert.AreEqual(3, evt.RoundNumber);
+            Assert.AreEqual(150.50f, evt.TotalProfit, 0.01f);
+            Assert.AreEqual(1150.50f, evt.FinalCash, 0.01f);
+        }
+
+        [Test]
+        public void RoundEndedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            RoundEndedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<RoundEndedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new RoundEndedEvent
+            {
+                RoundNumber = 1,
+                TotalProfit = 50f,
+                FinalCash = 1050f
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(1, received.RoundNumber);
+            Assert.AreEqual(50f, received.TotalProfit, 0.01f);
+
+            EventBus.Clear();
+        }
+
+        [Test]
+        public void RunStartedEvent_StoresAllFields()
+        {
+            var evt = new RunStartedEvent
+            {
+                StartingCapital = 1000f
+            };
+
+            Assert.AreEqual(1000f, evt.StartingCapital, 0.01f);
+        }
+
+        [Test]
+        public void RunStartedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            RunStartedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<RunStartedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new RunStartedEvent
+            {
+                StartingCapital = 1000f
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(1000f, received.StartingCapital, 0.01f);
+
+            EventBus.Clear();
+        }
     }
 }

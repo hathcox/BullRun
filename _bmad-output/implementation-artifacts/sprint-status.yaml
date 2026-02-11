@@ -52,11 +52,11 @@ development_status:
 
   # === Epic 2: Trading System (Phase 1, Weeks 1-4) ===
   epic-2: in-progress
-  2-1-buy-execution: ready-for-dev
-  2-2-sell-execution: ready-for-dev
-  2-3-short-execution: ready-for-dev
-  2-4-portfolio-tracking: ready-for-dev
-  2-5-capital-management: ready-for-dev
+  2-1-buy-execution: review
+  2-2-sell-execution: review
+  2-3-short-execution: review
+  2-4-portfolio-tracking: done
+  2-5-capital-management: done
   epic-2-retrospective: optional
 
   # === Epic 3: Chart Rendering (Phase 1, Weeks 1-4) ===

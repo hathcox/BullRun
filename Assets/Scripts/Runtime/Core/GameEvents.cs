@@ -35,3 +35,34 @@ public struct MarketEventEndedEvent
     public MarketEventType EventType;
     public int[] AffectedStockIds;
 }
+
+/// <summary>
+/// Fired when a trade (buy/sell/short) is executed successfully.
+/// </summary>
+public struct TradeExecutedEvent
+{
+    public string StockId;
+    public int Shares;
+    public float Price;
+    public bool IsBuy;
+    public bool IsShort;
+    public float TotalCost;
+}
+
+/// <summary>
+/// Fired when a round ends (after auto-liquidation).
+/// </summary>
+public struct RoundEndedEvent
+{
+    public int RoundNumber;
+    public float TotalProfit;
+    public float FinalCash;
+}
+
+/// <summary>
+/// Fired when a new run starts.
+/// </summary>
+public struct RunStartedEvent
+{
+    public float StartingCapital;
+}

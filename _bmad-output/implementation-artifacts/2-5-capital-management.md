@@ -1,6 +1,6 @@
 # Story 2.5: Capital Management
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -19,33 +19,33 @@ so that early decisions have lasting consequences and capital management is a co
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement run initialization in RunContext (AC: 1, 4)
-  - [ ] Method: `StartNewRun()` — creates fresh Portfolio with GameConfig.StartingCapital, resets act/round to 1/1
-  - [ ] Method: `GetCurrentCash()` — convenience accessor for Portfolio.Cash
-  - [ ] Ensure RunContext persists across round transitions (it is not recreated per round)
-  - [ ] File: `Scripts/Runtime/Core/RunContext.cs` (extend from Story 2.1)
-- [ ] Task 2: Implement round-end liquidation in Portfolio (AC: 2, 5)
-  - [ ] Method: `LiquidateAllPositions(Func<string, float> getCurrentPrice)` — closes all positions at current prices
-  - [ ] For longs: sell all at current price, add proceeds to cash
-  - [ ] For shorts: cover all at current price, return margin +/- P&L
-  - [ ] Clear all positions after liquidation
-  - [ ] Return total realized P&L from liquidation
-  - [ ] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
-- [ ] Task 3: Add cash floor enforcement (AC: 6)
-  - [ ] After any operation that reduces cash, clamp: `Cash = Mathf.Max(Cash, 0f)`
-  - [ ] This primarily protects against short losses exceeding margin
-  - [ ] Add validation in Portfolio.DeductCash or wherever cash is modified
-  - [ ] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
-- [ ] Task 4: Add round transition support (AC: 2, 4)
-  - [ ] Method: `PrepareForNextRound()` on RunContext — increments round, resets round-level state
-  - [ ] Portfolio.Cash carries forward unchanged
-  - [ ] Portfolio positions list is already cleared by liquidation (Task 2)
-  - [ ] Reset `_roundStartValue` for next round's profit tracking
-  - [ ] File: `Scripts/Runtime/Core/RunContext.cs` (extend)
-- [ ] Task 5: Define capital-related events (AC: 2, 5)
-  - [ ] `RoundEndedEvent`: RoundNumber, TotalProfit, FinalCash
-  - [ ] `RunStartedEvent`: StartingCapital
-  - [ ] Add to `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 1: Implement run initialization in RunContext (AC: 1, 4)
+  - [x] Method: `StartNewRun()` — creates fresh Portfolio with GameConfig.StartingCapital, resets act/round to 1/1
+  - [x] Method: `GetCurrentCash()` — convenience accessor for Portfolio.Cash
+  - [x] Ensure RunContext persists across round transitions (it is not recreated per round)
+  - [x] File: `Scripts/Runtime/Core/RunContext.cs` (extend from Story 2.1)
+- [x] Task 2: Implement round-end liquidation in Portfolio (AC: 2, 5)
+  - [x] Method: `LiquidateAllPositions(Func<string, float> getCurrentPrice)` — closes all positions at current prices
+  - [x] For longs: sell all at current price, add proceeds to cash
+  - [x] For shorts: cover all at current price, return margin +/- P&L
+  - [x] Clear all positions after liquidation
+  - [x] Return total realized P&L from liquidation
+  - [x] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
+- [x] Task 3: Add cash floor enforcement (AC: 6)
+  - [x] After any operation that reduces cash, clamp: `Cash = Mathf.Max(Cash, 0f)`
+  - [x] This primarily protects against short losses exceeding margin
+  - [x] Add validation in Portfolio.DeductCash or wherever cash is modified
+  - [x] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
+- [x] Task 4: Add round transition support (AC: 2, 4)
+  - [x] Method: `PrepareForNextRound()` on RunContext — increments round, resets round-level state
+  - [x] Portfolio.Cash carries forward unchanged
+  - [x] Portfolio positions list is already cleared by liquidation (Task 2)
+  - [x] Reset `_roundStartValue` for next round's profit tracking
+  - [x] File: `Scripts/Runtime/Core/RunContext.cs` (extend)
+- [x] Task 5: Define capital-related events (AC: 2, 5)
+  - [x] `RoundEndedEvent`: RoundNumber, TotalProfit, FinalCash
+  - [x] `RunStartedEvent`: StartingCapital
+  - [x] Add to `Scripts/Runtime/Core/GameEvents.cs`
 
 ## Dev Notes
 
@@ -98,9 +98,26 @@ This is the core economy design challenge from GDD Section 11.1: "Starting capit
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6
 
 ### Debug Log References
+No issues encountered during implementation.
 
 ### Completion Notes List
+- Task 1: Added `RunContext.StartNewRun()` static factory creating fresh portfolio with GameConfig.StartingCapital, act/round at 1/1. Added `GetCurrentCash()` convenience accessor.
+- Task 2: Added `LiquidateAllPositions(Func<string, float>)` — iterates all positions, sells longs at current price, covers shorts returning margin +/- P&L (floored at 0), clears positions, returns total realized P&L.
+- Task 3: Added `DeductCash(float)` with CanAfford validation for shop purchases. Added `ClampCash()` private helper called after OpenPosition and DeductCash to enforce $0 floor.
+- Task 4: Added `RunContext.PrepareForNextRound()` — increments round, resets round start value via `Portfolio.StartRound()`. Cash carries forward unchanged. Tested multi-round compounding.
+- Task 5: Added `RoundEndedEvent` (RoundNumber, TotalProfit, FinalCash) and `RunStartedEvent` (StartingCapital) structs to GameEvents.cs.
+
+### Change Log
+- 2026-02-10: Implemented story 2-5 — run initialization, round-end liquidation, cash floor enforcement, round transitions, and capital-related events
+- 2026-02-10: Code review fixes — OpenPosition now rejects insufficient cash (returns null), StartNewRun publishes RunStartedEvent, PrepareForNextRound uses Cash directly with assert, documented RoundEndedEvent as caller-published
 
 ### File List
+- Assets/Scripts/Runtime/Core/RunContext.cs (new)
+- Assets/Scripts/Runtime/Trading/Portfolio.cs (modified)
+- Assets/Scripts/Runtime/Core/GameEvents.cs (modified)
+- Assets/Tests/Runtime/Core/RunContextTests.cs (new)
+- Assets/Tests/Runtime/Trading/PortfolioTests.cs (modified)
+- Assets/Tests/Runtime/Core/GameEventsTests.cs (modified)

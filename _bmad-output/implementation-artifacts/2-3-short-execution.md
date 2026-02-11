@@ -1,6 +1,6 @@
 # Story 2.3: Short Execution
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -22,33 +22,33 @@ so that I can profit when prices drop.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add margin constants to GameConfig (AC: 2)
-  - [ ] Add `ShortMarginRequirement` = 0.5f (50% of position value)
-  - [ ] File: `Scripts/Setup/Data/GameConfig.cs` (extend)
-- [ ] Task 2: Extend Position for short positions (AC: 1, 8)
-  - [ ] Add `IsShort` flag (bool) to Position — true for shorts, false for longs
-  - [ ] Add `MarginHeld` field — cash locked as collateral
-  - [ ] Modify `UnrealizedPnL` to invert for shorts: `(entryPrice - currentPrice) * shares`
-  - [ ] File: `Scripts/Runtime/Trading/Position.cs` (extend)
-- [ ] Task 3: Add short execution to Portfolio (AC: 1, 2, 7)
-  - [ ] Method: `OpenShort(string stockId, int shares, float price)` — creates short position
-  - [ ] Calculate margin: `shares * price * GameConfig.ShortMarginRequirement`
-  - [ ] Validate: `CanAfford(margin)` — if false, reject
-  - [ ] Deduct margin from cash (not the full position value)
-  - [ ] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
-- [ ] Task 4: Add cover (close short) to Portfolio (AC: 9)
-  - [ ] Method: `CoverShort(string stockId, int shares, float currentPrice)` — closes short position
-  - [ ] Return margin collateral to cash
-  - [ ] Calculate P&L: `(entryPrice - currentPrice) * shares`
-  - [ ] Add to cash: `margin + pnl` (can be negative if price rose)
-  - [ ] If total return is negative and exceeds available cash, player's cash goes to zero (margin eaten)
-  - [ ] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
-- [ ] Task 5: Add ExecuteShort and ExecuteCover to TradeExecutor (AC: 1, 5, 7)
-  - [ ] Method: `ExecuteShort(string stockId, int shares, float currentPrice, Portfolio portfolio)`
-  - [ ] Method: `ExecuteCover(string stockId, int shares, float currentPrice, Portfolio portfolio)`
-  - [ ] Both publish `TradeExecutedEvent` with `isShort: true`
-  - [ ] Both wrapped in try-catch
-  - [ ] File: `Scripts/Runtime/Trading/TradeExecutor.cs` (extend)
+- [x] Task 1: Add margin constants to GameConfig (AC: 2)
+  - [x] Add `ShortMarginRequirement` = 0.5f (50% of position value)
+  - [x] File: `Scripts/Setup/Data/GameConfig.cs` (extend)
+- [x] Task 2: Extend Position for short positions (AC: 1, 8)
+  - [x] Add `IsShort` flag (bool) to Position — true for shorts, false for longs
+  - [x] Add `MarginHeld` field — cash locked as collateral
+  - [x] Modify `UnrealizedPnL` to invert for shorts: `(entryPrice - currentPrice) * shares`
+  - [x] File: `Scripts/Runtime/Trading/Position.cs` (extend)
+- [x] Task 3: Add short execution to Portfolio (AC: 1, 2, 7)
+  - [x] Method: `OpenShort(string stockId, int shares, float price)` — creates short position
+  - [x] Calculate margin: `shares * price * GameConfig.ShortMarginRequirement`
+  - [x] Validate: `CanAfford(margin)` — if false, reject
+  - [x] Deduct margin from cash (not the full position value)
+  - [x] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
+- [x] Task 4: Add cover (close short) to Portfolio (AC: 9)
+  - [x] Method: `CoverShort(string stockId, int shares, float currentPrice)` — closes short position
+  - [x] Return margin collateral to cash
+  - [x] Calculate P&L: `(entryPrice - currentPrice) * shares`
+  - [x] Add to cash: `margin + pnl` (can be negative if price rose)
+  - [x] If total return is negative and exceeds available cash, player's cash goes to zero (margin eaten)
+  - [x] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend)
+- [x] Task 5: Add ExecuteShort and ExecuteCover to TradeExecutor (AC: 1, 5, 7)
+  - [x] Method: `ExecuteShort(string stockId, int shares, float currentPrice, Portfolio portfolio)`
+  - [x] Method: `ExecuteCover(string stockId, int shares, float currentPrice, Portfolio portfolio)`
+  - [x] Both publish `TradeExecutedEvent` with `isShort: true`
+  - [x] Both wrapped in try-catch
+  - [x] File: `Scripts/Runtime/Trading/TradeExecutor.cs` (extend)
 
 ## Dev Notes
 
@@ -100,8 +100,40 @@ In real trading, shorts have unlimited loss potential. For gameplay purposes, th
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- `[Trading] Short rejected: insufficient cash for margin ${margin} on {shares}x {stockId}` — Portfolio.cs
+- `[Trading] SHORT opened: {shares}x {stockId} at ${price} (margin held: ${margin})` — Portfolio.cs
+- `[Trading] Cover rejected: no short position for {stockId}` — Portfolio.cs
+- `[Trading] Cover rejected: requested {shares} but only short {position.Shares} of {stockId}` — Portfolio.cs
+- `[Trading] SHORT covered: {stockId} (P&L: +${pnl}, margin returned: ${marginPortion})` — Portfolio.cs
+- `[Trading] SHORT partially covered: {stockId} now {remainingShares} shares` — Portfolio.cs
+- `[Trading] Short rejected: insufficient cash for margin on {shares}x {stockId}` — TradeExecutor.cs
+- `[Trading] SHORT executed: {shares} shares of {stockId} at ${currentPrice} (margin held: ${margin})` — TradeExecutor.cs
+- `[Trading] Cover rejected: no short position or insufficient shares` — TradeExecutor.cs
+- `[Trading] COVER executed: {shares} shares of {stockId} at ${currentPrice} (P&L: +${pnl})` — TradeExecutor.cs
 
 ### Completion Notes List
 
+- Task 1: Added `ShortMarginRequirement = 0.5f` to GameConfig. 1 new test.
+- Task 2: Extended Position with short constructor (stockId, shares, entryPrice, marginHeld), IsShort flag, MarginHeld field. Modified UnrealizedPnL and CalculateRealizedPnL to invert for shorts. 8 new tests.
+- Task 3: Added `OpenShort` to Portfolio. Calculates margin, validates cash, deducts margin, creates short Position. 4 new tests.
+- Task 4: Added `CoverShort` to Portfolio. Returns proportional margin + P&L to cash. Handles full/partial cover. Floors cash return at 0 when loss exceeds margin. 9 new tests.
+- Task 5: Added `ExecuteShort` and `ExecuteCover` to TradeExecutor. Both publish TradeExecutedEvent with IsShort=true. Try-catch wrapped. 11 new tests.
+
+### Change Log
+
+- 2026-02-10: Implemented all 5 tasks for Story 2.3 Short Execution. Added margin mechanics, short positions, cover functionality. 33 new unit tests added.
+
 ### File List
+
+- `Assets/Scripts/Setup/Data/GameConfig.cs` (modified — added ShortMarginRequirement)
+- `Assets/Scripts/Runtime/Trading/Position.cs` (modified — added short constructor, IsShort, MarginHeld, inverted P&L)
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` (modified — added OpenShort, CoverShort)
+- `Assets/Scripts/Runtime/Trading/TradeExecutor.cs` (modified — added ExecuteShort, ExecuteCover)
+- `Assets/Tests/Runtime/PriceEngine/GameConfigTests.cs` (modified — added ShortMarginRequirement test)
+- `Assets/Tests/Runtime/Trading/PositionTests.cs` (modified — added 8 short position tests)
+- `Assets/Tests/Runtime/Trading/PortfolioTests.cs` (modified — added 13 OpenShort/CoverShort tests)
+- `Assets/Tests/Runtime/Trading/TradeExecutorTests.cs` (modified — added 11 ExecuteShort/ExecuteCover tests)

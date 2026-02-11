@@ -35,5 +35,11 @@ namespace BullRun.Tests.PriceEngine
         {
             Assert.Greater(GameConfig.RoundDurationSeconds, 0f);
         }
+
+        [Test]
+        public void ShortMarginRequirement_Is50Percent()
+        {
+            Assert.AreEqual(0.5f, GameConfig.ShortMarginRequirement);
+        }
     }
 }

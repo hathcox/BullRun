@@ -1,6 +1,6 @@
 # Story 2.2: Sell Execution
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -20,25 +20,25 @@ so that I can realize profits or cut losses.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add ClosePosition to Portfolio (AC: 1, 2, 3, 4)
-  - [ ] Method: `ClosePosition(string stockId, int shares, float currentPrice)` — sells specified shares
-  - [ ] If shares == position.Shares, remove position entirely
-  - [ ] If shares < position.Shares, reduce position shares (average buy price unchanged)
-  - [ ] Return realized P&L: `(currentPrice - position.AverageBuyPrice) * shares`
-  - [ ] Add cash: `Cash += shares * currentPrice`
-  - [ ] If no position exists for stockId, return without action
-  - [ ] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend from Story 2.1)
-- [ ] Task 2: Add ExecuteSell to TradeExecutor (AC: 1, 4, 5, 6)
-  - [ ] Method: `ExecuteSell(string stockId, int shares, float currentPrice, Portfolio portfolio)`
-  - [ ] Validate: position exists and has >= requested shares
-  - [ ] On success: call `portfolio.ClosePosition()`, publish `TradeExecutedEvent`
-  - [ ] Log realized P&L: `[Trading] SELL: 10 shares of MEME at $3.00 (P&L: +$5.00)`
-  - [ ] Wrap in try-catch per architecture pattern
-  - [ ] File: `Scripts/Runtime/Trading/TradeExecutor.cs` (extend from Story 2.1)
-- [ ] Task 3: Add P&L tracking to Position (AC: 5)
-  - [ ] Method: `CalculateRealizedPnL(float sellPrice, int sharesSold)` — returns float
-  - [ ] Ensure average buy price is maintained correctly for partial sells
-  - [ ] File: `Scripts/Runtime/Trading/Position.cs` (extend from Story 2.1)
+- [x] Task 1: Add ClosePosition to Portfolio (AC: 1, 2, 3, 4)
+  - [x] Method: `ClosePosition(string stockId, int shares, float currentPrice)` — sells specified shares
+  - [x] If shares == position.Shares, remove position entirely
+  - [x] If shares < position.Shares, reduce position shares (average buy price unchanged)
+  - [x] Return realized P&L: `(currentPrice - position.AverageBuyPrice) * shares`
+  - [x] Add cash: `Cash += shares * currentPrice`
+  - [x] If no position exists for stockId, return without action
+  - [x] File: `Scripts/Runtime/Trading/Portfolio.cs` (extend from Story 2.1)
+- [x] Task 2: Add ExecuteSell to TradeExecutor (AC: 1, 4, 5, 6)
+  - [x] Method: `ExecuteSell(string stockId, int shares, float currentPrice, Portfolio portfolio)`
+  - [x] Validate: position exists and has >= requested shares
+  - [x] On success: call `portfolio.ClosePosition()`, publish `TradeExecutedEvent`
+  - [x] Log realized P&L: `[Trading] SELL: 10 shares of MEME at $3.00 (P&L: +$5.00)`
+  - [x] Wrap in try-catch per architecture pattern
+  - [x] File: `Scripts/Runtime/Trading/TradeExecutor.cs` (extend from Story 2.1)
+- [x] Task 3: Add P&L tracking to Position (AC: 5)
+  - [x] Method: `CalculateRealizedPnL(float sellPrice, int sharesSold)` — returns float
+  - [x] Ensure average buy price is maintained correctly for partial sells
+  - [x] File: `Scripts/Runtime/Trading/Position.cs` (extend from Story 2.1)
 
 ## Dev Notes
 
@@ -79,8 +79,32 @@ Same as Story 2.1 — input binding is a UI concern. TradeExecutor.ExecuteSell i
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- `[Trading] Sell rejected: no position for {stockId}` — Portfolio.cs
+- `[Trading] Sell rejected: requested {shares} but only hold {position.Shares} of {stockId}` — Portfolio.cs
+- `[Trading] Position closed: {stockId} (P&L: +${pnl})` — Portfolio.cs
+- `[Trading] Position reduced: {stockId} now {remainingShares} shares (P&L: +${pnl})` — Portfolio.cs
+- `[Trading] Sell rejected: no position or insufficient shares for {shares}x {stockId}` — TradeExecutor.cs
+- `[Trading] SELL executed: {shares} shares of {stockId} at ${currentPrice} (P&L: +${pnl})` — TradeExecutor.cs
 
 ### Completion Notes List
 
+- Task 1: Added `ClosePosition` to Portfolio. Handles full sell (removes position from dictionary), partial sell (reduces shares, preserves average buy price), invalid sell (no position or insufficient shares returns 0). Adds proceeds to cash. 9 new unit tests.
+- Task 2: Added `ExecuteSell` to TradeExecutor. Try-catch at boundary, validates position exists with sufficient shares, publishes TradeExecutedEvent with IsBuy=false, logs P&L. 8 new unit tests.
+- Task 3: Added `CalculateRealizedPnL` to Position. Simple calculation: (sellPrice - averageBuyPrice) * sharesSold. Used by Portfolio.ClosePosition. 4 new unit tests.
+
+### Change Log
+
+- 2026-02-10: Implemented all 3 tasks for Story 2.2 Sell Execution. Extended Position, Portfolio, and TradeExecutor with sell/close functionality. 21 new unit tests added.
+
 ### File List
+
+- `Assets/Scripts/Runtime/Trading/Position.cs` (modified — added CalculateRealizedPnL)
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` (modified — added ClosePosition)
+- `Assets/Scripts/Runtime/Trading/TradeExecutor.cs` (modified — added ExecuteSell)
+- `Assets/Tests/Runtime/Trading/PositionTests.cs` (modified — added 4 realized P&L tests)
+- `Assets/Tests/Runtime/Trading/PortfolioTests.cs` (modified — added 9 ClosePosition tests)
+- `Assets/Tests/Runtime/Trading/TradeExecutorTests.cs` (modified — added 8 ExecuteSell tests)

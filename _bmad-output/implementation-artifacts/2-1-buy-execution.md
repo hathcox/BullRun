@@ -1,6 +1,6 @@
 # Story 2.1: Buy Execution
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,33 +19,33 @@ so that I can take a long position on a stock.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create Position data class (AC: 2, 3)
-  - [ ] Fields: `StockId`, `Shares` (int), `AverageBuyPrice` (float), `IsLong` (bool, true for buys), `OpenTime`
-  - [ ] Property: `UnrealizedPnL(float currentPrice)` — calculates current profit/loss
-  - [ ] Property: `MarketValue(float currentPrice)` — current position value
-  - [ ] File: `Scripts/Runtime/Trading/Position.cs`
-- [ ] Task 2: Create Portfolio class (AC: 2, 3, 4)
-  - [ ] Fields: `_positions` (Dictionary<string, Position>), `Cash` (float)
-  - [ ] Method: `CanAfford(float cost)` — returns bool
-  - [ ] Method: `OpenPosition(string stockId, int shares, float price)` — creates Position, deducts cash
-  - [ ] Method: `GetPosition(string stockId)` — returns Position or null
-  - [ ] Method: `GetAllPositions()` — returns all open positions
-  - [ ] Property: `TotalValue(Func<string, float> priceProvider)` — cash + all position market values
-  - [ ] Initialize with `GameConfig.StartingCapital`
-  - [ ] File: `Scripts/Runtime/Trading/Portfolio.cs`
-- [ ] Task 3: Create TradeExecutor (AC: 1, 4, 5)
-  - [ ] Method: `ExecuteBuy(string stockId, int shares, float currentPrice, Portfolio portfolio)`
-  - [ ] Validate: `portfolio.CanAfford(shares * currentPrice)` — if false, skip silently
-  - [ ] On success: call `portfolio.OpenPosition()`, publish `TradeExecutedEvent`
-  - [ ] Wrap in try-catch per architecture error handling pattern
-  - [ ] File: `Scripts/Runtime/Trading/TradeExecutor.cs`
-- [ ] Task 4: Define Trading events (AC: 5)
-  - [ ] `TradeExecutedEvent`: StockId, Shares, Price, IsBuy (bool), IsShort (bool), TotalCost
-  - [ ] Add to `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 5: Create RunContext with portfolio reference (AC: 2)
-  - [ ] Fields: `CurrentAct`, `CurrentRound`, `Portfolio`, `ActiveItems` (ordered list)
-  - [ ] RunContext is the central data carrier for run state
-  - [ ] File: `Scripts/Runtime/Core/RunContext.cs`
+- [x] Task 1: Create Position data class (AC: 2, 3)
+  - [x] Fields: `StockId`, `Shares` (int), `AverageBuyPrice` (float), `IsLong` (bool, true for buys), `OpenTime`
+  - [x] Property: `UnrealizedPnL(float currentPrice)` — calculates current profit/loss
+  - [x] Property: `MarketValue(float currentPrice)` — current position value
+  - [x] File: `Scripts/Runtime/Trading/Position.cs`
+- [x] Task 2: Create Portfolio class (AC: 2, 3, 4)
+  - [x] Fields: `_positions` (Dictionary<string, Position>), `Cash` (float)
+  - [x] Method: `CanAfford(float cost)` — returns bool
+  - [x] Method: `OpenPosition(string stockId, int shares, float price)` — creates Position, deducts cash
+  - [x] Method: `GetPosition(string stockId)` — returns Position or null
+  - [x] Method: `GetAllPositions()` — returns all open positions
+  - [x] Property: `TotalValue(Func<string, float> priceProvider)` — cash + all position market values
+  - [x] Initialize with `GameConfig.StartingCapital`
+  - [x] File: `Scripts/Runtime/Trading/Portfolio.cs`
+- [x] Task 3: Create TradeExecutor (AC: 1, 4, 5)
+  - [x] Method: `ExecuteBuy(string stockId, int shares, float currentPrice, Portfolio portfolio)`
+  - [x] Validate: `portfolio.CanAfford(shares * currentPrice)` — if false, skip silently
+  - [x] On success: call `portfolio.OpenPosition()`, publish `TradeExecutedEvent`
+  - [x] Wrap in try-catch per architecture error handling pattern
+  - [x] File: `Scripts/Runtime/Trading/TradeExecutor.cs`
+- [x] Task 4: Define Trading events (AC: 5)
+  - [x] `TradeExecutedEvent`: StockId, Shares, Price, IsBuy (bool), IsShort (bool), TotalCost
+  - [x] Add to `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 5: Create RunContext with portfolio reference (AC: 2)
+  - [x] Fields: `CurrentAct`, `CurrentRound`, `Portfolio`, `ActiveItems` (ordered list)
+  - [x] RunContext is the central data carrier for run state
+  - [x] File: `Scripts/Runtime/Core/RunContext.cs`
 
 ## Dev Notes
 
@@ -111,8 +111,37 @@ Input binding (Spacebar, mouse click, RT) is not part of this story. This story 
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+- `[Trading] Buy rejected: insufficient cash for {shares}x {stockId} at ${currentPrice}` — TradeExecutor.cs
+- `[Trading] BUY executed: {shares} shares of {stockId} at ${currentPrice}` — TradeExecutor.cs
+- `[Trading] Trade failed: {e.Message}` — TradeExecutor.cs (error recovery)
+- `[Trading] Position opened: {shares}x {stockId} at ${price}` — Portfolio.cs
+- `[Trading] Position averaged: {stockId} now {totalShares} shares at ${avgPrice}` — Portfolio.cs
 
 ### Completion Notes List
 
+- Task 1: Created `Position` class with StockId, Shares, AverageBuyPrice, IsLong, OpenTime fields. Includes UnrealizedPnL and MarketValue methods. 10 unit tests.
+- Task 2: Created `Portfolio` class with Dictionary-based position tracking, Cash management, CanAfford, OpenPosition (with averaging for existing positions), GetPosition, GetAllPositions, TotalValue. Constructor accepts starting cash. 13 unit tests.
+- Task 3: Created `TradeExecutor` with ExecuteBuy method. Try-catch at system boundary, silent rejection on insufficient cash, publishes TradeExecutedEvent on success. Returns bool for caller convenience. 8 unit tests.
+- Task 4: Added `TradeExecutedEvent` struct to GameEvents.cs with StockId, Shares, Price, IsBuy, IsShort, TotalCost fields. 3 unit tests for event structure and EventBus integration.
+- Task 5: Created `RunContext` as central run state carrier with CurrentAct, CurrentRound, Portfolio, ActiveItems (List<string>). 5 unit tests.
+
+### Change Log
+
+- 2026-02-10: Implemented all 5 tasks for Story 2.1 Buy Execution. Created Trading system foundation (Position, Portfolio, TradeExecutor), added TradeExecutedEvent to GameEvents, created RunContext. 39 total unit tests.
+
 ### File List
+
+- `Assets/Scripts/Runtime/Trading/Position.cs` (new)
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` (new)
+- `Assets/Scripts/Runtime/Trading/TradeExecutor.cs` (new)
+- `Assets/Scripts/Runtime/Core/RunContext.cs` (new)
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` (modified — added TradeExecutedEvent)
+- `Assets/Tests/Runtime/Trading/PositionTests.cs` (new)
+- `Assets/Tests/Runtime/Trading/PortfolioTests.cs` (new)
+- `Assets/Tests/Runtime/Trading/TradeExecutorTests.cs` (new)
+- `Assets/Tests/Runtime/Trading/TradeExecutedEventTests.cs` (new)
+- `Assets/Tests/Runtime/Core/RunContextTests.cs` (new)
