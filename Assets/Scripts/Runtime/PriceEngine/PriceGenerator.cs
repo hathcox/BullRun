@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Price generation pipeline orchestrator.
 /// Story 1.1: Trend layer. Story 1.2: Noise layer. Story 1.3: Event spikes.
-/// Later stories add mean reversion (1.4).
+/// Story 1.4: Mean reversion. Story 1.5: Named stock pools per tier.
 /// </summary>
 public class PriceGenerator
 {
@@ -23,23 +23,18 @@ public class PriceGenerator
         _eventEffects = eventEffects;
     }
 
-    // Ticker symbols pool for generating stock names
-    private static readonly string[] TickerPool = new string[]
-    {
-        "ACME", "BULL", "BEAR", "MOON", "HODL",
-        "YOLO", "PUMP", "DUMP", "APEX", "MEGA",
-        "FLUX", "NEON", "VOID", "RUSH", "BOLT",
-        "GRIT", "HYPE", "ZINC", "OMNI", "PEAK"
-    };
 
     /// <summary>
-    /// Updates a stock's price by applying trend + noise + event spike layers.
+    /// Updates a stock's price by applying trend + noise + event/reversion layers.
     /// Called every frame for each active stock.
-    /// Pipeline: trend → noise → events → clamp
+    /// Pipeline: trend → noise → event OR reversion → clamp
     /// </summary>
     public void UpdatePrice(StockInstance stock, float deltaTime)
     {
         float previousPrice = stock.CurrentPrice;
+
+        // Update trend line reference point (Story 1.4)
+        stock.UpdateTrendLine(deltaTime);
 
         // Step 1: Trend layer (Story 1.1)
         stock.CurrentPrice += stock.TrendPerSecond * deltaTime;
@@ -52,14 +47,25 @@ public class PriceGenerator
         float noiseEffect = stock.CurrentPrice * stock.NoiseAmplitude * stock.NoiseAccumulator * deltaTime;
         stock.CurrentPrice += noiseEffect;
 
-        // Step 3: Event spike layer (Story 1.3)
+        // Step 3 & 4: Event spike OR Mean reversion (Story 1.3 & 1.4)
+        bool hasActiveEvent = false;
         if (_eventEffects != null)
         {
             var activeEvents = _eventEffects.GetActiveEventsForStock(stock.StockId);
-            for (int i = 0; i < activeEvents.Count; i++)
+            if (activeEvents.Count > 0)
             {
-                stock.CurrentPrice = _eventEffects.ApplyEventEffect(stock, activeEvents[i], deltaTime);
+                hasActiveEvent = true;
+                for (int i = 0; i < activeEvents.Count; i++)
+                {
+                    stock.CurrentPrice = _eventEffects.ApplyEventEffect(stock, activeEvents[i], deltaTime);
+                }
             }
+        }
+
+        // Mean reversion — only when no event is active (Story 1.4)
+        if (!hasActiveEvent)
+        {
+            stock.CurrentPrice = Mathf.Lerp(stock.CurrentPrice, stock.TrendLinePrice, stock.TierConfig.MeanReversionSpeed * deltaTime);
         }
 
         // Clamp to tier price range — never go below minimum
@@ -76,35 +82,31 @@ public class PriceGenerator
     }
 
     /// <summary>
-    /// Creates stock instances for a new round with random trend directions
-    /// and tier-appropriate strengths.
+    /// Creates stock instances for a new round by selecting from named stock pools.
     /// </summary>
     public void InitializeRound(int act, int round)
     {
         _activeStocks.Clear();
 
         int stockId = 0;
-        var usedTickers = new HashSet<string>();
 
-        // Create stocks for each tier
         foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
         {
+            var selections = SelectStocksForRound(tier);
             var config = StockTierData.GetTierConfig(tier);
-            int stockCount = _random.Next(config.MinStocksPerRound, config.MaxStocksPerRound + 1);
 
-            for (int i = 0; i < stockCount; i++)
+            foreach (var def in selections)
             {
-                string ticker = PickUniqueTicker(usedTickers);
                 float startingPrice = RandomRange(config.MinPrice, config.MaxPrice);
                 TrendDirection direction = PickRandomTrendDirection();
                 float trendStrength = RandomRange(config.MinTrendStrength, config.MaxTrendStrength);
 
                 var stock = new StockInstance();
-                stock.Initialize(stockId, ticker, tier, startingPrice, direction, trendStrength);
+                stock.Initialize(stockId, def.TickerSymbol, tier, startingPrice, direction, trendStrength);
                 _activeStocks.Add(stock);
 
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[PriceEngine] Stock initialized: {ticker} ({tier}) @ ${startingPrice:F2}, Trend: {direction}, Strength: {trendStrength:F4}/s");
+                Debug.Log($"[PriceEngine] Stock initialized: {def.TickerSymbol} \"{def.DisplayName}\" ({tier}) @ ${startingPrice:F2}, Trend: {direction}, Strength: {trendStrength:F4}/s");
                 #endif
 
                 stockId++;
@@ -116,6 +118,40 @@ public class PriceGenerator
         #endif
     }
 
+    /// <summary>
+    /// Selects a random subset of stocks from a tier's pool for a round.
+    /// Count is determined by the tier's MinStocksPerRound/MaxStocksPerRound config.
+    /// </summary>
+    public List<StockDefinition> SelectStocksForRound(StockTier tier)
+    {
+        var pool = StockPoolData.GetPool(tier);
+        var config = StockTierData.GetTierConfig(tier);
+        int count = _random.Next(config.MinStocksPerRound, config.MaxStocksPerRound + 1);
+
+        // Clamp to pool size
+        if (count > pool.Length)
+            count = pool.Length;
+
+        // Fisher-Yates partial shuffle to pick 'count' unique stocks
+        var indices = new List<int>(pool.Length);
+        for (int i = 0; i < pool.Length; i++)
+            indices.Add(i);
+
+        var selected = new List<StockDefinition>(count);
+        for (int i = 0; i < count; i++)
+        {
+            int pick = _random.Next(i, indices.Count);
+            // Swap
+            int temp = indices[i];
+            indices[i] = indices[pick];
+            indices[pick] = temp;
+
+            selected.Add(pool[indices[i]]);
+        }
+
+        return selected;
+    }
+
     private TrendDirection PickRandomTrendDirection()
     {
         // Roughly equal distribution: 40% bull, 40% bear, 20% neutral
@@ -125,22 +161,62 @@ public class PriceGenerator
         return TrendDirection.Neutral;
     }
 
-    private string PickUniqueTicker(HashSet<string> used)
+    /// <summary>
+    /// Returns debug info for all active stocks. Used by DebugOverlayUI.
+    /// </summary>
+    public List<StockDebugInfo> GetDebugInfo()
     {
-        for (int attempt = 0; attempt < 100; attempt++)
+        var infos = new List<StockDebugInfo>(_activeStocks.Count);
+        for (int i = 0; i < _activeStocks.Count; i++)
         {
-            string ticker = TickerPool[_random.Next(TickerPool.Length)];
-            if (used.Add(ticker))
-                return ticker;
+            var stock = _activeStocks[i];
+            var info = new StockDebugInfo
+            {
+                Ticker = stock.TickerSymbol,
+                CurrentPrice = stock.CurrentPrice,
+                TrendLinePrice = stock.TrendLinePrice,
+                TrendDirection = stock.TrendDirection,
+                TrendPerSecond = stock.TrendPerSecond,
+                NoiseAmplitude = stock.NoiseAmplitude,
+                ReversionSpeed = stock.TierConfig.MeanReversionSpeed,
+            };
+
+            if (_eventEffects != null)
+            {
+                var events = _eventEffects.GetActiveEventsForStock(stock.StockId);
+                if (events.Count > 0)
+                {
+                    var evt = events[0];
+                    info.HasActiveEvent = true;
+                    info.ActiveEventType = evt.EventType;
+                    info.EventTimeRemaining = evt.Duration - evt.ElapsedTime;
+                }
+            }
+
+            infos.Add(info);
         }
-        // Fallback: generate a numeric ticker
-        string fallback = $"STK{used.Count}";
-        used.Add(fallback);
-        return fallback;
+        return infos;
     }
 
     private float RandomRange(float min, float max)
     {
         return min + (float)_random.NextDouble() * (max - min);
     }
+}
+
+/// <summary>
+/// Debug data snapshot for a single stock. Read-only, used by debug overlay.
+/// </summary>
+public struct StockDebugInfo
+{
+    public string Ticker;
+    public float CurrentPrice;
+    public float TrendLinePrice;
+    public TrendDirection TrendDirection;
+    public float TrendPerSecond;
+    public float NoiseAmplitude;
+    public float ReversionSpeed;
+    public bool HasActiveEvent;
+    public MarketEventType ActiveEventType;
+    public float EventTimeRemaining;
 }

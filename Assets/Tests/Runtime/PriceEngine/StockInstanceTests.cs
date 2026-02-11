@@ -181,5 +181,69 @@ namespace BullRun.Tests.PriceEngine
             Assert.AreEqual(evt2, stock.ActiveEvent);
             Assert.AreEqual(70f, stock.EventTargetPrice, 0.001f);
         }
+
+        // --- Trend Line Tracking Tests (Story 1.4) ---
+
+        [Test]
+        public void Initialize_TrendLinePrice_EqualsStartingPrice()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Bull, 0.05f);
+
+            Assert.AreEqual(100f, stock.TrendLinePrice, 0.001f);
+        }
+
+        [Test]
+        public void UpdateTrendLine_BullTrend_IncreasesTrendLinePrice()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Bull, 0.05f);
+
+            float initialTrendLine = stock.TrendLinePrice;
+            stock.UpdateTrendLine(1f);
+
+            Assert.Greater(stock.TrendLinePrice, initialTrendLine,
+                "Bull trend should increase trend line price");
+        }
+
+        [Test]
+        public void UpdateTrendLine_BearTrend_DecreasesTrendLinePrice()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Bear, 0.05f);
+
+            float initialTrendLine = stock.TrendLinePrice;
+            stock.UpdateTrendLine(1f);
+
+            Assert.Less(stock.TrendLinePrice, initialTrendLine,
+                "Bear trend should decrease trend line price");
+        }
+
+        [Test]
+        public void UpdateTrendLine_NeutralTrend_TrendLinePriceUnchanged()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+
+            stock.UpdateTrendLine(1f);
+
+            Assert.AreEqual(100f, stock.TrendLinePrice, 0.001f,
+                "Neutral trend should not change trend line price");
+        }
+
+        [Test]
+        public void UpdateTrendLine_AccumulatesOverMultipleFrames()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Bull, 0.05f);
+
+            for (int i = 0; i < 60; i++)
+                stock.UpdateTrendLine(0.016f);
+
+            // TrendPerSecond = 100 * 0.05 = 5.0/s. Over ~0.96s that's ~4.8
+            float expectedApprox = 100f + (stock.TrendPerSecond * 60 * 0.016f);
+            Assert.AreEqual(expectedApprox, stock.TrendLinePrice, 0.01f,
+                "Trend line should accumulate correctly over multiple frames");
+        }
     }
 }

@@ -41,13 +41,13 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # === Epic 1: Price Engine (Phase 1, Weeks 1-4) ===
-  epic-1: in-progress
+  epic-1: done
   1-1-base-trend-generation: done
-  1-2-noise-layer: review
-  1-3-event-spike-integration: review
-  1-4-mean-reversion: ready-for-dev
-  1-5-stock-tier-configuration: ready-for-dev
-  1-6-debug-overlay: ready-for-dev
+  1-2-noise-layer: done
+  1-3-event-spike-integration: done
+  1-4-mean-reversion: done
+  1-5-stock-tier-configuration: done
+  1-6-debug-overlay: done
   epic-1-retrospective: optional
 
   # === Epic 2: Trading System (Phase 1, Weeks 1-4) ===

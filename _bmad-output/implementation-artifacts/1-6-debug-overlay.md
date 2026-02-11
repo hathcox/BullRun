@@ -1,6 +1,6 @@
 # Story 1.6: Debug Overlay
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,32 +20,32 @@ so that I can tune balance during development.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create DebugManager MonoBehaviour (AC: 1, 6)
-  - [ ] Wrap entire class in `#if UNITY_EDITOR || DEVELOPMENT_BUILD`
-  - [ ] Handle F1 key press to toggle overlay visibility
-  - [ ] Provide static `IsOverlayVisible` property for other debug components
-  - [ ] File: `Scripts/Editor/DebugManager.cs`
-- [ ] Task 2: Create DebugOverlayUI for price engine data (AC: 2, 3, 4, 5, 7)
-  - [ ] Display per-stock debug info in a semi-transparent panel (top-right or configurable)
-  - [ ] For each stock show: Ticker, Trend Direction (with arrow icon or color), TrendPerSecond, NoiseAmplitude, ReversionSpeed
-  - [ ] Show active event name + remaining seconds if event is active
-  - [ ] Use simple `OnGUI()` or uGUI text — this is a debug tool, not polished UI
-  - [ ] Position overlay to not block the chart area
-  - [ ] File: `Scripts/Editor/DebugOverlayUI.cs` (or add to DebugManager)
-- [ ] Task 3: Expose PriceEngine debug data (AC: 2, 3, 4, 5)
-  - [ ] Add public read accessors on PriceGenerator for current stock states
-  - [ ] Method: `GetDebugInfo()` returns list of per-stock debug data structs
-  - [ ] Includes: ticker, trend direction, trend strength, noise amplitude, reversion speed, active event info
-  - [ ] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend)
-- [ ] Task 4: Add DebugManager to Setup pipeline (AC: 1)
-  - [ ] Create setup class that generates DebugManager GameObject in the scene
-  - [ ] Only generate in editor/dev builds
-  - [ ] File: `Scripts/Setup/DebugSetup.cs` (new, `[SetupClass(SetupPhase.SceneComposition)]`)
-- [ ] Task 5: Reserve F2-F4 key slots (AC: 6)
-  - [ ] Add placeholder key handlers in DebugManager for future debug tools
-  - [ ] F2: God mode (not implemented yet — log "God mode not yet implemented")
-  - [ ] F3: Skip to round (not implemented yet)
-  - [ ] F4: Event trigger (not implemented yet)
+- [x] Task 1: Create DebugManager MonoBehaviour (AC: 1, 6)
+  - [x] Entire class wrapped in `#if UNITY_EDITOR || DEVELOPMENT_BUILD`
+  - [x] F1 key toggles overlay visibility
+  - [x] Static `IsOverlayVisible` property exposed
+  - [x] File: `Scripts/Editor/DebugManager.cs`
+- [x] Task 2: Create DebugOverlayUI for price engine data (AC: 2, 3, 4, 5, 7)
+  - [x] Semi-transparent panel in top-right corner (320px wide)
+  - [x] Per-stock: Ticker, arrow+direction, price, TrendPerSecond, NoiseAmplitude, ReversionSpeed, TrendLinePrice
+  - [x] Active event name + remaining seconds displayed in orange
+  - [x] Uses OnGUI() with styled GUIStyles — debug tool, not polished UI
+  - [x] Positioned to not block chart area (right side)
+  - [x] Combined into DebugManager.cs (no separate file needed)
+- [x] Task 3: Expose PriceEngine debug data (AC: 2, 3, 4, 5)
+  - [x] `StockDebugInfo` struct with all debug fields
+  - [x] `GetDebugInfo()` method returns list of per-stock snapshots
+  - [x] Includes active event type and time remaining
+  - [x] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extended)
+- [x] Task 4: Add DebugManager to Setup pipeline (AC: 1)
+  - [x] DebugSetup.Execute() creates DebugManager GameObject
+  - [x] Wrapped in conditional compilation
+  - [x] SetupClass attribute commented out pending SetupPipeline infrastructure
+  - [x] File: `Scripts/Setup/DebugSetup.cs` (new)
+- [x] Task 5: Reserve F2-F4 key slots (AC: 6)
+  - [x] F2: God mode placeholder (logs "not yet implemented")
+  - [x] F3: Skip to round placeholder
+  - [x] F4: Event trigger placeholder
 
 ## Dev Notes
 
@@ -116,9 +116,24 @@ The GDD mentions win rate tracking in the debug overlay, but this requires meta-
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6
 
 ### Debug Log References
+- `[Debug] Overlay ON/OFF` on F1 toggle
+- `[Debug] God mode not yet implemented` on F2
+- `[Debug] Skip to round not yet implemented` on F3
+- `[Debug] Event trigger not yet implemented` on F4
+- `[Setup] DebugManager created` during setup
 
 ### Completion Notes List
+- DebugManager handles F1-F4, with overlay rendering via OnGUI
+- StockDebugInfo struct added to PriceGenerator.cs for clean data access
+- DebugSetup created with SetupClass attribute commented out (awaiting pipeline infrastructure)
+- Overlay shows: ticker, price, trend direction/arrow, trend per second, trend line price, noise amplitude, reversion speed, active events with remaining time
+- 5 new tests for GetDebugInfo on PriceGenerator
 
 ### File List
+- `Assets/Scripts/Editor/DebugManager.cs` — NEW: F1 overlay toggle, F2-F4 placeholders, OnGUI rendering
+- `Assets/Scripts/Setup/DebugSetup.cs` — NEW: creates DebugManager GameObject
+- `Assets/Scripts/Runtime/PriceEngine/PriceGenerator.cs` — added StockDebugInfo struct + GetDebugInfo()
+- `Assets/Tests/Runtime/PriceEngine/PriceGeneratorTests.cs` — 5 new debug info tests

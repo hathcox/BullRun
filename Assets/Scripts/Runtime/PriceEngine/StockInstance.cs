@@ -26,6 +26,9 @@ public class StockInstance
     public float NoiseFrequency { get; private set; }
     public float NoiseAccumulator { get; set; }
 
+    // Trend line tracking for mean reversion (Story 1.4)
+    public float TrendLinePrice { get; private set; }
+
     // Event tracking state (Story 1.3)
     public MarketEvent ActiveEvent { get; private set; }
     public float EventTargetPrice { get; private set; }
@@ -42,6 +45,9 @@ public class StockInstance
         NoiseAmplitude = TierConfig.NoiseAmplitude;
         NoiseFrequency = TierConfig.NoiseFrequency;
         NoiseAccumulator = 0f;
+
+        // Trend line starts at the same price as current
+        TrendLinePrice = startingPrice;
 
         // Event state starts cleared
         ActiveEvent = null;
@@ -61,6 +67,15 @@ public class StockInstance
                 TrendPerSecond = 0f;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Advances the trend line price by the trend rate. Called each frame to track
+    /// where the price "should be" based on trend alone (reversion target).
+    /// </summary>
+    public void UpdateTrendLine(float deltaTime)
+    {
+        TrendLinePrice += TrendPerSecond * deltaTime;
     }
 
     /// <summary>

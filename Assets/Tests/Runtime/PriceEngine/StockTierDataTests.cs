@@ -143,5 +143,78 @@ namespace BullRun.Tests.PriceEngine
             Assert.Greater(penny.NoiseAmplitude, blueChip.NoiseAmplitude,
                 "Penny should have higher noise amplitude than Blue Chip");
         }
+
+        // --- Mean Reversion Tests (Story 1.4) ---
+
+        [Test]
+        public void AllTiers_HaveNonNegativeMeanReversionSpeed()
+        {
+            foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
+            {
+                var config = StockTierData.GetTierConfig(tier);
+                Assert.GreaterOrEqual(config.MeanReversionSpeed, 0f,
+                    $"Tier {tier}: MeanReversionSpeed should be non-negative");
+            }
+        }
+
+        [Test]
+        public void AllTiers_MeanReversionSpeedBelowOne()
+        {
+            foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
+            {
+                var config = StockTierData.GetTierConfig(tier);
+                Assert.LessOrEqual(config.MeanReversionSpeed, 1f,
+                    $"Tier {tier}: MeanReversionSpeed should be <= 1.0");
+            }
+        }
+
+        [Test]
+        public void MeanReversionOrder_PennySlowestBlueChipFastest()
+        {
+            var penny = StockTierData.GetTierConfig(StockTier.Penny);
+            var lowValue = StockTierData.GetTierConfig(StockTier.LowValue);
+            var midValue = StockTierData.GetTierConfig(StockTier.MidValue);
+            var blueChip = StockTierData.GetTierConfig(StockTier.BlueChip);
+
+            Assert.Less(penny.MeanReversionSpeed, lowValue.MeanReversionSpeed, "Penny < LowValue reversion");
+            Assert.Less(lowValue.MeanReversionSpeed, midValue.MeanReversionSpeed, "LowValue < MidValue reversion");
+            Assert.Less(midValue.MeanReversionSpeed, blueChip.MeanReversionSpeed, "MidValue < BlueChip reversion");
+        }
+
+        [Test]
+        public void GetTierConfig_Penny_HasExpectedReversionSpeed()
+        {
+            var config = StockTierData.GetTierConfig(StockTier.Penny);
+            Assert.AreEqual(0.05f, config.MeanReversionSpeed, 0.001f);
+        }
+
+        [Test]
+        public void GetTierConfig_BlueChip_HasExpectedReversionSpeed()
+        {
+            var config = StockTierData.GetTierConfig(StockTier.BlueChip);
+            Assert.AreEqual(0.60f, config.MeanReversionSpeed, 0.001f);
+        }
+
+        // --- Event Frequency Modifier Tests (Story 1.5) ---
+
+        [Test]
+        public void AllTiers_HavePositiveEventFrequencyModifier()
+        {
+            foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
+            {
+                var config = StockTierData.GetTierConfig(tier);
+                Assert.Greater(config.EventFrequencyModifier, 0f,
+                    $"Tier {tier}: EventFrequencyModifier should be positive");
+            }
+        }
+
+        [Test]
+        public void EventFrequencyOrder_PennyHighestBlueChipLowest()
+        {
+            var penny = StockTierData.GetTierConfig(StockTier.Penny);
+            var blueChip = StockTierData.GetTierConfig(StockTier.BlueChip);
+            Assert.Greater(penny.EventFrequencyModifier, blueChip.EventFrequencyModifier,
+                "Penny should have higher event frequency than Blue Chip");
+        }
     }
 }
