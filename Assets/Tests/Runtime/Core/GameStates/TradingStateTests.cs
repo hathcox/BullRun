@@ -201,6 +201,44 @@ namespace BullRun.Tests.Core.GameStates
             Assert.IsFalse(eventFired);
         }
 
+        // --- Trade lockout tests (Story 4.3) ---
+
+        [Test]
+        public void Enter_EnablesTrading_WhenTradeExecutorProvided()
+        {
+            var tradeExecutor = new TradeExecutor();
+            tradeExecutor.IsTradeEnabled = false;
+
+            TradingState.NextConfig = new TradingStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = tradeExecutor
+            };
+            var state = new TradingState();
+            state.Enter(_ctx);
+
+            Assert.IsTrue(tradeExecutor.IsTradeEnabled);
+        }
+
+        [Test]
+        public void AdvanceTime_WhenTimerExpires_SetsMarketCloseStateConfig()
+        {
+            var tradeExecutor = new TradeExecutor();
+            TradingState.NextConfig = new TradingStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = tradeExecutor
+            };
+            _sm.TransitionTo<TradingState>();
+            var tradingState = (TradingState)_sm.CurrentState;
+
+            tradingState.AdvanceTime(_ctx, GameConfig.RoundDurationSeconds + 1f);
+
+            Assert.IsInstanceOf<MarketCloseState>(_sm.CurrentState);
+        }
+
         // --- Exit tests ---
 
         [Test]

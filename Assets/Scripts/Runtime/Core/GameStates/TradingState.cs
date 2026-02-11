@@ -12,6 +12,7 @@ public class TradingState : IGameState
     private float _roundDuration;
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
+    private TradeExecutor _tradeExecutor;
 
     public float TimeRemaining => _timeRemaining;
     public float TimeElapsed => _roundDuration - _timeRemaining;
@@ -41,7 +42,14 @@ public class TradingState : IGameState
         {
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
+            _tradeExecutor = NextConfig.TradeExecutor;
             NextConfig = null;
+        }
+
+        // Enable trading at the start of the trading phase
+        if (_tradeExecutor != null)
+        {
+            _tradeExecutor.IsTradeEnabled = true;
         }
 
         ActiveTimeRemaining = _timeRemaining;
@@ -88,6 +96,12 @@ public class TradingState : IGameState
 
             if (_stateMachine != null)
             {
+                MarketCloseState.NextConfig = new MarketCloseStateConfig
+                {
+                    StateMachine = _stateMachine,
+                    PriceGenerator = _priceGenerator,
+                    TradeExecutor = _tradeExecutor
+                };
                 _stateMachine.TransitionTo<MarketCloseState>();
             }
             return;
@@ -123,4 +137,5 @@ public class TradingStateConfig
 {
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
+    public TradeExecutor TradeExecutor;
 }

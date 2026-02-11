@@ -8,11 +8,25 @@ using UnityEngine;
 public class TradeExecutor
 {
     /// <summary>
+    /// Controls whether trades can be executed. Set to false during market close
+    /// to prevent trades during liquidation. TradingState sets this to true on Enter.
+    /// </summary>
+    public bool IsTradeEnabled { get; set; } = true;
+
+    /// <summary>
     /// Executes a buy order. Returns true on success, false if rejected.
     /// Silently rejects if insufficient cash — no error dialogs.
     /// </summary>
     public bool ExecuteBuy(string stockId, int shares, float currentPrice, Portfolio portfolio)
     {
+        if (!IsTradeEnabled)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log("[Trading] Buy rejected: trading is disabled (market closed)");
+            #endif
+            return false;
+        }
+
         try
         {
             float cost = shares * currentPrice;
@@ -49,6 +63,14 @@ public class TradeExecutor
     /// </summary>
     public bool ExecuteSell(string stockId, int shares, float currentPrice, Portfolio portfolio)
     {
+        if (!IsTradeEnabled)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log("[Trading] Sell rejected: trading is disabled (market closed)");
+            #endif
+            return false;
+        }
+
         try
         {
             var position = portfolio.GetPosition(stockId);
@@ -87,6 +109,14 @@ public class TradeExecutor
     /// </summary>
     public bool ExecuteShort(string stockId, int shares, float currentPrice, Portfolio portfolio)
     {
+        if (!IsTradeEnabled)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log("[Trading] Short rejected: trading is disabled (market closed)");
+            #endif
+            return false;
+        }
+
         try
         {
             float margin = shares * currentPrice * GameConfig.ShortMarginRequirement;
@@ -126,6 +156,14 @@ public class TradeExecutor
     /// </summary>
     public bool ExecuteCover(string stockId, int shares, float currentPrice, Portfolio portfolio)
     {
+        if (!IsTradeEnabled)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log("[Trading] Cover rejected: trading is disabled (market closed)");
+            #endif
+            return false;
+        }
+
         try
         {
             var position = portfolio.GetPosition(stockId);

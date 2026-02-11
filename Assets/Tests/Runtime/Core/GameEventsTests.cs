@@ -356,5 +356,251 @@ namespace BullRun.Tests.Core
 
             EventBus.Clear();
         }
+
+        // --- MarketClosedEvent Tests (Story 4.3 Task 4) ---
+
+        [Test]
+        public void MarketClosedEvent_StoresAllFields()
+        {
+            var evt = new MarketClosedEvent
+            {
+                RoundNumber = 3,
+                RoundProfit = 650.50f,
+                FinalCash = 1650.50f,
+                PositionsLiquidated = 4
+            };
+
+            Assert.AreEqual(3, evt.RoundNumber);
+            Assert.AreEqual(650.50f, evt.RoundProfit, 0.01f);
+            Assert.AreEqual(1650.50f, evt.FinalCash, 0.01f);
+            Assert.AreEqual(4, evt.PositionsLiquidated);
+        }
+
+        [Test]
+        public void MarketClosedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            MarketClosedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<MarketClosedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new MarketClosedEvent
+            {
+                RoundNumber = 1,
+                RoundProfit = -120f,
+                FinalCash = 880f,
+                PositionsLiquidated = 2
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(1, received.RoundNumber);
+            Assert.AreEqual(-120f, received.RoundProfit, 0.01f);
+            Assert.AreEqual(880f, received.FinalCash, 0.01f);
+            Assert.AreEqual(2, received.PositionsLiquidated);
+
+            EventBus.Clear();
+        }
+
+        // --- MarginCallTriggeredEvent Tests (Story 4.4 Task 4) ---
+
+        [Test]
+        public void MarginCallTriggeredEvent_StoresAllFields()
+        {
+            var evt = new MarginCallTriggeredEvent
+            {
+                RoundNumber = 3,
+                RoundProfit = 150f,
+                RequiredTarget = 600f,
+                Shortfall = 450f
+            };
+
+            Assert.AreEqual(3, evt.RoundNumber);
+            Assert.AreEqual(150f, evt.RoundProfit, 0.01f);
+            Assert.AreEqual(600f, evt.RequiredTarget, 0.01f);
+            Assert.AreEqual(450f, evt.Shortfall, 0.01f);
+        }
+
+        [Test]
+        public void MarginCallTriggeredEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            MarginCallTriggeredEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<MarginCallTriggeredEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new MarginCallTriggeredEvent
+            {
+                RoundNumber = 2,
+                RoundProfit = 100f,
+                RequiredTarget = 350f,
+                Shortfall = 250f
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(2, received.RoundNumber);
+            Assert.AreEqual(100f, received.RoundProfit, 0.01f);
+            Assert.AreEqual(350f, received.RequiredTarget, 0.01f);
+            Assert.AreEqual(250f, received.Shortfall, 0.01f);
+
+            EventBus.Clear();
+        }
+
+        // --- RoundCompletedEvent Tests (Story 4.5 Task 1) ---
+
+        [Test]
+        public void RoundCompletedEvent_StoresAllFields()
+        {
+            var evt = new RoundCompletedEvent
+            {
+                RoundNumber = 3,
+                RoundProfit = 650f,
+                ProfitTarget = 600f,
+                TargetMet = true,
+                TotalCash = 2800f
+            };
+
+            Assert.AreEqual(3, evt.RoundNumber);
+            Assert.AreEqual(650f, evt.RoundProfit, 0.01f);
+            Assert.AreEqual(600f, evt.ProfitTarget, 0.01f);
+            Assert.IsTrue(evt.TargetMet);
+            Assert.AreEqual(2800f, evt.TotalCash, 0.01f);
+        }
+
+        [Test]
+        public void RoundCompletedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            RoundCompletedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<RoundCompletedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new RoundCompletedEvent
+            {
+                RoundNumber = 2,
+                RoundProfit = 400f,
+                ProfitTarget = 350f,
+                TargetMet = true,
+                TotalCash = 1400f
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(2, received.RoundNumber);
+            Assert.AreEqual(400f, received.RoundProfit, 0.01f);
+            Assert.IsTrue(received.TargetMet);
+
+            EventBus.Clear();
+        }
+
+        // --- ActTransitionEvent Tests (Story 4.5 Task 4) ---
+
+        [Test]
+        public void ActTransitionEvent_StoresAllFields()
+        {
+            var evt = new ActTransitionEvent
+            {
+                NewAct = 2,
+                PreviousAct = 1,
+                TierDisplayName = "Low-Value Stocks"
+            };
+
+            Assert.AreEqual(2, evt.NewAct);
+            Assert.AreEqual(1, evt.PreviousAct);
+            Assert.AreEqual("Low-Value Stocks", evt.TierDisplayName);
+        }
+
+        [Test]
+        public void ActTransitionEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            ActTransitionEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<ActTransitionEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new ActTransitionEvent
+            {
+                NewAct = 3,
+                PreviousAct = 2,
+                TierDisplayName = "Mid-Value Stocks"
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(3, received.NewAct);
+            Assert.AreEqual("Mid-Value Stocks", received.TierDisplayName);
+
+            EventBus.Clear();
+        }
+
+        // --- RunEndedEvent Tests (Story 4.4 Task 4) ---
+
+        [Test]
+        public void RunEndedEvent_StoresAllFields()
+        {
+            var evt = new RunEndedEvent
+            {
+                RoundsCompleted = 5,
+                FinalCash = 2500f,
+                TotalProfit = 1500f,
+                WasMarginCalled = true,
+                ReputationEarned = 0,
+                ItemsCollected = 3
+            };
+
+            Assert.AreEqual(5, evt.RoundsCompleted);
+            Assert.AreEqual(2500f, evt.FinalCash, 0.01f);
+            Assert.AreEqual(1500f, evt.TotalProfit, 0.01f);
+            Assert.IsTrue(evt.WasMarginCalled);
+            Assert.AreEqual(0, evt.ReputationEarned);
+            Assert.AreEqual(3, evt.ItemsCollected);
+        }
+
+        [Test]
+        public void RunEndedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            RunEndedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<RunEndedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new RunEndedEvent
+            {
+                RoundsCompleted = 3,
+                FinalCash = 800f,
+                TotalProfit = -200f,
+                WasMarginCalled = true,
+                ReputationEarned = 0
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(3, received.RoundsCompleted);
+            Assert.AreEqual(-200f, received.TotalProfit, 0.01f);
+            Assert.IsTrue(received.WasMarginCalled);
+
+            EventBus.Clear();
+        }
     }
 }

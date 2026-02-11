@@ -112,3 +112,64 @@ public struct TradingPhaseEndedEvent
     public int RoundNumber;
     public bool TimeExpired;
 }
+
+/// <summary>
+/// Fired when the market closes and all positions are auto-liquidated.
+/// Published by MarketCloseState after liquidation completes.
+/// </summary>
+public struct MarketClosedEvent
+{
+    public int RoundNumber;
+    public float RoundProfit;
+    public float FinalCash;
+    public int PositionsLiquidated;
+}
+
+/// <summary>
+/// Fired when the player fails to meet the margin call target for a round.
+/// The run ends immediately after this event.
+/// </summary>
+public struct MarginCallTriggeredEvent
+{
+    public int RoundNumber;
+    public float RoundProfit;
+    public float RequiredTarget;
+    public float Shortfall;
+}
+
+/// <summary>
+/// Fired when a round is completed successfully (margin call passed).
+/// UI subscribes to display round results overlay.
+/// </summary>
+public struct RoundCompletedEvent
+{
+    public int RoundNumber;
+    public float RoundProfit;
+    public float ProfitTarget;
+    public bool TargetMet;
+    public float TotalCash;
+}
+
+/// <summary>
+/// Fired when an act transition occurs (new act begins).
+/// UI subscribes to display act transition interstitial.
+/// </summary>
+public struct ActTransitionEvent
+{
+    public int NewAct;
+    public int PreviousAct;
+    public string TierDisplayName;
+}
+
+/// <summary>
+/// Fired when a run ends, either by margin call or completing all rounds.
+/// </summary>
+public struct RunEndedEvent
+{
+    public int RoundsCompleted;
+    public float FinalCash;
+    public float TotalProfit;
+    public bool WasMarginCalled;
+    public int ReputationEarned;
+    public int ItemsCollected;
+}

@@ -76,8 +76,8 @@ public static class NewsHeadlineData
             else if (stocks[i].TrendDirection == TrendDirection.Bear) bear++;
         }
 
-        // Volatile: both bulls and bears present with no clear majority
-        if (bull > 0 && bear > 0 && System.Math.Abs(bull - bear) <= 1)
+        // Volatile: both bulls and bears present in equal numbers
+        if (bull > 0 && bear > 0 && bull == bear)
             return VolatileHeadlines[random.Next(VolatileHeadlines.Length)];
 
         if (bull > bear) return BullishHeadlines[random.Next(BullishHeadlines.Length)];

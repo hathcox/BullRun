@@ -282,5 +282,55 @@ namespace BullRun.Tests.Trading
             bool result = _executor.ExecuteCover("ACME", 10, 30.00f, _portfolio);
             Assert.IsTrue(result);
         }
+
+        // --- IsTradeEnabled Tests (Story 4.3) ---
+
+        [Test]
+        public void IsTradeEnabled_DefaultsToTrue()
+        {
+            Assert.IsTrue(_executor.IsTradeEnabled);
+        }
+
+        [Test]
+        public void ExecuteBuy_WhenDisabled_ReturnsFalse()
+        {
+            _executor.IsTradeEnabled = false;
+            bool result = _executor.ExecuteBuy("ACME", 10, 25.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.AreEqual(1000f, _portfolio.Cash, 0.001f);
+            Assert.IsFalse(_eventReceived);
+        }
+
+        [Test]
+        public void ExecuteSell_WhenDisabled_ReturnsFalse()
+        {
+            _executor.ExecuteBuy("ACME", 10, 25.00f, _portfolio);
+            _eventReceived = false;
+            _executor.IsTradeEnabled = false;
+            bool result = _executor.ExecuteSell("ACME", 10, 30.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.IsFalse(_eventReceived);
+        }
+
+        [Test]
+        public void ExecuteShort_WhenDisabled_ReturnsFalse()
+        {
+            _executor.IsTradeEnabled = false;
+            bool result = _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.AreEqual(1000f, _portfolio.Cash, 0.001f);
+            Assert.IsFalse(_eventReceived);
+        }
+
+        [Test]
+        public void ExecuteCover_WhenDisabled_ReturnsFalse()
+        {
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
+            _eventReceived = false;
+            _executor.IsTradeEnabled = false;
+            bool result = _executor.ExecuteCover("ACME", 10, 30.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.IsFalse(_eventReceived);
+        }
     }
 }

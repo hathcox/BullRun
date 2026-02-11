@@ -10,6 +10,7 @@ public class MarketOpenState : IGameState
     private float _previewDuration;
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
+    private TradeExecutor _tradeExecutor;
 
     public float TimeRemaining => _timeRemaining;
     public float PreviewDuration => _previewDuration;
@@ -37,6 +38,7 @@ public class MarketOpenState : IGameState
         {
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
+            _tradeExecutor = NextConfig.TradeExecutor;
             NextConfig = null;
         }
 
@@ -117,7 +119,8 @@ public class MarketOpenState : IGameState
                 TradingState.NextConfig = new TradingStateConfig
                 {
                     StateMachine = _stateMachine,
-                    PriceGenerator = _priceGenerator
+                    PriceGenerator = _priceGenerator,
+                    TradeExecutor = _tradeExecutor
                 };
                 _stateMachine.TransitionTo<TradingState>();
             }
@@ -144,4 +147,5 @@ public class MarketOpenStateConfig
 {
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
+    public TradeExecutor TradeExecutor;
 }

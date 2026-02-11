@@ -146,10 +146,10 @@ namespace BullRun.Tests.Core
         }
 
         [Test]
-        public void PrepareForNextRound_DoesNotResetAct()
+        public void PrepareForNextRound_UpdatesActCorrectly()
         {
             var ctx = RunContext.StartNewRun();
-            ctx.CurrentAct = 2;
+            ctx.CurrentRound = 2; // Round 2 → 3 = Act 1 → Act 2
             ctx.PrepareForNextRound();
             Assert.AreEqual(2, ctx.CurrentAct);
         }
@@ -171,6 +171,186 @@ namespace BullRun.Tests.Core
             ctx.PrepareForNextRound();
             Assert.AreEqual(3, ctx.CurrentRound);
             Assert.AreEqual(1150f, ctx.GetCurrentCash(), 0.001f);
+        }
+
+        // --- AdvanceRound Tests (Story 4.5 Task 2) ---
+
+        [Test]
+        public void AdvanceRound_IncrementsRoundNumber()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.AreEqual(1, ctx.CurrentRound);
+            ctx.AdvanceRound();
+            Assert.AreEqual(2, ctx.CurrentRound);
+        }
+
+        [Test]
+        public void AdvanceRound_UpdatesActAtBoundary_Round2ToRound3()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 2;
+            ctx.AdvanceRound(); // Round 3 = Act 2
+            Assert.AreEqual(3, ctx.CurrentRound);
+            Assert.AreEqual(2, ctx.CurrentAct);
+        }
+
+        [Test]
+        public void AdvanceRound_UpdatesActAtBoundary_Round4ToRound5()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 4;
+            ctx.CurrentAct = 2;
+            ctx.AdvanceRound(); // Round 5 = Act 3
+            Assert.AreEqual(5, ctx.CurrentRound);
+            Assert.AreEqual(3, ctx.CurrentAct);
+        }
+
+        [Test]
+        public void AdvanceRound_UpdatesActAtBoundary_Round6ToRound7()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 6;
+            ctx.CurrentAct = 3;
+            ctx.AdvanceRound(); // Round 7 = Act 4
+            Assert.AreEqual(7, ctx.CurrentRound);
+            Assert.AreEqual(4, ctx.CurrentAct);
+        }
+
+        [Test]
+        public void AdvanceRound_NoActChangeWithinSameAct()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.AdvanceRound(); // Round 1 → 2, still Act 1
+            Assert.AreEqual(2, ctx.CurrentRound);
+            Assert.AreEqual(1, ctx.CurrentAct);
+        }
+
+        [Test]
+        public void AdvanceRound_ReturnsTrueWhenActChanged()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 2;
+            bool actChanged = ctx.AdvanceRound(); // Round 2 → 3 = Act 1 → 2
+            Assert.IsTrue(actChanged);
+        }
+
+        [Test]
+        public void AdvanceRound_ReturnsFalseWhenActNotChanged()
+        {
+            var ctx = RunContext.StartNewRun();
+            bool actChanged = ctx.AdvanceRound(); // Round 1 → 2, still Act 1
+            Assert.IsFalse(actChanged);
+        }
+
+        // --- GetCurrentAct Tests (Story 4.5 Task 2) ---
+
+        [Test]
+        public void GetCurrentAct_Round1_ReturnsAct1()
+        {
+            Assert.AreEqual(1, RunContext.GetActForRound(1));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round2_ReturnsAct1()
+        {
+            Assert.AreEqual(1, RunContext.GetActForRound(2));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round3_ReturnsAct2()
+        {
+            Assert.AreEqual(2, RunContext.GetActForRound(3));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round4_ReturnsAct2()
+        {
+            Assert.AreEqual(2, RunContext.GetActForRound(4));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round5_ReturnsAct3()
+        {
+            Assert.AreEqual(3, RunContext.GetActForRound(5));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round6_ReturnsAct3()
+        {
+            Assert.AreEqual(3, RunContext.GetActForRound(6));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round7_ReturnsAct4()
+        {
+            Assert.AreEqual(4, RunContext.GetActForRound(7));
+        }
+
+        [Test]
+        public void GetCurrentAct_Round8_ReturnsAct4()
+        {
+            Assert.AreEqual(4, RunContext.GetActForRound(8));
+        }
+
+        // --- GetCurrentTier Tests (Story 4.5 Task 2) ---
+
+        [Test]
+        public void GetCurrentTier_Act1_ReturnsPenny()
+        {
+            Assert.AreEqual(StockTier.Penny, RunContext.GetTierForAct(1));
+        }
+
+        [Test]
+        public void GetCurrentTier_Act2_ReturnsLowValue()
+        {
+            Assert.AreEqual(StockTier.LowValue, RunContext.GetTierForAct(2));
+        }
+
+        [Test]
+        public void GetCurrentTier_Act3_ReturnsMidValue()
+        {
+            Assert.AreEqual(StockTier.MidValue, RunContext.GetTierForAct(3));
+        }
+
+        [Test]
+        public void GetCurrentTier_Act4_ReturnsBlueChip()
+        {
+            Assert.AreEqual(StockTier.BlueChip, RunContext.GetTierForAct(4));
+        }
+
+        // --- IsRunComplete Tests (Story 4.5 Task 2) ---
+
+        [Test]
+        public void IsRunComplete_Round8_ReturnsTrue()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 8;
+            ctx.AdvanceRound(); // Round 9 — run is now past round 8
+            Assert.IsTrue(ctx.IsRunComplete());
+        }
+
+        [Test]
+        public void IsRunComplete_Round7_ReturnsFalse()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 7;
+            Assert.IsFalse(ctx.IsRunComplete());
+        }
+
+        [Test]
+        public void IsRunComplete_Round1_ReturnsFalse()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.IsFalse(ctx.IsRunComplete());
+        }
+
+        [Test]
+        public void IsRunComplete_ExactlyRound8_ReturnsFalse()
+        {
+            // Round 8 is the last playable round — not complete until AFTER round 8
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentRound = 8;
+            Assert.IsFalse(ctx.IsRunComplete());
         }
     }
 }
