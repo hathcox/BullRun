@@ -1,6 +1,6 @@
 # Story 1.2: Noise Layer
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -18,24 +18,24 @@ so that prices are not perfectly predictable even when the trend is known.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add noise parameters to StockTierData (AC: 2, 4)
-  - [ ] Add `NoiseAmplitude` field to `StockTierConfig` (float, relative to price)
-  - [ ] Add `NoiseFrequency` field (how often direction changes occur)
-  - [ ] Populate values: Penny = very high amplitude, Blue Chip = low amplitude
-  - [ ] File: `Scripts/Setup/Data/StockTierData.cs` (extend from Story 1.1)
-- [ ] Task 2: Add noise fields to StockInstance (AC: 1)
-  - [ ] Add `_noiseAmplitude`, `_noiseFrequency` fields set from tier config
-  - [ ] Add `_noiseAccumulator` for smooth random walk (not pure Random.Range per frame)
-  - [ ] File: `Scripts/Runtime/PriceEngine/StockInstance.cs` (extend from Story 1.1)
-- [ ] Task 3: Implement noise in PriceGenerator pipeline (AC: 1, 3, 5)
-  - [ ] Add noise step after trend: `price += Random.Range(-noise, noise)` scaled by tier
-  - [ ] Use smoothed random walk, not pure white noise — avoids jittery appearance
-  - [ ] Clamp price to tier's valid price range (never go negative)
-  - [ ] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend from Story 1.1)
-- [ ] Task 4: Verify combined output readability (AC: 3, 5)
-  - [ ] Trend should remain visually apparent through the noise
-  - [ ] Penny stocks should swing wildly; blue chips should be relatively smooth
-  - [ ] No price going to zero or negative
+- [x] Task 1: Add noise parameters to StockTierData (AC: 2, 4)
+  - [x] Add `NoiseAmplitude` field to `StockTierConfig` (float, relative to price)
+  - [x] Add `NoiseFrequency` field (how often direction changes occur)
+  - [x] Populate values: Penny = very high amplitude, Blue Chip = low amplitude
+  - [x] File: `Scripts/Setup/Data/StockTierData.cs` (extend from Story 1.1)
+- [x] Task 2: Add noise fields to StockInstance (AC: 1)
+  - [x] Add `_noiseAmplitude`, `_noiseFrequency` fields set from tier config
+  - [x] Add `_noiseAccumulator` for smooth random walk (not pure Random.Range per frame)
+  - [x] File: `Scripts/Runtime/PriceEngine/StockInstance.cs` (extend from Story 1.1)
+- [x] Task 3: Implement noise in PriceGenerator pipeline (AC: 1, 3, 5)
+  - [x] Add noise step after trend: `price += Random.Range(-noise, noise)` scaled by tier
+  - [x] Use smoothed random walk, not pure white noise — avoids jittery appearance
+  - [x] Clamp price to tier's valid price range (never go negative)
+  - [x] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend from Story 1.1)
+- [x] Task 4: Verify combined output readability (AC: 3, 5)
+  - [x] Trend should remain visually apparent through the noise
+  - [x] Penny stocks should swing wildly; blue chips should be relatively smooth
+  - [x] No price going to zero or negative
 
 ## Dev Notes
 
@@ -84,9 +84,23 @@ Noise gives the chart "personality" between events. It should make prices unpred
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6
+
+### Change Log
+- 2026-02-10: Story 1-2 implemented — Noise layer added to price generation pipeline with smoothed random walk accumulator, tier-scaled amplitude/frequency, and price floor clamping.
 
 ### Debug Log References
 
 ### Completion Notes List
+- Task 1: Extended StockTierConfig with NoiseAmplitude and NoiseFrequency fields. Penny=0.08/3.0, LowValue=0.05/2.5, MidValue=0.03/2.0, BlueChip=0.015/1.5. Added 3 new StockTierData tests.
+- Task 2: Added NoiseAmplitude, NoiseFrequency, and NoiseAccumulator properties to StockInstance, initialized from tier config. Added 3 new StockInstance tests.
+- Task 3: Implemented smoothed random walk noise in PriceGenerator.UpdatePrice() — accumulator drifts with mean-reversion (0.98 decay), producing smooth chart-like movement. Price clamped to tier MinPrice. Updated existing tests from exact-value to range-based assertions.
+- Task 4: Added tests verifying: trend dominates noise over time, penny has more variation than blue chip, prices never go below tier minimum, neutral trend still shows noise movement.
 
 ### File List
+- Assets/Scripts/Setup/Data/StockTierData.cs (modified — added NoiseAmplitude, NoiseFrequency)
+- Assets/Scripts/Runtime/PriceEngine/StockInstance.cs (modified — added noise fields)
+- Assets/Scripts/Runtime/PriceEngine/PriceGenerator.cs (modified — noise layer in pipeline)
+- Assets/Tests/Runtime/PriceEngine/StockTierDataTests.cs (modified — 3 new noise tests)
+- Assets/Tests/Runtime/PriceEngine/StockInstanceTests.cs (modified — 3 new noise tests)
+- Assets/Tests/Runtime/PriceEngine/PriceGeneratorTests.cs (modified — rewrote for noise, added 4 new tests)

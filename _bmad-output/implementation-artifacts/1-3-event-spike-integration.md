@@ -1,6 +1,6 @@
 # Story 1.3: Event Spike Integration
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -19,33 +19,33 @@ so that dramatic moments create trading opportunities.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create EventDefinitions static data class (AC: 2)
-  - [ ] Define `MarketEventType` enum: EarningsBeat, EarningsMiss, PumpAndDump, SECInvestigation, SectorRotation, MergerRumor, MarketCrash, BullRun, FlashCrash, ShortSqueeze
-  - [ ] Define `MarketEventConfig` struct: event type, price effect (% change), duration, tier availability, rarity
-  - [ ] Populate from GDD Section 3.4 table
-  - [ ] File: `Scripts/Setup/Data/EventDefinitions.cs`
-- [ ] Task 2: Create MarketEvent runtime class (AC: 1, 4)
-  - [ ] Fields: `EventType`, `TargetStockId` (null for global events), `PriceEffectPercent`, `Duration`, `ElapsedTime`, `IsActive`
-  - [ ] Method: `GetCurrentForce(float elapsed)` — returns interpolated event force (ramps up then fades)
-  - [ ] File: `Scripts/Runtime/Events/MarketEvent.cs`
-- [ ] Task 3: Create EventEffects processor (AC: 1, 3, 4)
-  - [ ] Method: `ApplyEventEffect(StockInstance stock, MarketEvent event, float deltaTime)` — calculates event's price impact
-  - [ ] Uses `Lerp(price, eventTarget, eventForce)` per architecture pattern
-  - [ ] Handles both single-stock and global (all-stock) events
-  - [ ] File: `Scripts/Runtime/Events/EventEffects.cs`
-- [ ] Task 4: Integrate event layer into PriceGenerator pipeline (AC: 4, 6)
-  - [ ] Add event spike step after noise: `if (activeEvent) price = Lerp(price, eventTarget, eventForce)`
-  - [ ] PriceGenerator checks for active events on each stock during UpdatePrice
-  - [ ] Active events stored on StockInstance or accessible via EventEffects
-  - [ ] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend)
-- [ ] Task 5: Add StockInstance event tracking fields (AC: 5)
-  - [ ] Add `ActiveEvent` reference (nullable) and `EventTargetPrice` field
-  - [ ] Method to apply/clear event state
-  - [ ] File: `Scripts/Runtime/PriceEngine/StockInstance.cs` (extend)
-- [ ] Task 6: Define event-related GameEvents (AC: 5)
-  - [ ] `MarketEventFiredEvent`: EventType, AffectedStockIds, PriceEffectPercent
-  - [ ] `MarketEventEndedEvent`: EventType, AffectedStockIds
-  - [ ] Add to `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 1: Create EventDefinitions static data class (AC: 2)
+  - [x] Define `MarketEventType` enum: EarningsBeat, EarningsMiss, PumpAndDump, SECInvestigation, SectorRotation, MergerRumor, MarketCrash, BullRun, FlashCrash, ShortSqueeze
+  - [x] Define `MarketEventConfig` struct: event type, price effect (% change), duration, tier availability, rarity
+  - [x] Populate from GDD Section 3.4 table
+  - [x] File: `Scripts/Setup/Data/EventDefinitions.cs`
+- [x] Task 2: Create MarketEvent runtime class (AC: 1, 4)
+  - [x] Fields: `EventType`, `TargetStockId` (null for global events), `PriceEffectPercent`, `Duration`, `ElapsedTime`, `IsActive`
+  - [x] Method: `GetCurrentForce(float elapsed)` — returns interpolated event force (ramps up then fades)
+  - [x] File: `Scripts/Runtime/Events/MarketEvent.cs`
+- [x] Task 3: Create EventEffects processor (AC: 1, 3, 4)
+  - [x] Method: `ApplyEventEffect(StockInstance stock, MarketEvent event, float deltaTime)` — calculates event's price impact
+  - [x] Uses `Lerp(price, eventTarget, eventForce)` per architecture pattern
+  - [x] Handles both single-stock and global (all-stock) events
+  - [x] File: `Scripts/Runtime/Events/EventEffects.cs`
+- [x] Task 4: Integrate event layer into PriceGenerator pipeline (AC: 4, 6)
+  - [x] Add event spike step after noise: `if (activeEvent) price = Lerp(price, eventTarget, eventForce)`
+  - [x] PriceGenerator checks for active events on each stock during UpdatePrice
+  - [x] Active events stored on StockInstance or accessible via EventEffects
+  - [x] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend)
+- [x] Task 5: Add StockInstance event tracking fields (AC: 5)
+  - [x] Add `ActiveEvent` reference (nullable) and `EventTargetPrice` field
+  - [x] Method to apply/clear event state
+  - [x] File: `Scripts/Runtime/PriceEngine/StockInstance.cs` (extend)
+- [x] Task 6: Define event-related GameEvents (AC: 5)
+  - [x] `MarketEventFiredEvent`: EventType, AffectedStockIds, PriceEffectPercent
+  - [x] `MarketEventEndedEvent`: EventType, AffectedStockIds
+  - [x] Add to `Scripts/Runtime/Core/GameEvents.cs`
 
 ## Dev Notes
 
@@ -106,8 +106,36 @@ Events are the **primary driver of dramatic moments**. They should create obviou
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+None — no blocking issues encountered during implementation. All tests pass (confirmed 2026-02-10).
 
 ### Completion Notes List
 
+- **Task 1:** Created `EventDefinitions.cs` with `MarketEventType` enum (10 event types), `MarketEventConfig` readonly struct (eventType, minPriceEffect, maxPriceEffect, duration, tierAvailability, rarity), and static data populated from GDD Section 3.4 table. All event configs use `public static readonly` per project conventions. Lookup via `GetConfig(MarketEventType)`.
+- **Task 2:** Created `MarketEvent.cs` runtime class with all specified fields. `GetCurrentForce()` uses a triangle wave envelope — linearly ramps from 0→1 over first half of duration, then 1→0 over second half. Supports nullable `TargetStockId` for global events. `IsActive` checks elapsed < duration.
+- **Task 3:** Created `EventEffects.cs` processor. `ApplyEventEffect` uses `Mathf.Lerp(currentPrice, eventTarget, force * deltaTime)` per architecture spec. `StartEvent` publishes `MarketEventFiredEvent` via EventBus. `UpdateActiveEvents` advances elapsed time and removes expired events (publishing `MarketEventEndedEvent`). `GetActiveEventsForStock` returns both targeted and global events.
+- **Task 4:** Extended `PriceGenerator.UpdatePrice` pipeline: trend → noise → **events** → clamp. Added `SetEventEffects(EventEffects)` method for dependency injection. Event integration is optional (null-safe) — existing code works unchanged without events. Multiple active events are applied sequentially per stock.
+- **Task 5:** Added `ActiveEvent` (nullable reference) and `EventTargetPrice` fields to `StockInstance`. Added `ApplyEvent(MarketEvent, float targetPrice)` and `ClearEvent()` methods. Fields initialized to null/0 in `Initialize()`.
+- **Task 6:** Added `MarketEventFiredEvent` struct (EventType, AffectedStockIds, PriceEffectPercent) and `MarketEventEndedEvent` struct (EventType, AffectedStockIds) to `GameEvents.cs`. Both follow `{Subject}{Verb}Event` naming convention. `AffectedStockIds` is null for global events.
+
 ### File List
+
+- `Assets/Scripts/Setup/Data/EventDefinitions.cs` (new)
+- `Assets/Scripts/Runtime/Events/MarketEvent.cs` (new)
+- `Assets/Scripts/Runtime/Events/EventEffects.cs` (new)
+- `Assets/Scripts/Runtime/PriceEngine/PriceGenerator.cs` (modified)
+- `Assets/Scripts/Runtime/PriceEngine/StockInstance.cs` (modified)
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` (modified)
+- `Assets/Tests/Runtime/Events/EventDefinitionsTests.cs` (new)
+- `Assets/Tests/Runtime/Events/MarketEventTests.cs` (new)
+- `Assets/Tests/Runtime/Events/EventEffectsTests.cs` (new)
+- `Assets/Tests/Runtime/PriceEngine/PriceGeneratorTests.cs` (modified)
+- `Assets/Tests/Runtime/PriceEngine/StockInstanceTests.cs` (modified)
+- `Assets/Tests/Runtime/Core/GameEventsTests.cs` (modified)
+
+## Change Log
+
+- 2026-02-10: Implemented event spike integration — 3 new source files, 3 modified source files, 3 new test files, 3 modified test files. Event effects pipeline step added to PriceGenerator. All 10 GDD event types configured with price effects, durations, tier availability, and rarity.
