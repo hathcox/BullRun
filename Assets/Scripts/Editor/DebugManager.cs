@@ -1,5 +1,6 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 /// <summary>
@@ -11,9 +12,11 @@ public class DebugManager : MonoBehaviour
 {
     private bool _isOverlayVisible;
     private PriceGenerator _priceGenerator;
+    private ChartRenderer _chartRenderer;
     private GUIStyle _headerStyle;
     private GUIStyle _stockStyle;
     private GUIStyle _eventStyle;
+    private GUIStyle _chartStyle;
     private GUIStyle _bgStyle;
     private bool _stylesInitialized;
 
@@ -28,10 +31,21 @@ public class DebugManager : MonoBehaviour
         _priceGenerator = priceGenerator;
     }
 
+    /// <summary>
+    /// Injects the ChartRenderer reference for chart debug data.
+    /// </summary>
+    public void SetChartRenderer(ChartRenderer chartRenderer)
+    {
+        _chartRenderer = chartRenderer;
+    }
+
     private void Update()
     {
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return;
+
         // F1: Toggle debug overlay
-        if (Input.GetKeyDown(KeyCode.F1))
+        if (keyboard.f1Key.wasPressedThisFrame)
         {
             _isOverlayVisible = !_isOverlayVisible;
             IsOverlayVisible = _isOverlayVisible;
@@ -39,19 +53,19 @@ public class DebugManager : MonoBehaviour
         }
 
         // F2: God mode (placeholder)
-        if (Input.GetKeyDown(KeyCode.F2))
+        if (keyboard.f2Key.wasPressedThisFrame)
         {
             Debug.Log("[Debug] God mode not yet implemented");
         }
 
         // F3: Skip to round (placeholder)
-        if (Input.GetKeyDown(KeyCode.F3))
+        if (keyboard.f3Key.wasPressedThisFrame)
         {
             Debug.Log("[Debug] Skip to round not yet implemented");
         }
 
         // F4: Event trigger (placeholder)
-        if (Input.GetKeyDown(KeyCode.F4))
+        if (keyboard.f4Key.wasPressedThisFrame)
         {
             Debug.Log("[Debug] Event trigger not yet implemented");
         }
@@ -80,6 +94,12 @@ public class DebugManager : MonoBehaviour
             normal = { textColor = new Color(1f, 0.6f, 0.2f) }
         };
 
+        _chartStyle = new GUIStyle(GUI.skin.label)
+        {
+            fontSize = 12,
+            normal = { textColor = new Color(0.4f, 0.8f, 1f) }
+        };
+
         _bgStyle = new GUIStyle(GUI.skin.box);
         var bgTex = new Texture2D(1, 1);
         bgTex.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.75f));
@@ -92,34 +112,48 @@ public class DebugManager : MonoBehaviour
     private void OnGUI()
     {
         if (!_isOverlayVisible) return;
-        if (_priceGenerator == null) return;
 
         InitStyles();
 
-        var debugInfos = _priceGenerator.GetDebugInfo();
-        if (debugInfos.Count == 0) return;
-
-        float panelWidth = 320f;
-        float panelHeight = 30f + (debugInfos.Count * 60f);
+        float panelWidth = 360f;
         float panelX = Screen.width - panelWidth - 10f;
         float panelY = 10f;
+
+        // Calculate panel height dynamically
+        float panelHeight = 30f;
+        if (_chartRenderer != null) panelHeight += 80f;
+        if (_priceGenerator != null) panelHeight += _priceGenerator.GetDebugInfo().Count * 60f;
 
         GUI.Box(new Rect(panelX, panelY, panelWidth, panelHeight), "", _bgStyle);
 
         GUILayout.BeginArea(new Rect(panelX + 8, panelY + 5, panelWidth - 16, panelHeight - 10));
-        GUILayout.Label("=== PRICE ENGINE DEBUG (F1) ===", _headerStyle);
+        GUILayout.Label("=== DEBUG OVERLAY (F1) ===", _headerStyle);
 
-        foreach (var info in debugInfos)
+        // Chart debug section
+        if (_chartRenderer != null)
         {
-            string arrow = info.TrendDirection == TrendDirection.Bull ? "\u25B2" :
-                           info.TrendDirection == TrendDirection.Bear ? "\u25BC" : "\u25C6";
+            GUILayout.Label("--- CHART ---", _chartStyle);
+            GUILayout.Label($"  ActiveStock: {_chartRenderer.ActiveStockId} | Points: {_chartRenderer.PointCount}", _chartStyle);
+            GUILayout.Label($"  Price: ${_chartRenderer.CurrentPrice:F2} | Range: ${_chartRenderer.MinPrice:F2}-${_chartRenderer.MaxPrice:F2}", _chartStyle);
+            GUILayout.Label($"  Elapsed: {_chartRenderer.ElapsedTime:F1}s / {_chartRenderer.RoundDuration:F0}s | Markers: {_chartRenderer.TradeMarkers.Count} | BEP: {(_chartRenderer.HasOpenPosition ? $"${_chartRenderer.AverageBuyPrice:F2}" : "none")}", _chartStyle);
+        }
 
-            GUILayout.Label($"{arrow} {info.Ticker} ${info.CurrentPrice:F2} | {info.TrendDirection} | Trend: {info.TrendPerSecond:F3}/s", _stockStyle);
-            GUILayout.Label($"  TrendLine: ${info.TrendLinePrice:F2} | Noise: {info.NoiseAmplitude:F3} | Revert: {info.ReversionSpeed:F2}", _stockStyle);
-
-            if (info.HasActiveEvent)
+        // Price engine section
+        if (_priceGenerator != null)
+        {
+            var debugInfos = _priceGenerator.GetDebugInfo();
+            foreach (var info in debugInfos)
             {
-                GUILayout.Label($"  EVENT: {info.ActiveEventType} ({info.EventTimeRemaining:F1}s remaining)", _eventStyle);
+                string arrow = info.TrendDirection == TrendDirection.Bull ? "\u25B2" :
+                               info.TrendDirection == TrendDirection.Bear ? "\u25BC" : "\u25C6";
+
+                GUILayout.Label($"{arrow} {info.Ticker} ${info.CurrentPrice:F2} | {info.TrendDirection} | Trend: {info.TrendPerSecond:F3}/s", _stockStyle);
+                GUILayout.Label($"  TrendLine: ${info.TrendLinePrice:F2} | Noise: {info.NoiseAmplitude:F3} | Acc: {info.NoiseAccumulator:F3} | Revert: {info.ReversionSpeed:F2}", _stockStyle);
+
+                if (info.HasActiveEvent)
+                {
+                    GUILayout.Label($"  EVENT: {info.ActiveEventType} ({info.EventTimeRemaining:F1}s remaining)", _eventStyle);
+                }
             }
         }
 

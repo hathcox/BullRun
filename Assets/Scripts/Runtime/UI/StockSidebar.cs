@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -44,10 +45,12 @@ public class StockSidebar : MonoBehaviour
         if (_data == null) return;
 
         // Keyboard shortcuts: 1-4 select stocks
-        if (Input.GetKeyDown(KeyCode.Alpha1)) { _data.SelectStock(0); _dirty = true; }
-        else if (Input.GetKeyDown(KeyCode.Alpha2)) { _data.SelectStock(1); _dirty = true; }
-        else if (Input.GetKeyDown(KeyCode.Alpha3)) { _data.SelectStock(2); _dirty = true; }
-        else if (Input.GetKeyDown(KeyCode.Alpha4)) { _data.SelectStock(3); _dirty = true; }
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return;
+        if (keyboard.digit1Key.wasPressedThisFrame) { _data.SelectStock(0); _dirty = true; }
+        else if (keyboard.digit2Key.wasPressedThisFrame) { _data.SelectStock(1); _dirty = true; }
+        else if (keyboard.digit3Key.wasPressedThisFrame) { _data.SelectStock(2); _dirty = true; }
+        else if (keyboard.digit4Key.wasPressedThisFrame) { _data.SelectStock(3); _dirty = true; }
     }
 
     private void LateUpdate()

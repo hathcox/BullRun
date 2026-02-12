@@ -7,7 +7,8 @@ using UnityEngine.UI;
 /// time progress bar, and current price indicator.
 /// [SetupClass(SetupPhase.SceneComposition)] attribute to be enabled when SetupPipeline exists.
 /// </summary>
-// [SetupClass(SetupPhase.SceneComposition, 40)] // Uncomment when SetupPipeline infrastructure exists
+// Runtime-only: called by GameRunner.Start(), not during F5 rebuild.
+// MonoBehaviour Initialize() calls and EventBus subscriptions must happen at runtime.
 public static class ChartSetup
 {
     // Chart occupies ~60% center of screen per GDD layout spec
@@ -72,27 +73,55 @@ public static class ChartSetup
             chartBounds
         );
 
+        // Create break-even line (yellow, thin horizontal)
+        var breakEvenGo = CreateLineRendererObject("BreakEvenLine", chartParent.transform);
+        var breakEvenLR = breakEvenGo.GetComponent<LineRenderer>();
+        breakEvenLR.startColor = new Color(1f, 0.85f, 0.2f, 0.8f); // Yellow
+        breakEvenLR.endColor = new Color(1f, 0.85f, 0.2f, 0.8f);
+        breakEvenLR.startWidth = 0.015f;
+        breakEvenLR.endWidth = 0.015f;
+        breakEvenLR.sortingOrder = 2;
+        breakEvenLR.alignment = LineAlignment.TransformZ;
+        breakEvenGo.SetActive(false);
+
+        // Create marker pool parent
+        var markerPoolGo = new GameObject("TradeMarkerPool");
+        markerPoolGo.transform.SetParent(chartParent.transform);
+
+        // Wire trade visuals to ChartLineView
+        chartLineView.SetTradeVisuals(breakEvenLR, markerPoolGo.transform);
+
         // Create chart UI Canvas — returns ChartUI for event wiring
         var chartUI = CreateChartUI(chartParent, chartRenderer, chartBounds);
 
         // Subscribe ChartRenderer to EventBus
         EventBus.Subscribe<PriceUpdatedEvent>(chartRenderer.ProcessPriceUpdate);
+        EventBus.Subscribe<TradeExecutedEvent>(chartRenderer.ProcessTrade);
 
         // Wire stock selection: switch chart to selected stock (Story 3.3 AC3)
         EventBus.Subscribe<StockSelectedEvent>(evt => chartRenderer.SetActiveStock(evt.StockId));
 
-        // Wire round lifecycle: reset chart on round end, start on run start
-        // Round events from Epic 4 will trigger these automatically
+        // Wire round lifecycle
         EventBus.Subscribe<RoundEndedEvent>(_ =>
         {
             chartRenderer.ResetChart();
             chartUI.ResetForNewRound();
         });
-        EventBus.Subscribe<RunStartedEvent>(_ =>
+        EventBus.Subscribe<RoundStartedEvent>(_ =>
         {
             chartRenderer.ResetChart();
             chartRenderer.StartRound();
             chartUI.ResetForNewRound();
+        });
+        // Auto-select first stock when market opens (before trading begins).
+        // Use SetActiveStockId (not SetActiveStock) to avoid resetting roundActive,
+        // which would cause the chart to reject price points after RoundStartedEvent.
+        EventBus.Subscribe<MarketOpenEvent>(evt =>
+        {
+            if (evt.StockIds != null && evt.StockIds.Length > 0)
+            {
+                chartRenderer.SetActiveStockId(evt.StockIds[0]);
+            }
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -153,8 +182,8 @@ public static class ChartSetup
             float yNorm = (float)i / (AxisLabelCount - 1);
             float yPos = Mathf.Lerp(-540f * ChartHeightPercent, 540f * ChartHeightPercent, yNorm);
 
-            rectTransform.anchoredPosition = new Vector2(960f * chartRightScreenX + 40f, yPos);
-            rectTransform.sizeDelta = new Vector2(100f, 30f);
+            rectTransform.anchoredPosition = new Vector2(960f * chartRightScreenX - 30f, yPos);
+            rectTransform.sizeDelta = new Vector2(80f, 30f);
 
             var text = labelGo.AddComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -192,8 +221,8 @@ public static class ChartSetup
         var priceLabelGo = new GameObject("CurrentPriceLabel");
         priceLabelGo.transform.SetParent(canvasGo.transform);
         var priceRect = priceLabelGo.AddComponent<RectTransform>();
-        priceRect.anchoredPosition = new Vector2(960f * chartRightScreenX + 40f, 0f);
-        priceRect.sizeDelta = new Vector2(120f, 30f);
+        priceRect.anchoredPosition = new Vector2(960f * chartRightScreenX - 30f, 0f);
+        priceRect.sizeDelta = new Vector2(80f, 30f);
         var priceText = priceLabelGo.AddComponent<Text>();
         priceText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         priceText.fontSize = 16;
@@ -201,9 +230,43 @@ public static class ChartSetup
         priceText.fontStyle = FontStyle.Bold;
         priceText.alignment = TextAnchor.MiddleLeft;
 
+        // Stock name label — centered above chart
+        var stockNameGo = new GameObject("StockNameLabel");
+        stockNameGo.transform.SetParent(canvasGo.transform);
+        var stockNameRect = stockNameGo.AddComponent<RectTransform>();
+        stockNameRect.anchorMin = new Vector2(0.5f, 1f);
+        stockNameRect.anchorMax = new Vector2(0.5f, 1f);
+        stockNameRect.pivot = new Vector2(0.5f, 1f);
+        stockNameRect.anchoredPosition = new Vector2(0f, -70f); // Below top bar
+        stockNameRect.sizeDelta = new Vector2(200f, 30f);
+        var stockNameText = stockNameGo.AddComponent<Text>();
+        stockNameText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        stockNameText.fontSize = 24;
+        stockNameText.color = new Color(0f, 1f, 0.533f, 1f); // Neon green
+        stockNameText.fontStyle = FontStyle.Bold;
+        stockNameText.alignment = TextAnchor.MiddleCenter;
+        stockNameText.text = "";
+
+        // Stock price label — just below ticker
+        var stockPriceGo = new GameObject("StockPriceLabel");
+        stockPriceGo.transform.SetParent(canvasGo.transform);
+        var stockPriceRect = stockPriceGo.AddComponent<RectTransform>();
+        stockPriceRect.anchorMin = new Vector2(0.5f, 1f);
+        stockPriceRect.anchorMax = new Vector2(0.5f, 1f);
+        stockPriceRect.pivot = new Vector2(0.5f, 1f);
+        stockPriceRect.anchoredPosition = new Vector2(0f, -100f);
+        stockPriceRect.sizeDelta = new Vector2(200f, 24f);
+        var stockPriceText = stockPriceGo.AddComponent<Text>();
+        stockPriceText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        stockPriceText.fontSize = 18;
+        stockPriceText.color = Color.white;
+        stockPriceText.alignment = TextAnchor.MiddleCenter;
+        stockPriceText.text = "";
+
         // Initialize ChartUI MonoBehaviour
         var chartUIComponent = chartParent.AddComponent<ChartUI>();
         chartUIComponent.Initialize(chartRenderer, axisLabels, fillImage, priceText);
+        chartUIComponent.SetStockLabels(stockNameText, stockPriceText);
         return chartUIComponent;
     }
 }

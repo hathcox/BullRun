@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -91,7 +92,7 @@ public class RoundResultsUI : MonoBehaviour
         _displayTimer += Time.deltaTime;
 
         // Auto-dismiss after display duration or on any key press
-        if (_displayTimer >= DisplayDuration || Input.anyKeyDown)
+        if (_displayTimer >= DisplayDuration || (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame))
         {
             _visible = false;
             IsShowing = false;

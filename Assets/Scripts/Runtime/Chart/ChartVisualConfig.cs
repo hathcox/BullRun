@@ -20,8 +20,8 @@ public struct ChartVisualConfig
     {
         LineColor = new Color(0f, 1f, 0.533f, 1f), // #00FF88
         GlowColor = new Color(0f, 1f, 0.533f, 0.3f), // Same at 30% alpha
-        LineWidth = 0.03f,
-        GlowWidth = 0.12f,
-        IndicatorSize = 0.08f
+        LineWidth = 0.02f,
+        GlowWidth = 0.05f,
+        IndicatorSize = 0.15f
     };
 }

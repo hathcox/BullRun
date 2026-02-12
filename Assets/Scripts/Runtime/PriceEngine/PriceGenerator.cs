@@ -40,12 +40,22 @@ public class PriceGenerator
         stock.CurrentPrice += stock.TrendPerSecond * deltaTime;
 
         // Step 2: Noise layer (Story 1.2) — smoothed random walk
+        // Random impulse scaled by frequency and time step
         float noiseDrift = ((float)_random.NextDouble() * 2f - 1f) * stock.NoiseFrequency * deltaTime;
         stock.NoiseAccumulator += noiseDrift;
-        // Mean-revert the accumulator to prevent drift from compounding
-        stock.NoiseAccumulator *= 0.98f;
+        // Frame-rate-independent decay: halve the accumulator every ~2 seconds
+        // Pow(0.7, 1.0) = 0.7/s, so over 2s: 0.49 — accumulator stays bounded
+        stock.NoiseAccumulator *= Mathf.Pow(0.7f, deltaTime);
+        // Apply noise as a rate-of-change scaled by deltaTime
+        // (accumulator holds displacement magnitude, deltaTime makes it frame-rate independent)
         float noiseEffect = stock.CurrentPrice * stock.NoiseAmplitude * stock.NoiseAccumulator * deltaTime;
         stock.CurrentPrice += noiseEffect;
+
+        // Step 2b: Slow-wave swing for multi-timescale movement
+        stock.SwingPhase += stock.SwingSpeed * deltaTime;
+        float swingEffect = stock.CurrentPrice * stock.NoiseAmplitude * 0.5f
+            * Mathf.Sin(stock.SwingPhase);
+        stock.CurrentPrice += swingEffect * deltaTime * stock.NoiseFrequency;
 
         // Step 3 & 4: Event spike OR Mean reversion (Story 1.3 & 1.4)
         bool hasActiveEvent = false;
@@ -68,9 +78,11 @@ public class PriceGenerator
             stock.CurrentPrice = Mathf.Lerp(stock.CurrentPrice, stock.TrendLinePrice, stock.TierConfig.MeanReversionSpeed * deltaTime);
         }
 
-        // Clamp to tier price range — never go below minimum
+        // Clamp to tier price range
         if (stock.CurrentPrice < stock.TierConfig.MinPrice)
             stock.CurrentPrice = stock.TierConfig.MinPrice;
+        if (stock.CurrentPrice > stock.TierConfig.MaxPrice * 2f)
+            stock.CurrentPrice = stock.TierConfig.MaxPrice * 2f;
 
         EventBus.Publish(new PriceUpdatedEvent
         {
@@ -90,7 +102,8 @@ public class PriceGenerator
 
         int stockId = 0;
 
-        foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
+        // Only create stocks for this act's tier (not all tiers)
+        StockTier tier = RunContext.GetTierForAct(act);
         {
             var selections = SelectStocksForRound(tier);
             var config = StockTierData.GetTierConfig(tier);
@@ -178,6 +191,7 @@ public class PriceGenerator
                 TrendDirection = stock.TrendDirection,
                 TrendPerSecond = stock.TrendPerSecond,
                 NoiseAmplitude = stock.NoiseAmplitude,
+                NoiseAccumulator = stock.NoiseAccumulator,
                 ReversionSpeed = stock.TierConfig.MeanReversionSpeed,
             };
 
@@ -215,6 +229,7 @@ public struct StockDebugInfo
     public TrendDirection TrendDirection;
     public float TrendPerSecond;
     public float NoiseAmplitude;
+    public float NoiseAccumulator;
     public float ReversionSpeed;
     public bool HasActiveEvent;
     public MarketEventType ActiveEventType;

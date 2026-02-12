@@ -27,6 +27,10 @@ public class StockInstance
     public float NoiseFrequency { get; private set; }
     public float NoiseAccumulator { get; set; }
 
+    // Slow-wave oscillation for multi-timescale price swings
+    public float SwingPhase { get; set; }
+    public float SwingSpeed { get; set; }
+
     // Trend line tracking for mean reversion (Story 1.4)
     public float TrendLinePrice { get; private set; }
 
@@ -47,6 +51,10 @@ public class StockInstance
         NoiseAmplitude = TierConfig.NoiseAmplitude;
         NoiseFrequency = TierConfig.NoiseFrequency;
         NoiseAccumulator = 0f;
+
+        // Slow swing: randomized phase and speed for natural-looking oscillation
+        SwingPhase = UnityEngine.Random.Range(0f, UnityEngine.Mathf.PI * 2f);
+        SwingSpeed = UnityEngine.Random.Range(0.3f, 0.8f); // cycles over ~8-20 seconds
 
         // Trend line starts at the same price as current
         TrendLinePrice = startingPrice;

@@ -69,7 +69,8 @@ public class MarketOpenUI : MonoBehaviour
         _visible = true;
         _fadeTimer = 0f;
         if (_panel != null) _panel.SetActive(true);
-        if (_canvasGroup != null) _canvasGroup.alpha = 0f;
+        // Start slightly visible so the overlay is immediately perceptible
+        if (_canvasGroup != null) _canvasGroup.alpha = 0.1f;
     }
 
     private void OnRoundStarted(RoundStartedEvent evt)

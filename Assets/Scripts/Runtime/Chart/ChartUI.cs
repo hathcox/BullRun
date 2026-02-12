@@ -12,6 +12,8 @@ public class ChartUI : MonoBehaviour
     private Text[] _axisLabels;
     private Image _timeProgressBar;
     private Text _currentPriceLabel;
+    private Text _stockNameLabel;
+    private Text _stockPriceLabel;
     private int _labelCount = 5;
 
     public void Initialize(ChartRenderer chartRenderer, Text[] axisLabels,
@@ -22,6 +24,24 @@ public class ChartUI : MonoBehaviour
         _timeProgressBar = timeProgressBar;
         _currentPriceLabel = currentPriceLabel;
         _labelCount = axisLabels != null ? axisLabels.Length : 5;
+    }
+
+    public void SetStockLabels(Text stockNameLabel, Text stockPriceLabel)
+    {
+        _stockNameLabel = stockNameLabel;
+        _stockPriceLabel = stockPriceLabel;
+
+        EventBus.Subscribe<StockSelectedEvent>(evt =>
+        {
+            if (_stockNameLabel != null)
+                _stockNameLabel.text = evt.TickerSymbol;
+        });
+
+        EventBus.Subscribe<MarketOpenEvent>(evt =>
+        {
+            if (_stockNameLabel != null && evt.TickerSymbols != null && evt.TickerSymbols.Length > 0)
+                _stockNameLabel.text = evt.TickerSymbols[0];
+        });
     }
 
     public void ResetForNewRound()
@@ -37,14 +57,14 @@ public class ChartUI : MonoBehaviour
         UpdateAxisLabels();
         UpdateTimeBar();
         UpdateCurrentPriceLabel();
+        UpdateStockPriceLabel();
     }
 
     private void UpdateAxisLabels()
     {
         if (_axisLabels == null || _axisLabels.Length == 0) return;
 
-        float min = _chartRenderer.MinPrice;
-        float max = _chartRenderer.MaxPrice;
+        _chartRenderer.GetLivePriceRange(out float min, out float max);
 
         if (min >= max)
         {
@@ -74,6 +94,12 @@ public class ChartUI : MonoBehaviour
         if (_currentPriceLabel == null || _chartRenderer.PointCount == 0) return;
 
         _currentPriceLabel.text = FormatPrice(_chartRenderer.CurrentPrice);
+    }
+
+    private void UpdateStockPriceLabel()
+    {
+        if (_stockPriceLabel == null || _chartRenderer.PointCount == 0) return;
+        _stockPriceLabel.text = FormatPrice(_chartRenderer.CurrentPrice);
     }
 
     // --- Static utility methods for testability ---

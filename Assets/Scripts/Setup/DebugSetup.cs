@@ -5,13 +5,18 @@ using UnityEngine;
 /// Setup class that creates the DebugManager GameObject in the scene.
 /// SceneComposition phase — generates debug tools during F5 rebuild.
 /// </summary>
-// [SetupClass(SetupPhase.SceneComposition, 90)] // Uncomment when SetupPipeline infrastructure exists
+// Runtime-only: called by GameRunner.Start(), not during F5 rebuild.
 public static class DebugSetup
 {
-    public static void Execute()
+    public static void Execute(PriceGenerator priceGenerator = null, ChartRenderer chartRenderer = null)
     {
         var debugGo = new GameObject("DebugManager");
-        debugGo.AddComponent<DebugManager>();
+        var mgr = debugGo.AddComponent<DebugManager>();
+
+        if (priceGenerator != null)
+            mgr.SetPriceGenerator(priceGenerator);
+        if (chartRenderer != null)
+            mgr.SetChartRenderer(chartRenderer);
 
         Debug.Log("[Setup] DebugManager created");
     }

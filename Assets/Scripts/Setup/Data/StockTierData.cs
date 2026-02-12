@@ -57,47 +57,52 @@ public readonly struct StockTierConfig
 /// </summary>
 public static class StockTierData
 {
-    // Penny: $0.10-$5, Very High volatility, 3-4 stocks/round, very slow reversion, frequent events
+    // Penny: $0.50-$5, High volatility, 3-4 stocks/round
+    // Target: ±30-50% move over 60s round, with visible jitter
+    // Math: $2.50 start, strength 0.007 → trend $0.0175/s → $1.05 over 60s (42%)
     public static readonly StockTierConfig Penny = new StockTierConfig(
-        minPrice: 0.10f, maxPrice: 5f,
+        minPrice: 0.50f, maxPrice: 5f,
         baseVolatility: 0.15f,
-        minTrendStrength: 0.05f, maxTrendStrength: 0.20f,
+        minTrendStrength: 0.003f, maxTrendStrength: 0.010f,
         minStocksPerRound: 3, maxStocksPerRound: 4,
-        noiseAmplitude: 0.08f, noiseFrequency: 3.0f,
-        meanReversionSpeed: 0.05f,
+        noiseAmplitude: 0.12f, noiseFrequency: 3.0f,
+        meanReversionSpeed: 0.30f,
         eventFrequencyModifier: 1.5f
     );
 
-    // Low-Value: $5-$50, High volatility, 3-4 stocks/round, slow reversion, above-average events
+    // Low-Value: $5-$50, Moderate-high volatility, 3-4 stocks/round
+    // Math: $25 start, strength 0.005 → trend $0.125/s → $7.50 over 60s (30%)
     public static readonly StockTierConfig LowValue = new StockTierConfig(
         minPrice: 5f, maxPrice: 50f,
         baseVolatility: 0.10f,
-        minTrendStrength: 0.03f, maxTrendStrength: 0.12f,
+        minTrendStrength: 0.002f, maxTrendStrength: 0.008f,
         minStocksPerRound: 3, maxStocksPerRound: 4,
-        noiseAmplitude: 0.05f, noiseFrequency: 2.5f,
-        meanReversionSpeed: 0.15f,
+        noiseAmplitude: 0.08f, noiseFrequency: 2.5f,
+        meanReversionSpeed: 0.35f,
         eventFrequencyModifier: 1.2f
     );
 
-    // Mid-Value: $50-$500, Medium volatility, 2-3 stocks/round, moderate reversion, baseline events
+    // Mid-Value: $50-$500, Medium volatility, 2-3 stocks/round
+    // Math: $250 start, strength 0.003 → trend $0.75/s → $45 over 60s (18%)
     public static readonly StockTierConfig MidValue = new StockTierConfig(
         minPrice: 50f, maxPrice: 500f,
         baseVolatility: 0.06f,
-        minTrendStrength: 0.02f, maxTrendStrength: 0.08f,
+        minTrendStrength: 0.001f, maxTrendStrength: 0.005f,
         minStocksPerRound: 2, maxStocksPerRound: 3,
-        noiseAmplitude: 0.03f, noiseFrequency: 2.0f,
-        meanReversionSpeed: 0.30f,
+        noiseAmplitude: 0.05f, noiseFrequency: 2.0f,
+        meanReversionSpeed: 0.40f,
         eventFrequencyModifier: 1.0f
     );
 
-    // Blue Chip: $500-$5000, Low-Med volatility, 2-3 stocks/round, fast reversion, rare events
+    // Blue Chip: $500-$5000, Lower volatility, 2-3 stocks/round
+    // Math: $2500 start, strength 0.002 → trend $5/s → $300 over 60s (12%)
     public static readonly StockTierConfig BlueChip = new StockTierConfig(
         minPrice: 500f, maxPrice: 5000f,
         baseVolatility: 0.03f,
-        minTrendStrength: 0.01f, maxTrendStrength: 0.04f,
+        minTrendStrength: 0.0005f, maxTrendStrength: 0.003f,
         minStocksPerRound: 2, maxStocksPerRound: 3,
-        noiseAmplitude: 0.015f, noiseFrequency: 1.5f,
-        meanReversionSpeed: 0.60f,
+        noiseAmplitude: 0.025f, noiseFrequency: 1.5f,
+        meanReversionSpeed: 0.50f,
         eventFrequencyModifier: 0.5f
     );
 

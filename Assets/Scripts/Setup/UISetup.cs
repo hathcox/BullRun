@@ -6,18 +6,35 @@ using UnityEngine.UI;
 /// Creates Trading HUD (top bar), Stock Sidebar (left panel), and Round Timer.
 /// [SetupClass(SetupPhase.SceneComposition)] attribute to be enabled when SetupPipeline exists.
 /// </summary>
-// [SetupClass(SetupPhase.SceneComposition, 50)] // Uncomment when SetupPipeline infrastructure exists
+// Runtime-only: called by GameRunner.Start(), not during F5 rebuild.
+// MonoBehaviour Initialize() calls and EventBus subscriptions must happen at runtime.
 public static class UISetup
 {
     private static readonly float TopBarHeight = 60f;
-    private static readonly float SidebarWidth = 200f;
-    private static readonly float EntryHeight = 80f;
+    private static readonly float SidebarWidth = 240f;
+    private static readonly float EntryHeight = 50f;
     private static readonly Color BarBackgroundColor = new Color(0.05f, 0.07f, 0.18f, 0.9f);
     private static readonly Color SidebarBgColor = new Color(0.05f, 0.07f, 0.18f, 0.85f);
     private static readonly Color LabelColor = new Color(0.6f, 0.6f, 0.7f, 1f);
     private static readonly Color ValueColor = Color.white;
     private static readonly Color NeonGreen = new Color(0f, 1f, 0.533f, 1f);
     private static Material _sparklineMaterial;
+
+    /// <summary>
+    /// Parameterless entry point called by SetupPipeline during F5 rebuild.
+    /// Creates all UI hierarchies with placeholder values so the scene is visually complete.
+    /// GameStates reinitialize these with real data at runtime.
+    /// </summary>
+    public static void Execute()
+    {
+        ExecuteMarketOpenUI();
+        ExecuteSidebar();
+        ExecuteRoundTimer();
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] UISetup: All UI hierarchies created (MarketOpenUI, StockSidebar, RoundTimer)");
+        #endif
+    }
 
     public static void Execute(RunContext runContext, int currentRound, float roundDuration)
     {
@@ -168,73 +185,56 @@ public static class UISetup
         view.Background = entryGo.GetComponent<Image>();
         view.Background.color = new Color(0.05f, 0.07f, 0.18f, 0.6f);
 
-        // Key hint
+        // Single-row layout: [1] TICK  $100.00  +1.2%
+        // All elements vertically centered at Y=0.5
+
+        // Key hint — far left
         var keyHint = CreateLabel($"KeyHint_{index}", entryGo.transform,
             $"[{index + 1}]", LabelColor, 10);
         var keyRect = keyHint.GetComponent<RectTransform>();
-        keyRect.anchorMin = new Vector2(0f, 1f);
+        keyRect.anchorMin = new Vector2(0f, 0f);
         keyRect.anchorMax = new Vector2(0f, 1f);
-        keyRect.pivot = new Vector2(0f, 1f);
-        keyRect.anchoredPosition = new Vector2(4f, -2f);
-        keyRect.sizeDelta = new Vector2(30f, 14f);
-        keyHint.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
+        keyRect.pivot = new Vector2(0f, 0.5f);
+        keyRect.anchoredPosition = new Vector2(4f, 0f);
+        keyRect.sizeDelta = new Vector2(24f, 0f);
+        keyHint.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
 
-        // Ticker symbol
-        var tickerGo = CreateLabel($"Ticker_{index}", entryGo.transform, "---", ValueColor, 16);
+        // Ticker symbol — left-center
+        var tickerGo = CreateLabel($"Ticker_{index}", entryGo.transform, "---", ValueColor, 14);
         var tickerRect = tickerGo.GetComponent<RectTransform>();
-        tickerRect.anchorMin = new Vector2(0f, 1f);
-        tickerRect.anchorMax = new Vector2(1f, 1f);
-        tickerRect.pivot = new Vector2(0.5f, 1f);
-        tickerRect.anchoredPosition = new Vector2(0f, -2f);
-        tickerRect.sizeDelta = new Vector2(0f, 20f);
+        tickerRect.anchorMin = new Vector2(0f, 0f);
+        tickerRect.anchorMax = new Vector2(0f, 1f);
+        tickerRect.pivot = new Vector2(0f, 0.5f);
+        tickerRect.anchoredPosition = new Vector2(28f, 0f);
+        tickerRect.sizeDelta = new Vector2(52f, 0f);
         tickerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        tickerGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
         view.TickerText = tickerGo.GetComponent<Text>();
 
-        // Price
-        var priceGo = CreateLabel($"Price_{index}", entryGo.transform, "$0.00", ValueColor, 14);
+        // Price — center
+        var priceGo = CreateLabel($"Price_{index}", entryGo.transform, "$0.00", ValueColor, 13);
         var priceRect = priceGo.GetComponent<RectTransform>();
-        priceRect.anchorMin = new Vector2(0f, 1f);
-        priceRect.anchorMax = new Vector2(0.6f, 1f);
-        priceRect.pivot = new Vector2(0f, 1f);
-        priceRect.anchoredPosition = new Vector2(4f, -24f);
-        priceRect.sizeDelta = new Vector2(0f, 18f);
+        priceRect.anchorMin = new Vector2(0f, 0f);
+        priceRect.anchorMax = new Vector2(0f, 1f);
+        priceRect.pivot = new Vector2(0f, 0.5f);
+        priceRect.anchoredPosition = new Vector2(82f, 0f);
+        priceRect.sizeDelta = new Vector2(72f, 0f);
         priceGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
         view.PriceText = priceGo.GetComponent<Text>();
 
-        // % Change
-        var changeGo = CreateLabel($"Change_{index}", entryGo.transform, "+0.0%", NeonGreen, 14);
+        // % Change — right
+        var changeGo = CreateLabel($"Change_{index}", entryGo.transform, "+0.0%", NeonGreen, 13);
         var changeRect = changeGo.GetComponent<RectTransform>();
-        changeRect.anchorMin = new Vector2(0.6f, 1f);
+        changeRect.anchorMin = new Vector2(1f, 0f);
         changeRect.anchorMax = new Vector2(1f, 1f);
-        changeRect.pivot = new Vector2(1f, 1f);
-        changeRect.anchoredPosition = new Vector2(-4f, -24f);
-        changeRect.sizeDelta = new Vector2(0f, 18f);
+        changeRect.pivot = new Vector2(1f, 0.5f);
+        changeRect.anchoredPosition = new Vector2(-4f, 0f);
+        changeRect.sizeDelta = new Vector2(52f, 0f);
         changeGo.GetComponent<Text>().alignment = TextAnchor.MiddleRight;
         view.ChangeText = changeGo.GetComponent<Text>();
 
-        // Sparkline LineRenderer (small, at bottom of entry)
-        var sparkGo = new GameObject($"Sparkline_{index}");
-        sparkGo.transform.SetParent(entryGo.transform, false);
-        var sparkLR = sparkGo.AddComponent<LineRenderer>();
-        sparkLR.useWorldSpace = false;
-        sparkLR.startWidth = 0.01f;
-        sparkLR.endWidth = 0.01f;
-        sparkLR.startColor = NeonGreen;
-        sparkLR.endColor = NeonGreen;
-        if (_sparklineMaterial == null)
-        {
-            var shader = Shader.Find("Sprites/Default");
-            if (shader == null)
-            {
-                Debug.LogWarning("[Setup] Shader 'Sprites/Default' not found — using fallback.");
-                shader = Shader.Find("UI/Default");
-            }
-            _sparklineMaterial = new Material(shader);
-        }
-        sparkLR.sharedMaterial = _sparklineMaterial;
-        sparkLR.positionCount = 0;
-        view.SparklineRenderer = sparkLR;
-        view.SparklineBounds = new Rect(-0.8f, -0.3f, 1.6f, 0.4f); // Local space bounds
+        view.SparklineRenderer = null;
+        view.SparklineBounds = new Rect(-0.8f, -0.3f, 1.6f, 0.4f);
 
         return view;
     }
@@ -259,14 +259,14 @@ public static class UISetup
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // Panel background — right side, below top bar
+        // Panel background — right side, below top bar, with left margin to avoid chart price labels
         var panelBg = CreatePanel("PositionsPanelBg", canvasGo.transform);
         var panelRect = panelBg.GetComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(1f, 0f);
         panelRect.anchorMax = new Vector2(1f, 1f);
         panelRect.pivot = new Vector2(1f, 1f);
         panelRect.anchoredPosition = new Vector2(0f, -TopBarHeight);
-        panelRect.sizeDelta = new Vector2(SidebarWidth, -TopBarHeight);
+        panelRect.sizeDelta = new Vector2(180f, -TopBarHeight);
         panelBg.GetComponent<Image>().color = SidebarBgColor;
 
         // Title
@@ -420,14 +420,14 @@ public static class UISetup
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // Timer container — centered at top, below top bar
+        // Timer container — centered at bottom
         var containerGo = new GameObject("TimerContainer");
         containerGo.transform.SetParent(canvasGo.transform, false);
         var containerRect = containerGo.AddComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0.5f, 1f);
-        containerRect.anchorMax = new Vector2(0.5f, 1f);
-        containerRect.pivot = new Vector2(0.5f, 1f);
-        containerRect.anchoredPosition = new Vector2(0f, -(TopBarHeight + 8f));
+        containerRect.anchorMin = new Vector2(0.5f, 0f);
+        containerRect.anchorMax = new Vector2(0.5f, 0f);
+        containerRect.pivot = new Vector2(0.5f, 0f);
+        containerRect.anchoredPosition = new Vector2(0f, 16f);
         containerRect.sizeDelta = new Vector2(160f, 50f);
 
         // Background panel

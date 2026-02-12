@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Run summary state. Calculates run statistics and publishes RunEndedEvent.
@@ -106,7 +107,8 @@ public class RunSummaryState : IGameState
         }
 
         // Check for any key press to transition to MetaHubState
-        if (Input.anyKeyDown)
+        var keyboard = Keyboard.current;
+        if (keyboard != null && keyboard.anyKey.wasPressedThisFrame)
         {
             if (_stateMachine != null)
             {
