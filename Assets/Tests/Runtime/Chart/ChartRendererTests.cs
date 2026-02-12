@@ -184,24 +184,19 @@ namespace BullRun.Tests.Chart
             Assert.AreEqual(0f, _renderer.CurrentPrice, 0.001f);
         }
 
-        // --- Point Decimation for Performance ---
+        // --- No Decimation (procedural mesh handles large point counts) ---
 
         [Test]
-        public void Decimation_OlderPointsDecimated_WhenExceedingThreshold()
+        public void AddPoint_RetainsAllPoints_NoDecimation()
         {
-            _renderer.SetDecimationThreshold(100);
-
-            // Add more than 100 points
+            // Add many points — all should be retained
             for (int i = 0; i <= 150; i++)
             {
                 _renderer.AddPoint(i / 150f, 100f + i * 0.1f);
             }
 
-            // Total points should be less than 151 due to decimation of older data
-            Assert.Less(_renderer.PointCount, 151,
-                "Point decimation should reduce total point count");
-            Assert.Greater(_renderer.PointCount, 50,
-                "Should still retain a reasonable number of points");
+            Assert.AreEqual(151, _renderer.PointCount,
+                "All points should be retained without decimation");
         }
 
         // --- Round Duration ---

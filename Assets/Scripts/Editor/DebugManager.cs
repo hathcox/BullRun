@@ -148,7 +148,7 @@ public class DebugManager : MonoBehaviour
                                info.TrendDirection == TrendDirection.Bear ? "\u25BC" : "\u25C6";
 
                 GUILayout.Label($"{arrow} {info.Ticker} ${info.CurrentPrice:F2} | {info.TrendDirection} | Trend: {info.TrendPerSecond:F3}/s", _stockStyle);
-                GUILayout.Label($"  TrendLine: ${info.TrendLinePrice:F2} | Noise: {info.NoiseAmplitude:F3} | Acc: {info.NoiseAccumulator:F3} | Revert: {info.ReversionSpeed:F2}", _stockStyle);
+                GUILayout.Label($"  TrendLine: ${info.TrendLinePrice:F2} | Noise: {info.NoiseAmplitude:F3} | Seg: {info.SegmentSlope:F3} ({info.SegmentTimeRemaining:F2}s) | Revert: {info.ReversionSpeed:F2}", _stockStyle);
 
                 if (info.HasActiveEvent)
                 {

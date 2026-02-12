@@ -2,15 +2,17 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// MonoBehaviour that drives LineRenderer visuals from ChartRenderer data.
+/// MonoBehaviour that drives procedural mesh visuals from ChartRenderer data.
 /// Manages main line, glow trail, current price indicator, trade markers, and break-even line.
 /// Created by ChartSetup during F5 rebuild.
 /// </summary>
 public class ChartLineView : MonoBehaviour
 {
     private ChartRenderer _chartRenderer;
-    private LineRenderer _mainLine;
-    private LineRenderer _glowLine;
+    private MeshFilter _mainMeshFilter;
+    private MeshFilter _glowMeshFilter;
+    private ChartMeshLine _mainMeshLine;
+    private ChartMeshLine _glowMeshLine;
     private Transform _indicator;
     private ChartVisualConfig _config;
 
@@ -26,12 +28,15 @@ public class ChartLineView : MonoBehaviour
     private float _chartBottom;
     private float _chartTop;
 
-    public void Initialize(ChartRenderer chartRenderer, LineRenderer mainLine, LineRenderer glowLine,
+    // Reusable position list to avoid allocations
+    private readonly List<Vector3> _positionBuffer = new List<Vector3>();
+
+    public void Initialize(ChartRenderer chartRenderer, MeshFilter mainMeshFilter, MeshFilter glowMeshFilter,
         Transform indicator, ChartVisualConfig config, Rect chartBounds)
     {
         _chartRenderer = chartRenderer;
-        _mainLine = mainLine;
-        _glowLine = glowLine;
+        _mainMeshFilter = mainMeshFilter;
+        _glowMeshFilter = glowMeshFilter;
         _indicator = indicator;
         _config = config;
 
@@ -40,8 +45,10 @@ public class ChartLineView : MonoBehaviour
         _chartBottom = chartBounds.yMin;
         _chartTop = chartBounds.yMax;
 
-        ConfigureLineRenderer(_mainLine, _config.LineColor, _config.LineWidth);
-        ConfigureLineRenderer(_glowLine, _config.GlowColor, _config.GlowWidth);
+        _mainMeshLine = new ChartMeshLine();
+        _glowMeshLine = new ChartMeshLine();
+        _mainMeshFilter.mesh = _mainMeshLine.Mesh;
+        _glowMeshFilter.mesh = _glowMeshLine.Mesh;
     }
 
     public void SetTradeVisuals(LineRenderer breakEvenLine, Transform markerPool)
@@ -73,40 +80,27 @@ public class ChartLineView : MonoBehaviour
         return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
     }
 
-    private void ConfigureLineRenderer(LineRenderer lr, Color color, float width)
-    {
-        lr.startColor = color;
-        lr.endColor = color;
-        lr.startWidth = width;
-        lr.endWidth = width;
-        lr.useWorldSpace = true;
-        lr.positionCount = 0;
-        // Fixed facing direction — prevents billboard width variation in 2D
-        lr.alignment = LineAlignment.TransformZ;
-        // Smooth corners and caps to prevent pinching at sharp angles
-        lr.numCornerVertices = 5;
-        lr.numCapVertices = 3;
-        // Flat width curve — no tapering
-        lr.widthMultiplier = 1f;
-    }
-
     private void LateUpdate()
     {
         if (_chartRenderer == null) return;
 
         int pointCount = _chartRenderer.PointCount;
-        _mainLine.positionCount = pointCount;
-        _glowLine.positionCount = pointCount;
 
-        if (pointCount == 0) return;
+        if (pointCount < 2)
+        {
+            _mainMeshLine.Clear();
+            _glowMeshLine.Clear();
+            if (_indicator != null) _indicator.gameObject.SetActive(false);
+            UpdateTradeMarkers(0f, 1f, _chartBottom, _chartTop);
+            UpdateBreakEvenLine(0f, 1f, _chartBottom, _chartTop);
+            return;
+        }
 
         // Use live min/max from actual points (not all-time extremes)
-        // This prevents one outlier from squishing the entire chart
         _chartRenderer.GetLivePriceRange(out float minPrice, out float maxPrice);
         float priceRange = maxPrice - minPrice;
         if (priceRange < 0.01f)
         {
-            // Flat line — center it with some breathing room
             float center = (minPrice + maxPrice) * 0.5f;
             minPrice = center - 0.5f;
             priceRange = 1f;
@@ -118,29 +112,29 @@ public class ChartLineView : MonoBehaviour
         float paddedBottom = _chartBottom + padding;
         float paddedTop = _chartTop - padding;
 
+        // Build position list
+        _positionBuffer.Clear();
         for (int i = 0; i < pointCount; i++)
         {
             var point = _chartRenderer.GetPoint(i);
             float x = Mathf.Lerp(_chartLeft, _chartRight, point.NormalizedTime);
             float y = Mathf.Lerp(paddedBottom, paddedTop, (point.Price - minPrice) / priceRange);
-
-            var worldPos = new Vector3(x, y, 0f);
-            _mainLine.SetPosition(i, worldPos);
-            _glowLine.SetPosition(i, worldPos);
+            _positionBuffer.Add(new Vector3(x, y, 0f));
         }
+
+        // Convert pixel widths to world units
+        float mainWidth = _config.GetWorldWidth(_config.LineWidthPixels);
+        float glowWidth = _config.GetWorldWidth(_config.GlowWidthPixels);
+
+        // Update meshes
+        _mainMeshLine.UpdateMesh(_positionBuffer, mainWidth, _config.LineColor);
+        _glowMeshLine.UpdateMesh(_positionBuffer, glowWidth, _config.GlowColor);
 
         // Update indicator position to chart head
-        if (pointCount > 0 && _indicator != null)
+        if (_indicator != null)
         {
-            var lastPoint = _chartRenderer.GetPoint(pointCount - 1);
-            float ix = Mathf.Lerp(_chartLeft, _chartRight, lastPoint.NormalizedTime);
-            float iy = Mathf.Lerp(paddedBottom, paddedTop, (lastPoint.Price - minPrice) / priceRange);
-            _indicator.position = new Vector3(ix, iy, 0f);
+            _indicator.position = _positionBuffer[pointCount - 1];
             _indicator.gameObject.SetActive(true);
-        }
-        else if (_indicator != null)
-        {
-            _indicator.gameObject.SetActive(false);
         }
 
         // Update trade markers and break-even line

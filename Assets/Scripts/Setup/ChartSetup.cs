@@ -3,12 +3,9 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Setup class that generates chart GameObjects and UI elements during F5 rebuild.
-/// Creates LineRenderers for main line and glow trail, price axis labels,
+/// Creates MeshFilter/MeshRenderer for main line and glow trail, price axis labels,
 /// time progress bar, and current price indicator.
-/// [SetupClass(SetupPhase.SceneComposition)] attribute to be enabled when SetupPipeline exists.
 /// </summary>
-// Runtime-only: called by GameRunner.Start(), not during F5 rebuild.
-// MonoBehaviour Initialize() calls and EventBus subscriptions must happen at runtime.
 public static class ChartSetup
 {
     // Chart occupies ~60% center of screen per GDD layout spec
@@ -17,6 +14,7 @@ public static class ChartSetup
     private static readonly int AxisLabelCount = 5;
     private static readonly Color BackgroundColor = new Color(0.039f, 0.055f, 0.153f, 1f); // #0A0E27 dark navy
     private static Material _lineMaterial;
+    private static Material _meshMaterial;
 
     public static void Execute()
     {
@@ -30,13 +28,9 @@ public static class ChartSetup
         var holder = chartParent.AddComponent<ChartDataHolder>();
         holder.Renderer = chartRenderer;
 
-        // Create LineRenderer objects
-        var mainLineGo = CreateLineRendererObject("ChartMainLine", chartParent.transform);
-        var glowLineGo = CreateLineRendererObject("ChartGlowLine", chartParent.transform);
-
-        // Glow line renders behind main line
-        var glowLR = glowLineGo.GetComponent<LineRenderer>();
-        glowLR.sortingOrder = -1;
+        // Create MeshFilter/MeshRenderer objects for main and glow lines
+        var mainLineGo = CreateMeshObject("ChartMainLine", chartParent.transform, 1);
+        var glowLineGo = CreateMeshObject("ChartGlowLine", chartParent.transform, -1);
 
         // Create price indicator
         var indicatorGo = new GameObject("PriceIndicator");
@@ -62,18 +56,18 @@ public static class ChartSetup
 
         var chartBounds = new Rect(chartLeft, chartBottom, chartWorldWidth, chartWorldHeight);
 
-        // Initialize ChartLineView
+        // Initialize ChartLineView with MeshFilters
         var chartLineView = chartParent.AddComponent<ChartLineView>();
         chartLineView.Initialize(
             chartRenderer,
-            mainLineGo.GetComponent<LineRenderer>(),
-            glowLineGo.GetComponent<LineRenderer>(),
+            mainLineGo.GetComponent<MeshFilter>(),
+            glowLineGo.GetComponent<MeshFilter>(),
             indicatorGo.transform,
             ChartVisualConfig.Default,
             chartBounds
         );
 
-        // Create break-even line (yellow, thin horizontal)
+        // Create break-even line (yellow, thin horizontal — kept as LineRenderer)
         var breakEvenGo = CreateLineRendererObject("BreakEvenLine", chartParent.transform);
         var breakEvenLR = breakEvenGo.GetComponent<LineRenderer>();
         breakEvenLR.startColor = new Color(1f, 0.85f, 0.2f, 0.8f); // Yellow
@@ -114,8 +108,6 @@ public static class ChartSetup
             chartUI.ResetForNewRound();
         });
         // Auto-select first stock when market opens (before trading begins).
-        // Use SetActiveStockId (not SetActiveStock) to avoid resetting roundActive,
-        // which would cause the chart to reject price points after RoundStartedEvent.
         EventBus.Subscribe<MarketOpenEvent>(evt =>
         {
             if (evt.StockIds != null && evt.StockIds.Length > 0)
@@ -127,6 +119,29 @@ public static class ChartSetup
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Setup] ChartSystem created: bounds={chartBounds}, labels={AxisLabelCount}");
         #endif
+    }
+
+    private static GameObject CreateMeshObject(string name, Transform parent, int sortingOrder)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent);
+        go.AddComponent<MeshFilter>();
+        var mr = go.AddComponent<MeshRenderer>();
+
+        if (_meshMaterial == null)
+        {
+            var shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                Debug.LogWarning("[Setup] Shader 'Sprites/Default' not found — using fallback.");
+                shader = Shader.Find("UI/Default");
+            }
+            _meshMaterial = new Material(shader);
+        }
+        mr.sharedMaterial = _meshMaterial;
+        mr.sortingOrder = sortingOrder;
+
+        return go;
     }
 
     private static GameObject CreateLineRendererObject(string name, Transform parent)

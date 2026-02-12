@@ -22,14 +22,14 @@ public class StockInstance
     public StockTier Tier { get; private set; }
     public StockTierConfig TierConfig { get; private set; }
 
-    // Noise state — random walk accumulator for smooth noise
+    // Noise config from tier
     public float NoiseAmplitude { get; private set; }
     public float NoiseFrequency { get; private set; }
-    public float NoiseAccumulator { get; set; }
 
-    // Slow-wave oscillation for multi-timescale price swings
-    public float SwingPhase { get; set; }
-    public float SwingSpeed { get; set; }
+    // Segment-based random walk state (replaces accumulator + sine wave)
+    public float SegmentSlope { get; set; }
+    public float SegmentTimeRemaining { get; set; }
+    public float SegmentDuration { get; set; }
 
     // Trend line tracking for mean reversion (Story 1.4)
     public float TrendLinePrice { get; private set; }
@@ -37,6 +37,7 @@ public class StockInstance
     // Event tracking state (Story 1.3)
     public MarketEvent ActiveEvent { get; private set; }
     public float EventTargetPrice { get; private set; }
+    public float EventStartPrice { get; set; }
 
     public void Initialize(int stockId, string tickerSymbol, StockTier tier, float startingPrice, TrendDirection trendDirection, float trendStrength)
     {
@@ -50,11 +51,11 @@ public class StockInstance
         // Noise from tier config
         NoiseAmplitude = TierConfig.NoiseAmplitude;
         NoiseFrequency = TierConfig.NoiseFrequency;
-        NoiseAccumulator = 0f;
 
-        // Slow swing: randomized phase and speed for natural-looking oscillation
-        SwingPhase = UnityEngine.Random.Range(0f, UnityEngine.Mathf.PI * 2f);
-        SwingSpeed = UnityEngine.Random.Range(0.3f, 0.8f); // cycles over ~8-20 seconds
+        // Start with expired segment so first update picks a new one
+        SegmentSlope = 0f;
+        SegmentTimeRemaining = 0f;
+        SegmentDuration = 0f;
 
         // Trend line starts at the same price as current
         TrendLinePrice = startingPrice;
@@ -62,6 +63,7 @@ public class StockInstance
         // Event state starts cleared
         ActiveEvent = null;
         EventTargetPrice = 0f;
+        EventStartPrice = 0f;
 
         // Convert trend strength to per-second price change based on direction
         switch (trendDirection)
@@ -94,6 +96,7 @@ public class StockInstance
     public void ApplyEvent(MarketEvent evt, float targetPrice)
     {
         ActiveEvent = evt;
+        EventStartPrice = CurrentPrice;
         EventTargetPrice = targetPrice;
     }
 
@@ -104,5 +107,6 @@ public class StockInstance
     {
         ActiveEvent = null;
         EventTargetPrice = 0f;
+        EventStartPrice = 0f;
     }
 }

@@ -16,7 +16,7 @@ namespace BullRun.Tests.PriceEngine
         public void GetTierConfig_Penny_HasCorrectPriceRange()
         {
             var config = StockTierData.GetTierConfig(StockTier.Penny);
-            Assert.AreEqual(0.10f, config.MinPrice, 0.01f);
+            Assert.AreEqual(0.50f, config.MinPrice, 0.01f);
             Assert.AreEqual(5f, config.MaxPrice, 0.01f);
         }
 
@@ -185,14 +185,14 @@ namespace BullRun.Tests.PriceEngine
         public void GetTierConfig_Penny_HasExpectedReversionSpeed()
         {
             var config = StockTierData.GetTierConfig(StockTier.Penny);
-            Assert.AreEqual(0.05f, config.MeanReversionSpeed, 0.001f);
+            Assert.AreEqual(0.30f, config.MeanReversionSpeed, 0.001f);
         }
 
         [Test]
         public void GetTierConfig_BlueChip_HasExpectedReversionSpeed()
         {
             var config = StockTierData.GetTierConfig(StockTier.BlueChip);
-            Assert.AreEqual(0.60f, config.MeanReversionSpeed, 0.001f);
+            Assert.AreEqual(0.50f, config.MeanReversionSpeed, 0.001f);
         }
 
         // --- Event Frequency Modifier Tests (Story 1.5) ---

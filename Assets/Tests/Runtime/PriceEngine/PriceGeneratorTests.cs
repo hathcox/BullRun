@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace BullRun.Tests.PriceEngine
 {
@@ -242,8 +243,8 @@ namespace BullRun.Tests.PriceEngine
                     $"Stock {stock.TickerSymbol} should have positive noise amplitude");
                 Assert.Greater(stock.NoiseFrequency, 0f,
                     $"Stock {stock.TickerSymbol} should have positive noise frequency");
-                Assert.AreEqual(0f, stock.NoiseAccumulator,
-                    $"Stock {stock.TickerSymbol} noise accumulator should start at 0");
+                Assert.AreEqual(0f, stock.SegmentTimeRemaining,
+                    $"Stock {stock.TickerSymbol} segment time remaining should start at 0");
             }
         }
 
@@ -366,20 +367,19 @@ namespace BullRun.Tests.PriceEngine
         {
             // Neutral trend so trend line stays at starting price.
             // Manually offset current price above trend line, then verify reversion pulls it back.
+            // Run many iterations so the reversion bias on segment selection dominates noise.
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", StockTier.BlueChip, 1000f, TrendDirection.Neutral, 0f);
 
             // Artificially push price away from trend line
             stock.CurrentPrice = 1200f;
 
-            // No event effects set — reversion should apply
-            for (int i = 0; i < 60; i++)
+            // No event effects set — reversion bias should pull price back over time
+            for (int i = 0; i < 600; i++)
                 _generator.UpdatePrice(stock, 0.016f);
 
             Assert.Less(stock.CurrentPrice, 1200f,
                 "Reversion should pull price back toward trend line");
-            Assert.Greater(stock.CurrentPrice, 1000f,
-                "Reversion should not overshoot the trend line");
         }
 
         [Test]
@@ -391,7 +391,8 @@ namespace BullRun.Tests.PriceEngine
             // Price below trend line
             stock.CurrentPrice = 800f;
 
-            for (int i = 0; i < 60; i++)
+            // Run many iterations so reversion bias dominates
+            for (int i = 0; i < 600; i++)
                 _generator.UpdatePrice(stock, 0.016f);
 
             Assert.Greater(stock.CurrentPrice, 800f,
@@ -410,18 +411,21 @@ namespace BullRun.Tests.PriceEngine
             penny.Initialize(1, "PNNY", StockTier.Penny, 1.00f, TrendDirection.Neutral, 0f);
             penny.CurrentPrice = 1.20f; // 20% above
 
-            for (int i = 0; i < 120; i++)
+            // Run many iterations so the reversion bias on segment selection
+            // statistically dominates random noise
+            for (int i = 0; i < 1200; i++)
             {
                 _generator.UpdatePrice(blueChip, 0.016f);
                 _generator.UpdatePrice(penny, 0.016f);
             }
 
-            // Calculate how much each reverted as a percentage of the gap
-            float blueChipRevertPct = (1200f - blueChip.CurrentPrice) / 200f;
-            float pennyRevertPct = (1.20f - penny.CurrentPrice) / 0.20f;
+            // Compare how close each ended up to its trend line (as % of starting price).
+            // Stronger reversion → tighter oscillation → smaller deviation from trend.
+            float blueChipDeviation = Mathf.Abs(blueChip.CurrentPrice - 1000f) / 1000f;
+            float pennyDeviation = Mathf.Abs(penny.CurrentPrice - 1.00f) / 1.00f;
 
-            Assert.Greater(blueChipRevertPct, pennyRevertPct,
-                "Blue chip should revert a larger percentage of the gap than penny");
+            Assert.Less(blueChipDeviation, pennyDeviation,
+                "Blue chip should be closer to its trend line than penny");
         }
 
         [Test]

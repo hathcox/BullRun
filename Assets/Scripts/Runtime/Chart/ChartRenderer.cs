@@ -39,7 +39,6 @@ public class ChartRenderer
     private bool _roundActive;
     private float _minPrice = float.MaxValue;
     private float _maxPrice = float.MinValue;
-    private int _decimationThreshold = 3600; // Default: 60fps * 60s
 
     public int PointCount => _points.Count;
     public int ActiveStockId => _activeStockId;
@@ -90,11 +89,6 @@ public class ChartRenderer
 
         if (price < _minPrice) _minPrice = price;
         if (price > _maxPrice) _maxPrice = price;
-
-        if (_points.Count > _decimationThreshold)
-        {
-            DecimateOlderPoints();
-        }
     }
 
     public void ResetChart()
@@ -199,36 +193,4 @@ public class ChartRenderer
         AddPoint(normalizedTime, evt.NewPrice);
     }
 
-    public void SetDecimationThreshold(int threshold)
-    {
-        _decimationThreshold = threshold;
-    }
-
-    /// <summary>
-    /// Decimates older points by keeping every 3rd point in the older half of data.
-    /// Preserves recent data at full resolution.
-    /// </summary>
-    private void DecimateOlderPoints()
-    {
-        int halfCount = _points.Count / 2;
-        var decimated = new List<ChartPoint>(_points.Count);
-
-        // Keep every 3rd point in the older half
-        for (int i = 0; i < halfCount; i++)
-        {
-            if (i % 3 == 0)
-            {
-                decimated.Add(_points[i]);
-            }
-        }
-
-        // Keep all recent points at full resolution
-        for (int i = halfCount; i < _points.Count; i++)
-        {
-            decimated.Add(_points[i]);
-        }
-
-        _points.Clear();
-        _points.AddRange(decimated);
-    }
 }

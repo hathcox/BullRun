@@ -1,6 +1,7 @@
 /// <summary>
 /// Runtime state for an active market event affecting stock prices.
-/// Tracks elapsed time and provides interpolated force that ramps up then fades.
+/// Tracks elapsed time and provides interpolated force using a fast-attack curve:
+/// rapid ramp to full force over first 15% of duration, hold, then brief tail-off.
 /// </summary>
 public class MarketEvent
 {
@@ -23,25 +24,32 @@ public class MarketEvent
     }
 
     /// <summary>
-    /// Returns interpolated event force (0-1) that ramps up to peak at midpoint then fades.
-    /// Uses a triangle wave: linearly rises to 1.0 at midpoint, linearly falls to 0.0 at end.
+    /// Returns interpolated event force (0-1) using a fast-attack curve:
+    /// - First 15% of duration: ramp 0→1 (steep visible ramp)
+    /// - Middle 70%: hold at 1.0
+    /// - Last 15%: tail off 1→0
     /// </summary>
     public float GetCurrentForce()
     {
         if (ElapsedTime <= 0f || ElapsedTime >= Duration)
             return 0f;
 
-        float halfDuration = Duration * 0.5f;
+        float t = ElapsedTime / Duration;
 
-        if (ElapsedTime <= halfDuration)
+        if (t <= 0.15f)
         {
-            // Ramp up: 0 → 1 over first half
-            return ElapsedTime / halfDuration;
+            // Fast ramp up: 0→1 over first 15%
+            return t / 0.15f;
+        }
+        else if (t <= 0.85f)
+        {
+            // Hold at full force
+            return 1f;
         }
         else
         {
-            // Fade out: 1 → 0 over second half
-            return 1f - (ElapsedTime - halfDuration) / halfDuration;
+            // Tail off: 1→0 over last 15%
+            return 1f - (t - 0.85f) / 0.15f;
         }
     }
 }

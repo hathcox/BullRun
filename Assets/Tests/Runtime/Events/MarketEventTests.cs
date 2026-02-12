@@ -90,22 +90,22 @@ namespace BullRun.Tests.Events
         {
             var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 10f);
 
-            // Quarter way — ramping up
-            evt.ElapsedTime = 2.5f;
-            float forceQuarter = evt.GetCurrentForce();
+            // Early ramp phase (t=0.075, halfway through the 15% ramp)
+            evt.ElapsedTime = 0.75f;
+            float forceRamp = evt.GetCurrentForce();
 
-            // Midpoint — peak
+            // Hold phase (t=0.5, well within the 15%-85% hold zone)
             evt.ElapsedTime = 5f;
-            float forceMid = evt.GetCurrentForce();
+            float forceHold = evt.GetCurrentForce();
 
-            // Three quarters — fading
-            evt.ElapsedTime = 7.5f;
-            float forceThreeQuarter = evt.GetCurrentForce();
+            // Tail-off phase (t=0.925, halfway through the final 15%)
+            evt.ElapsedTime = 9.25f;
+            float forceTail = evt.GetCurrentForce();
 
-            Assert.Greater(forceMid, forceQuarter, "Peak force should be greater than ramp-up");
-            Assert.Greater(forceMid, forceThreeQuarter, "Peak force should be greater than fade-out");
-            Assert.Greater(forceQuarter, 0f, "Ramp-up should be > 0");
-            Assert.Greater(forceThreeQuarter, 0f, "Fade-out should be > 0");
+            Assert.Greater(forceHold, forceRamp, "Hold force should be greater than ramp-up");
+            Assert.Greater(forceHold, forceTail, "Hold force should be greater than tail-off");
+            Assert.Greater(forceRamp, 0f, "Ramp-up should be > 0");
+            Assert.Greater(forceTail, 0f, "Tail-off should be > 0");
         }
 
         [Test]

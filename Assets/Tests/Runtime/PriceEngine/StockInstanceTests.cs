@@ -112,11 +112,11 @@ namespace BullRun.Tests.PriceEngine
         }
 
         [Test]
-        public void Initialize_NoiseAccumulatorStartsAtZero()
+        public void Initialize_SegmentTimeRemainingStartsAtZero()
         {
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", StockTier.Penny, 2.50f, TrendDirection.Bull, 0.10f);
-            Assert.AreEqual(0f, stock.NoiseAccumulator);
+            Assert.AreEqual(0f, stock.SegmentTimeRemaining);
         }
 
         // --- Event Tracking Tests (Story 1.3) ---

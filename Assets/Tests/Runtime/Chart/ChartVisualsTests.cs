@@ -36,7 +36,7 @@ namespace BullRun.Tests.Chart
         {
             var config = ChartVisualConfig.Default;
 
-            Assert.Greater(config.GlowWidth, config.LineWidth,
+            Assert.Greater(config.GlowWidthPixels, config.LineWidthPixels,
                 "Glow trail should be wider than main line");
         }
 

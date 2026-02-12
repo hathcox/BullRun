@@ -3,8 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// Price generation pipeline orchestrator.
-/// Story 1.1: Trend layer. Story 1.2: Noise layer. Story 1.3: Event spikes.
-/// Story 1.4: Mean reversion. Story 1.5: Named stock pools per tier.
+/// Story 1.1: Trend layer. Story 1.2: Noise layer (choppy segment walk).
+/// Story 1.3: Event spikes. Story 1.4: Mean reversion.
+/// Story 1.5: Named stock pools per tier.
 /// </summary>
 public class PriceGenerator
 {
@@ -16,18 +17,15 @@ public class PriceGenerator
 
     /// <summary>
     /// Sets the EventEffects processor for event spike integration.
-    /// When set, active events will be applied during UpdatePrice.
     /// </summary>
     public void SetEventEffects(EventEffects eventEffects)
     {
         _eventEffects = eventEffects;
     }
 
-
     /// <summary>
-    /// Updates a stock's price by applying trend + noise + event/reversion layers.
-    /// Called every frame for each active stock.
-    /// Pipeline: trend → noise → event OR reversion → clamp
+    /// Updates a stock's price using segment-based choppy random walk + events/reversion.
+    /// Pipeline: trend → segment noise → event OR reversion → clamp
     /// </summary>
     public void UpdatePrice(StockInstance stock, float deltaTime)
     {
@@ -39,25 +37,36 @@ public class PriceGenerator
         // Step 1: Trend layer (Story 1.1)
         stock.CurrentPrice += stock.TrendPerSecond * deltaTime;
 
-        // Step 2: Noise layer (Story 1.2) — smoothed random walk
-        // Random impulse scaled by frequency and time step
-        float noiseDrift = ((float)_random.NextDouble() * 2f - 1f) * stock.NoiseFrequency * deltaTime;
-        stock.NoiseAccumulator += noiseDrift;
-        // Frame-rate-independent decay: halve the accumulator every ~2 seconds
-        // Pow(0.7, 1.0) = 0.7/s, so over 2s: 0.49 — accumulator stays bounded
-        stock.NoiseAccumulator *= Mathf.Pow(0.7f, deltaTime);
-        // Apply noise as a rate-of-change scaled by deltaTime
-        // (accumulator holds displacement magnitude, deltaTime makes it frame-rate independent)
-        float noiseEffect = stock.CurrentPrice * stock.NoiseAmplitude * stock.NoiseAccumulator * deltaTime;
-        stock.CurrentPrice += noiseEffect;
+        // Step 2: Segment-based choppy noise (Story 1.2)
+        if (stock.SegmentTimeRemaining <= 0f)
+        {
+            // Pick new segment
+            stock.SegmentDuration = RandomRange(0.3f, 1.5f);
+            stock.SegmentTimeRemaining = stock.SegmentDuration;
 
-        // Step 2b: Slow-wave swing for multi-timescale movement
-        stock.SwingPhase += stock.SwingSpeed * deltaTime;
-        float swingEffect = stock.CurrentPrice * stock.NoiseAmplitude * 0.5f
-            * Mathf.Sin(stock.SwingPhase);
-        stock.CurrentPrice += swingEffect * deltaTime * stock.NoiseFrequency;
+            // Random slope: scaled by noise amplitude and current price
+            float baseSlope = ((float)_random.NextDouble() * 2f - 1f) * stock.NoiseAmplitude * stock.CurrentPrice;
 
-        // Step 3 & 4: Event spike OR Mean reversion (Story 1.3 & 1.4)
+            // Trend bias: slight pull toward trend direction
+            float trendBias = stock.TrendPerSecond * 0.5f;
+
+            // Mean reversion bias: if price is above trend line, favor negative slopes.
+            // Uses price deviation directly (not scaled by NoiseAmplitude) so the bias
+            // is strong enough to reliably pull price back toward trend.
+            float reversionBias = 0f;
+            if (stock.TrendLinePrice > 0f)
+            {
+                float deviation = (stock.CurrentPrice - stock.TrendLinePrice) / stock.TrendLinePrice;
+                reversionBias = -deviation * stock.CurrentPrice * stock.TierConfig.MeanReversionSpeed;
+            }
+
+            stock.SegmentSlope = baseSlope + trendBias + reversionBias;
+        }
+
+        stock.SegmentTimeRemaining -= deltaTime;
+        stock.CurrentPrice += stock.SegmentSlope * deltaTime;
+
+        // Step 3: Event spikes (Story 1.3)
         bool hasActiveEvent = false;
         if (_eventEffects != null)
         {
@@ -70,12 +79,6 @@ public class PriceGenerator
                     stock.CurrentPrice = _eventEffects.ApplyEventEffect(stock, activeEvents[i], deltaTime);
                 }
             }
-        }
-
-        // Mean reversion — only when no event is active (Story 1.4)
-        if (!hasActiveEvent)
-        {
-            stock.CurrentPrice = Mathf.Lerp(stock.CurrentPrice, stock.TrendLinePrice, stock.TierConfig.MeanReversionSpeed * deltaTime);
         }
 
         // Clamp to tier price range
@@ -133,7 +136,6 @@ public class PriceGenerator
 
     /// <summary>
     /// Selects a random subset of stocks from a tier's pool for a round.
-    /// Count is determined by the tier's MinStocksPerRound/MaxStocksPerRound config.
     /// </summary>
     public List<StockDefinition> SelectStocksForRound(StockTier tier)
     {
@@ -191,7 +193,8 @@ public class PriceGenerator
                 TrendDirection = stock.TrendDirection,
                 TrendPerSecond = stock.TrendPerSecond,
                 NoiseAmplitude = stock.NoiseAmplitude,
-                NoiseAccumulator = stock.NoiseAccumulator,
+                SegmentSlope = stock.SegmentSlope,
+                SegmentTimeRemaining = stock.SegmentTimeRemaining,
                 ReversionSpeed = stock.TierConfig.MeanReversionSpeed,
             };
 
@@ -229,7 +232,8 @@ public struct StockDebugInfo
     public TrendDirection TrendDirection;
     public float TrendPerSecond;
     public float NoiseAmplitude;
-    public float NoiseAccumulator;
+    public float SegmentSlope;
+    public float SegmentTimeRemaining;
     public float ReversionSpeed;
     public bool HasActiveEvent;
     public MarketEventType ActiveEventType;

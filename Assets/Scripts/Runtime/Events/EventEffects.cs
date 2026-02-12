@@ -3,12 +3,18 @@ using UnityEngine;
 
 /// <summary>
 /// Processes market event effects on stock prices.
-/// Manages active events lifecycle and applies price impacts via Lerp interpolation.
+/// Manages active events lifecycle and applies price impacts via direct price targeting.
+/// When an event fires, it captures start price and computes target price.
+/// Force curve drives Lerp between start and target for fast, visible ramps.
 /// </summary>
 public class EventEffects
 {
     private readonly List<MarketEvent> _activeEvents = new List<MarketEvent>();
     private readonly List<MarketEvent> _eventsToRemove = new List<MarketEvent>();
+
+    // Track start/target prices per event for direct targeting
+    private readonly Dictionary<MarketEvent, float> _eventStartPrices = new Dictionary<MarketEvent, float>();
+    private readonly Dictionary<MarketEvent, float> _eventTargetPrices = new Dictionary<MarketEvent, float>();
 
     public int ActiveEventCount => _activeEvents.Count;
 
@@ -33,9 +39,9 @@ public class EventEffects
     }
 
     /// <summary>
-    /// Calculates event's price impact on a stock using Lerp interpolation.
-    /// Returns the new price after applying the event effect.
-    /// Formula: Lerp(currentPrice, eventTarget, eventForce * deltaTime)
+    /// Applies event effect using direct price targeting.
+    /// On first call for a stock+event pair, captures start price and computes target.
+    /// Returns Lerp(startPrice, targetPrice, force) where force ramps 0→1 fast.
     /// </summary>
     public float ApplyEventEffect(StockInstance stock, MarketEvent evt, float deltaTime)
     {
@@ -43,8 +49,18 @@ public class EventEffects
         if (force <= 0f)
             return stock.CurrentPrice;
 
-        float eventTarget = stock.CurrentPrice * (1f + evt.PriceEffectPercent);
-        return Mathf.Lerp(stock.CurrentPrice, eventTarget, force * deltaTime);
+        // Capture start/target prices on first application
+        if (!_eventStartPrices.ContainsKey(evt))
+        {
+            _eventStartPrices[evt] = stock.CurrentPrice;
+            _eventTargetPrices[evt] = stock.CurrentPrice * (1f + evt.PriceEffectPercent);
+        }
+
+        float startPrice = _eventStartPrices[evt];
+        float targetPrice = _eventTargetPrices[evt];
+
+        // Direct Lerp from start to target based on force curve
+        return Mathf.Lerp(startPrice, targetPrice, force);
     }
 
     /// <summary>
@@ -78,6 +94,10 @@ public class EventEffects
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Events] Event ended: {expired.EventType}");
             #endif
+
+            // Clean up tracked prices
+            _eventStartPrices.Remove(expired);
+            _eventTargetPrices.Remove(expired);
 
             _activeEvents.Remove(expired);
         }
