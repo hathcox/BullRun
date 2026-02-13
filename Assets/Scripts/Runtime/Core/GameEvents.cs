@@ -181,6 +181,7 @@ public struct ShopOpenedEvent
 {
     public int RoundNumber;
     public ShopItemDef[] AvailableItems;
+    public float CurrentCash;
 }
 
 /// <summary>
@@ -189,6 +190,7 @@ public struct ShopOpenedEvent
 public struct ShopItemPurchasedEvent
 {
     public string ItemId;
+    public string ItemName;
     public int Cost;
     public float RemainingCash;
 }
@@ -198,8 +200,10 @@ public struct ShopItemPurchasedEvent
 /// </summary>
 public struct ShopClosedEvent
 {
-    public int ItemsPurchasedCount;
+    public string[] PurchasedItemIds;
     public float CashRemaining;
+    public int RoundNumber;
+    public bool TimerExpired;
 }
 
 /// <summary>

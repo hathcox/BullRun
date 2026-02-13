@@ -98,7 +98,7 @@ development_status:
   epic-7: in-progress
   7-1-shop-ui: done
   7-2-item-pool-generation: done
-  7-3-purchase-flow: ready-for-dev
+  7-3-purchase-flow: done
   7-4-item-inventory-display: ready-for-dev
   epic-7-retrospective: optional
 

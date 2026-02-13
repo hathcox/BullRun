@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -17,7 +18,8 @@ public class ShopState : IGameState
     private bool _shopActive;
     private ShopItemDef?[] _nullableOffering;
     private bool[] _purchased;
-    private int _purchaseCount;
+    private List<string> _purchasedItemIds;
+    private ShopTransaction _shopTransaction;
 
     public static ShopStateConfig NextConfig;
 
@@ -41,7 +43,8 @@ public class ShopState : IGameState
         var random = new System.Random();
         _nullableOffering = ShopGenerator.GenerateOffering(ctx.ActiveItems, ShopItemDefinitions.DefaultUnlockedItems, random);
         _purchased = new bool[_nullableOffering.Length];
-        _purchaseCount = 0;
+        _purchasedItemIds = new List<string>();
+        _shopTransaction = new ShopTransaction();
         _timeRemaining = GameConfig.ShopDurationSeconds;
         _shopActive = true;
 
@@ -49,10 +52,11 @@ public class ShopState : IGameState
         Debug.Log($"[ShopState] Generated items: {ItemLabel(0)}, {ItemLabel(1)}, {ItemLabel(2)}");
         #endif
 
-        // Show shop UI
+        // Show shop UI with purchase and close callbacks
         if (ShopUIInstance != null)
         {
-            ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchase(ctx, cardIndex));
+            ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
+            ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx, false));
         }
 
         // Publish shop opened event — only include non-null items
@@ -67,7 +71,8 @@ public class ShopState : IGameState
         EventBus.Publish(new ShopOpenedEvent
         {
             RoundNumber = ctx.CurrentRound,
-            AvailableItems = availableItems
+            AvailableItems = availableItems,
+            CurrentCash = ctx.Portfolio.Cash
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -90,7 +95,7 @@ public class ShopState : IGameState
         // Timer expired — close shop
         if (_timeRemaining <= 0f)
         {
-            CloseShop(ctx);
+            CloseShop(ctx, true);
         }
     }
 
@@ -102,7 +107,7 @@ public class ShopState : IGameState
         }
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Exit: {_purchaseCount} items purchased");
+        Debug.Log($"[ShopState] Exit: {_purchasedItemIds?.Count ?? 0} items purchased");
         #endif
     }
 
@@ -114,53 +119,48 @@ public class ShopState : IGameState
     }
     #endif
 
-    public void OnPurchase(RunContext ctx, int cardIndex)
+    /// <summary>
+    /// Called when player clicks a buy button. Delegates to ShopTransaction for atomic purchase.
+    /// </summary>
+    public void OnPurchaseRequested(RunContext ctx, int cardIndex)
     {
         if (!_shopActive) return;
         if (cardIndex < 0 || cardIndex >= _nullableOffering.Length) return;
         if (_purchased[cardIndex]) return;
-        if (_nullableOffering[cardIndex] == null) return;
+        if (!_nullableOffering[cardIndex].HasValue) return;
 
         var item = _nullableOffering[cardIndex].Value;
+        var result = _shopTransaction.TryPurchase(ctx, item);
 
-        // Deduct cost — DeductCash returns false if insufficient funds
-        if (!ctx.Portfolio.DeductCash(item.Cost)) return;
-
-        _purchased[cardIndex] = true;
-        _purchaseCount++;
-
-        // Track item in RunContext
-        ctx.ActiveItems.Add(item.Id);
-
-        // Publish purchase event
-        EventBus.Publish(new ShopItemPurchasedEvent
+        if (result == ShopPurchaseResult.Success)
         {
-            ItemId = item.Id,
-            Cost = item.Cost,
-            RemainingCash = ctx.Portfolio.Cash
-        });
+            _purchased[cardIndex] = true;
+            _purchasedItemIds.Add(item.Id);
 
-        // Update UI
-        if (ShopUIInstance != null)
-        {
-            ShopUIInstance.RefreshAfterPurchase(cardIndex);
+            // Update UI: mark purchased and refresh affordability
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshAfterPurchase(cardIndex);
+            }
         }
-
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Purchased: {item.Name} (${item.Cost}), Cash remaining: ${ctx.Portfolio.Cash:F0}");
-        #endif
     }
 
-    private void CloseShop(RunContext ctx)
+    /// <summary>
+    /// Closes the shop (timer expired or "Done" button clicked).
+    /// Publishes ShopClosedEvent, advances round, and transitions to next state.
+    /// </summary>
+    private void CloseShop(RunContext ctx, bool timerExpired)
     {
         if (!_shopActive) return;
         _shopActive = false;
 
-        // Publish shop closed event
+        // Publish shop closed event with purchased item details
         EventBus.Publish(new ShopClosedEvent
         {
-            ItemsPurchasedCount = _purchaseCount,
-            CashRemaining = ctx.Portfolio.Cash
+            PurchasedItemIds = _purchasedItemIds.ToArray(),
+            CashRemaining = ctx.Portfolio.Cash,
+            RoundNumber = ctx.CurrentRound,
+            TimerExpired = timerExpired
         });
 
         // Advance to next round

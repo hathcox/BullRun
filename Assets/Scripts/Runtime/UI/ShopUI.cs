@@ -21,9 +21,12 @@ public class ShopUI : MonoBehaviour
     private ItemCardView[] _cards;
     private CanvasGroup _canvasGroup;
 
+    private Button _doneButton;
+
     private ShopItemDef?[] _items;
     private RunContext _ctx;
     private System.Action<int> _onPurchase;
+    private System.Action _onClose;
 
     public struct ItemCardView
     {
@@ -54,6 +57,32 @@ public class ShopUI : MonoBehaviour
         _cards = cards;
         _canvasGroup = canvasGroup;
         _root.SetActive(false);
+    }
+
+    /// <summary>
+    /// Sets the Done button reference. Called by UISetup during F5 generation.
+    /// </summary>
+    public void SetDoneButton(Button doneButton)
+    {
+        _doneButton = doneButton;
+        if (_onClose != null)
+        {
+            _doneButton.onClick.RemoveAllListeners();
+            _doneButton.onClick.AddListener(() => _onClose?.Invoke());
+        }
+    }
+
+    /// <summary>
+    /// Registers a callback for the "Done" button. ShopState calls this to close shop early.
+    /// </summary>
+    public void SetOnCloseCallback(System.Action callback)
+    {
+        _onClose = callback;
+        if (_doneButton != null)
+        {
+            _doneButton.onClick.RemoveAllListeners();
+            _doneButton.onClick.AddListener(() => _onClose?.Invoke());
+        }
     }
 
     /// <summary>
@@ -126,7 +155,7 @@ public class ShopUI : MonoBehaviour
             if (!_items[i].HasValue) continue; // sold out slot
             if (!_cards[i].PurchaseButton.interactable) continue; // already purchased
 
-            bool canAfford = _ctx.Portfolio.Cash >= _items[i].Value.Cost;
+            bool canAfford = _ctx.Portfolio.CanAfford(_items[i].Value.Cost);
             _cards[i].PurchaseButton.interactable = canAfford;
             _cards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _cards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
@@ -176,7 +205,7 @@ public class ShopUI : MonoBehaviour
         card.RarityText.color = rarityColor;
         card.RarityBadge.color = rarityColor;
 
-        bool canAfford = _ctx.Portfolio.Cash >= item.Cost;
+        bool canAfford = _ctx.Portfolio.CanAfford(item.Cost);
         card.PurchaseButton.interactable = canAfford;
         card.ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
         card.CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);

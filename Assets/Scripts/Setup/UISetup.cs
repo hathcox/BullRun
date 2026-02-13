@@ -985,6 +985,19 @@ public static class UISetup
             cards[i] = CreateItemCard(i, defaultCategories[i], cardContainer.transform);
         }
 
+        // Done button — allows player to close shop early
+        var doneBtnGo = CreatePanel("DoneButton", bgGo.transform);
+        var doneBtnRect = doneBtnGo.GetComponent<RectTransform>();
+        doneBtnRect.anchorMin = new Vector2(0.5f, 0f);
+        doneBtnRect.anchorMax = new Vector2(0.5f, 0f);
+        doneBtnRect.pivot = new Vector2(0.5f, 0f);
+        doneBtnRect.anchoredPosition = new Vector2(0f, 60f);
+        doneBtnRect.sizeDelta = new Vector2(120f, 40f);
+        doneBtnGo.GetComponent<Image>().color = new Color(0.3f, 0.3f, 0.4f, 1f);
+        var doneButton = doneBtnGo.AddComponent<Button>();
+        var doneBtnLabel = CreateLabel("DoneButtonText", doneBtnGo.transform, "DONE", Color.white, 16);
+        doneBtnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
         // Initialize ShopUI MonoBehaviour
         var shopUI = overlayParent.AddComponent<ShopUI>();
         shopUI.Initialize(
@@ -995,6 +1008,7 @@ public static class UISetup
             cards,
             canvasGroup
         );
+        shopUI.SetDoneButton(doneButton);
 
         // Wire to ShopState
         ShopState.ShopUIInstance = shopUI;
