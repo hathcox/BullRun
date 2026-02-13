@@ -15,7 +15,7 @@ public class ShopState : IGameState
 
     private float _timeRemaining;
     private bool _shopActive;
-    private ShopItemDef[] _offering;
+    private ShopItemDef?[] _nullableOffering;
     private bool[] _purchased;
     private int _purchaseCount;
 
@@ -37,28 +37,41 @@ public class ShopState : IGameState
             NextConfig = null;
         }
 
-        // Generate shop items
-        _offering = ShopGenerator.GenerateOffering();
-        _purchased = new bool[_offering.Length];
+        // Generate shop items with weighted rarity, unlock filtering, and duplicate prevention
+        var random = new System.Random();
+        _nullableOffering = ShopGenerator.GenerateOffering(ctx.ActiveItems, ShopItemDefinitions.DefaultUnlockedItems, random);
+        _purchased = new bool[_nullableOffering.Length];
         _purchaseCount = 0;
         _timeRemaining = GameConfig.ShopDurationSeconds;
         _shopActive = true;
 
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ShopState] Generated items: {ItemLabel(0)}, {ItemLabel(1)}, {ItemLabel(2)}");
+        #endif
+
         // Show shop UI
         if (ShopUIInstance != null)
         {
-            ShopUIInstance.Show(ctx, _offering, (cardIndex) => OnPurchase(ctx, cardIndex));
+            ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchase(ctx, cardIndex));
         }
 
-        // Publish shop opened event
+        // Publish shop opened event — only include non-null items
+        int availableCount = 0;
+        for (int i = 0; i < _nullableOffering.Length; i++)
+            if (_nullableOffering[i].HasValue) availableCount++;
+        var availableItems = new ShopItemDef[availableCount];
+        int availIdx = 0;
+        for (int i = 0; i < _nullableOffering.Length; i++)
+            if (_nullableOffering[i].HasValue) availableItems[availIdx++] = _nullableOffering[i].Value;
+
         EventBus.Publish(new ShopOpenedEvent
         {
             RoundNumber = ctx.CurrentRound,
-            AvailableItems = _offering
+            AvailableItems = availableItems
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Enter: Shop opened (Round {ctx.CurrentRound}), {_offering.Length} items, {GameConfig.ShopDurationSeconds}s timer");
+        Debug.Log($"[ShopState] Enter: Shop opened (Round {ctx.CurrentRound}), {availableItems.Length} items, {GameConfig.ShopDurationSeconds}s timer");
         #endif
     }
 
@@ -93,13 +106,22 @@ public class ShopState : IGameState
         #endif
     }
 
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private string ItemLabel(int index)
+    {
+        if (index < 0 || index >= _nullableOffering.Length) return "none";
+        return _nullableOffering[index].HasValue ? _nullableOffering[index].Value.Name : "none";
+    }
+    #endif
+
     public void OnPurchase(RunContext ctx, int cardIndex)
     {
         if (!_shopActive) return;
-        if (cardIndex < 0 || cardIndex >= _offering.Length) return;
+        if (cardIndex < 0 || cardIndex >= _nullableOffering.Length) return;
         if (_purchased[cardIndex]) return;
+        if (_nullableOffering[cardIndex] == null) return;
 
-        var item = _offering[cardIndex];
+        var item = _nullableOffering[cardIndex].Value;
 
         // Deduct cost — DeductCash returns false if insufficient funds
         if (!ctx.Portfolio.DeductCash(item.Cost)) return;

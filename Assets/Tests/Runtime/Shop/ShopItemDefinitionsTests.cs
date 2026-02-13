@@ -137,21 +137,57 @@ namespace BullRun.Tests.Shop
             }
         }
 
-        [Test]
-        public void RarityWeights_SumToOne()
-        {
-            float sum = 0f;
-            for (int i = 0; i < ShopItemDefinitions.RarityWeights.Length; i++)
-            {
-                sum += ShopItemDefinitions.RarityWeights[i];
-            }
-            Assert.AreEqual(1f, sum, 0.001f);
-        }
+        // === Rarity Weight Tests ===
 
         [Test]
         public void RarityWeights_HasFourEntries()
         {
             Assert.AreEqual(4, ShopItemDefinitions.RarityWeights.Length);
+        }
+
+        [Test]
+        public void RarityWeights_SumTo100()
+        {
+            float sum = 0f;
+            for (int i = 0; i < ShopItemDefinitions.RarityWeights.Length; i++)
+            {
+                sum += ShopItemDefinitions.RarityWeights[i].Weight;
+            }
+            Assert.AreEqual(100f, sum, 0.001f);
+        }
+
+        [Test]
+        public void RarityWeights_AllPositive()
+        {
+            for (int i = 0; i < ShopItemDefinitions.RarityWeights.Length; i++)
+            {
+                Assert.Greater(ShopItemDefinitions.RarityWeights[i].Weight, 0f,
+                    $"Rarity {ShopItemDefinitions.RarityWeights[i].Rarity} has non-positive weight");
+            }
+        }
+
+        [Test]
+        public void GetWeightForRarity_ReturnsCorrectWeightForCommon()
+        {
+            Assert.AreEqual(50f, ShopItemDefinitions.GetWeightForRarity(ItemRarity.Common));
+        }
+
+        [Test]
+        public void GetWeightForRarity_ReturnsCorrectWeightForUncommon()
+        {
+            Assert.AreEqual(30f, ShopItemDefinitions.GetWeightForRarity(ItemRarity.Uncommon));
+        }
+
+        [Test]
+        public void GetWeightForRarity_ReturnsCorrectWeightForRare()
+        {
+            Assert.AreEqual(15f, ShopItemDefinitions.GetWeightForRarity(ItemRarity.Rare));
+        }
+
+        [Test]
+        public void GetWeightForRarity_ReturnsCorrectWeightForLegendary()
+        {
+            Assert.AreEqual(5f, ShopItemDefinitions.GetWeightForRarity(ItemRarity.Legendary));
         }
 
         [Test]
@@ -168,6 +204,52 @@ namespace BullRun.Tests.Shop
                 }
                 Assert.Greater(commonCount, 0, $"Category {cat} has no Common items (needed for rarity fallback)");
             }
+        }
+
+        // === Unlock Pool Tests ===
+
+        [Test]
+        public void DefaultUnlockedItems_Contains30Items()
+        {
+            Assert.AreEqual(30, ShopItemDefinitions.DefaultUnlockedItems.Count);
+        }
+
+        [Test]
+        public void DefaultUnlockedItems_ContainsAllItemIds()
+        {
+            for (int i = 0; i < ShopItemDefinitions.AllItems.Length; i++)
+            {
+                Assert.IsTrue(ShopItemDefinitions.DefaultUnlockedItems.Contains(ShopItemDefinitions.AllItems[i].Id),
+                    $"Item {ShopItemDefinitions.AllItems[i].Id} missing from DefaultUnlockedItems");
+            }
+        }
+
+        [Test]
+        public void IsUnlocked_ReturnsTrueForUnlockedItem()
+        {
+            Assert.IsTrue(ShopItemDefinitions.IsUnlocked("tool_stop_loss", ShopItemDefinitions.DefaultUnlockedItems));
+        }
+
+        [Test]
+        public void IsUnlocked_ReturnsFalseForLockedItem()
+        {
+            var restrictedPool = new HashSet<string> { "tool_stop_loss" };
+            Assert.IsFalse(ShopItemDefinitions.IsUnlocked("tool_limit_order", restrictedPool));
+        }
+
+        [Test]
+        public void GetUnlockedItems_ReturnsAllItemsWithDefaultPool()
+        {
+            var unlocked = ShopItemDefinitions.GetUnlockedItems(ShopItemDefinitions.DefaultUnlockedItems);
+            Assert.AreEqual(30, unlocked.Count);
+        }
+
+        [Test]
+        public void GetUnlockedItems_ReturnsSubsetWithRestrictedPool()
+        {
+            var restrictedPool = new HashSet<string> { "tool_stop_loss", "intel_wiretap", "perk_master_universe" };
+            var unlocked = ShopItemDefinitions.GetUnlockedItems(restrictedPool);
+            Assert.AreEqual(3, unlocked.Count);
         }
     }
 }

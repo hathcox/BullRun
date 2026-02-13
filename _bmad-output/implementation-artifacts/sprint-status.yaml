@@ -97,7 +97,7 @@ development_status:
   # === Epic 7: Draft Shop (Phase 2, Weeks 6-8) ===
   epic-7: in-progress
   7-1-shop-ui: done
-  7-2-item-pool-generation: ready-for-dev
+  7-2-item-pool-generation: done
   7-3-purchase-flow: ready-for-dev
   7-4-item-inventory-display: ready-for-dev
   epic-7-retrospective: optional

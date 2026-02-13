@@ -21,7 +21,7 @@ public class ShopUI : MonoBehaviour
     private ItemCardView[] _cards;
     private CanvasGroup _canvasGroup;
 
-    private ShopItemDef[] _items;
+    private ShopItemDef?[] _items;
     private RunContext _ctx;
     private System.Action<int> _onPurchase;
 
@@ -58,8 +58,9 @@ public class ShopUI : MonoBehaviour
 
     /// <summary>
     /// Shows the shop with the given items. Called by ShopState.Enter.
+    /// Null items indicate a category pool is exhausted — shows "SOLD OUT" state.
     /// </summary>
-    public void Show(RunContext ctx, ShopItemDef[] items, System.Action<int> onPurchase)
+    public void Show(RunContext ctx, ShopItemDef?[] items, System.Action<int> onPurchase)
     {
         _ctx = ctx;
         _items = items;
@@ -71,7 +72,14 @@ public class ShopUI : MonoBehaviour
 
         for (int i = 0; i < _cards.Length && i < items.Length; i++)
         {
-            SetupCard(i, items[i]);
+            if (items[i].HasValue)
+            {
+                SetupCard(i, items[i].Value);
+            }
+            else
+            {
+                SetupSoldOutCard(i);
+            }
         }
     }
 
@@ -115,13 +123,36 @@ public class ShopUI : MonoBehaviour
         for (int i = 0; i < _cards.Length && i < _items.Length; i++)
         {
             if (i == cardIndex) continue;
+            if (!_items[i].HasValue) continue; // sold out slot
             if (!_cards[i].PurchaseButton.interactable) continue; // already purchased
 
-            bool canAfford = _ctx.Portfolio.Cash >= _items[i].Cost;
+            bool canAfford = _ctx.Portfolio.Cash >= _items[i].Value.Cost;
             _cards[i].PurchaseButton.interactable = canAfford;
             _cards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _cards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
         }
+    }
+
+    private void SetupSoldOutCard(int index)
+    {
+        var card = _cards[index];
+        string categoryName = index switch
+        {
+            0 => "TRADING TOOL",
+            1 => "MARKET INTEL",
+            2 => "PASSIVE PERK",
+            _ => "ITEM"
+        };
+        card.CategoryLabel.text = categoryName;
+        card.NameText.text = "SOLD OUT";
+        card.DescriptionText.text = "No items available in this category";
+        card.CostText.text = "";
+        card.RarityText.text = "";
+        card.RarityBadge.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+        card.PurchaseButton.interactable = false;
+        card.ButtonText.text = "SOLD OUT";
+        card.CardBackground.color = new Color(0.15f, 0.15f, 0.15f, 0.5f);
+        card.PurchaseButton.onClick.RemoveAllListeners();
     }
 
     private void SetupCard(int index, ShopItemDef item)

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 /// <summary>
 /// All shop item definitions from GDD Section 4.
 /// Static data class — no ScriptableObjects per project rules.
@@ -25,6 +27,18 @@ public struct ShopItemDef
 public enum ItemRarity { Common, Uncommon, Rare, Legendary }
 public enum ItemCategory { TradingTool, MarketIntel, PassivePerk }
 
+public struct RarityWeight
+{
+    public ItemRarity Rarity;
+    public float Weight;
+
+    public RarityWeight(ItemRarity rarity, float weight)
+    {
+        Rarity = rarity;
+        Weight = weight;
+    }
+}
+
 /// <summary>
 /// Complete item pool for the draft shop. 30 items total: 10 per category.
 /// Rarity weights for selection probability:
@@ -32,13 +46,23 @@ public enum ItemCategory { TradingTool, MarketIntel, PassivePerk }
 /// </summary>
 public static class ShopItemDefinitions
 {
-    public static readonly float[] RarityWeights = new float[]
+    public static readonly RarityWeight[] RarityWeights = new RarityWeight[]
     {
-        0.50f, // Common
-        0.30f, // Uncommon
-        0.15f, // Rare
-        0.05f, // Legendary
+        new RarityWeight(ItemRarity.Common, 50f),
+        new RarityWeight(ItemRarity.Uncommon, 30f),
+        new RarityWeight(ItemRarity.Rare, 15f),
+        new RarityWeight(ItemRarity.Legendary, 5f),
     };
+
+    public static float GetWeightForRarity(ItemRarity rarity)
+    {
+        for (int i = 0; i < RarityWeights.Length; i++)
+        {
+            if (RarityWeights[i].Rarity == rarity)
+                return RarityWeights[i].Weight;
+        }
+        return 0f;
+    }
 
     public static readonly ShopItemDef[] AllItems = new ShopItemDef[]
     {
@@ -138,6 +162,35 @@ public static class ShopItemDefinitions
             "All shop items cost 25% less for the rest of the run",
             600, ItemRarity.Legendary, ItemCategory.PassivePerk),
     };
+
+    public static readonly HashSet<string> DefaultUnlockedItems = new HashSet<string>
+    {
+        "tool_stop_loss", "tool_limit_order", "tool_speed_trader", "tool_flash_trade",
+        "tool_margin_boost", "tool_portfolio_hedge", "tool_leverage", "tool_options_contract",
+        "tool_dark_pool", "tool_algo_bot",
+        "intel_analyst_report", "intel_earnings_calendar", "intel_insider_tip", "intel_short_interest",
+        "intel_sector_forecast", "intel_price_floor", "intel_price_ceiling", "intel_market_maker",
+        "intel_crystal_ball", "intel_wiretap",
+        "perk_volume_discount", "perk_interest_accrual", "perk_market_intuition", "perk_dividend_income",
+        "perk_risk_appetite", "perk_portfolio_insurance", "perk_compound_interest", "perk_wolf_instinct",
+        "perk_golden_parachute", "perk_master_universe",
+    };
+
+    public static bool IsUnlocked(string itemId, HashSet<string> unlockedPool)
+    {
+        return unlockedPool.Contains(itemId);
+    }
+
+    public static List<ShopItemDef> GetUnlockedItems(HashSet<string> unlockedPool)
+    {
+        var result = new List<ShopItemDef>();
+        for (int i = 0; i < AllItems.Length; i++)
+        {
+            if (unlockedPool.Contains(AllItems[i].Id))
+                result.Add(AllItems[i]);
+        }
+        return result;
+    }
 
     /// <summary>
     /// Returns all items for the given category.
