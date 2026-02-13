@@ -10,6 +10,7 @@ public class MarginCallState : IGameState
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
 
     public static MarginCallStateConfig NextConfig;
 
@@ -23,6 +24,7 @@ public class MarginCallState : IGameState
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
+            _eventScheduler = NextConfig.EventScheduler;
             NextConfig = null;
         }
 
@@ -67,7 +69,8 @@ public class MarginCallState : IGameState
                 {
                     StateMachine = _stateMachine,
                     PriceGenerator = _priceGenerator,
-                    TradeExecutor = _tradeExecutor
+                    TradeExecutor = _tradeExecutor,
+                    EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<ShopState>();
             }
@@ -98,7 +101,8 @@ public class MarginCallState : IGameState
                     RequiredTarget = target,
                     StateMachine = _stateMachine,
                     PriceGenerator = _priceGenerator,
-                    TradeExecutor = _tradeExecutor
+                    TradeExecutor = _tradeExecutor,
+                    EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<RunSummaryState>();
             }
@@ -123,4 +127,5 @@ public class MarginCallStateConfig
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
+    public EventScheduler EventScheduler;
 }

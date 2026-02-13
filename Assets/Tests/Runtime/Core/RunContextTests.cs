@@ -707,7 +707,9 @@ namespace BullRun.Tests.Core
             ctx.PeakCash = 8000f;
             ctx.BestRoundProfit = 2000f;
             ctx.TotalRunProfit = 6000f;
-            ctx.ItemsCollected = 5;
+            ctx.ActiveItems.Add("item1");
+            ctx.ActiveItems.Add("item2");
+            Assert.AreEqual(2, ctx.ItemsCollected);
             ctx.ResetForNewRun();
             Assert.AreEqual(GameConfig.StartingCapital, ctx.PeakCash, 0.01f);
             Assert.AreEqual(0f, ctx.BestRoundProfit, 0.01f);

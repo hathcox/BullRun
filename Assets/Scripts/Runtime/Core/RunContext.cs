@@ -28,9 +28,9 @@ public class RunContext
     public float PeakCash { get; internal set; }
 
     /// <summary>
-    /// Number of shop items purchased during the run.
+    /// Number of items collected during the run. Derived from ActiveItems list.
     /// </summary>
-    public int ItemsCollected { get; internal set; }
+    public int ItemsCollected => ActiveItems.Count;
 
     /// <summary>
     /// Highest single-round profit achieved during the run.
@@ -155,6 +155,8 @@ public class RunContext
     /// <summary>
     /// Updates run statistics after a round's market close.
     /// Called by MarketCloseState after liquidation.
+    /// PeakCash reflects post-liquidation cash (true realized value),
+    /// not mid-round cash which fluctuates with open positions.
     /// </summary>
     public void UpdateRunStats(float roundProfit)
     {
@@ -189,7 +191,6 @@ public class RunContext
         StartingCapital = Portfolio.Cash;
         RunCompleted = false;
         PeakCash = Portfolio.Cash;
-        ItemsCollected = 0;
         BestRoundProfit = 0f;
         TotalRunProfit = 0f;
         ReputationEarned = 0;

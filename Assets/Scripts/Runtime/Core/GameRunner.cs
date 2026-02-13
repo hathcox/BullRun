@@ -17,6 +17,7 @@ public class GameRunner : MonoBehaviour
     private RunContext _ctx;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
     private StockSidebarData _sidebarData;
     private bool _firstFrameSkipped;
 
@@ -29,6 +30,11 @@ public class GameRunner : MonoBehaviour
         _priceGenerator = new PriceGenerator();
         _tradeExecutor = new TradeExecutor();
         _stateMachine = new GameStateMachine(_ctx);
+
+        // Create event system: EventEffects processes effects, EventScheduler decides when to fire
+        var eventEffects = new EventEffects();
+        _priceGenerator.SetEventEffects(eventEffects);
+        _eventScheduler = new EventScheduler(eventEffects);
 
         // Subscribe portfolio to price updates so GetTotalValue/GetRoundProfit work
         _ctx.Portfolio.SubscribeToPriceUpdates();
@@ -81,7 +87,8 @@ public class GameRunner : MonoBehaviour
         {
             StateMachine = _stateMachine,
             PriceGenerator = _priceGenerator,
-            TradeExecutor = _tradeExecutor
+            TradeExecutor = _tradeExecutor,
+            EventScheduler = _eventScheduler
         };
         _stateMachine.TransitionTo<MarketOpenState>();
         // Sidebar is populated via MarketOpenEvent subscription above

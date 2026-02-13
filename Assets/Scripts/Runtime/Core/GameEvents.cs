@@ -24,6 +24,10 @@ public struct MarketEventFiredEvent
     public MarketEventType EventType;
     public int[] AffectedStockIds;
     public float PriceEffectPercent;
+    public string Headline;
+    public string[] AffectedTickerSymbols;
+    public bool IsPositive;
+    public float Duration;
 }
 
 /// <summary>
@@ -34,6 +38,7 @@ public struct MarketEventEndedEvent
 {
     public MarketEventType EventType;
     public int[] AffectedStockIds;
+    public string[] AffectedTickerSymbols;
 }
 
 /// <summary>
@@ -170,22 +175,10 @@ public struct ActTransitionEvent
 }
 
 /// <summary>
-/// Fired when a run is completed (win or loss). Contains full run statistics.
+/// Fired when a run ends, either by margin call or completing all rounds.
+/// Contains full run statistics including victory status.
 /// Audio system (Epic 11) subscribes for victory music.
 /// Meta-progression (Epic 9) subscribes for reputation processing.
-/// </summary>
-public struct RunCompletedEvent
-{
-    public float TotalProfit;
-    public float PeakCash;
-    public int RoundsCompleted;
-    public int ItemsCollected;
-    public int ReputationEarned;
-    public bool IsVictory;
-}
-
-/// <summary>
-/// Fired when a run ends, either by margin call or completing all rounds.
 /// </summary>
 public struct RunEndedEvent
 {
@@ -193,6 +186,7 @@ public struct RunEndedEvent
     public float FinalCash;
     public float TotalProfit;
     public bool WasMarginCalled;
+    public bool IsVictory;
     public int ReputationEarned;
     public int ItemsCollected;
     public float PeakCash;

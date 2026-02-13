@@ -145,7 +145,7 @@ public class PriceGenerator
                 float trendStrength = RandomRange(config.MinTrendStrength, config.MaxTrendStrength);
 
                 var stock = new StockInstance();
-                stock.Initialize(stockId, def.TickerSymbol, tier, startingPrice, direction, trendStrength);
+                stock.Initialize(stockId, def.TickerSymbol, tier, startingPrice, direction, trendStrength, def.Sector);
                 _activeStocks.Add(stock);
 
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD

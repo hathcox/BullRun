@@ -1,6 +1,6 @@
 # Story 6.5: Win State
 
-Status: review
+Status: done
 
 ## Story
 
@@ -72,7 +72,7 @@ so that winning a full run feels like a major achievement.
 |---------|---------|-------------------|
 | Header | "BULL RUN COMPLETE!" (gold) | "MARGIN CALL" (red) |
 | Colors | Gold, green, celebratory | Red, dark, dramatic |
-| Animation | Confetti, count-up numbers | Screen cracks, collapse |
+| Animation | Sparkles, count-up numbers | Screen cracks, collapse |
 | Stats | Full 8-round summary | Partial summary |
 | Tone | Triumphant achievement | Devastating but cinematic |
 | Reputation | 100+ bonus | 10 + 5*rounds |
@@ -140,6 +140,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-12: Story 6.5 Win State — Implemented all 6 tasks: victory detection, victory UI variant, reputation calculation, run statistics tracking, celebration effects, and RunCompletedEvent definition.
+- 2026-02-12: Code Review Fixes — H1: Made ItemsCollected a computed property (=> ActiveItems.Count), removed dead setter. H2: Consolidated RunCompletedEvent into RunEndedEvent (added IsVictory field), eliminated duplicate event publishing. H3: Reconciled TotalRunProfit with authoritative calculation in RunSummaryState. M1: Simplified victory detection to single source (ctx.RunCompleted). M3: Added negative-profit victory reputation test. M4: Fixed Dev Notes table (confetti → sparkles).
 
 ### File List
 

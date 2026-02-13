@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace BullRun.Tests.Events
@@ -141,6 +142,118 @@ namespace BullRun.Tests.Events
             var evt = new MarketEvent(MarketEventType.EarningsBeat, 2, 0.25f, 5f);
 
             Assert.IsFalse(evt.IsGlobalEvent);
+        }
+
+        // --- Multi-phase event tests (Story 5-3, Task 1) ---
+
+        [Test]
+        public void MultiPhase_NullPhases_SinglePhaseBackwardCompat()
+        {
+            // Single-phase events should work unchanged
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 5f);
+
+            Assert.IsNull(evt.Phases, "Single-phase events should have null Phases");
+            Assert.AreEqual(0, evt.CurrentPhaseIndex);
+            Assert.AreEqual(0.25f, evt.PriceEffectPercent, 0.001f);
+        }
+
+        [Test]
+        public void MultiPhase_Constructor_SetsPhases()
+        {
+            var phases = new List<MarketEventPhase>
+            {
+                new MarketEventPhase(0.80f, 5f),
+                new MarketEventPhase(-1.20f, 3f)
+            };
+
+            var evt = new MarketEvent(MarketEventType.PumpAndDump, 0, 0.80f, 8f, phases);
+
+            Assert.IsNotNull(evt.Phases);
+            Assert.AreEqual(2, evt.Phases.Count);
+            Assert.AreEqual(0, evt.CurrentPhaseIndex);
+        }
+
+        [Test]
+        public void MultiPhase_GetCurrentPhaseTarget_ReturnsFirstPhaseInitially()
+        {
+            var phases = new List<MarketEventPhase>
+            {
+                new MarketEventPhase(0.80f, 5f),
+                new MarketEventPhase(-1.20f, 3f)
+            };
+
+            var evt = new MarketEvent(MarketEventType.PumpAndDump, 0, 0.80f, 8f, phases);
+
+            Assert.AreEqual(0.80f, evt.GetCurrentPhaseTarget(), 0.001f);
+        }
+
+        [Test]
+        public void MultiPhase_TransitionsPhase_AtCorrectTime()
+        {
+            var phases = new List<MarketEventPhase>
+            {
+                new MarketEventPhase(0.80f, 5f),
+                new MarketEventPhase(-1.20f, 3f)
+            };
+
+            var evt = new MarketEvent(MarketEventType.PumpAndDump, 0, 0.80f, 8f, phases);
+
+            // During phase 0 (0-5s)
+            evt.ElapsedTime = 3f;
+            Assert.AreEqual(0, evt.CurrentPhaseIndex, "Should be in phase 0 at 3s");
+            Assert.AreEqual(0.80f, evt.GetCurrentPhaseTarget(), 0.001f);
+
+            // After phase 0 ends (5s+)
+            evt.ElapsedTime = 5.1f;
+            Assert.AreEqual(1, evt.CurrentPhaseIndex, "Should be in phase 1 at 5.1s");
+            Assert.AreEqual(-1.20f, evt.GetCurrentPhaseTarget(), 0.001f);
+        }
+
+        [Test]
+        public void MultiPhase_GetCurrentForce_UsesPhaseSpecificTiming()
+        {
+            var phases = new List<MarketEventPhase>
+            {
+                new MarketEventPhase(0.80f, 5f),
+                new MarketEventPhase(-1.20f, 3f)
+            };
+
+            var evt = new MarketEvent(MarketEventType.PumpAndDump, 0, 0.80f, 8f, phases);
+
+            // Mid-phase 0 (well into hold zone within phase 0)
+            evt.ElapsedTime = 2.5f; // 50% through 5s phase
+            float force0 = evt.GetCurrentForce();
+            Assert.AreEqual(1f, force0, 0.05f, "Should be at full force mid-phase 0");
+
+            // Start of phase 1 (should ramp from 0)
+            evt.ElapsedTime = 5.0f;
+            float force1Start = evt.GetCurrentForce();
+            Assert.AreEqual(0f, force1Start, 0.05f, "Should be near 0 at phase 1 start");
+
+            // Mid-phase 1
+            evt.ElapsedTime = 6.5f; // 50% through 3s phase
+            float force1Mid = evt.GetCurrentForce();
+            Assert.AreEqual(1f, force1Mid, 0.05f, "Should be at full force mid-phase 1");
+        }
+
+        [Test]
+        public void MultiPhase_SinglePhaseEvents_ForceUnchanged()
+        {
+            // Verify existing single-phase behavior is identical
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 10f);
+
+            evt.ElapsedTime = 5f; // Hold zone
+            float force = evt.GetCurrentForce();
+            Assert.AreEqual(1f, force, 0.01f, "Single-phase force should be unchanged");
+        }
+
+        [Test]
+        public void MarketEventPhase_StoresFields()
+        {
+            var phase = new MarketEventPhase(0.50f, 3.5f);
+
+            Assert.AreEqual(0.50f, phase.TargetPricePercent, 0.001f);
+            Assert.AreEqual(3.5f, phase.PhaseDuration, 0.001f);
         }
     }
 }

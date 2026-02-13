@@ -238,8 +238,9 @@ namespace BullRun.Tests.Core.GameStates
         public void Enter_VictoryPath_CalculatesReputationWithProfitBonus()
         {
             // Win with $4000 total profit → 100 + floor(4000/100) = 140
-            var ctx = new RunContext(4, 9, new Portfolio(5000f)); // Past round 8 = run complete
+            var ctx = new RunContext(4, 9, new Portfolio(5000f));
             ctx.StartingCapital = 1000f; // Profit = 5000 - 1000 = 4000
+            ctx.RunCompleted = true; // Must be set for victory path
 
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -287,6 +288,7 @@ namespace BullRun.Tests.Core.GameStates
             // Win with $50 profit → 100 + floor(50/100) = 100
             var ctx = new RunContext(4, 9, new Portfolio(1050f));
             ctx.StartingCapital = 1000f;
+            ctx.RunCompleted = true;
 
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -329,7 +331,8 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void Enter_WinPath_SetsIsRunCompleteTrue()
         {
-            var ctx = new RunContext(4, 9, new Portfolio(5000f)); // Past round 8 = run complete
+            var ctx = new RunContext(4, 9, new Portfolio(5000f));
+            ctx.RunCompleted = true;
             RunSummaryState.NextConfig = new RunSummaryStateConfig
             {
                 WasMarginCalled = false,
@@ -361,21 +364,22 @@ namespace BullRun.Tests.Core.GameStates
             Assert.IsFalse(RunSummaryState.IsVictory);
         }
 
-        // --- RunCompletedEvent Tests (Story 6.5 Task 6) ---
+        // --- RunEndedEvent IsVictory Tests (Story 6.5 Task 6) ---
 
         [Test]
-        public void Enter_PublishesRunCompletedEvent()
+        public void Enter_Victory_RunEndedEventHasIsVictoryTrue()
         {
             var ctx = new RunContext(4, 9, new Portfolio(5000f));
             ctx.StartingCapital = 1000f;
+            ctx.RunCompleted = true;
             ctx.PeakCash = 6000f;
             ctx.BestRoundProfit = 1200f;
             ctx.ActiveItems.Add("item1");
             ctx.ActiveItems.Add("item2");
 
-            RunCompletedEvent received = default;
+            RunEndedEvent received = default;
             bool eventFired = false;
-            EventBus.Subscribe<RunCompletedEvent>(e =>
+            EventBus.Subscribe<RunEndedEvent>(e =>
             {
                 received = e;
                 eventFired = true;
@@ -392,7 +396,7 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(ctx);
 
-            Assert.IsTrue(eventFired, "Should publish RunCompletedEvent on enter");
+            Assert.IsTrue(eventFired, "Should publish RunEndedEvent on enter");
             Assert.IsTrue(received.IsVictory);
             Assert.AreEqual(4000f, received.TotalProfit, 0.01f);
             Assert.AreEqual(6000f, received.PeakCash, 0.01f);
@@ -401,11 +405,11 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_MarginCall_PublishesRunCompletedEventWithLoss()
+        public void Enter_MarginCall_RunEndedEventHasIsVictoryFalse()
         {
-            RunCompletedEvent received = default;
+            RunEndedEvent received = default;
             bool eventFired = false;
-            EventBus.Subscribe<RunCompletedEvent>(e =>
+            EventBus.Subscribe<RunEndedEvent>(e =>
             {
                 received = e;
                 eventFired = true;
@@ -422,8 +426,36 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(_ctx);
 
-            Assert.IsTrue(eventFired, "Should publish RunCompletedEvent even on loss");
+            Assert.IsTrue(eventFired, "Should publish RunEndedEvent on loss");
             Assert.IsFalse(received.IsVictory);
+        }
+
+        // --- Negative-profit victory edge case (Story 6.5 Code Review) ---
+
+        [Test]
+        public void Enter_VictoryWithNegativeProfit_ReputationClampedToBase()
+        {
+            // Win but lose money (possible via debug jump with inflated StartingCapital)
+            var ctx = new RunContext(4, 9, new Portfolio(800f));
+            ctx.StartingCapital = 1000f; // Profit = 800 - 1000 = -200
+            ctx.RunCompleted = true;
+
+            RunEndedEvent received = default;
+            EventBus.Subscribe<RunEndedEvent>(e => received = e);
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = false,
+                RoundProfit = 0f,
+                RequiredTarget = 0f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(ctx);
+
+            // profitBonus = floor(-200/100) = -2, clamped to 0 → rep = 100
+            Assert.AreEqual(100, received.ReputationEarned, "Negative profit bonus should clamp to 0, giving base 100 rep");
         }
 
         // --- Input handling tests ---

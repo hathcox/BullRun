@@ -10,6 +10,7 @@ public class TierTransitionState : IGameState
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
     private int _previousAct;
     private float _elapsed;
 
@@ -25,6 +26,7 @@ public class TierTransitionState : IGameState
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
+            _eventScheduler = NextConfig.EventScheduler;
             _previousAct = NextConfig.PreviousAct;
             NextConfig = null;
         }
@@ -57,7 +59,8 @@ public class TierTransitionState : IGameState
             {
                 StateMachine = _stateMachine,
                 PriceGenerator = _priceGenerator,
-                TradeExecutor = _tradeExecutor
+                TradeExecutor = _tradeExecutor,
+                EventScheduler = _eventScheduler
             };
             _stateMachine.TransitionTo<MarketOpenState>();
         }
@@ -79,5 +82,6 @@ public class TierTransitionStateConfig
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
+    public EventScheduler EventScheduler;
     public int PreviousAct;
 }

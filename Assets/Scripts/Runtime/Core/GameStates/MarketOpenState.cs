@@ -11,6 +11,7 @@ public class MarketOpenState : IGameState
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
 
     public float TimeRemaining => _timeRemaining;
     public float PreviewDuration => _previewDuration;
@@ -39,6 +40,7 @@ public class MarketOpenState : IGameState
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
+            _eventScheduler = NextConfig.EventScheduler;
             NextConfig = null;
         }
 
@@ -120,7 +122,8 @@ public class MarketOpenState : IGameState
                 {
                     StateMachine = _stateMachine,
                     PriceGenerator = _priceGenerator,
-                    TradeExecutor = _tradeExecutor
+                    TradeExecutor = _tradeExecutor,
+                    EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<TradingState>();
             }
@@ -148,4 +151,5 @@ public class MarketOpenStateConfig
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
+    public EventScheduler EventScheduler;
 }

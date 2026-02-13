@@ -11,6 +11,7 @@ public class RunSummaryState : IGameState
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
     private bool _inputEnabled;
 
     /// <summary>
@@ -50,14 +51,18 @@ public class RunSummaryState : IGameState
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
+            _eventScheduler = NextConfig.EventScheduler;
             NextConfig = null;
         }
 
         float finalCash = ctx.Portfolio.Cash;
         float totalProfit = finalCash - ctx.StartingCapital;
         int roundsCompleted = ctx.CurrentRound;
-        int itemsCollected = ctx.ActiveItems.Count;
-        bool isVictory = !wasMarginCalled && (ctx.RunCompleted || ctx.IsRunComplete());
+        int itemsCollected = ctx.ItemsCollected;
+        bool isVictory = !wasMarginCalled && ctx.RunCompleted;
+
+        // Reconcile RunContext.TotalRunProfit with authoritative calculation
+        ctx.TotalRunProfit = totalProfit;
 
         // Calculate reputation: win gets 100 + profit bonus, loss gets 10 + 5*rounds
         int reputationEarned = CalculateReputation(isVictory, totalProfit, roundsCompleted);
@@ -84,21 +89,11 @@ public class RunSummaryState : IGameState
             FinalCash = finalCash,
             TotalProfit = totalProfit,
             WasMarginCalled = wasMarginCalled,
+            IsVictory = isVictory,
             ReputationEarned = reputationEarned,
             ItemsCollected = itemsCollected,
             PeakCash = ctx.PeakCash,
             BestRoundProfit = ctx.BestRoundProfit
-        });
-
-        // Publish RunCompletedEvent for meta-progression and audio systems
-        EventBus.Publish(new RunCompletedEvent
-        {
-            TotalProfit = totalProfit,
-            PeakCash = ctx.PeakCash,
-            RoundsCompleted = roundsCompleted,
-            ItemsCollected = itemsCollected,
-            ReputationEarned = reputationEarned,
-            IsVictory = isVictory
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -137,7 +132,8 @@ public class RunSummaryState : IGameState
                 {
                     StateMachine = _stateMachine,
                     PriceGenerator = _priceGenerator,
-                    TradeExecutor = _tradeExecutor
+                    TradeExecutor = _tradeExecutor,
+                    EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<MetaHubState>();
             }
@@ -185,4 +181,5 @@ public class RunSummaryStateConfig
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
+    public EventScheduler EventScheduler;
 }

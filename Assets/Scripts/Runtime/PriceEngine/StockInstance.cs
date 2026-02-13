@@ -20,6 +20,7 @@ public class StockInstance
     public TrendDirection TrendDirection { get; private set; }
     public float TrendPerSecond { get; private set; }
     public StockTier Tier { get; private set; }
+    public StockSector Sector { get; private set; }
     public StockTierConfig TierConfig { get; private set; }
 
     // Noise config from tier
@@ -39,13 +40,14 @@ public class StockInstance
     public float EventTargetPrice { get; private set; }
     public float EventStartPrice { get; set; }
 
-    public void Initialize(int stockId, string tickerSymbol, StockTier tier, float startingPrice, TrendDirection trendDirection, float trendStrength)
+    public void Initialize(int stockId, string tickerSymbol, StockTier tier, float startingPrice, TrendDirection trendDirection, float trendStrength, StockSector sector = StockSector.None)
     {
         StockId = stockId;
         TickerSymbol = tickerSymbol;
         CurrentPrice = startingPrice;
         TrendDirection = trendDirection;
         Tier = tier;
+        Sector = sector;
         TierConfig = StockTierData.GetTierConfig(tier);
 
         // Noise from tier config
@@ -79,6 +81,15 @@ public class StockInstance
                 TrendPerSecond = 0f;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Sets the stock's sector from StockDefinition data.
+    /// Called during round initialization after Initialize().
+    /// </summary>
+    public void SetSector(StockSector sector)
+    {
+        Sector = sector;
     }
 
     /// <summary>

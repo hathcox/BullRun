@@ -77,29 +77,29 @@ development_status:
   epic-4-retrospective: optional
 
   # === Epic 5: Event System (Phase 1-2, Weeks 4-7) ===
-  epic-5: backlog
-  5-1-event-scheduler: backlog
-  5-2-core-market-events: backlog
-  5-3-tier-specific-events: backlog
-  5-4-global-market-events: backlog
-  5-5-event-visual-signals: backlog
+  epic-5: in-progress
+  5-1-event-scheduler: done
+  5-2-core-market-events: done
+  5-3-tier-specific-events: review
+  5-4-global-market-events: ready-for-dev
+  5-5-event-visual-signals: ready-for-dev
   epic-5-retrospective: optional
 
   # === Epic 6: Run Structure (Phase 2, Weeks 5-8) ===
-  epic-6: in-progress
+  epic-6: done
   6-1-act-round-progression: done
   6-2-tier-transitions: done
   6-3-escalating-profit-targets: done
   6-4-stock-pool-management: done
-  6-5-win-state: review
+  6-5-win-state: done
   epic-6-retrospective: optional
 
   # === Epic 7: Draft Shop (Phase 2, Weeks 6-8) ===
-  epic-7: backlog
-  7-1-shop-ui: backlog
-  7-2-item-pool-generation: backlog
-  7-3-purchase-flow: backlog
-  7-4-item-inventory-display: backlog
+  epic-7: in-progress
+  7-1-shop-ui: ready-for-dev
+  7-2-item-pool-generation: ready-for-dev
+  7-3-purchase-flow: ready-for-dev
+  7-4-item-inventory-display: ready-for-dev
   epic-7-retrospective: optional
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===

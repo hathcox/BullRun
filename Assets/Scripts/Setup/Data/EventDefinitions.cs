@@ -194,4 +194,47 @@ public static class EventDefinitions
     {
         return _configs[eventType];
     }
+
+    private static readonly Dictionary<StockTier, List<MarketEventConfig>> _tierEventsCache =
+        new Dictionary<StockTier, List<MarketEventConfig>>();
+
+    /// <summary>
+    /// Returns all event configs available for the given tier.
+    /// Filters by TierAvailability field on each config. Results are cached.
+    /// </summary>
+    public static List<MarketEventConfig> GetEventsForTier(StockTier tier)
+    {
+        if (_tierEventsCache.TryGetValue(tier, out var cached))
+            return cached;
+
+        var result = new List<MarketEventConfig>();
+        foreach (var kvp in _configs)
+        {
+            var config = kvp.Value;
+            for (int i = 0; i < config.TierAvailability.Length; i++)
+            {
+                if (config.TierAvailability[i] == tier)
+                {
+                    result.Add(config);
+                    break;
+                }
+            }
+        }
+        _tierEventsCache[tier] = result;
+        return result;
+    }
+}
+
+/// <summary>
+/// Configuration for the event scheduler timing and counts.
+/// Controls how many events fire per round based on act progression.
+/// </summary>
+public static class EventSchedulerConfig
+{
+    public static readonly int MinEventsEarlyRounds = 2;
+    public static readonly int MaxEventsEarlyRounds = 3;
+    public static readonly int MinEventsLateRounds = 3;
+    public static readonly int MaxEventsLateRounds = 4;
+    public static readonly float EarlyBufferSeconds = 5f;
+    public static readonly float LateBufferSeconds = 5f;
 }

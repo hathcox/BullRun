@@ -13,6 +13,7 @@ public class TradingState : IGameState
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
 
     public float TimeRemaining => _timeRemaining;
     public float TimeElapsed => _roundDuration - _timeRemaining;
@@ -43,6 +44,7 @@ public class TradingState : IGameState
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
+            _eventScheduler = NextConfig.EventScheduler;
             NextConfig = null;
         }
 
@@ -64,6 +66,18 @@ public class TradingState : IGameState
             MarginCallTarget = MarginCallTargets.GetTarget(ctx.CurrentRound),
             TimeLimit = _roundDuration
         });
+
+        // Initialize event scheduler for this round
+        if (_eventScheduler != null && _priceGenerator != null)
+        {
+            _eventScheduler.EventEffects.SetActiveStocks(_priceGenerator.ActiveStocks);
+            _eventScheduler.InitializeRound(
+                ctx.CurrentRound,
+                ctx.CurrentAct,
+                ctx.CurrentTier,
+                _priceGenerator.ActiveStocks,
+                _roundDuration);
+        }
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[TradingState] Enter: Round {ctx.CurrentRound}, Duration {_roundDuration}s");
@@ -101,7 +115,8 @@ public class TradingState : IGameState
                 {
                     StateMachine = _stateMachine,
                     PriceGenerator = _priceGenerator,
-                    TradeExecutor = _tradeExecutor
+                    TradeExecutor = _tradeExecutor,
+                    EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<MarketCloseState>();
             }
@@ -110,6 +125,16 @@ public class TradingState : IGameState
 
         // Update static accessors for UI reads
         ActiveTimeRemaining = _timeRemaining;
+
+        // Update event scheduler BEFORE price updates so newly fired events affect prices this frame
+        if (_eventScheduler != null && _priceGenerator != null)
+        {
+            _eventScheduler.Update(
+                TimeElapsed,
+                deltaTime,
+                _priceGenerator.ActiveStocks,
+                ctx.CurrentTier);
+        }
 
         // Drive PriceGenerator updates
         if (_priceGenerator != null)
@@ -139,4 +164,5 @@ public class TradingStateConfig
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
+    public EventScheduler EventScheduler;
 }

@@ -12,6 +12,7 @@ public class MarketCloseState : IGameState
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
 
     /// <summary>
     /// Static accessors for UI to read market close state (one-way dependency).
@@ -39,6 +40,7 @@ public class MarketCloseState : IGameState
             _stateMachine = NextConfig.StateMachine;
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
+            _eventScheduler = NextConfig.EventScheduler;
             NextConfig = null;
         }
 
@@ -116,7 +118,8 @@ public class MarketCloseState : IGameState
                 {
                     StateMachine = _stateMachine,
                     PriceGenerator = _priceGenerator,
-                    TradeExecutor = _tradeExecutor
+                    TradeExecutor = _tradeExecutor,
+                    EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<MarginCallState>();
             }
@@ -141,4 +144,5 @@ public class MarketCloseStateConfig
     public GameStateMachine StateMachine;
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
+    public EventScheduler EventScheduler;
 }
