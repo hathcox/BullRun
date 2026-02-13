@@ -61,7 +61,7 @@ public class ShopTransaction
         catch (System.Exception ex)
         {
             // Rollback: remove item if it was added (safe no-op if not in list)
-            ctx.ActiveItems.Remove(item.Id);
+            ctx?.ActiveItems.Remove(item.Id);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.LogWarning($"[ShopTransaction] Purchase failed for {item.Name}: {ex.Message}");
             #endif
