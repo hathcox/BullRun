@@ -130,12 +130,16 @@ public class ChartRenderer
             _averageBuyPrice = _totalSharesBought > 0 ? totalCost / _totalSharesBought : 0f;
             _hasOpenPosition = true;
         }
-        else if (!evt.IsBuy)
+        else if (!evt.IsBuy && !evt.IsShort)
         {
-            // Sell clears position
-            _totalSharesBought = 0;
-            _averageBuyPrice = 0f;
-            _hasOpenPosition = false;
+            // Reduce share count; only clear position when fully sold
+            _totalSharesBought -= evt.Shares;
+            if (_totalSharesBought <= 0)
+            {
+                _totalSharesBought = 0;
+                _averageBuyPrice = 0f;
+                _hasOpenPosition = false;
+            }
         }
     }
 

@@ -21,20 +21,38 @@ public class RoundTimerUI : MonoBehaviour
     private Text _timerText;
     private Image _progressBarFill;
     private RectTransform _timerTextRect;
+    private GameObject _container;
 
     private bool _initialized;
+    private bool _wasActive;
 
-    public void Initialize(Text timerText, Image progressBarFill)
+    public void Initialize(Text timerText, Image progressBarFill, GameObject container)
     {
         _timerText = timerText;
         _progressBarFill = progressBarFill;
         _timerTextRect = timerText != null ? timerText.GetComponent<RectTransform>() : null;
+        _container = container;
         _initialized = true;
+        _wasActive = false;
+
+        // Start hidden until TradingState activates
+        if (_container != null) _container.SetActive(false);
     }
 
     private void Update()
     {
-        if (!_initialized || !TradingState.IsActive) return;
+        if (!_initialized) return;
+
+        bool isActive = TradingState.IsActive;
+
+        // Show/hide container when TradingState activates/deactivates
+        if (isActive != _wasActive)
+        {
+            _wasActive = isActive;
+            if (_container != null) _container.SetActive(isActive);
+        }
+
+        if (!isActive) return;
 
         // Read authoritative timer values from TradingState (one-way UI dependency)
         float timeRemaining = TradingState.ActiveTimeRemaining;

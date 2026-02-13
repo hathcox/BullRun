@@ -20,17 +20,41 @@ public static class GameConfig
     public static readonly int RoundsPerAct = 2;
     public static readonly int TotalActs = 4;
 
+    // Tier transition display duration (fade in + hold + fade out)
+    public static readonly float TransitionDurationSeconds = 3f;
+
     /// <summary>
-    /// Act configuration: act number, tier, round range, display name.
+    /// Debug starting cash per round for F3 skip-to-round.
+    /// Approximate expected cash at each round based on compounding.
+    /// 0-indexed (index 0 = Round 1).
+    /// </summary>
+    public static readonly float[] DebugStartingCash = new float[]
+    {
+        1000f,   // Round 1
+        1500f,   // Round 2
+        2000f,   // Round 3
+        3000f,   // Round 4
+        4000f,   // Round 5
+        6000f,   // Round 6
+        8000f,   // Round 7
+        12000f,  // Round 8
+    };
+
+    /// <summary>
+    /// Act configuration: act number, tier, round range, display name, tagline.
     /// Indexed by act number (1-based, so index 0 is unused).
     /// </summary>
     public static readonly ActConfig[] Acts = new ActConfig[]
     {
-        new ActConfig(0, StockTier.Penny, 0, 0, ""),          // Unused index 0
-        new ActConfig(1, StockTier.Penny, 1, 2, "Penny Stocks"),
-        new ActConfig(2, StockTier.LowValue, 3, 4, "Low-Value Stocks"),
-        new ActConfig(3, StockTier.MidValue, 5, 6, "Mid-Value Stocks"),
-        new ActConfig(4, StockTier.BlueChip, 7, 8, "Blue Chips"),
+        new ActConfig(0, StockTier.Penny, 0, 0, "", ""),
+        new ActConfig(1, StockTier.Penny, 1, 2, "Penny Stocks",
+            "The Penny Pit \u2014 Where Fortunes Begin"),
+        new ActConfig(2, StockTier.LowValue, 3, 4, "Low-Value Stocks",
+            "Rising Stakes \u2014 Trends and Reversals"),
+        new ActConfig(3, StockTier.MidValue, 5, 6, "Mid-Value Stocks",
+            "The Trading Floor \u2014 Sectors in Motion"),
+        new ActConfig(4, StockTier.BlueChip, 7, 8, "Blue Chips",
+            "Blue Chip Arena \u2014 The Big Leagues"),
     };
 }
 
@@ -44,13 +68,16 @@ public class ActConfig
     public readonly int FirstRound;
     public readonly int LastRound;
     public readonly string DisplayName;
+    public readonly string Tagline;
 
-    public ActConfig(int actNumber, StockTier tier, int firstRound, int lastRound, string displayName)
+    public ActConfig(int actNumber, StockTier tier, int firstRound, int lastRound,
+        string displayName, string tagline)
     {
         ActNumber = actNumber;
         Tier = tier;
         FirstRound = firstRound;
         LastRound = lastRound;
         DisplayName = displayName;
+        Tagline = tagline;
     }
 }

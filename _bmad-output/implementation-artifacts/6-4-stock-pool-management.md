@@ -1,6 +1,6 @@
 # Story 6.4: Stock Pool Management
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,33 +20,33 @@ so that each tier introduces new trading dynamics and the run feels fresh.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Verify StockPoolData completeness (AC: 1, 2, 3, 4, 7)
-  - [ ] Story 1.5 created StockPoolData with pools per tier
-  - [ ] Verify each tier has enough stocks (6-8) to allow variety across rounds
-  - [ ] Verify stock names fit the Wall Street satire / synthwave aesthetic
-  - [ ] Verify sector tags exist on Mid and Blue Chip stocks for Sector Rotation events
-  - [ ] File: `Scripts/Setup/Data/StockPoolData.cs` (verify/extend)
-- [ ] Task 2: Verify PriceGenerator stock selection (AC: 5, 6)
-  - [ ] Story 1.5 created `SelectStocksForRound()` — verify it selects randomly from tier pool
-  - [ ] Verify no duplicates within a round
-  - [ ] Verify correct count per tier: 3-4 for Penny/Low, 2-3 for Mid/Blue
-  - [ ] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (verify)
-- [ ] Task 3: Ensure per-tier behavior differentiation (AC: 1, 2, 3, 4)
-  - [ ] Penny stocks: high noise amplitude, minimal reversion, prone to wild swings
-  - [ ] Low-value: moderate noise, moderate reversion, trend reversals visible
-  - [ ] Mid-value: lower noise, faster reversion, stocks in same sector should trend similarly
-  - [ ] Blue chips: low noise, fast reversion, very stable with occasional dramatic events
-  - [ ] Verify StockTierData configs produce these behaviors
-  - [ ] File: `Scripts/Setup/Data/StockTierData.cs` (verify/tune)
-- [ ] Task 4: Add sector correlation for Mid-Value stocks (AC: 3)
-  - [ ] When multiple mid-value stocks share a sector, apply a shared trend bias
-  - [ ] Shared bias: stocks in the same sector have correlated trend directions (both bull or both bear)
-  - [ ] Correlation applied during PriceGenerator.InitializeRound() for mid/blue tiers
-  - [ ] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend)
-- [ ] Task 5: Add F2 god mode for testing stock behavior (AC: 1-4)
-  - [ ] F2 enables god mode: infinite cash, cannot fail margin call
-  - [ ] Allows dev to focus on observing stock behavior without gameplay pressure
-  - [ ] File: `Scripts/Editor/DebugManager.cs` (extend)
+- [x] Task 1: Verify StockPoolData completeness (AC: 1, 2, 3, 4, 7)
+  - [x] Story 1.5 created StockPoolData with pools per tier
+  - [x] Verify each tier has enough stocks (6-8) to allow variety across rounds
+  - [x] Verify stock names fit the Wall Street satire / synthwave aesthetic
+  - [x] Verify sector tags exist on Mid and Blue Chip stocks for Sector Rotation events
+  - [x] File: `Scripts/Setup/Data/StockPoolData.cs` (verify/extend)
+- [x] Task 2: Verify PriceGenerator stock selection (AC: 5, 6)
+  - [x] Story 1.5 created `SelectStocksForRound()` — verify it selects randomly from tier pool
+  - [x] Verify no duplicates within a round
+  - [x] Verify correct count per tier: 3-4 for Penny/Low, 2-3 for Mid/Blue
+  - [x] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (verify)
+- [x] Task 3: Ensure per-tier behavior differentiation (AC: 1, 2, 3, 4)
+  - [x] Penny stocks: high noise amplitude, minimal reversion, prone to wild swings
+  - [x] Low-value: moderate noise, moderate reversion, trend reversals visible
+  - [x] Mid-value: lower noise, faster reversion, stocks in same sector should trend similarly
+  - [x] Blue chips: low noise, fast reversion, very stable with occasional dramatic events
+  - [x] Verify StockTierData configs produce these behaviors
+  - [x] File: `Scripts/Setup/Data/StockTierData.cs` (verify/tune)
+- [x] Task 4: Add sector correlation for Mid-Value stocks (AC: 3)
+  - [x] When multiple mid-value stocks share a sector, apply a shared trend bias
+  - [x] Shared bias: stocks in the same sector have correlated trend directions (both bull or both bear)
+  - [x] Correlation applied during PriceGenerator.InitializeRound() for mid/blue tiers
+  - [x] File: `Scripts/Runtime/PriceEngine/PriceGenerator.cs` (extend)
+- [x] Task 5: Add F2 god mode for testing stock behavior (AC: 1-4)
+  - [x] F2 enables god mode: infinite cash, cannot fail margin call
+  - [x] Allows dev to focus on observing stock behavior without gameplay pressure
+  - [x] File: `Scripts/Editor/DebugManager.cs` (extend)
 
 ## Dev Notes
 
@@ -109,8 +109,50 @@ F2 toggles god mode:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+N/A — No blocking issues encountered.
 
 ### Completion Notes List
 
+- **Task 1:** Verified StockPoolData pools. MidValue had 5 stocks (below 6 minimum for variety), added SOLR (Solar Flare Energy, Energy sector) and GENX (GenX Biotech, Health sector). BlueChip had 5 stocks, added FRGE (Forge Dynamics, Industrial sector). Final counts: Penny 8, LowValue 6, MidValue 7, BlueChip 6. All names/tickers fit Wall Street satire theme. All Mid/Blue stocks have sector tags. New tests: `AllPools_HaveAtLeast6Stocks_ForRoundVariety`, `BlueChipStocks_AllHaveSectorTags`.
+- **Task 2:** Verified SelectStocksForRound() uses Fisher-Yates partial shuffle for random, duplicate-free selection. Count ranges correct per tier config (3-4 for Penny/Low, 2-3 for Mid/Blue). Added `SelectStocksForRound_ProducesVariety_AcrossMultipleRounds` test.
+- **Task 3:** Verified StockTierData configs produce correct behavior differentiation. Noise amplitude decreases Penny(0.12) → LowValue(0.08) → MidValue(0.05) → BlueChip(0.025). Mean reversion increases 0.30 → 0.35 → 0.40 → 0.50. Existing tests already cover ordering assertions. No changes needed.
+- **Task 4:** Implemented sector correlation in PriceGenerator.InitializeRound(). For MidValue and BlueChip tiers, stocks sharing a sector now receive the same trend direction (Bull/Bear/Neutral). Penny and LowValue tiers retain independent per-stock trends. Added 3 new tests: sector correlation for Mid, sector correlation for Blue, and no-correlation for Penny.
+- **Task 5:** Implemented F2 god mode in DebugManager. Toggle sets cash to $999M and keeps it topped up each frame. MarginCallState auto-passes margin check when god mode active. Gold "GOD MODE" text indicator in top-left corner. Added Portfolio.SetCash() internal method for debug access.
+
 ### File List
+
+- `Assets/Scripts/Setup/Data/StockPoolData.cs` — Added 3 new stocks (SOLR, GENX for MidValue; FRGE for BlueChip)
+- `Assets/Scripts/Runtime/PriceEngine/PriceGenerator.cs` — Added sector correlation logic in InitializeRound() for Mid/Blue tiers
+- `Assets/Scripts/Editor/DebugManager.cs` — Implemented F2 god mode (toggle, cash, indicator)
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` — Added SetCash() internal method for debug tools
+- `Assets/Scripts/Runtime/Core/GameStates/MarginCallState.cs` — Added god mode bypass for margin call check
+- `Assets/Tests/Runtime/PriceEngine/StockPoolDataTests.cs` — Added AllPools_HaveAtLeast6Stocks_ForRoundVariety, BlueChipStocks_AllHaveSectorTags; removed outdated PennyPool/BlueChipPool individual tests
+- `Assets/Tests/Runtime/PriceEngine/PriceGeneratorTests.cs` — Added sector correlation tests (Mid, Blue, no-correlation Penny), variety test
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.6 (code-review workflow)
+**Date:** 2026-02-12
+**Outcome:** Approve (after fixes)
+
+### Action Items
+
+- [x] [AI-Review][HIGH] Cache GUIStyle in DrawGodModeIndicator() — was allocating new GUIStyle every OnGUI call [DebugManager.cs:211-219]
+- [x] [AI-Review][HIGH] Fix god mode bypass falsifying RoundCompletedEvent.RoundProfit — now bypasses comparison without mutating event data [MarginCallState.cs:34]
+- [x] [AI-Review][MED] Sector correlation tests could silently pass with 0 testable rounds — added Assert.Greater(testableRounds, 0) [PriceGeneratorTests.cs:601,641]
+- [x] [AI-Review][MED] Variety test only covered Penny tier — expanded to test all tiers [PriceGeneratorTests.cs:534]
+- [x] [AI-Review][MED] LowValue tier missing no-correlation test — added InitializeRound_LowValueStocks_NoSectorCorrelation [PriceGeneratorTests.cs]
+- [x] [AI-Review][LOW] DebugManager docstring said "F2 reserved" despite being implemented — updated [DebugManager.cs:8-9]
+
+**Total:** 2 High, 3 Medium, 1 Low — all 6 fixed.
+
+**Notes:** L2 (god mode not restoring cash on toggle off) left as-is — acceptable for a debug tool. Devs understand F2 is a test aid, not a gameplay feature.
+
+## Change Log
+
+- 2026-02-12: Story 6.4 implemented — stock pool verification, sector correlation for Mid/Blue tiers, F2 god mode debug tool
+- 2026-02-12: Code review fixes — cached GUIStyle, fixed event data integrity in god mode bypass, strengthened test assertions, added LowValue no-correlation test

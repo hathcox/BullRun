@@ -29,6 +29,9 @@ public class TradingHUD : MonoBehaviour
     private bool _initialized;
     private bool _dirty;
 
+    // Tier theme reference — background image for tinting
+    private Image _topBarBackground;
+
     public void Initialize(RunContext runContext, int currentRound, float roundDuration,
         Text cashText, Text portfolioValueText, Text portfolioChangeText,
         Text roundProfitText, Text targetText, Image targetProgressBar)
@@ -51,12 +54,23 @@ public class TradingHUD : MonoBehaviour
 
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<TradeExecutedEvent>(OnTradeExecuted);
+        EventBus.Subscribe<ActTransitionEvent>(OnActTransition);
+    }
+
+    /// <summary>
+    /// Sets the top bar background image reference for tier theme tinting.
+    /// Called by UISetup after creating the HUD.
+    /// </summary>
+    public void SetTopBarBackground(Image topBarBackground)
+    {
+        _topBarBackground = topBarBackground;
     }
 
     private void OnDestroy()
     {
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Unsubscribe<TradeExecutedEvent>(OnTradeExecuted);
+        EventBus.Unsubscribe<ActTransitionEvent>(OnActTransition);
     }
 
     /// <summary>
@@ -126,8 +140,8 @@ public class TradingHUD : MonoBehaviour
             _roundProfitText.color = GetProfitColor(roundProfit);
         }
 
-        // Margin target
-        float target = MarginCallTargets.GetTarget(_currentRound);
+        // Margin target — use live round from RunContext, not cached _currentRound
+        float target = MarginCallTargets.GetTarget(_runContext.CurrentRound);
         float targetProgress = CalculateTargetProgress(roundProfit, target);
 
         if (_targetText != null)
@@ -138,6 +152,26 @@ public class TradingHUD : MonoBehaviour
             _targetProgressBar.fillAmount = targetProgress;
             float timeProgress = _roundDuration > 0f ? Mathf.Clamp01(_elapsedTime / _roundDuration) : 0f;
             _targetProgressBar.color = GetTargetBarColor(targetProgress, timeProgress);
+        }
+    }
+
+    private void OnActTransition(ActTransitionEvent evt)
+    {
+        var theme = TierVisualData.GetThemeForAct(evt.NewAct);
+        ApplyTierTheme(theme);
+    }
+
+    /// <summary>
+    /// Applies tier visual theme colors to HUD elements.
+    /// Updates top bar background tint with the tier's background color.
+    /// </summary>
+    public void ApplyTierTheme(TierVisualTheme theme)
+    {
+        if (_topBarBackground != null)
+        {
+            _topBarBackground.color = new Color(
+                theme.BackgroundTint.r, theme.BackgroundTint.g,
+                theme.BackgroundTint.b, 0.9f);
         }
     }
 

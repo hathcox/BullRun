@@ -9,6 +9,8 @@ using UnityEngine.InputSystem;
 public class RunSummaryState : IGameState
 {
     private GameStateMachine _stateMachine;
+    private PriceGenerator _priceGenerator;
+    private TradeExecutor _tradeExecutor;
     private bool _inputEnabled;
 
     /// <summary>
@@ -46,6 +48,8 @@ public class RunSummaryState : IGameState
             roundProfit = NextConfig.RoundProfit;
             requiredTarget = NextConfig.RequiredTarget;
             _stateMachine = NextConfig.StateMachine;
+            _priceGenerator = NextConfig.PriceGenerator;
+            _tradeExecutor = NextConfig.TradeExecutor;
             NextConfig = null;
         }
 
@@ -112,6 +116,12 @@ public class RunSummaryState : IGameState
         {
             if (_stateMachine != null)
             {
+                MetaHubState.NextConfig = new MetaHubStateConfig
+                {
+                    StateMachine = _stateMachine,
+                    PriceGenerator = _priceGenerator,
+                    TradeExecutor = _tradeExecutor
+                };
                 _stateMachine.TransitionTo<MetaHubState>();
             }
         }
@@ -141,4 +151,6 @@ public class RunSummaryStateConfig
     public float RoundProfit;
     public float RequiredTarget;
     public GameStateMachine StateMachine;
+    public PriceGenerator PriceGenerator;
+    public TradeExecutor TradeExecutor;
 }

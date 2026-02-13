@@ -318,6 +318,208 @@ namespace BullRun.Tests.Core
             Assert.AreEqual(StockTier.BlueChip, RunContext.GetTierForAct(4));
         }
 
+        // --- CurrentTier / CurrentActConfig Tests (Story 6.1 Task 2) ---
+
+        [Test]
+        public void CurrentTier_Act1_ReturnsPenny()
+        {
+            var ctx = new RunContext(1, 1, new Portfolio(1000f));
+            Assert.AreEqual(StockTier.Penny, ctx.CurrentTier);
+        }
+
+        [Test]
+        public void CurrentTier_Act3_ReturnsMidValue()
+        {
+            var ctx = new RunContext(3, 5, new Portfolio(1000f));
+            Assert.AreEqual(StockTier.MidValue, ctx.CurrentTier);
+        }
+
+        [Test]
+        public void CurrentTier_UpdatesAfterAdvanceRound()
+        {
+            var ctx = new RunContext(1, 2, new Portfolio(1000f));
+            Assert.AreEqual(StockTier.Penny, ctx.CurrentTier);
+            ctx.AdvanceRound(); // Round 3 = Act 2
+            Assert.AreEqual(StockTier.LowValue, ctx.CurrentTier);
+        }
+
+        [Test]
+        public void CurrentActConfig_ReturnsCorrectConfig()
+        {
+            var ctx = new RunContext(2, 3, new Portfolio(1000f));
+            var config = ctx.CurrentActConfig;
+            Assert.AreEqual(2, config.ActNumber);
+            Assert.AreEqual(StockTier.LowValue, config.Tier);
+            Assert.AreEqual("Low-Value Stocks", config.DisplayName);
+        }
+
+        [Test]
+        public void CurrentActConfig_Act4_ReturnsBlueChip()
+        {
+            var ctx = new RunContext(4, 7, new Portfolio(1000f));
+            var config = ctx.CurrentActConfig;
+            Assert.AreEqual(4, config.ActNumber);
+            Assert.AreEqual(StockTier.BlueChip, config.Tier);
+            Assert.AreEqual(7, config.FirstRound);
+            Assert.AreEqual(8, config.LastRound);
+        }
+
+        [Test]
+        public void CurrentActConfig_ClampsWhenBeyondRound8()
+        {
+            // After round 8, AdvanceRound sets act to 5 which is out of bounds
+            var ctx = new RunContext(1, 8, new Portfolio(1000f));
+            ctx.AdvanceRound(); // Round 9, Act 5
+            Assert.AreEqual(5, ctx.CurrentAct);
+            // Should clamp to Act 4 config, not throw
+            var config = ctx.CurrentActConfig;
+            Assert.AreEqual(4, config.ActNumber);
+            Assert.AreEqual(StockTier.BlueChip, config.Tier);
+        }
+
+        // --- GetTierForRound Tests (Story 6.1 Task 1) ---
+
+        [Test]
+        public void GetTierForRound_Round1_ReturnsPenny()
+        {
+            Assert.AreEqual(StockTier.Penny, RunContext.GetTierForRound(1));
+        }
+
+        [Test]
+        public void GetTierForRound_Round4_ReturnsLowValue()
+        {
+            Assert.AreEqual(StockTier.LowValue, RunContext.GetTierForRound(4));
+        }
+
+        [Test]
+        public void GetTierForRound_Round7_ReturnsBlueChip()
+        {
+            Assert.AreEqual(StockTier.BlueChip, RunContext.GetTierForRound(7));
+        }
+
+        // --- Full 8-Round Progression Test (Story 6.1) ---
+
+        [Test]
+        public void FullProgression_8Rounds_AllActsAndTiersCorrect()
+        {
+            var ctx = RunContext.StartNewRun();
+
+            // Expected: Round → Act → Tier
+            var expected = new (int round, int act, StockTier tier)[]
+            {
+                (1, 1, StockTier.Penny),
+                (2, 1, StockTier.Penny),
+                (3, 2, StockTier.LowValue),
+                (4, 2, StockTier.LowValue),
+                (5, 3, StockTier.MidValue),
+                (6, 3, StockTier.MidValue),
+                (7, 4, StockTier.BlueChip),
+                (8, 4, StockTier.BlueChip),
+            };
+
+            // Round 1 — starting state
+            Assert.AreEqual(expected[0].round, ctx.CurrentRound);
+            Assert.AreEqual(expected[0].act, ctx.CurrentAct);
+            Assert.AreEqual(expected[0].tier, ctx.CurrentTier);
+
+            // Advance through rounds 2-8
+            for (int i = 1; i < expected.Length; i++)
+            {
+                ctx.AdvanceRound();
+                Assert.AreEqual(expected[i].round, ctx.CurrentRound,
+                    $"Round mismatch at step {i}");
+                Assert.AreEqual(expected[i].act, ctx.CurrentAct,
+                    $"Act mismatch at round {expected[i].round}");
+                Assert.AreEqual(expected[i].tier, ctx.CurrentTier,
+                    $"Tier mismatch at round {expected[i].round}");
+            }
+
+            // After round 8, run should be complete
+            Assert.IsFalse(ctx.IsRunComplete(), "Round 8 should NOT be complete yet");
+            ctx.AdvanceRound(); // Round 9
+            Assert.IsTrue(ctx.IsRunComplete(), "After round 8, run should be complete");
+        }
+
+        // --- ResetForNewRun Tests (Story 6.1 Code Review) ---
+
+        [Test]
+        public void ResetForNewRun_ResetsActAndRoundTo1()
+        {
+            var ctx = new RunContext(3, 5, new Portfolio(1000f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            ctx.ResetForNewRun();
+            Assert.AreEqual(1, ctx.CurrentAct);
+            Assert.AreEqual(1, ctx.CurrentRound);
+        }
+
+        [Test]
+        public void ResetForNewRun_ResetsPortfolioToStartingCapital()
+        {
+            var ctx = new RunContext(3, 5, new Portfolio(500f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            ctx.ResetForNewRun();
+            Assert.AreEqual(GameConfig.StartingCapital, ctx.Portfolio.Cash, 0.001f);
+        }
+
+        [Test]
+        public void ResetForNewRun_ClearsActiveItems()
+        {
+            var ctx = new RunContext(1, 1, new Portfolio(1000f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            ctx.ActiveItems.Add("TestItem");
+            ctx.ResetForNewRun();
+            Assert.AreEqual(0, ctx.ActiveItems.Count);
+        }
+
+        [Test]
+        public void ResetForNewRun_PublishesRunStartedEvent()
+        {
+            var ctx = new RunContext(3, 5, new Portfolio(1000f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            RunStartedEvent received = default;
+            bool wasCalled = false;
+            EventBus.Subscribe<RunStartedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+            ctx.ResetForNewRun();
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(GameConfig.StartingCapital, received.StartingCapital, 0.001f);
+        }
+
+        // --- GetActForRound Edge Cases (Story 6.1 Code Review) ---
+
+        [Test]
+        public void GetActForRound_Round0_ClampsToAct1()
+        {
+            Assert.AreEqual(1, RunContext.GetActForRound(0));
+        }
+
+        [Test]
+        public void GetActForRound_NegativeRound_ClampsToAct1()
+        {
+            Assert.AreEqual(1, RunContext.GetActForRound(-5));
+        }
+
+        [Test]
+        public void GetTierForAct_Act0_ClampsToAct1Tier()
+        {
+            Assert.AreEqual(StockTier.Penny, RunContext.GetTierForAct(0));
+        }
+
+        [Test]
+        public void GetTierForAct_NegativeAct_ClampsToAct1Tier()
+        {
+            Assert.AreEqual(StockTier.Penny, RunContext.GetTierForAct(-1));
+        }
+
+        [Test]
+        public void GetTierForAct_Act5_ClampsToAct4Tier()
+        {
+            Assert.AreEqual(StockTier.BlueChip, RunContext.GetTierForAct(5));
+        }
+
         // --- IsRunComplete Tests (Story 4.5 Task 2) ---
 
         [Test]
@@ -351,6 +553,86 @@ namespace BullRun.Tests.Core
             var ctx = RunContext.StartNewRun();
             ctx.CurrentRound = 8;
             Assert.IsFalse(ctx.IsRunComplete());
+        }
+
+        // --- Debug Jump Tests (Story 6.3 Code Review) ---
+
+        [Test]
+        public void DebugJump_ToRound5_SetsCorrectAct()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentAct = RunContext.GetActForRound(5);
+            ctx.CurrentRound = 5;
+            Assert.AreEqual(3, ctx.CurrentAct);
+        }
+
+        [Test]
+        public void DebugJump_ToRound7_SetsCorrectAct()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.CurrentAct = RunContext.GetActForRound(7);
+            ctx.CurrentRound = 7;
+            Assert.AreEqual(4, ctx.CurrentAct);
+        }
+
+        [Test]
+        public void DebugJump_StartingCapitalUpdated_MatchesDebugCash()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.AreEqual(GameConfig.StartingCapital, ctx.StartingCapital, 0.001f);
+
+            // Simulate debug jump: replace portfolio and update StartingCapital
+            float debugCash = GameConfig.DebugStartingCash[4]; // Round 5 = $4000
+            ctx.Portfolio = new Portfolio(debugCash);
+            ctx.StartingCapital = debugCash;
+
+            Assert.AreEqual(debugCash, ctx.StartingCapital, 0.001f);
+            Assert.AreEqual(debugCash, ctx.Portfolio.Cash, 0.001f);
+        }
+
+        [Test]
+        public void DebugJump_RunSummaryProfit_CorrectAfterJump()
+        {
+            // Verifies the fix for H2: StartingCapital must update so RunSummary
+            // calculates totalProfit = finalCash - StartingCapital correctly
+            var ctx = RunContext.StartNewRun();
+
+            // Jump to Round 7 with $8000 debug cash
+            float debugCash = GameConfig.DebugStartingCash[6]; // $8000
+            ctx.CurrentAct = RunContext.GetActForRound(7);
+            ctx.CurrentRound = 7;
+            ctx.Portfolio = new Portfolio(debugCash);
+            ctx.StartingCapital = debugCash;
+
+            // Simulate losing $500 during trading
+            ctx.Portfolio.OpenPosition("TEST", 10, 50f); // -$500
+            ctx.Portfolio.ClosePosition("TEST", 10, 0f); // cash now $7500
+
+            float totalProfit = ctx.Portfolio.Cash - ctx.StartingCapital;
+            Assert.AreEqual(-500f, totalProfit, 1f,
+                "Total profit after debug jump should reflect actual trading result, not inflated by debug cash");
+        }
+
+        [Test]
+        public void DebugJump_AllRounds_ActAndCashCorrect()
+        {
+            var ctx = RunContext.StartNewRun();
+
+            for (int round = 1; round <= GameConfig.TotalRounds; round++)
+            {
+                int expectedAct = RunContext.GetActForRound(round);
+                float expectedCash = GameConfig.DebugStartingCash[round - 1];
+
+                ctx.CurrentAct = expectedAct;
+                ctx.CurrentRound = round;
+                ctx.Portfolio = new Portfolio(expectedCash);
+                ctx.StartingCapital = expectedCash;
+
+                Assert.AreEqual(expectedAct, ctx.CurrentAct, $"Act mismatch for round {round}");
+                Assert.AreEqual(round, ctx.CurrentRound, $"Round mismatch for round {round}");
+                Assert.AreEqual(expectedCash, ctx.Portfolio.Cash, 0.01f, $"Cash mismatch for round {round}");
+                Assert.AreEqual(expectedCash, ctx.StartingCapital, 0.01f, $"StartingCapital mismatch for round {round}");
+            }
         }
     }
 }

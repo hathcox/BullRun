@@ -12,18 +12,34 @@ public class ChartUI : MonoBehaviour
     private Text[] _axisLabels;
     private Image _timeProgressBar;
     private Text _currentPriceLabel;
+    private RectTransform _priceLabelRect;
+    private RectTransform _canvasRect;
     private Text _stockNameLabel;
     private Text _stockPriceLabel;
     private int _labelCount = 5;
 
+    // Chart bounds in world space (for positioning price label at chart head)
+    private float _chartLeft, _chartRight, _chartBottom, _chartTop;
+
     public void Initialize(ChartRenderer chartRenderer, Text[] axisLabels,
-        Image timeProgressBar, Text currentPriceLabel)
+        Image timeProgressBar, Text currentPriceLabel, Rect chartBounds)
     {
         _chartRenderer = chartRenderer;
         _axisLabels = axisLabels;
         _timeProgressBar = timeProgressBar;
         _currentPriceLabel = currentPriceLabel;
         _labelCount = axisLabels != null ? axisLabels.Length : 5;
+
+        _chartLeft = chartBounds.xMin;
+        _chartRight = chartBounds.xMax;
+        _chartBottom = chartBounds.yMin;
+        _chartTop = chartBounds.yMax;
+
+        if (_currentPriceLabel != null)
+        {
+            _priceLabelRect = _currentPriceLabel.GetComponent<RectTransform>();
+            _canvasRect = _currentPriceLabel.canvas.GetComponent<RectTransform>();
+        }
     }
 
     public void SetStockLabels(Text stockNameLabel, Text stockPriceLabel)
@@ -91,9 +107,42 @@ public class ChartUI : MonoBehaviour
 
     private void UpdateCurrentPriceLabel()
     {
-        if (_currentPriceLabel == null || _chartRenderer.PointCount == 0) return;
+        if (_currentPriceLabel == null || _chartRenderer.PointCount < 2) return;
 
         _currentPriceLabel.text = FormatPrice(_chartRenderer.CurrentPrice);
+
+        // Position label at chart head (last data point)
+        if (_priceLabelRect == null) return;
+
+        var lastPoint = _chartRenderer.GetPoint(_chartRenderer.PointCount - 1);
+        _chartRenderer.GetLivePriceRange(out float minPrice, out float maxPrice);
+        float priceRange = maxPrice - minPrice;
+        if (priceRange < 0.01f)
+        {
+            float center = (minPrice + maxPrice) * 0.5f;
+            minPrice = center - 0.5f;
+            priceRange = 1f;
+        }
+
+        // Match ChartLineView's 10% padding
+        float chartHeight = _chartTop - _chartBottom;
+        float padding = chartHeight * 0.1f;
+        float paddedBottom = _chartBottom + padding;
+        float paddedTop = _chartTop - padding;
+
+        float worldX = Mathf.Lerp(_chartLeft, _chartRight, lastPoint.NormalizedTime);
+        float worldY = Mathf.Lerp(paddedBottom, paddedTop, (lastPoint.Price - minPrice) / priceRange);
+
+        // Convert world position to canvas position via screen space
+        var cam = Camera.main;
+        if (cam != null && _canvasRect != null)
+        {
+            Vector3 screenPos = cam.WorldToScreenPoint(new Vector3(worldX, worldY, 0f));
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                _canvasRect, screenPos, null, out Vector2 localPoint);
+            // Offset right so label doesn't overlap the line head
+            _priceLabelRect.anchoredPosition = new Vector2(localPoint.x + 10f, localPoint.y);
+        }
     }
 
     private void UpdateStockPriceLabel()

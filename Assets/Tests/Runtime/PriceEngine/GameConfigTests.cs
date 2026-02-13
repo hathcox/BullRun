@@ -112,6 +112,52 @@ namespace BullRun.Tests.PriceEngine
             Assert.AreEqual("Blue Chips", act.DisplayName);
         }
 
+        // --- Tier Transition Config (Story 6.2 Task 5) ---
+
+        [Test]
+        public void TransitionDurationSeconds_Is3()
+        {
+            Assert.AreEqual(3f, GameConfig.TransitionDurationSeconds);
+        }
+
+        [Test]
+        public void Acts_Act1_HasTagline()
+        {
+            var act = GameConfig.Acts[1];
+            Assert.AreEqual("The Penny Pit \u2014 Where Fortunes Begin", act.Tagline);
+        }
+
+        [Test]
+        public void Acts_Act2_HasTagline()
+        {
+            var act = GameConfig.Acts[2];
+            Assert.AreEqual("Rising Stakes \u2014 Trends and Reversals", act.Tagline);
+        }
+
+        [Test]
+        public void Acts_Act3_HasTagline()
+        {
+            var act = GameConfig.Acts[3];
+            Assert.AreEqual("The Trading Floor \u2014 Sectors in Motion", act.Tagline);
+        }
+
+        [Test]
+        public void Acts_Act4_HasTagline()
+        {
+            var act = GameConfig.Acts[4];
+            Assert.AreEqual("Blue Chip Arena \u2014 The Big Leagues", act.Tagline);
+        }
+
+        [Test]
+        public void Acts_AllActsHaveNonEmptyTaglines()
+        {
+            for (int i = 1; i <= GameConfig.TotalActs; i++)
+            {
+                Assert.IsFalse(string.IsNullOrEmpty(GameConfig.Acts[i].Tagline),
+                    $"Act {i} has empty tagline");
+            }
+        }
+
         [Test]
         public void Acts_RoundsCoverAllRounds_NoGapsOrOverlaps()
         {
@@ -129,6 +175,47 @@ namespace BullRun.Tests.PriceEngine
             for (int r = 1; r <= 8; r++)
             {
                 Assert.IsTrue(covered[r], $"Round {r} not covered by any act");
+            }
+        }
+
+        // --- Debug Starting Cash (Story 6.3 Task 5) ---
+
+        [Test]
+        public void DebugStartingCash_Has8Entries()
+        {
+            Assert.AreEqual(8, GameConfig.DebugStartingCash.Length);
+        }
+
+        [Test]
+        public void DebugStartingCash_MatchesStorySpec()
+        {
+            Assert.AreEqual(1000f, GameConfig.DebugStartingCash[0], 0.01f); // Round 1
+            Assert.AreEqual(1500f, GameConfig.DebugStartingCash[1], 0.01f); // Round 2
+            Assert.AreEqual(2000f, GameConfig.DebugStartingCash[2], 0.01f); // Round 3
+            Assert.AreEqual(3000f, GameConfig.DebugStartingCash[3], 0.01f); // Round 4
+            Assert.AreEqual(4000f, GameConfig.DebugStartingCash[4], 0.01f); // Round 5
+            Assert.AreEqual(6000f, GameConfig.DebugStartingCash[5], 0.01f); // Round 6
+            Assert.AreEqual(8000f, GameConfig.DebugStartingCash[6], 0.01f); // Round 7
+            Assert.AreEqual(12000f, GameConfig.DebugStartingCash[7], 0.01f); // Round 8
+        }
+
+        [Test]
+        public void DebugStartingCash_AllPositive()
+        {
+            for (int i = 0; i < GameConfig.DebugStartingCash.Length; i++)
+            {
+                Assert.Greater(GameConfig.DebugStartingCash[i], 0f,
+                    $"Debug starting cash for Round {i + 1} should be positive");
+            }
+        }
+
+        [Test]
+        public void DebugStartingCash_MonotonicallyIncreasing()
+        {
+            for (int i = 1; i < GameConfig.DebugStartingCash.Length; i++)
+            {
+                Assert.GreaterOrEqual(GameConfig.DebugStartingCash[i], GameConfig.DebugStartingCash[i - 1],
+                    $"Debug cash for Round {i + 1} should be >= Round {i}");
             }
         }
     }

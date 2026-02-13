@@ -103,6 +103,7 @@ public static class UISetup
             targetValue.GetComponent<Text>(),
             targetBar
         );
+        tradingHUD.SetTopBarBackground(topBar.GetComponent<Image>());
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Setup] TradingHUD created: round={currentRound}, target=${MarginCallTargets.GetTarget(currentRound):F0}");
@@ -158,6 +159,7 @@ public static class UISetup
         var sidebarData = new StockSidebarData();
         var sidebar = sidebarParent.AddComponent<StockSidebar>();
         sidebar.Initialize(sidebarData, entryViews);
+        sidebar.SetSidebarBackground(sidebarPanel.GetComponent<Image>());
 
         // Wire click handlers
         for (int i = 0; i < maxStocks; i++)
@@ -454,13 +456,247 @@ public static class UISetup
 
         // Initialize RoundTimerUI MonoBehaviour
         var roundTimerUI = timerParent.AddComponent<RoundTimerUI>();
-        roundTimerUI.Initialize(timerTextGo.GetComponent<Text>(), progressFill);
+        roundTimerUI.Initialize(timerTextGo.GetComponent<Text>(), progressFill, containerGo);
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log("[Setup] RoundTimerUI created: centered below top bar");
         #endif
 
         return roundTimerUI;
+    }
+
+    /// <summary>
+    /// Generates the Run Summary overlay. Shows "MARGIN CALL" or "BULL RUN!" header,
+    /// run stats, and "Press any key to continue" prompt.
+    /// Subscribes to RunEndedEvent.
+    /// </summary>
+    public static RunSummaryUI ExecuteRunSummaryUI()
+    {
+        var overlayParent = new GameObject("RunSummaryOverlay");
+
+        var canvasGo = new GameObject("RunSummaryCanvas");
+        canvasGo.transform.SetParent(overlayParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 110; // Above everything
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Full-screen darkened background
+        var bgGo = CreatePanel("RunSummaryBg", canvasGo.transform);
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.95f);
+
+        var canvasGroup = bgGo.AddComponent<CanvasGroup>();
+
+        // Center panel
+        var centerPanel = new GameObject("CenterPanel");
+        centerPanel.transform.SetParent(bgGo.transform, false);
+        var centerRect = centerPanel.AddComponent<RectTransform>();
+        centerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        centerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        centerRect.pivot = new Vector2(0.5f, 0.5f);
+        centerRect.sizeDelta = new Vector2(500f, 350f);
+
+        var vlg = centerPanel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 16f;
+        vlg.padding = new RectOffset(20, 20, 20, 20);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Header
+        var headerGo = CreateLabel("Header", centerPanel.transform, "RUN COMPLETE",
+            new Color(0f, 1f, 0.4f, 1f), 32);
+        headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // Stats
+        var statsGo = CreateLabel("Stats", centerPanel.transform, "", new Color(0.8f, 0.8f, 0.8f, 1f), 16);
+        statsGo.GetComponent<RectTransform>().sizeDelta = new Vector2(400f, 120f);
+
+        // Prompt
+        var promptGo = CreateLabel("Prompt", centerPanel.transform, "Press any key to continue",
+            new Color(0.6f, 0.6f, 0.6f, 1f), 14);
+
+        // Initialize MonoBehaviour
+        var runSummaryUI = overlayParent.AddComponent<RunSummaryUI>();
+        runSummaryUI.Initialize(
+            bgGo,
+            headerGo.GetComponent<Text>(),
+            statsGo.GetComponent<Text>(),
+            promptGo.GetComponent<Text>(),
+            canvasGroup
+        );
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] RunSummaryUI created: full-screen overlay");
+        #endif
+
+        return runSummaryUI;
+    }
+
+    /// <summary>
+    /// Generates the Round Results overlay. Shows "ROUND X COMPLETE" with profit,
+    /// target status, and total cash. Subscribes to RoundCompletedEvent.
+    /// </summary>
+    public static RoundResultsUI ExecuteRoundResultsUI()
+    {
+        var overlayParent = new GameObject("RoundResultsOverlay");
+
+        var canvasGo = new GameObject("RoundResultsCanvas");
+        canvasGo.transform.SetParent(overlayParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 105; // Above game UI, below RunSummary
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Full-screen darkened background
+        var bgGo = CreatePanel("RoundResultsBg", canvasGo.transform);
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.9f);
+
+        var canvasGroup = bgGo.AddComponent<CanvasGroup>();
+
+        // Center panel
+        var centerPanel = new GameObject("CenterPanel");
+        centerPanel.transform.SetParent(bgGo.transform, false);
+        var centerRect = centerPanel.AddComponent<RectTransform>();
+        centerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        centerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        centerRect.pivot = new Vector2(0.5f, 0.5f);
+        centerRect.sizeDelta = new Vector2(400f, 250f);
+
+        var vlg = centerPanel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 12f;
+        vlg.padding = new RectOffset(20, 20, 20, 20);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Header
+        var headerGo = CreateLabel("Header", centerPanel.transform, "ROUND 1 COMPLETE",
+            new Color(0f, 1f, 0.4f, 1f), 28);
+        headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // Stats
+        var statsGo = CreateLabel("Stats", centerPanel.transform, "", new Color(0.8f, 0.8f, 0.8f, 1f), 16);
+        statsGo.GetComponent<RectTransform>().sizeDelta = new Vector2(350f, 80f);
+
+        // Checkmark/X indicator
+        var checkGo = CreateLabel("Checkmark", centerPanel.transform, "\u2713",
+            new Color(0f, 1f, 0.4f, 1f), 48);
+
+        // Initialize MonoBehaviour
+        var roundResultsUI = overlayParent.AddComponent<RoundResultsUI>();
+        roundResultsUI.Initialize(
+            bgGo,
+            headerGo.GetComponent<Text>(),
+            statsGo.GetComponent<Text>(),
+            checkGo.GetComponent<Text>(),
+            canvasGroup
+        );
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] RoundResultsUI created: full-screen overlay");
+        #endif
+
+        return roundResultsUI;
+    }
+
+    /// <summary>
+    /// Generates the Tier Transition overlay panel with dramatic act reveal layout.
+    /// Shows "ACT X" (large header), tier subtitle, and tagline with fade animation.
+    /// Replaces the simpler ActTransitionUI for richer visual presentation.
+    /// Subscribes to ActTransitionEvent via TierTransitionUI.
+    /// </summary>
+    public static TierTransitionUI ExecuteTierTransitionUI()
+    {
+        var overlayParent = new GameObject("TierTransitionOverlay");
+
+        var canvasGo = new GameObject("TierTransitionCanvas");
+        canvasGo.transform.SetParent(overlayParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 108; // Above game UI, below RunSummary
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Full-screen darkened background
+        var bgGo = CreatePanel("TierTransitionBg", canvasGo.transform);
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.95f);
+
+        var canvasGroup = bgGo.AddComponent<CanvasGroup>();
+
+        // Center panel for vertical layout
+        var centerPanel = new GameObject("CenterPanel");
+        centerPanel.transform.SetParent(bgGo.transform, false);
+        var centerRect = centerPanel.AddComponent<RectTransform>();
+        centerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        centerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        centerRect.pivot = new Vector2(0.5f, 0.5f);
+        centerRect.sizeDelta = new Vector2(700f, 250f);
+
+        var vlg = centerPanel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 12f;
+        vlg.padding = new RectOffset(20, 20, 20, 20);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // "ACT 2" — large, bold, gold header
+        var actHeaderGo = CreateLabel("ActHeader", centerPanel.transform, "ACT 2",
+            new Color(1f, 0.85f, 0f, 1f), 48);
+        actHeaderGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // "LOW-VALUE STOCKS" — subtitle, white
+        var subtitleGo = CreateLabel("TierSubtitle", centerPanel.transform, "LOW-VALUE STOCKS",
+            Color.white, 28);
+        subtitleGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // "Rising Stakes — Trends and Reversals" — tagline, smaller, muted color
+        var taglineGo = CreateLabel("Tagline", centerPanel.transform,
+            "Rising Stakes \u2014 Trends and Reversals",
+            new Color(0.7f, 0.7f, 0.8f, 1f), 18);
+        taglineGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
+
+        // Initialize TierTransitionUI MonoBehaviour
+        var tierTransitionUI = overlayParent.AddComponent<TierTransitionUI>();
+        tierTransitionUI.Initialize(
+            bgGo,
+            actHeaderGo.GetComponent<Text>(),
+            subtitleGo.GetComponent<Text>(),
+            taglineGo.GetComponent<Text>(),
+            canvasGroup
+        );
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] TierTransitionUI created: full-screen overlay with act/tier/tagline");
+        #endif
+
+        return tierTransitionUI;
     }
 
     private static GameObject CreatePanel(string name, Transform parent)

@@ -20,6 +20,7 @@ namespace BullRun.Tests.Core.GameStates
         public void TearDown()
         {
             ShopState.NextConfig = null;
+            TierTransitionState.NextConfig = null;
             EventBus.Clear();
         }
 

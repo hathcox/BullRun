@@ -38,7 +38,7 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void Enter_WithZeroProfit_TriggersMarginCall()
         {
-            // Round 1 target is $200. Default RoundProfit is 0 → margin call
+            // Round 1 target is $200. Default RoundProfit is 0 -> margin call
             MarginCallTriggeredEvent received = default;
             bool eventFired = false;
             EventBus.Subscribe<MarginCallTriggeredEvent>(e =>
@@ -62,7 +62,6 @@ namespace BullRun.Tests.Core.GameStates
         public void Enter_WhenProfitMeetsTarget_TransitionsToShopState()
         {
             // Set round profit above target ($200 for round 1)
-            // Simulate profit by giving portfolio enough cash gain
             MarketCloseState.RoundProfit = 250f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
@@ -100,7 +99,7 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void Enter_WhenProfitBelowTarget_TransitionsToRunSummaryState()
         {
-            MarketCloseState.RoundProfit = 100f; // Below $200 target
+            MarketCloseState.RoundProfit = 30f; // Below $200 target
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -124,15 +123,15 @@ namespace BullRun.Tests.Core.GameStates
                 eventFired = true;
             });
 
-            MarketCloseState.RoundProfit = 50f; // Below $200 target
+            MarketCloseState.RoundProfit = 30f; // Below $200 target
 
             _state.Enter(_ctx);
 
             Assert.IsTrue(eventFired);
             Assert.AreEqual(1, received.RoundNumber);
-            Assert.AreEqual(50f, received.RoundProfit, 0.01f);
+            Assert.AreEqual(30f, received.RoundProfit, 0.01f);
             Assert.AreEqual(200f, received.RequiredTarget, 0.01f);
-            Assert.AreEqual(150f, received.Shortfall, 0.01f);
+            Assert.AreEqual(170f, received.Shortfall, 0.01f);
         }
 
         [Test]
@@ -222,7 +221,7 @@ namespace BullRun.Tests.Core.GameStates
             bool eventFired = false;
             EventBus.Subscribe<RoundCompletedEvent>(e => eventFired = true);
 
-            MarketCloseState.RoundProfit = 50f; // Below $200 target
+            MarketCloseState.RoundProfit = 30f; // Below $200 target
 
             _state.Enter(_ctx);
 

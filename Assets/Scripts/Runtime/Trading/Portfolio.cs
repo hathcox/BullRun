@@ -20,6 +20,14 @@ public class Portfolio
     }
 
     /// <summary>
+    /// Sets cash directly. Used by debug tools (F2 god mode).
+    /// </summary>
+    internal void SetCash(float amount)
+    {
+        Cash = amount;
+    }
+
+    /// <summary>
     /// Subscribes to PriceUpdatedEvent to cache latest prices per stock.
     /// </summary>
     public void SubscribeToPriceUpdates()

@@ -8,7 +8,8 @@ using UnityEngine;
 // Runtime-only: called by GameRunner.Start(), not during F5 rebuild.
 public static class DebugSetup
 {
-    public static void Execute(PriceGenerator priceGenerator = null, ChartRenderer chartRenderer = null)
+    public static void Execute(PriceGenerator priceGenerator = null, ChartRenderer chartRenderer = null,
+        RunContext runContext = null, GameStateMachine stateMachine = null, TradeExecutor tradeExecutor = null)
     {
         var debugGo = new GameObject("DebugManager");
         var mgr = debugGo.AddComponent<DebugManager>();
@@ -17,6 +18,8 @@ public static class DebugSetup
             mgr.SetPriceGenerator(priceGenerator);
         if (chartRenderer != null)
             mgr.SetChartRenderer(chartRenderer);
+        if (runContext != null && stateMachine != null)
+            mgr.SetGameContext(runContext, stateMachine, tradeExecutor);
 
         Debug.Log("[Setup] DebugManager created");
     }

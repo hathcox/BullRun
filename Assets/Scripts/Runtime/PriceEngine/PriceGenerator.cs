@@ -98,6 +98,7 @@ public class PriceGenerator
 
     /// <summary>
     /// Creates stock instances for a new round by selecting from named stock pools.
+    /// For Mid-Value and Blue Chip tiers, stocks in the same sector share a trend direction.
     /// </summary>
     public void InitializeRound(int act, int round)
     {
@@ -111,10 +112,36 @@ public class PriceGenerator
             var selections = SelectStocksForRound(tier);
             var config = StockTierData.GetTierConfig(tier);
 
+            // For Mid/Blue tiers, pre-compute sector trend directions
+            bool useSectorCorrelation = (tier == StockTier.MidValue || tier == StockTier.BlueChip);
+            Dictionary<StockSector, TrendDirection> sectorTrends = null;
+
+            if (useSectorCorrelation)
+            {
+                sectorTrends = new Dictionary<StockSector, TrendDirection>();
+                foreach (var def in selections)
+                {
+                    if (def.Sector != StockSector.None && !sectorTrends.ContainsKey(def.Sector))
+                    {
+                        sectorTrends[def.Sector] = PickRandomTrendDirection();
+                    }
+                }
+            }
+
             foreach (var def in selections)
             {
                 float startingPrice = RandomRange(config.MinPrice, config.MaxPrice);
-                TrendDirection direction = PickRandomTrendDirection();
+                TrendDirection direction;
+
+                if (useSectorCorrelation && def.Sector != StockSector.None)
+                {
+                    direction = sectorTrends[def.Sector];
+                }
+                else
+                {
+                    direction = PickRandomTrendDirection();
+                }
+
                 float trendStrength = RandomRange(config.MinTrendStrength, config.MaxTrendStrength);
 
                 var stock = new StockInstance();
@@ -122,7 +149,7 @@ public class PriceGenerator
                 _activeStocks.Add(stock);
 
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[PriceEngine] Stock initialized: {def.TickerSymbol} \"{def.DisplayName}\" ({tier}) @ ${startingPrice:F2}, Trend: {direction}, Strength: {trendStrength:F4}/s");
+                Debug.Log($"[PriceEngine] Stock initialized: {def.TickerSymbol} \"{def.DisplayName}\" ({tier}) @ ${startingPrice:F2}, Trend: {direction}, Strength: {trendStrength:F4}/s{(useSectorCorrelation ? $" [Sector: {def.Sector}]" : "")}");
                 #endif
 
                 stockId++;

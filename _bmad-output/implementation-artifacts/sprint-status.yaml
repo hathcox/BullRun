@@ -60,15 +60,15 @@ development_status:
   epic-2-retrospective: optional
 
   # === Epic 3: Chart Rendering (Phase 1, Weeks 1-4) ===
-  epic-3: in-progress
-  3-1-real-time-price-chart: in-progress
-  3-2-trading-hud: in-progress
-  3-3-stock-selection-sidebar: in-progress
-  3-4-positions-panel: in-progress
+  epic-3: done
+  3-1-real-time-price-chart: done
+  3-2-trading-hud: done
+  3-3-stock-selection-sidebar: done
+  3-4-positions-panel: done
   epic-3-retrospective: optional
 
   # === Epic 4: Round Management (Phase 1-2, Weeks 3-6) ===
-  epic-4: in-progress
+  epic-4: done
   4-1-round-timer: done
   4-2-market-open-phase: done
   4-3-auto-liquidation: done
@@ -77,20 +77,20 @@ development_status:
   epic-4-retrospective: optional
 
   # === Epic 5: Event System (Phase 1-2, Weeks 4-7) ===
-  epic-5: in-progress
-  5-1-event-scheduler: ready-for-dev
-  5-2-core-market-events: ready-for-dev
-  5-3-tier-specific-events: ready-for-dev
-  5-4-global-market-events: ready-for-dev
-  5-5-event-visual-signals: ready-for-dev
+  epic-5: backlog
+  5-1-event-scheduler: backlog
+  5-2-core-market-events: backlog
+  5-3-tier-specific-events: backlog
+  5-4-global-market-events: backlog
+  5-5-event-visual-signals: backlog
   epic-5-retrospective: optional
 
   # === Epic 6: Run Structure (Phase 2, Weeks 5-8) ===
   epic-6: in-progress
-  6-1-act-round-progression: ready-for-dev
-  6-2-tier-transitions: ready-for-dev
-  6-3-escalating-profit-targets: ready-for-dev
-  6-4-stock-pool-management: ready-for-dev
+  6-1-act-round-progression: done
+  6-2-tier-transitions: done
+  6-3-escalating-profit-targets: done
+  6-4-stock-pool-management: done
   6-5-win-state: ready-for-dev
   epic-6-retrospective: optional
 

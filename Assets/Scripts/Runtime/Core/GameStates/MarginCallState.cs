@@ -29,7 +29,17 @@ public class MarginCallState : IGameState
         float roundProfit = MarketCloseState.RoundProfit;
         float target = MarginCallTargets.GetTarget(ctx.CurrentRound);
 
-        if (roundProfit >= target)
+        bool targetMet = roundProfit >= target;
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (DebugManager.IsGodMode && !targetMet)
+        {
+            Debug.Log($"[MarginCallState] GOD MODE — bypassing margin call (Round {ctx.CurrentRound}, actual profit: ${roundProfit:F2} vs target: ${target:F2})");
+            targetMet = true;
+        }
+        #endif
+
+        if (targetMet)
         {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[MarginCallState] Round {ctx.CurrentRound} PASSED: ${roundProfit:F2} >= ${target:F2}");
@@ -80,7 +90,9 @@ public class MarginCallState : IGameState
                     WasMarginCalled = true,
                     RoundProfit = roundProfit,
                     RequiredTarget = target,
-                    StateMachine = _stateMachine
+                    StateMachine = _stateMachine,
+                    PriceGenerator = _priceGenerator,
+                    TradeExecutor = _tradeExecutor
                 };
                 _stateMachine.TransitionTo<RunSummaryState>();
             }

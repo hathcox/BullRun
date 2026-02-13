@@ -54,12 +54,26 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecutePositionsPanel(_ctx.Portfolio);
         UISetup.ExecuteRoundTimer();
 
+        // Create overlay UIs that subscribe to state transition events
+        UISetup.ExecuteRoundResultsUI();
+        UISetup.ExecuteRunSummaryUI();
+        UISetup.ExecuteTierTransitionUI();
+
+        // Re-populate sidebar whenever a new round starts (including run restarts)
+        var priceGen = _priceGenerator;
+        var sidebarRef = _sidebarData;
+        EventBus.Subscribe<MarketOpenEvent>(_ =>
+        {
+            sidebarRef.InitializeForRound(
+                new List<StockInstance>(priceGen.ActiveStocks));
+        });
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring
         ChartRenderer chartRendererRef = null;
         var holder = Object.FindObjectOfType<ChartDataHolder>();
         if (holder != null) chartRendererRef = holder.Renderer;
-        DebugSetup.Execute(_priceGenerator, chartRendererRef);
+        DebugSetup.Execute(_priceGenerator, chartRendererRef, _ctx, _stateMachine, _tradeExecutor);
         #endif
 
         // Kick off the game loop — skip MetaHub placeholder
@@ -70,10 +84,7 @@ public class GameRunner : MonoBehaviour
             TradeExecutor = _tradeExecutor
         };
         _stateMachine.TransitionTo<MarketOpenState>();
-
-        // Populate sidebar with stocks (MarketOpenState.Enter already initialized them)
-        _sidebarData.InitializeForRound(
-            new List<StockInstance>(_priceGenerator.ActiveStocks));
+        // Sidebar is populated via MarketOpenEvent subscription above
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log("[GameRunner] Start: All runtime systems created, game loop started");

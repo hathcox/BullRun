@@ -75,6 +75,8 @@ public static class StockPoolData
         new StockDefinition("MDCR", "MedCore Health", StockTier.MidValue, StockSector.Health, "Your health is our quarterly target."),
         new StockDefinition("TRDE", "TradeLane Logistics", StockTier.MidValue, StockSector.Industrial, "Moving boxes, moving markets."),
         new StockDefinition("CHIP", "ChipForge Semi", StockTier.MidValue, StockSector.Tech, "Silicon dreams and supply chain nightmares."),
+        new StockDefinition("SOLR", "Solar Flare Energy", StockTier.MidValue, StockSector.Energy, "Harnessing the sun, burning through cash."),
+        new StockDefinition("GENX", "GenX Biotech", StockTier.MidValue, StockSector.Health, "Editing genes and investor expectations."),
     };
 
     // --- Blue Chip Stocks: Stable, rare dramatic events ---
@@ -85,6 +87,7 @@ public static class StockPoolData
         new StockDefinition("OMNI", "OmniCorp International", StockTier.BlueChip, StockSector.Tech, "We own everything you use."),
         new StockDefinition("VALT", "Vault Financial", StockTier.BlueChip, StockSector.Finance, "Where the big money sleeps."),
         new StockDefinition("CRWN", "Crown Pharma", StockTier.BlueChip, StockSector.Health, "Healing the world, one patent at a time."),
+        new StockDefinition("FRGE", "Forge Dynamics", StockTier.BlueChip, StockSector.Industrial, "Forging the future, one merger at a time."),
     };
 
     private static readonly Dictionary<StockTier, StockDefinition[]> _pools = new Dictionary<StockTier, StockDefinition[]>

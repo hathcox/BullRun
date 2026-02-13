@@ -60,6 +60,7 @@ public class TradingState : IGameState
         {
             RoundNumber = ctx.CurrentRound,
             Act = ctx.CurrentAct,
+            TierDisplayName = ctx.CurrentActConfig.DisplayName,
             MarginCallTarget = MarginCallTargets.GetTarget(ctx.CurrentRound),
             TimeLimit = _roundDuration
         });

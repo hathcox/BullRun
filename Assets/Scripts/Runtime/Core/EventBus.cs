@@ -34,10 +34,19 @@ public static class EventBus
         var type = typeof(T);
         if (_subscribers.TryGetValue(type, out var handlers))
         {
-            // Iterate a copy to allow subscribe/unsubscribe during dispatch
+            // Iterate a copy to allow subscribe/unsubscribe during dispatch.
+            // Catch subscriber exceptions so one bad handler doesn't block
+            // the caller or other subscribers.
             for (int i = handlers.Count - 1; i >= 0; i--)
             {
-                ((Action<T>)handlers[i]).Invoke(eventData);
+                try
+                {
+                    ((Action<T>)handlers[i]).Invoke(eventData);
+                }
+                catch (System.Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"[EventBus] Exception in {type.Name} subscriber: {ex}");
+                }
             }
         }
     }

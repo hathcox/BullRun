@@ -12,9 +12,9 @@ public class EventEffects
     private readonly List<MarketEvent> _activeEvents = new List<MarketEvent>();
     private readonly List<MarketEvent> _eventsToRemove = new List<MarketEvent>();
 
-    // Track start/target prices per event for direct targeting
-    private readonly Dictionary<MarketEvent, float> _eventStartPrices = new Dictionary<MarketEvent, float>();
-    private readonly Dictionary<MarketEvent, float> _eventTargetPrices = new Dictionary<MarketEvent, float>();
+    // Track start/target prices per (event, stockId) pair for direct targeting
+    private readonly Dictionary<(MarketEvent, int), float> _eventStartPrices = new Dictionary<(MarketEvent, int), float>();
+    private readonly Dictionary<(MarketEvent, int), float> _eventTargetPrices = new Dictionary<(MarketEvent, int), float>();
 
     public int ActiveEventCount => _activeEvents.Count;
 
@@ -49,15 +49,16 @@ public class EventEffects
         if (force <= 0f)
             return stock.CurrentPrice;
 
-        // Capture start/target prices on first application
-        if (!_eventStartPrices.ContainsKey(evt))
+        // Capture start/target prices on first application per stock
+        var key = (evt, stock.StockId);
+        if (!_eventStartPrices.ContainsKey(key))
         {
-            _eventStartPrices[evt] = stock.CurrentPrice;
-            _eventTargetPrices[evt] = stock.CurrentPrice * (1f + evt.PriceEffectPercent);
+            _eventStartPrices[key] = stock.CurrentPrice;
+            _eventTargetPrices[key] = stock.CurrentPrice * (1f + evt.PriceEffectPercent);
         }
 
-        float startPrice = _eventStartPrices[evt];
-        float targetPrice = _eventTargetPrices[evt];
+        float startPrice = _eventStartPrices[key];
+        float targetPrice = _eventTargetPrices[key];
 
         // Direct Lerp from start to target based on force curve
         return Mathf.Lerp(startPrice, targetPrice, force);
@@ -95,9 +96,18 @@ public class EventEffects
             Debug.Log($"[Events] Event ended: {expired.EventType}");
             #endif
 
-            // Clean up tracked prices
-            _eventStartPrices.Remove(expired);
-            _eventTargetPrices.Remove(expired);
+            // Clean up tracked prices for all stocks affected by this event
+            var keysToRemove = new List<(MarketEvent, int)>();
+            foreach (var key in _eventStartPrices.Keys)
+            {
+                if (key.Item1 == expired)
+                    keysToRemove.Add(key);
+            }
+            for (int j = 0; j < keysToRemove.Count; j++)
+            {
+                _eventStartPrices.Remove(keysToRemove[j]);
+                _eventTargetPrices.Remove(keysToRemove[j]);
+            }
 
             _activeEvents.Remove(expired);
         }

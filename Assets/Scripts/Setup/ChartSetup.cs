@@ -8,8 +8,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class ChartSetup
 {
-    // Chart occupies ~60% center of screen per GDD layout spec
-    private static readonly float ChartWidthPercent = 0.60f;
+    // Chart occupies center of screen between sidebar (240px left) and positions panel (180px right)
+    private static readonly float ChartWidthPercent = 0.55f;
     private static readonly float ChartHeightPercent = 0.70f;
     private static readonly int AxisLabelCount = 5;
     private static readonly Color BackgroundColor = new Color(0.039f, 0.055f, 0.153f, 1f); // #0A0E27 dark navy
@@ -116,6 +116,16 @@ public static class ChartSetup
             }
         });
 
+        // Apply tier theme colors when act changes
+        var chartLineViewRef = chartLineView;
+        var chartUIRef = chartUI;
+        EventBus.Subscribe<ActTransitionEvent>(evt =>
+        {
+            var theme = TierVisualData.GetThemeForAct(evt.NewAct);
+            var config = TierVisualData.ToChartVisualConfig(theme);
+            chartLineViewRef.ApplyTierTheme(config);
+        });
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Setup] ChartSystem created: bounds={chartBounds}, labels={AxisLabelCount}");
         #endif
@@ -183,9 +193,11 @@ public static class ChartSetup
 
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // Create Y-axis labels on right side
+        // Create Y-axis labels on right side — must fit between chart edge and positions panel (180px from right)
         var axisLabels = new Text[AxisLabelCount];
-        float chartRightScreenX = 0.5f + ChartWidthPercent / 2f; // Right edge of chart in viewport
+        // 960 = half canvas width. Positions panel occupies rightmost 180px (780-960 from center).
+        // Place labels just left of positions panel with 10px margin.
+        float axisLabelX = 960f - 180f - 70f - 10f; // = 700 from center
 
         for (int i = 0; i < AxisLabelCount; i++)
         {
@@ -197,8 +209,8 @@ public static class ChartSetup
             float yNorm = (float)i / (AxisLabelCount - 1);
             float yPos = Mathf.Lerp(-540f * ChartHeightPercent, 540f * ChartHeightPercent, yNorm);
 
-            rectTransform.anchoredPosition = new Vector2(960f * chartRightScreenX - 30f, yPos);
-            rectTransform.sizeDelta = new Vector2(80f, 30f);
+            rectTransform.anchoredPosition = new Vector2(axisLabelX, yPos);
+            rectTransform.sizeDelta = new Vector2(70f, 30f);
 
             var text = labelGo.AddComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -232,12 +244,12 @@ public static class ChartSetup
         fillImage.fillMethod = Image.FillMethod.Horizontal;
         fillImage.fillAmount = 0f;
 
-        // Create current price label at chart head
+        // Create current price label at chart head — aligned with axis labels
         var priceLabelGo = new GameObject("CurrentPriceLabel");
         priceLabelGo.transform.SetParent(canvasGo.transform);
         var priceRect = priceLabelGo.AddComponent<RectTransform>();
-        priceRect.anchoredPosition = new Vector2(960f * chartRightScreenX - 30f, 0f);
-        priceRect.sizeDelta = new Vector2(80f, 30f);
+        priceRect.anchoredPosition = new Vector2(axisLabelX, 0f);
+        priceRect.sizeDelta = new Vector2(70f, 30f);
         var priceText = priceLabelGo.AddComponent<Text>();
         priceText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         priceText.fontSize = 16;
@@ -280,7 +292,7 @@ public static class ChartSetup
 
         // Initialize ChartUI MonoBehaviour
         var chartUIComponent = chartParent.AddComponent<ChartUI>();
-        chartUIComponent.Initialize(chartRenderer, axisLabels, fillImage, priceText);
+        chartUIComponent.Initialize(chartRenderer, axisLabels, fillImage, priceText, chartBounds);
         chartUIComponent.SetStockLabels(stockNameText, stockPriceText);
         return chartUIComponent;
     }

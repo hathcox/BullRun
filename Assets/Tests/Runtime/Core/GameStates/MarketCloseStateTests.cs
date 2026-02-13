@@ -16,6 +16,7 @@ namespace BullRun.Tests.Core.GameStates
         {
             EventBus.Clear();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
+            _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
             _sm = new GameStateMachine(_ctx);
             _priceGenerator = new PriceGenerator();
             _tradeExecutor = new TradeExecutor();
@@ -130,6 +131,7 @@ namespace BullRun.Tests.Core.GameStates
         public void Enter_MarketClosedEvent_HasCorrectRoundNumber()
         {
             var ctx = new RunContext(1, 3, new Portfolio(1000f));
+            ctx.Portfolio.StartRound(ctx.Portfolio.Cash);
             MarketClosedEvent receivedEvent = default;
             EventBus.Subscribe<MarketClosedEvent>(e => receivedEvent = e);
 
@@ -179,7 +181,7 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void AdvanceTime_AfterPauseDuration_TransitionsThroughMarginCallState()
         {
-            // With RoundProfit = 0 (below $200 target), MarginCallState chains
+            // With RoundProfit = 0 (below $50 target), MarginCallState chains
             // through to RunSummaryState (margin call failure path)
             MarketCloseState.NextConfig = new MarketCloseStateConfig
             {

@@ -103,15 +103,14 @@ namespace BullRun.Tests.PriceEngine
         }
 
         [Test]
-        public void PennyPool_HasAtLeast6Stocks()
+        public void AllPools_HaveAtLeast6Stocks_ForRoundVariety()
         {
-            Assert.GreaterOrEqual(StockPoolData.PennyStocks.Length, 6);
-        }
-
-        [Test]
-        public void BlueChipPool_HasAtLeast4Stocks()
-        {
-            Assert.GreaterOrEqual(StockPoolData.BlueChipStocks.Length, 4);
+            foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
+            {
+                var pool = StockPoolData.GetPool(tier);
+                Assert.GreaterOrEqual(pool.Length, 6,
+                    $"Tier {tier}: pool should have at least 6 stocks for round variety");
+            }
         }
 
         [Test]
@@ -121,6 +120,16 @@ namespace BullRun.Tests.PriceEngine
             {
                 Assert.AreNotEqual(StockSector.None, stock.Sector,
                     $"{stock.TickerSymbol}: Mid-Value stocks should have sector tags");
+            }
+        }
+
+        [Test]
+        public void BlueChipStocks_AllHaveSectorTags()
+        {
+            foreach (var stock in StockPoolData.BlueChipStocks)
+            {
+                Assert.AreNotEqual(StockSector.None, stock.Sector,
+                    $"{stock.TickerSymbol}: Blue Chip stocks should have sector tags");
             }
         }
     }

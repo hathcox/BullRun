@@ -30,6 +30,7 @@ public class ShopState : IGameState
         // Advance to next round (replaces PrepareForNextRound with act-aware logic)
         Debug.Assert(ctx.Portfolio.PositionCount == 0,
             "[ShopState] AdvanceRound called with open positions — liquidate first!");
+        int previousAct = ctx.CurrentAct;
         bool actChanged = ctx.AdvanceRound();
         ctx.Portfolio.StartRound(ctx.Portfolio.Cash);
 
@@ -47,24 +48,29 @@ public class ShopState : IGameState
                 WasMarginCalled = false,
                 RoundProfit = 0f,
                 RequiredTarget = 0f,
-                StateMachine = _stateMachine
+                StateMachine = _stateMachine,
+                PriceGenerator = _priceGenerator,
+                TradeExecutor = _tradeExecutor
             };
             _stateMachine.TransitionTo<RunSummaryState>();
             return;
         }
 
-        // Publish act transition event if act changed (only for ongoing runs)
+        // Route through TierTransitionState when act changes for dramatic reveal
         if (actChanged)
         {
-            EventBus.Publish(new ActTransitionEvent
+            TierTransitionState.NextConfig = new TierTransitionStateConfig
             {
-                NewAct = ctx.CurrentAct,
-                PreviousAct = ctx.CurrentAct - 1,
-                TierDisplayName = GameConfig.Acts[ctx.CurrentAct].DisplayName
-            });
+                StateMachine = _stateMachine,
+                PriceGenerator = _priceGenerator,
+                TradeExecutor = _tradeExecutor,
+                PreviousAct = previousAct
+            };
+            _stateMachine.TransitionTo<TierTransitionState>();
+            return;
         }
 
-        // Continue to next MarketOpenState
+        // Continue to next MarketOpenState (same act, no transition needed)
         MarketOpenState.NextConfig = new MarketOpenStateConfig
         {
             StateMachine = _stateMachine,

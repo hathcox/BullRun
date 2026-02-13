@@ -100,6 +100,7 @@ public struct RoundStartedEvent
 {
     public int RoundNumber;
     public int Act;
+    public string TierDisplayName;
     public float MarginCallTarget;
     public float TimeLimit;
 }

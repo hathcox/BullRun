@@ -4,14 +4,37 @@ using UnityEngine;
 /// <summary>
 /// Central data carrier for run state.
 /// Carries current act, round, portfolio, and active items.
+/// Internal setters on state properties allow DebugManager (F3 skip-to-round)
+/// to reset context during editor/dev builds. Production mutation should go
+/// through AdvanceRound(), PrepareForNextRound(), or ResetForNewRun().
 /// </summary>
 public class RunContext
 {
-    public int CurrentAct { get; set; }
-    public int CurrentRound { get; set; }
-    public Portfolio Portfolio { get; private set; }
+    public int CurrentAct { get; internal set; }
+    public int CurrentRound { get; internal set; }
+    public Portfolio Portfolio { get; internal set; }
     public List<string> ActiveItems { get; private set; }
-    public float StartingCapital { get; private set; }
+    public float StartingCapital { get; internal set; }
+
+    /// <summary>
+    /// The stock tier for the current act. Convenience for GetTierForAct(CurrentAct).
+    /// </summary>
+    public StockTier CurrentTier => GetTierForAct(CurrentAct);
+
+    /// <summary>
+    /// The ActConfig for the current act. Convenience for GameConfig.Acts[CurrentAct].
+    /// Clamps to valid range (returns last act config if beyond round 8).
+    /// </summary>
+    public ActConfig CurrentActConfig
+    {
+        get
+        {
+            int act = CurrentAct;
+            if (act < 1) act = 1;
+            if (act >= GameConfig.Acts.Length) act = GameConfig.TotalActs;
+            return GameConfig.Acts[act];
+        }
+    }
 
     public RunContext(int currentAct, int currentRound, Portfolio portfolio)
     {
@@ -72,7 +95,17 @@ public class RunContext
     /// </summary>
     public static int GetActForRound(int round)
     {
+        if (round < 1) round = 1;
         return ((round - 1) / GameConfig.RoundsPerAct) + 1;
+    }
+
+    /// <summary>
+    /// Returns the StockTier for a given round number.
+    /// Convenience for GetTierForAct(GetActForRound(round)).
+    /// </summary>
+    public static StockTier GetTierForRound(int round)
+    {
+        return GetTierForAct(GetActForRound(round));
     }
 
     /// <summary>
@@ -81,9 +114,9 @@ public class RunContext
     /// </summary>
     public static StockTier GetTierForAct(int act)
     {
-        if (act >= 1 && act < GameConfig.Acts.Length)
-            return GameConfig.Acts[act].Tier;
-        return GameConfig.Acts[GameConfig.TotalActs].Tier;
+        if (act < 1) act = 1;
+        if (act >= GameConfig.Acts.Length) act = GameConfig.TotalActs;
+        return GameConfig.Acts[act].Tier;
     }
 
     /// <summary>
@@ -92,5 +125,22 @@ public class RunContext
     public bool IsRunComplete()
     {
         return CurrentRound > GameConfig.TotalRounds;
+    }
+
+    /// <summary>
+    /// Resets this RunContext for a fresh run. Replaces Portfolio, resets round/act to 1.
+    /// Used by MetaHubState placeholder to restart the game loop.
+    /// </summary>
+    public void ResetForNewRun()
+    {
+        Portfolio.UnsubscribeFromPriceUpdates();
+        Portfolio = new Portfolio(GameConfig.StartingCapital);
+        Portfolio.SubscribeToPriceUpdates();
+        Portfolio.StartRound(Portfolio.Cash);
+        CurrentAct = 1;
+        CurrentRound = 1;
+        ActiveItems.Clear();
+        StartingCapital = Portfolio.Cash;
+        EventBus.Publish(new RunStartedEvent { StartingCapital = GameConfig.StartingCapital });
     }
 }

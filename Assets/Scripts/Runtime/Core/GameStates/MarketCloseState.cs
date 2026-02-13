@@ -65,13 +65,15 @@ public class MarketCloseState : IGameState
             return 0f;
         });
 
-        RoundProfit = _roundProfit;
+        // Total round profit = cash change from round start, not just liquidation P&L.
+        // Manual trades realized during the round must count toward margin call targets.
+        RoundProfit = ctx.Portfolio.GetRoundProfit();
 
         // Publish MarketClosedEvent
         EventBus.Publish(new MarketClosedEvent
         {
             RoundNumber = ctx.CurrentRound,
-            RoundProfit = _roundProfit,
+            RoundProfit = RoundProfit,
             FinalCash = ctx.Portfolio.Cash,
             PositionsLiquidated = positionCount
         });
@@ -80,7 +82,7 @@ public class MarketCloseState : IGameState
         _liquidationComplete = true;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[MarketCloseState] Enter: Round {ctx.CurrentRound}, Liquidated {positionCount} positions, P&L: {(_roundProfit >= 0 ? "+" : "")}${_roundProfit:F2}, Cash: ${ctx.Portfolio.Cash:F2}");
+        Debug.Log($"[MarketCloseState] Enter: Round {ctx.CurrentRound}, Liquidated {positionCount} positions, Liquidation P&L: {(_roundProfit >= 0 ? "+" : "")}${_roundProfit:F2}, Round Profit: {(RoundProfit >= 0 ? "+" : "")}${RoundProfit:F2}, Cash: ${ctx.Portfolio.Cash:F2}");
         #endif
     }
 

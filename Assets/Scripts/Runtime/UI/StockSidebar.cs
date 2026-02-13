@@ -14,10 +14,15 @@ public class StockSidebar : MonoBehaviour
     private StockEntryView[] _entryViews;
     private bool _dirty;
 
-    private static readonly Color SelectedBgColor = new Color(0.1f, 0.15f, 0.35f, 0.9f);
-    private static readonly Color NormalBgColor = new Color(0.05f, 0.07f, 0.18f, 0.6f);
+    private static readonly Color DefaultSelectedBgColor = new Color(0.1f, 0.15f, 0.35f, 0.9f);
+    private static readonly Color DefaultNormalBgColor = new Color(0.05f, 0.07f, 0.18f, 0.6f);
     private static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f);
     private static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);
+
+    // Tier-themed colors (defaults to standard colors)
+    private Color _selectedBgColor = DefaultSelectedBgColor;
+    private Color _normalBgColor = DefaultNormalBgColor;
+    private Image _sidebarBackground;
 
     public StockSidebarData Data => _data;
 
@@ -27,11 +32,50 @@ public class StockSidebar : MonoBehaviour
         _entryViews = entryViews;
 
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
+        EventBus.Subscribe<ActTransitionEvent>(OnActTransition);
+    }
+
+    /// <summary>
+    /// Sets the sidebar panel background image reference for tier theme tinting.
+    /// Called by UISetup after creating the sidebar.
+    /// </summary>
+    public void SetSidebarBackground(Image sidebarBackground)
+    {
+        _sidebarBackground = sidebarBackground;
     }
 
     private void OnDestroy()
     {
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdated);
+        EventBus.Unsubscribe<ActTransitionEvent>(OnActTransition);
+    }
+
+    private void OnActTransition(ActTransitionEvent evt)
+    {
+        var theme = TierVisualData.GetThemeForAct(evt.NewAct);
+        ApplyTierTheme(theme);
+    }
+
+    /// <summary>
+    /// Applies tier visual theme colors to sidebar elements.
+    /// Updates background tint and entry selection accent colors.
+    /// </summary>
+    public void ApplyTierTheme(TierVisualTheme theme)
+    {
+        _normalBgColor = new Color(theme.BackgroundTint.r, theme.BackgroundTint.g,
+            theme.BackgroundTint.b, 0.6f);
+        _selectedBgColor = new Color(
+            theme.AccentColor.r * 0.3f, theme.AccentColor.g * 0.3f,
+            theme.AccentColor.b * 0.3f, 0.9f);
+
+        if (_sidebarBackground != null)
+        {
+            _sidebarBackground.color = new Color(
+                theme.BackgroundTint.r, theme.BackgroundTint.g,
+                theme.BackgroundTint.b, 0.85f);
+        }
+
+        _dirty = true;
     }
 
     private void OnPriceUpdated(PriceUpdatedEvent evt)
@@ -93,7 +137,7 @@ public class StockSidebar : MonoBehaviour
             }
 
             if (view.Background != null)
-                view.Background.color = entry.IsSelected ? SelectedBgColor : NormalBgColor;
+                view.Background.color = entry.IsSelected ? _selectedBgColor : _normalBgColor;
 
             // Update sparkline using cached min/max from StockEntry
             if (view.SparklineRenderer != null)

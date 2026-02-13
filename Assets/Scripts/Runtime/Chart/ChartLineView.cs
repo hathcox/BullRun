@@ -51,6 +51,20 @@ public class ChartLineView : MonoBehaviour
         _glowMeshFilter.mesh = _glowMeshLine.Mesh;
     }
 
+    /// <summary>
+    /// Applies a new visual config (tier theme colors) at runtime.
+    /// Updates line color, glow color, and price indicator color.
+    /// </summary>
+    public void ApplyTierTheme(ChartVisualConfig newConfig)
+    {
+        _config = newConfig;
+        if (_indicator != null)
+        {
+            var sr = _indicator.GetComponent<SpriteRenderer>();
+            if (sr != null) sr.color = newConfig.LineColor;
+        }
+    }
+
     public void SetTradeVisuals(LineRenderer breakEvenLine, Transform markerPool)
     {
         _breakEvenLine = breakEvenLine;
