@@ -95,11 +95,11 @@ development_status:
   epic-6-retrospective: optional
 
   # === Epic 7: Draft Shop (Phase 2, Weeks 6-8) ===
-  epic-7: in-progress
+  epic-7: done
   7-1-shop-ui: done
   7-2-item-pool-generation: done
   7-3-purchase-flow: done
-  7-4-item-inventory-display: ready-for-dev
+  7-4-item-inventory-display: done
   epic-7-retrospective: optional
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===

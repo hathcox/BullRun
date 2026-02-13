@@ -60,6 +60,9 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecutePositionsPanel(_ctx.Portfolio);
         UISetup.ExecuteRoundTimer();
 
+        // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
+        UISetup.ExecuteItemInventoryPanel(_ctx);
+
         // Create overlay UIs that subscribe to state transition events
         UISetup.ExecuteRoundResultsUI();
         UISetup.ExecuteRunSummaryUI();
