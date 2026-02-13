@@ -164,7 +164,7 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_ReputationEarnedIsZeroPlaceholder()
+        public void Enter_ReputationEarnedCalculatedForLoss()
         {
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -180,7 +180,8 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(_ctx);
 
-            Assert.AreEqual(0, received.ReputationEarned);
+            // Loss at round 1: 10 + (5 * 1) = 15
+            Assert.AreEqual(15, received.ReputationEarned);
         }
 
         [Test]
@@ -231,6 +232,98 @@ namespace BullRun.Tests.Core.GameStates
             Assert.AreEqual(0f, received.TotalProfit, 0.01f);
         }
 
+        // --- Reputation Calculation Tests (Story 6.5 Task 3) ---
+
+        [Test]
+        public void Enter_VictoryPath_CalculatesReputationWithProfitBonus()
+        {
+            // Win with $4000 total profit → 100 + floor(4000/100) = 140
+            var ctx = new RunContext(4, 9, new Portfolio(5000f)); // Past round 8 = run complete
+            ctx.StartingCapital = 1000f; // Profit = 5000 - 1000 = 4000
+
+            RunEndedEvent received = default;
+            EventBus.Subscribe<RunEndedEvent>(e => received = e);
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = false,
+                RoundProfit = 0f,
+                RequiredTarget = 0f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(ctx);
+
+            Assert.AreEqual(140, received.ReputationEarned, "Win rep: 100 + floor(4000/100) = 140");
+        }
+
+        [Test]
+        public void Enter_LossPath_CalculatesReputationFromRounds()
+        {
+            // Loss at round 3 → 10 + (5 * 3) = 25
+            var ctx = new RunContext(2, 3, new Portfolio(800f));
+
+            RunEndedEvent received = default;
+            EventBus.Subscribe<RunEndedEvent>(e => received = e);
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = true,
+                RoundProfit = 50f,
+                RequiredTarget = 600f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(ctx);
+
+            Assert.AreEqual(25, received.ReputationEarned, "Loss rep: 10 + (5 * 3) = 25");
+        }
+
+        [Test]
+        public void Enter_VictoryWithSmallProfit_ReputationFloors()
+        {
+            // Win with $50 profit → 100 + floor(50/100) = 100
+            var ctx = new RunContext(4, 9, new Portfolio(1050f));
+            ctx.StartingCapital = 1000f;
+
+            RunEndedEvent received = default;
+            EventBus.Subscribe<RunEndedEvent>(e => received = e);
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = false,
+                RoundProfit = 0f,
+                RequiredTarget = 0f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(ctx);
+
+            Assert.AreEqual(100, received.ReputationEarned, "Win rep with small profit: 100 + 0 = 100");
+        }
+
+        [Test]
+        public void Enter_StoresReputationInStaticAccessor()
+        {
+            var ctx = new RunContext(2, 3, new Portfolio(800f));
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = true,
+                RoundProfit = 50f,
+                RequiredTarget = 600f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(ctx);
+
+            Assert.AreEqual(25, RunSummaryState.ReputationEarned, "Static accessor should match calculated reputation");
+        }
+
         // --- Win State Tests (Story 4.5 Task 5) ---
 
         [Test]
@@ -266,6 +359,71 @@ namespace BullRun.Tests.Core.GameStates
             state.Enter(_ctx);
 
             Assert.IsFalse(RunSummaryState.IsVictory);
+        }
+
+        // --- RunCompletedEvent Tests (Story 6.5 Task 6) ---
+
+        [Test]
+        public void Enter_PublishesRunCompletedEvent()
+        {
+            var ctx = new RunContext(4, 9, new Portfolio(5000f));
+            ctx.StartingCapital = 1000f;
+            ctx.PeakCash = 6000f;
+            ctx.BestRoundProfit = 1200f;
+            ctx.ActiveItems.Add("item1");
+            ctx.ActiveItems.Add("item2");
+
+            RunCompletedEvent received = default;
+            bool eventFired = false;
+            EventBus.Subscribe<RunCompletedEvent>(e =>
+            {
+                received = e;
+                eventFired = true;
+            });
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = false,
+                RoundProfit = 0f,
+                RequiredTarget = 0f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(ctx);
+
+            Assert.IsTrue(eventFired, "Should publish RunCompletedEvent on enter");
+            Assert.IsTrue(received.IsVictory);
+            Assert.AreEqual(4000f, received.TotalProfit, 0.01f);
+            Assert.AreEqual(6000f, received.PeakCash, 0.01f);
+            Assert.AreEqual(9, received.RoundsCompleted);
+            Assert.AreEqual(2, received.ItemsCollected);
+        }
+
+        [Test]
+        public void Enter_MarginCall_PublishesRunCompletedEventWithLoss()
+        {
+            RunCompletedEvent received = default;
+            bool eventFired = false;
+            EventBus.Subscribe<RunCompletedEvent>(e =>
+            {
+                received = e;
+                eventFired = true;
+            });
+
+            RunSummaryState.NextConfig = new RunSummaryStateConfig
+            {
+                WasMarginCalled = true,
+                RoundProfit = 50f,
+                RequiredTarget = 200f,
+                StateMachine = _sm
+            };
+
+            var state = new RunSummaryState();
+            state.Enter(_ctx);
+
+            Assert.IsTrue(eventFired, "Should publish RunCompletedEvent even on loss");
+            Assert.IsFalse(received.IsVictory);
         }
 
         // --- Input handling tests ---

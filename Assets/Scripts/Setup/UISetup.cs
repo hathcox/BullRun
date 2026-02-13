@@ -466,7 +466,7 @@ public static class UISetup
     }
 
     /// <summary>
-    /// Generates the Run Summary overlay. Shows "MARGIN CALL" or "BULL RUN!" header,
+    /// Generates the Run Summary overlay. Shows "MARGIN CALL" or "BULL RUN COMPLETE!" header,
     /// run stats, and "Press any key to continue" prompt.
     /// Subscribes to RunEndedEvent.
     /// </summary>

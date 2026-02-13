@@ -41,6 +41,12 @@ public class MarginCallState : IGameState
 
         if (targetMet)
         {
+            // Victory detection: if this is the final round and margin call passes, the run is won
+            if (ctx.CurrentRound >= GameConfig.TotalRounds)
+            {
+                ctx.RunCompleted = true;
+            }
+
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[MarginCallState] Round {ctx.CurrentRound} PASSED: ${roundProfit:F2} >= ${target:F2}");
             #endif

@@ -163,6 +163,21 @@ public struct ActTransitionEvent
 }
 
 /// <summary>
+/// Fired when a run is completed (win or loss). Contains full run statistics.
+/// Audio system (Epic 11) subscribes for victory music.
+/// Meta-progression (Epic 9) subscribes for reputation processing.
+/// </summary>
+public struct RunCompletedEvent
+{
+    public float TotalProfit;
+    public float PeakCash;
+    public int RoundsCompleted;
+    public int ItemsCollected;
+    public int ReputationEarned;
+    public bool IsVictory;
+}
+
+/// <summary>
 /// Fired when a run ends, either by margin call or completing all rounds.
 /// </summary>
 public struct RunEndedEvent
@@ -173,4 +188,6 @@ public struct RunEndedEvent
     public bool WasMarginCalled;
     public int ReputationEarned;
     public int ItemsCollected;
+    public float PeakCash;
+    public float BestRoundProfit;
 }

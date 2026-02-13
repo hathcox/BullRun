@@ -227,5 +227,54 @@ namespace BullRun.Tests.Core.GameStates
 
             Assert.IsFalse(eventFired, "Should NOT publish RoundCompletedEvent on margin call");
         }
+        // --- Victory Detection Tests (Story 6.5 Task 1) ---
+
+        [Test]
+        public void Enter_Round8Passes_SetsRunCompletedTrue()
+        {
+            var ctx = new RunContext(4, 8, new Portfolio(5000f)); // Round 8, Act 4
+            MarketCloseState.RoundProfit = 6000f; // Well above any target
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+
+            _state = new MarginCallState();
+            _state.Enter(ctx);
+
+            Assert.IsTrue(ctx.RunCompleted, "RunCompleted should be true after round 8 margin call passes");
+        }
+
+        [Test]
+        public void Enter_Round1Passes_DoesNotSetRunCompleted()
+        {
+            MarketCloseState.RoundProfit = 300f; // Above $200 target for round 1
+
+            _state.Enter(_ctx);
+
+            Assert.IsFalse(_ctx.RunCompleted, "RunCompleted should NOT be set for non-final rounds");
+        }
+
+        [Test]
+        public void Enter_Round8Fails_DoesNotSetRunCompleted()
+        {
+            var ctx = new RunContext(4, 8, new Portfolio(5000f));
+            MarketCloseState.RoundProfit = 0f; // Below target — margin call
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+
+            _state = new MarginCallState();
+            _state.Enter(ctx);
+
+            Assert.IsFalse(ctx.RunCompleted, "RunCompleted should NOT be set when round 8 margin call fails");
+        }
     }
 }

@@ -550,6 +550,59 @@ namespace BullRun.Tests.Core
             EventBus.Clear();
         }
 
+        // --- RunCompletedEvent Tests (Story 6.5 Task 6) ---
+
+        [Test]
+        public void RunCompletedEvent_StoresAllFields()
+        {
+            var evt = new RunCompletedEvent
+            {
+                TotalProfit = 4000f,
+                PeakCash = 6000f,
+                RoundsCompleted = 8,
+                ItemsCollected = 3,
+                ReputationEarned = 140,
+                IsVictory = true
+            };
+
+            Assert.AreEqual(4000f, evt.TotalProfit, 0.01f);
+            Assert.AreEqual(6000f, evt.PeakCash, 0.01f);
+            Assert.AreEqual(8, evt.RoundsCompleted);
+            Assert.AreEqual(3, evt.ItemsCollected);
+            Assert.AreEqual(140, evt.ReputationEarned);
+            Assert.IsTrue(evt.IsVictory);
+        }
+
+        [Test]
+        public void RunCompletedEvent_CanBePublishedViaEventBus()
+        {
+            EventBus.Clear();
+            RunCompletedEvent received = default;
+            bool wasCalled = false;
+
+            EventBus.Subscribe<RunCompletedEvent>(e =>
+            {
+                received = e;
+                wasCalled = true;
+            });
+
+            EventBus.Publish(new RunCompletedEvent
+            {
+                TotalProfit = 4000f,
+                PeakCash = 6000f,
+                RoundsCompleted = 8,
+                ItemsCollected = 3,
+                ReputationEarned = 140,
+                IsVictory = true
+            });
+
+            Assert.IsTrue(wasCalled);
+            Assert.AreEqual(4000f, received.TotalProfit, 0.01f);
+            Assert.IsTrue(received.IsVictory);
+
+            EventBus.Clear();
+        }
+
         // --- RunEndedEvent Tests (Story 4.4 Task 4) ---
 
         [Test]

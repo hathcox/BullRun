@@ -56,13 +56,17 @@ public class RunSummaryState : IGameState
         float finalCash = ctx.Portfolio.Cash;
         float totalProfit = finalCash - ctx.StartingCapital;
         int roundsCompleted = ctx.CurrentRound;
-        int reputationEarned = 0; // Placeholder until Epic 9
         int itemsCollected = ctx.ActiveItems.Count;
+        bool isVictory = !wasMarginCalled && (ctx.RunCompleted || ctx.IsRunComplete());
+
+        // Calculate reputation: win gets 100 + profit bonus, loss gets 10 + 5*rounds
+        int reputationEarned = CalculateReputation(isVictory, totalProfit, roundsCompleted);
+        ctx.ReputationEarned = reputationEarned;
 
         // Set static accessors for UI
         IsActive = true;
         WasMarginCalled = wasMarginCalled;
-        IsVictory = !wasMarginCalled && ctx.IsRunComplete();
+        IsVictory = isVictory;
         RoundsCompleted = roundsCompleted;
         FinalCash = finalCash;
         TotalProfit = totalProfit;
@@ -81,12 +85,25 @@ public class RunSummaryState : IGameState
             TotalProfit = totalProfit,
             WasMarginCalled = wasMarginCalled,
             ReputationEarned = reputationEarned,
-            ItemsCollected = itemsCollected
+            ItemsCollected = itemsCollected,
+            PeakCash = ctx.PeakCash,
+            BestRoundProfit = ctx.BestRoundProfit
+        });
+
+        // Publish RunCompletedEvent for meta-progression and audio systems
+        EventBus.Publish(new RunCompletedEvent
+        {
+            TotalProfit = totalProfit,
+            PeakCash = ctx.PeakCash,
+            RoundsCompleted = roundsCompleted,
+            ItemsCollected = itemsCollected,
+            ReputationEarned = reputationEarned,
+            IsVictory = isVictory
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        string header = wasMarginCalled ? "MARGIN CALL" : "RUN COMPLETE";
-        Debug.Log($"[RunSummaryState] Enter: {header} — Rounds: {roundsCompleted}, Cash: ${finalCash:F2}, Profit: ${totalProfit:F2}");
+        string header = wasMarginCalled ? "MARGIN CALL" : (isVictory ? "BULL RUN COMPLETE" : "RUN COMPLETE");
+        Debug.Log($"[RunSummaryState] Enter: {header} — Rounds: {roundsCompleted}, Cash: ${finalCash:F2}, Profit: ${totalProfit:F2}, Rep: {reputationEarned}");
         #endif
     }
 
@@ -125,6 +142,21 @@ public class RunSummaryState : IGameState
                 _stateMachine.TransitionTo<MetaHubState>();
             }
         }
+    }
+
+    /// <summary>
+    /// Calculates reputation earned based on run outcome.
+    /// Win: 100 + floor(totalProfit / 100). Loss: 10 + (5 * roundsCompleted).
+    /// </summary>
+    public static int CalculateReputation(bool isVictory, float totalProfit, int roundsCompleted)
+    {
+        if (isVictory)
+        {
+            int profitBonus = Mathf.FloorToInt(totalProfit / 100f);
+            if (profitBonus < 0) profitBonus = 0;
+            return 100 + profitBonus;
+        }
+        return 10 + (5 * roundsCompleted);
     }
 
     /// <summary>

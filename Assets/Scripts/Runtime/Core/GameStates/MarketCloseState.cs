@@ -69,6 +69,9 @@ public class MarketCloseState : IGameState
         // Manual trades realized during the round must count toward margin call targets.
         RoundProfit = ctx.Portfolio.GetRoundProfit();
 
+        // Update run statistics with this round's results
+        ctx.UpdateRunStats(RoundProfit);
+
         // Publish MarketClosedEvent
         EventBus.Publish(new MarketClosedEvent
         {

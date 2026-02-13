@@ -613,6 +613,135 @@ namespace BullRun.Tests.Core
                 "Total profit after debug jump should reflect actual trading result, not inflated by debug cash");
         }
 
+        // --- Run Statistics Tests (Story 6.5 Task 4) ---
+
+        [Test]
+        public void PeakCash_DefaultsToStartingCapital()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.AreEqual(GameConfig.StartingCapital, ctx.PeakCash, 0.01f);
+        }
+
+        [Test]
+        public void PeakCash_UpdatesWhenCashIncreases()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.UpdateRunStats(500f); // Round profit, but cash hasn't changed
+            Assert.AreEqual(GameConfig.StartingCapital, ctx.PeakCash, 0.01f,
+                "PeakCash should track cash, not round profit");
+        }
+
+        [Test]
+        public void PeakCash_TracksHighestCashValue()
+        {
+            var portfolio = new Portfolio(1000f);
+            var ctx = new RunContext(1, 1, portfolio);
+            // Simulate cash going up then down
+            portfolio.OpenPosition("A", 10, 50f); // cash: 500
+            portfolio.LiquidateAllPositions(id => 80f); // cash: 1300
+            ctx.UpdateRunStats(300f);
+            Assert.AreEqual(1300f, ctx.PeakCash, 0.01f);
+
+            // Cash drops, peak should stay at 1300
+            portfolio.OpenPosition("A", 10, 50f); // cash: 800
+            portfolio.LiquidateAllPositions(id => 40f); // cash: 1200
+            ctx.UpdateRunStats(-100f);
+            Assert.AreEqual(1300f, ctx.PeakCash, 0.01f, "PeakCash should not decrease");
+        }
+
+        [Test]
+        public void BestRoundProfit_DefaultsToZero()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.AreEqual(0f, ctx.BestRoundProfit, 0.01f);
+        }
+
+        [Test]
+        public void BestRoundProfit_TracksHighestRoundProfit()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.UpdateRunStats(200f);
+            ctx.UpdateRunStats(500f);
+            ctx.UpdateRunStats(300f);
+            Assert.AreEqual(500f, ctx.BestRoundProfit, 0.01f);
+        }
+
+        [Test]
+        public void BestRoundProfit_IgnoresNegativeProfits()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.UpdateRunStats(-100f);
+            Assert.AreEqual(0f, ctx.BestRoundProfit, 0.01f);
+        }
+
+        [Test]
+        public void TotalRunProfit_AccumulatesRoundProfits()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.UpdateRunStats(200f);
+            ctx.UpdateRunStats(300f);
+            Assert.AreEqual(500f, ctx.TotalRunProfit, 0.01f);
+        }
+
+        [Test]
+        public void TotalRunProfit_HandlesNegativeRounds()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.UpdateRunStats(500f);
+            ctx.UpdateRunStats(-200f);
+            Assert.AreEqual(300f, ctx.TotalRunProfit, 0.01f);
+        }
+
+        [Test]
+        public void ItemsCollected_DefaultsToZero()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.AreEqual(0, ctx.ItemsCollected);
+        }
+
+        [Test]
+        public void ResetForNewRun_ClearsRunStats()
+        {
+            var ctx = new RunContext(4, 8, new Portfolio(5000f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            ctx.PeakCash = 8000f;
+            ctx.BestRoundProfit = 2000f;
+            ctx.TotalRunProfit = 6000f;
+            ctx.ItemsCollected = 5;
+            ctx.ResetForNewRun();
+            Assert.AreEqual(GameConfig.StartingCapital, ctx.PeakCash, 0.01f);
+            Assert.AreEqual(0f, ctx.BestRoundProfit, 0.01f);
+            Assert.AreEqual(0f, ctx.TotalRunProfit, 0.01f);
+            Assert.AreEqual(0, ctx.ItemsCollected);
+        }
+
+        // --- RunCompleted Tests (Story 6.5 Task 1) ---
+
+        [Test]
+        public void RunCompleted_DefaultsFalse()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.IsFalse(ctx.RunCompleted);
+        }
+
+        [Test]
+        public void RunCompleted_CanBeSetTrue()
+        {
+            var ctx = RunContext.StartNewRun();
+            ctx.RunCompleted = true;
+            Assert.IsTrue(ctx.RunCompleted);
+        }
+
+        [Test]
+        public void ResetForNewRun_ClearsRunCompleted()
+        {
+            var ctx = new RunContext(4, 8, new Portfolio(1000f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            ctx.RunCompleted = true;
+            ctx.ResetForNewRun();
+            Assert.IsFalse(ctx.RunCompleted);
+        }
+
         [Test]
         public void DebugJump_AllRounds_ActAndCashCorrect()
         {

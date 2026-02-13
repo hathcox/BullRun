@@ -17,6 +17,38 @@ public class RunContext
     public float StartingCapital { get; internal set; }
 
     /// <summary>
+    /// True when the player has completed all rounds (survived Round 8 margin call).
+    /// Set by MarginCallState when the final round passes.
+    /// </summary>
+    public bool RunCompleted { get; internal set; }
+
+    /// <summary>
+    /// Highest cash value reached during the run. Updated after each round's market close.
+    /// </summary>
+    public float PeakCash { get; internal set; }
+
+    /// <summary>
+    /// Number of shop items purchased during the run.
+    /// </summary>
+    public int ItemsCollected { get; internal set; }
+
+    /// <summary>
+    /// Highest single-round profit achieved during the run.
+    /// </summary>
+    public float BestRoundProfit { get; internal set; }
+
+    /// <summary>
+    /// Sum of all round profits during the run.
+    /// </summary>
+    public float TotalRunProfit { get; internal set; }
+
+    /// <summary>
+    /// Reputation earned for this run. Calculated by RunSummaryState.
+    /// Stored here for MetaManager (Epic 9) to consume.
+    /// </summary>
+    public int ReputationEarned { get; internal set; }
+
+    /// <summary>
     /// The stock tier for the current act. Convenience for GetTierForAct(CurrentAct).
     /// </summary>
     public StockTier CurrentTier => GetTierForAct(CurrentAct);
@@ -43,6 +75,7 @@ public class RunContext
         Portfolio = portfolio;
         ActiveItems = new List<string>();
         StartingCapital = portfolio.Cash;
+        PeakCash = portfolio.Cash;
     }
 
     /// <summary>
@@ -120,6 +153,19 @@ public class RunContext
     }
 
     /// <summary>
+    /// Updates run statistics after a round's market close.
+    /// Called by MarketCloseState after liquidation.
+    /// </summary>
+    public void UpdateRunStats(float roundProfit)
+    {
+        TotalRunProfit += roundProfit;
+        if (roundProfit > BestRoundProfit)
+            BestRoundProfit = roundProfit;
+        if (Portfolio.Cash > PeakCash)
+            PeakCash = Portfolio.Cash;
+    }
+
+    /// <summary>
     /// Returns true if the run is complete (all rounds have been played).
     /// </summary>
     public bool IsRunComplete()
@@ -141,6 +187,12 @@ public class RunContext
         CurrentRound = 1;
         ActiveItems.Clear();
         StartingCapital = Portfolio.Cash;
+        RunCompleted = false;
+        PeakCash = Portfolio.Cash;
+        ItemsCollected = 0;
+        BestRoundProfit = 0f;
+        TotalRunProfit = 0f;
+        ReputationEarned = 0;
         EventBus.Publish(new RunStartedEvent { StartingCapital = GameConfig.StartingCapital });
     }
 }
