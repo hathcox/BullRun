@@ -1,3 +1,5 @@
+using UnityEngine;
+
 /// <summary>
 /// Represents an open trading position on a stock.
 /// Tracks shares held, entry price, and calculates P&L.
@@ -21,7 +23,7 @@ public class Position
         IsLong = true;
         IsShort = false;
         MarginHeld = 0f;
-        OpenTime = UnityEngine.Time.time;
+        OpenTime = Time.time;
     }
 
     public Position(string stockId, int shares, float entryPrice, float marginHeld)
@@ -32,7 +34,7 @@ public class Position
         IsLong = false;
         IsShort = true;
         MarginHeld = marginHeld;
-        OpenTime = UnityEngine.Time.time;
+        OpenTime = Time.time;
     }
 
     /// <summary>

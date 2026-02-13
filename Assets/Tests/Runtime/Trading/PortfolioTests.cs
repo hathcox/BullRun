@@ -288,6 +288,37 @@ namespace BullRun.Tests.Trading
             Assert.AreEqual(950f, portfolio.Cash, 0.001f);
         }
 
+        // --- Long/Short Collision Tests (Code Review Fix) ---
+
+        [Test]
+        public void OpenPosition_WhenShortExists_ReturnsNull()
+        {
+            var portfolio = new Portfolio(1000f);
+            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 875
+            var pos = portfolio.OpenPosition("ACME", 10, 25.00f);
+            Assert.IsNull(pos);
+            Assert.AreEqual(875f, portfolio.Cash, 0.001f); // cash unchanged
+        }
+
+        [Test]
+        public void OpenShort_WhenLongExists_ReturnsNull()
+        {
+            var portfolio = new Portfolio(1000f);
+            portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 750
+            var pos = portfolio.OpenShort("ACME", 5, 50.00f);
+            Assert.IsNull(pos);
+            Assert.AreEqual(750f, portfolio.Cash, 0.001f); // cash unchanged
+        }
+
+        [Test]
+        public void ClosePosition_WhenShortExists_ReturnsZero()
+        {
+            var portfolio = new Portfolio(1000f);
+            portfolio.OpenShort("ACME", 10, 50.00f);
+            float pnl = portfolio.ClosePosition("ACME", 10, 30.00f);
+            Assert.AreEqual(0f, pnl, 0.001f); // rejected — must use CoverShort
+        }
+
         // --- OpenShort Tests (Story 2.3) ---
 
         [Test]

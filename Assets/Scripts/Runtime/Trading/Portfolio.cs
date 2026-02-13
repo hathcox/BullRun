@@ -98,24 +98,40 @@ public class Portfolio
         float cost = shares * price;
         if (!CanAfford(cost))
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Buy rejected: insufficient cash ${Cash:F2} for {shares}x {stockId} at ${price:F2} (cost: ${cost:F2})");
+            #endif
             return null;
         }
+
+        // Reject if a short position exists — must cover short first
+        if (_positions.TryGetValue(stockId, out var existing) && existing.IsShort)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[Trading] Buy rejected: short position exists for {stockId} — cover short first");
+            #endif
+            return null;
+        }
+
         Cash -= cost;
 
-        if (_positions.TryGetValue(stockId, out var existing))
+        if (existing != null)
         {
             int totalShares = existing.Shares + shares;
             float avgPrice = (existing.AverageBuyPrice * existing.Shares + price * shares) / totalShares;
             var averaged = new Position(stockId, totalShares, avgPrice);
             _positions[stockId] = averaged;
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Position averaged: {stockId} now {totalShares} shares at ${avgPrice:F2}");
+            #endif
             return averaged;
         }
 
         var position = new Position(stockId, shares, price);
         _positions[stockId] = position;
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Trading] Position opened: {shares}x {stockId} at ${price:F2}");
+        #endif
         return position;
     }
 
@@ -125,17 +141,30 @@ public class Portfolio
     /// </summary>
     public Position OpenShort(string stockId, int shares, float price)
     {
+        // Reject if a long position exists — must sell long first
+        if (_positions.TryGetValue(stockId, out var existing) && existing.IsLong)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[Trading] Short rejected: long position exists for {stockId} — sell long first");
+            #endif
+            return null;
+        }
+
         float margin = shares * price * GameConfig.ShortMarginRequirement;
         if (!CanAfford(margin))
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Short rejected: insufficient cash for margin ${margin:F2} on {shares}x {stockId}");
+            #endif
             return null;
         }
 
         Cash -= margin;
         var position = new Position(stockId, shares, price, margin);
         _positions[stockId] = position;
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Trading] SHORT opened: {shares}x {stockId} at ${price:F2} (margin held: ${margin:F2})");
+        #endif
         return position;
     }
 
@@ -148,13 +177,17 @@ public class Portfolio
     {
         if (!_positions.TryGetValue(stockId, out var position) || !position.IsShort)
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Cover rejected: no short position for {stockId}");
+            #endif
             return 0f;
         }
 
         if (shares > position.Shares)
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Cover rejected: requested {shares} but only short {position.Shares} of {stockId}");
+            #endif
             return 0f;
         }
 
@@ -172,14 +205,18 @@ public class Portfolio
         if (shares == position.Shares)
         {
             _positions.Remove(stockId);
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SHORT covered: {stockId} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2}, margin returned: ${marginPortion:F2})");
+            #endif
         }
         else
         {
             int remainingShares = position.Shares - shares;
             float remainingMargin = position.MarginHeld - marginPortion;
             _positions[stockId] = new Position(stockId, remainingShares, position.AverageBuyPrice, remainingMargin);
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SHORT partially covered: {stockId} now {remainingShares} shares (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
+            #endif
         }
 
         return pnl;
@@ -191,15 +228,19 @@ public class Portfolio
     /// </summary>
     public float ClosePosition(string stockId, int shares, float currentPrice)
     {
-        if (!_positions.TryGetValue(stockId, out var position))
+        if (!_positions.TryGetValue(stockId, out var position) || position.IsShort)
         {
-            Debug.Log($"[Trading] Sell rejected: no position for {stockId}");
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[Trading] Sell rejected: no long position for {stockId}");
+            #endif
             return 0f;
         }
 
         if (shares > position.Shares)
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Sell rejected: requested {shares} but only hold {position.Shares} of {stockId}");
+            #endif
             return 0f;
         }
 
@@ -209,13 +250,17 @@ public class Portfolio
         if (shares == position.Shares)
         {
             _positions.Remove(stockId);
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Position closed: {stockId} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
+            #endif
         }
         else
         {
             int remainingShares = position.Shares - shares;
             _positions[stockId] = new Position(stockId, remainingShares, position.AverageBuyPrice);
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Position reduced: {stockId} now {remainingShares} shares (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
+            #endif
         }
 
         return pnl;

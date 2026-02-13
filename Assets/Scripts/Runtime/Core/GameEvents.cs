@@ -38,6 +38,8 @@ public struct MarketEventEndedEvent
 
 /// <summary>
 /// Fired when a trade (buy/sell/short) is executed successfully.
+/// NOTE: StockId is string here (ticker/name) but PriceUpdatedEvent uses int StockId.
+/// A stock registry mapping int↔string will be needed when these systems integrate fully.
 /// </summary>
 public struct TradeExecutedEvent
 {
@@ -46,6 +48,11 @@ public struct TradeExecutedEvent
     public float Price;
     public bool IsBuy;
     public bool IsShort;
+    /// <summary>
+    /// Financial amount of the trade. Semantics vary by trade type:
+    /// Buy: total cost paid (shares * price). Sell: total proceeds received (shares * price).
+    /// Short: margin collateral held. Cover: buy-back cost (shares * price).
+    /// </summary>
     public float TotalCost;
 }
 

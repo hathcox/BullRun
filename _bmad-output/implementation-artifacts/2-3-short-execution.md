@@ -1,6 +1,6 @@
 # Story 2.3: Short Execution
 
-Status: review
+Status: done
 
 ## Story
 
@@ -126,6 +126,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-10: Implemented all 5 tasks for Story 2.3 Short Execution. Added margin mechanics, short positions, cover functionality. 33 new unit tests added.
+- 2026-02-12: Code review fixes — Added long position guard in OpenShort (rejects short when long exists), removed redundant CanAfford double-validation in ExecuteShort, gated all Debug.Log calls with preprocessor directives. 3 new collision guard tests.
 
 ### File List
 

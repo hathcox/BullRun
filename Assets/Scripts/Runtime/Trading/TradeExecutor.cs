@@ -29,14 +29,11 @@ public class TradeExecutor
 
         try
         {
-            float cost = shares * currentPrice;
-            if (!portfolio.CanAfford(cost))
-            {
-                Debug.Log($"[Trading] Buy rejected: insufficient cash for {shares}x {stockId} at ${currentPrice:F2}");
+            var position = portfolio.OpenPosition(stockId, shares, currentPrice);
+            if (position == null)
                 return false;
-            }
 
-            portfolio.OpenPosition(stockId, shares, currentPrice);
+            float cost = shares * currentPrice;
             EventBus.Publish(new TradeExecutedEvent
             {
                 StockId = stockId,
@@ -47,7 +44,9 @@ public class TradeExecutor
                 TotalCost = cost
             });
 
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] BUY executed: {shares} shares of {stockId} at ${currentPrice:F2}");
+            #endif
             return true;
         }
         catch (Exception e)
@@ -74,9 +73,11 @@ public class TradeExecutor
         try
         {
             var position = portfolio.GetPosition(stockId);
-            if (position == null || position.Shares < shares)
+            if (position == null || position.IsShort || position.Shares < shares)
             {
-                Debug.Log($"[Trading] Sell rejected: no position or insufficient shares for {shares}x {stockId}");
+                #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log($"[Trading] Sell rejected: no long position or insufficient shares for {shares}x {stockId}");
+                #endif
                 return false;
             }
 
@@ -93,7 +94,9 @@ public class TradeExecutor
                 TotalCost = totalProceeds
             });
 
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SELL executed: {shares} shares of {stockId} at ${currentPrice:F2} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
+            #endif
             return true;
         }
         catch (Exception e)
@@ -119,17 +122,11 @@ public class TradeExecutor
 
         try
         {
-            float margin = shares * currentPrice * GameConfig.ShortMarginRequirement;
-            if (!portfolio.CanAfford(margin))
-            {
-                Debug.Log($"[Trading] Short rejected: insufficient cash for margin on {shares}x {stockId} at ${currentPrice:F2}");
-                return false;
-            }
-
             var position = portfolio.OpenShort(stockId, shares, currentPrice);
             if (position == null)
                 return false;
 
+            float margin = position.MarginHeld;
             EventBus.Publish(new TradeExecutedEvent
             {
                 StockId = stockId,
@@ -140,7 +137,9 @@ public class TradeExecutor
                 TotalCost = margin
             });
 
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SHORT executed: {shares} shares of {stockId} at ${currentPrice:F2} (margin held: ${margin:F2})");
+            #endif
             return true;
         }
         catch (Exception e)
@@ -169,7 +168,9 @@ public class TradeExecutor
             var position = portfolio.GetPosition(stockId);
             if (position == null || !position.IsShort || position.Shares < shares)
             {
+                #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[Trading] Cover rejected: no short position or insufficient shares for {shares}x {stockId}");
+                #endif
                 return false;
             }
 
@@ -185,7 +186,9 @@ public class TradeExecutor
                 TotalCost = shares * currentPrice
             });
 
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] COVER executed: {shares} shares of {stockId} at ${currentPrice:F2} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
+            #endif
             return true;
         }
         catch (Exception e)

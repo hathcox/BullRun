@@ -1,6 +1,6 @@
 # Story 2.2: Sell Execution
 
-Status: review
+Status: done
 
 ## Story
 
@@ -99,6 +99,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-10: Implemented all 3 tasks for Story 2.2 Sell Execution. Extended Position, Portfolio, and TradeExecutor with sell/close functionality. 21 new unit tests added.
+- 2026-02-12: Code review fixes — Added IsShort guard to ClosePosition (rejects sell on short positions) and ExecuteSell (rejects short positions), gated all Debug.Log calls with preprocessor directives. 3 new tests (collision guard + sell-on-short rejection).
 
 ### File List
 

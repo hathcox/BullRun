@@ -182,6 +182,38 @@ namespace BullRun.Tests.Trading
             Assert.IsFalse(result);
         }
 
+        // --- ExecuteSell Long/Short Collision Tests (Code Review Fix) ---
+
+        [Test]
+        public void ExecuteSell_ShortPosition_Rejected()
+        {
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // short position
+            _eventReceived = false;
+            bool result = _executor.ExecuteSell("ACME", 10, 30.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.IsFalse(_eventReceived);
+        }
+
+        [Test]
+        public void ExecuteBuy_WhenShortExists_Rejected()
+        {
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
+            _eventReceived = false;
+            bool result = _executor.ExecuteBuy("ACME", 5, 25.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.IsFalse(_eventReceived);
+        }
+
+        [Test]
+        public void ExecuteShort_WhenLongExists_Rejected()
+        {
+            _executor.ExecuteBuy("ACME", 10, 25.00f, _portfolio);
+            _eventReceived = false;
+            bool result = _executor.ExecuteShort("ACME", 5, 50.00f, _portfolio);
+            Assert.IsFalse(result);
+            Assert.IsFalse(_eventReceived);
+        }
+
         // --- ExecuteShort Tests (Story 2.3) ---
 
         [Test]

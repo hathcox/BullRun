@@ -1,6 +1,6 @@
 # Story 2.1: Buy Execution
 
-Status: review
+Status: done
 
 ## Story
 
@@ -132,6 +132,7 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-10: Implemented all 5 tasks for Story 2.1 Buy Execution. Created Trading system foundation (Position, Portfolio, TradeExecutor), added TradeExecutedEvent to GameEvents, created RunContext. 39 total unit tests.
+- 2026-02-12: Code review fixes — Added long/short position collision guard in OpenPosition (rejects buy when short exists), removed redundant CanAfford double-validation in ExecuteBuy, gated all Debug.Log calls with preprocessor directives, added using directive to Position.cs, documented TradeExecutedEvent.TotalCost semantics, documented StockId type mismatch. 3 new collision guard tests.
 
 ### File List
 
