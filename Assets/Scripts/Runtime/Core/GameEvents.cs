@@ -175,6 +175,34 @@ public struct ActTransitionEvent
 }
 
 /// <summary>
+/// Fired when the draft shop opens after a successful round.
+/// </summary>
+public struct ShopOpenedEvent
+{
+    public int RoundNumber;
+    public ShopItemDef[] AvailableItems;
+}
+
+/// <summary>
+/// Fired when the player purchases an item from the shop.
+/// </summary>
+public struct ShopItemPurchasedEvent
+{
+    public string ItemId;
+    public int Cost;
+    public float RemainingCash;
+}
+
+/// <summary>
+/// Fired when the shop closes (timer expired or player done).
+/// </summary>
+public struct ShopClosedEvent
+{
+    public int ItemsPurchasedCount;
+    public float CashRemaining;
+}
+
+/// <summary>
 /// Fired when a run ends, either by margin call or completing all rounds.
 /// Contains full run statistics including victory status.
 /// Audio system (Epic 11) subscribes for victory music.

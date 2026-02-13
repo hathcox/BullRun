@@ -54,17 +54,17 @@ public static class EventHeadlineData
 
     public static readonly string[] MarketCrashHeadlines = new[]
     {
-        "MARKET CRASH — panic selling across all sectors!",
-        "Markets in freefall — investors flee",
-        "Breaking: massive selloff hits every stock",
+        "MARKET CRASH — panic selling across {ticker}!",
+        "Investors flee as {ticker} goes into freefall",
+        "Breaking: massive selloff hits {ticker}",
         "Market-wide sell-off hits {ticker}",
     };
 
     public static readonly string[] BullRunHeadlines = new[]
     {
-        "BULL RUN — markets surge across the board!",
-        "Euphoria grips Wall Street — everything's up",
-        "Green everywhere — biggest rally this year",
+        "BULL RUN — {ticker} surges across the board!",
+        "Euphoria grips Wall Street — {ticker} rallies hard",
+        "Green everywhere — biggest rally for {ticker} this year",
         "Broad rally lifts {ticker} and peers",
     };
 
@@ -126,6 +126,7 @@ public static class EventHeadlineData
             case MarketEventType.MergerRumor:
             case MarketEventType.BullRun:
             case MarketEventType.ShortSqueeze:
+            case MarketEventType.PumpAndDump: // Appears positive initially to lure players during pump phase
                 return true;
             default:
                 return false;

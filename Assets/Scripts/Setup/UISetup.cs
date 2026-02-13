@@ -238,6 +238,40 @@ public static class UISetup
         view.SparklineRenderer = null;
         view.SparklineBounds = new Rect(-0.8f, -0.3f, 1.6f, 0.4f);
 
+        // Event indicator icon (hidden by default) — right side of entry
+        var indicatorGo = new GameObject($"EventIndicator_{index}");
+        indicatorGo.transform.SetParent(entryGo.transform, false);
+        var indicatorRect = indicatorGo.AddComponent<RectTransform>();
+        indicatorRect.anchorMin = new Vector2(1f, 0f);
+        indicatorRect.anchorMax = new Vector2(1f, 1f);
+        indicatorRect.pivot = new Vector2(1f, 0.5f);
+        indicatorRect.anchoredPosition = new Vector2(-56f, 0f);
+        indicatorRect.sizeDelta = new Vector2(24f, 0f);
+        var indicatorBg = indicatorGo.AddComponent<Image>();
+        indicatorBg.color = Color.clear;
+        view.EventIndicator = indicatorBg;
+        indicatorGo.SetActive(false);
+
+        var indicatorTextGo = CreateLabel($"IndicatorText_{index}", indicatorGo.transform, "", Color.white, 10);
+        indicatorTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        view.EventIndicatorText = indicatorTextGo.GetComponent<Text>();
+
+        // Glow border for sector rotation (hidden by default) — outline effect
+        var glowGo = new GameObject($"GlowBorder_{index}");
+        glowGo.transform.SetParent(entryGo.transform, false);
+        var glowRect = glowGo.AddComponent<RectTransform>();
+        glowRect.anchorMin = Vector2.zero;
+        glowRect.anchorMax = Vector2.one;
+        glowRect.offsetMin = new Vector2(-2f, -2f);
+        glowRect.offsetMax = new Vector2(2f, 2f);
+        var glowImage = glowGo.AddComponent<Image>();
+        glowImage.color = Color.clear;
+        glowImage.raycastTarget = false;
+        view.GlowBorder = glowImage;
+        glowGo.SetActive(false);
+        // Move glow to back so it doesn't cover entry content
+        glowGo.transform.SetAsFirstSibling();
+
         return view;
     }
 
@@ -697,6 +731,350 @@ public static class UISetup
         #endif
 
         return tierTransitionUI;
+    }
+
+    /// <summary>
+    /// Generates the NewsBanner overlay at the top of the screen.
+    /// Shows event headline banners that slide down when market events fire.
+    /// </summary>
+    public static NewsBanner ExecuteNewsBanner()
+    {
+        var bannerParent = new GameObject("NewsBannerOverlay");
+
+        var canvasGo = new GameObject("NewsBannerCanvas");
+        canvasGo.transform.SetParent(bannerParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 30; // Above HUD, below overlays
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Banner container — top of screen
+        var containerGo = new GameObject("BannerContainer");
+        containerGo.transform.SetParent(canvasGo.transform, false);
+        var containerRect = containerGo.AddComponent<RectTransform>();
+        containerRect.anchorMin = new Vector2(0f, 1f);
+        containerRect.anchorMax = new Vector2(1f, 1f);
+        containerRect.pivot = new Vector2(0.5f, 1f);
+        containerRect.anchoredPosition = new Vector2(0f, -TopBarHeight - 4f);
+        containerRect.sizeDelta = new Vector2(0f, 200f); // Room for stacked banners
+
+        var newsBanner = bannerParent.AddComponent<NewsBanner>();
+        newsBanner.Initialize(containerGo.transform);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] NewsBanner created: top-of-screen overlay");
+        #endif
+
+        return newsBanner;
+    }
+
+    /// <summary>
+    /// Generates the NewsTicker scrolling text bar at the bottom of the screen.
+    /// Headlines scroll left-to-right as market events fire.
+    /// </summary>
+    public static NewsTicker ExecuteNewsTicker()
+    {
+        var tickerParent = new GameObject("NewsTickerBar");
+
+        var canvasGo = new GameObject("NewsTickerCanvas");
+        canvasGo.transform.SetParent(tickerParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 22; // Above chart, below timer
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Ticker bar — bottom of screen
+        float tickerHeight = 28f;
+        var barGo = CreatePanel("TickerBar", canvasGo.transform);
+        var barRect = barGo.GetComponent<RectTransform>();
+        barRect.anchorMin = new Vector2(0f, 0f);
+        barRect.anchorMax = new Vector2(1f, 0f);
+        barRect.pivot = new Vector2(0.5f, 0f);
+        barRect.anchoredPosition = Vector2.zero;
+        barRect.sizeDelta = new Vector2(0f, tickerHeight);
+        barGo.GetComponent<Image>().color = new Color(0.03f, 0.04f, 0.12f, 0.85f);
+
+        // Scroll container — clipped by parent
+        var scrollGo = new GameObject("ScrollContainer");
+        scrollGo.transform.SetParent(barGo.transform, false);
+        var scrollRect = scrollGo.AddComponent<RectTransform>();
+        scrollRect.anchorMin = Vector2.zero;
+        scrollRect.anchorMax = Vector2.one;
+        scrollRect.offsetMin = new Vector2(8f, 0f);
+        scrollRect.offsetMax = new Vector2(-8f, 0f);
+
+        // Mask to clip scrolling text
+        var maskImage = barGo.AddComponent<Mask>();
+        maskImage.showMaskGraphic = true;
+
+        float containerWidth = 1920f; // Reference width
+        var newsTicker = tickerParent.AddComponent<NewsTicker>();
+        newsTicker.Initialize(scrollGo.transform, containerWidth);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] NewsTicker created: bottom-of-screen scrolling bar");
+        #endif
+
+        return newsTicker;
+    }
+
+    /// <summary>
+    /// Generates the ScreenEffects full-screen overlay for dramatic event visuals.
+    /// Screen shake, red pulse (MarketCrash), green tint (BullRun), red flash (FlashCrash).
+    /// </summary>
+    public static ScreenEffects ExecuteScreenEffects()
+    {
+        var effectsParent = new GameObject("ScreenEffectsOverlay");
+
+        var canvasGo = new GameObject("ScreenEffectsCanvas");
+        canvasGo.transform.SetParent(effectsParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 10; // Behind HUD, behind everything interactive
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        // No GraphicRaycaster — overlay should not block input
+
+        // Shake container — all effect images parented here for shake offset
+        var shakeGo = new GameObject("ShakeContainer");
+        shakeGo.transform.SetParent(canvasGo.transform, false);
+        var shakeRect = shakeGo.AddComponent<RectTransform>();
+        shakeRect.anchorMin = Vector2.zero;
+        shakeRect.anchorMax = Vector2.one;
+        shakeRect.offsetMin = Vector2.zero;
+        shakeRect.offsetMax = Vector2.zero;
+
+        // Red pulse overlay (MarketCrash)
+        var redPulseGo = CreatePanel("RedPulseImage", shakeGo.transform);
+        var redPulseRect = redPulseGo.GetComponent<RectTransform>();
+        redPulseRect.anchorMin = Vector2.zero;
+        redPulseRect.anchorMax = Vector2.one;
+        redPulseRect.offsetMin = Vector2.zero;
+        redPulseRect.offsetMax = Vector2.zero;
+        var redPulseImage = redPulseGo.GetComponent<Image>();
+        redPulseImage.color = new Color(0.8f, 0f, 0f, 0f);
+        redPulseImage.raycastTarget = false;
+
+        // Green tint overlay (BullRun)
+        var greenTintGo = CreatePanel("GreenTintImage", shakeGo.transform);
+        var greenTintRect = greenTintGo.GetComponent<RectTransform>();
+        greenTintRect.anchorMin = Vector2.zero;
+        greenTintRect.anchorMax = Vector2.one;
+        greenTintRect.offsetMin = Vector2.zero;
+        greenTintRect.offsetMax = Vector2.zero;
+        var greenTintImage = greenTintGo.GetComponent<Image>();
+        greenTintImage.color = new Color(0f, 0.8f, 0.267f, 0f);
+        greenTintImage.raycastTarget = false;
+
+        // Flash overlay (FlashCrash)
+        var flashGo = CreatePanel("FlashImage", shakeGo.transform);
+        var flashRect = flashGo.GetComponent<RectTransform>();
+        flashRect.anchorMin = Vector2.zero;
+        flashRect.anchorMax = Vector2.one;
+        flashRect.offsetMin = Vector2.zero;
+        flashRect.offsetMax = Vector2.zero;
+        var flashImage = flashGo.GetComponent<Image>();
+        flashImage.color = new Color(1f, 0f, 0f, 0f);
+        flashImage.raycastTarget = false;
+
+        var screenEffects = effectsParent.AddComponent<ScreenEffects>();
+        screenEffects.Initialize(shakeRect, redPulseImage, greenTintImage, flashImage);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] ScreenEffects created: full-screen overlay with shake/pulse/tint/flash");
+        #endif
+
+        return screenEffects;
+    }
+
+    /// <summary>
+    /// Generates the Shop UI overlay panel.
+    /// Three item cards horizontally arranged, cash display at top, countdown timer.
+    /// Wired to ShopState via ShopState.ShopUIInstance.
+    /// </summary>
+    public static ShopUI ExecuteShopUI()
+    {
+        var overlayParent = new GameObject("ShopOverlay");
+
+        var canvasGo = new GameObject("ShopCanvas");
+        canvasGo.transform.SetParent(overlayParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 102; // Above game UI, below RunSummary
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Full-screen darkened background
+        var bgGo = CreatePanel("ShopBg", canvasGo.transform);
+        var bgRect = bgGo.GetComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.92f);
+
+        var canvasGroup = bgGo.AddComponent<CanvasGroup>();
+
+        // Header: "DRAFT SHOP — ROUND X"
+        var headerGo = CreateLabel("ShopHeader", bgGo.transform, "DRAFT SHOP",
+            new Color(0f, 1f, 0.533f, 1f), 28);
+        headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var headerRect = headerGo.GetComponent<RectTransform>();
+        headerRect.anchorMin = new Vector2(0.5f, 1f);
+        headerRect.anchorMax = new Vector2(0.5f, 1f);
+        headerRect.pivot = new Vector2(0.5f, 1f);
+        headerRect.anchoredPosition = new Vector2(0f, -30f);
+        headerRect.sizeDelta = new Vector2(400f, 40f);
+
+        // Cash display
+        var cashGo = CreateLabel("ShopCash", bgGo.transform, "$1000",
+            new Color(1f, 0.85f, 0.2f, 1f), 24);
+        cashGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var cashRect = cashGo.GetComponent<RectTransform>();
+        cashRect.anchorMin = new Vector2(0.5f, 1f);
+        cashRect.anchorMax = new Vector2(0.5f, 1f);
+        cashRect.pivot = new Vector2(0.5f, 1f);
+        cashRect.anchoredPosition = new Vector2(0f, -75f);
+        cashRect.sizeDelta = new Vector2(300f, 30f);
+
+        // Timer display
+        var timerGo = CreateLabel("ShopTimer", bgGo.transform, "0:18",
+            LabelColor, 20);
+        var timerRect = timerGo.GetComponent<RectTransform>();
+        timerRect.anchorMin = new Vector2(0.5f, 0f);
+        timerRect.anchorMax = new Vector2(0.5f, 0f);
+        timerRect.pivot = new Vector2(0.5f, 0f);
+        timerRect.anchoredPosition = new Vector2(0f, 30f);
+        timerRect.sizeDelta = new Vector2(200f, 30f);
+
+        // Card container — horizontal layout, centered
+        var cardContainer = new GameObject("CardContainer");
+        cardContainer.transform.SetParent(bgGo.transform, false);
+        var containerRect = cardContainer.AddComponent<RectTransform>();
+        containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        containerRect.pivot = new Vector2(0.5f, 0.5f);
+        containerRect.anchoredPosition = new Vector2(0f, -20f);
+        containerRect.sizeDelta = new Vector2(900f, 380f);
+
+        var hlg = cardContainer.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 20f;
+        hlg.padding = new RectOffset(10, 10, 10, 10);
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
+
+        // Create 3 item cards
+        var cards = new ShopUI.ItemCardView[3];
+        string[] defaultCategories = { "TRADING TOOL", "MARKET INTEL", "PASSIVE PERK" };
+        for (int i = 0; i < 3; i++)
+        {
+            cards[i] = CreateItemCard(i, defaultCategories[i], cardContainer.transform);
+        }
+
+        // Initialize ShopUI MonoBehaviour
+        var shopUI = overlayParent.AddComponent<ShopUI>();
+        shopUI.Initialize(
+            bgGo,
+            cashGo.GetComponent<Text>(),
+            timerGo.GetComponent<Text>(),
+            headerGo.GetComponent<Text>(),
+            cards,
+            canvasGroup
+        );
+
+        // Wire to ShopState
+        ShopState.ShopUIInstance = shopUI;
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] ShopUI created: full-screen overlay with 3 item cards");
+        #endif
+
+        return shopUI;
+    }
+
+    private static ShopUI.ItemCardView CreateItemCard(int index, string category, Transform parent)
+    {
+        var view = new ShopUI.ItemCardView();
+
+        // Card background
+        var cardGo = CreatePanel($"ItemCard_{index}", parent);
+        var cardRect = cardGo.GetComponent<RectTransform>();
+        cardRect.sizeDelta = new Vector2(260f, 360f);
+        view.CardBackground = cardGo.GetComponent<Image>();
+        view.CardBackground.color = new Color(0.08f, 0.1f, 0.22f, 0.9f);
+        view.Root = cardGo;
+
+        // Vertical layout inside card
+        var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 6f;
+        vlg.padding = new RectOffset(12, 12, 12, 12);
+        vlg.childAlignment = TextAnchor.UpperCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Category label
+        var categoryGo = CreateLabel($"Category_{index}", cardGo.transform, category,
+            new Color(0.6f, 0.6f, 0.7f, 1f), 11);
+        view.CategoryLabel = categoryGo.GetComponent<Text>();
+
+        // Rarity badge (small colored bar)
+        var badgeGo = CreatePanel($"RarityBadge_{index}", cardGo.transform);
+        var badgeRect = badgeGo.GetComponent<RectTransform>();
+        badgeRect.sizeDelta = new Vector2(80f, 4f);
+        view.RarityBadge = badgeGo.GetComponent<Image>();
+        view.RarityBadge.color = ShopUI.CommonColor;
+
+        // Rarity text
+        var rarityGo = CreateLabel($"Rarity_{index}", cardGo.transform, "COMMON",
+            ShopUI.CommonColor, 10);
+        view.RarityText = rarityGo.GetComponent<Text>();
+
+        // Item name
+        var nameGo = CreateLabel($"Name_{index}", cardGo.transform, "Item Name",
+            Color.white, 16);
+        nameGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        view.NameText = nameGo.GetComponent<Text>();
+
+        // Description text
+        var descGo = CreateLabel($"Desc_{index}", cardGo.transform, "Item description goes here",
+            new Color(0.75f, 0.75f, 0.8f, 1f), 12);
+        var descRect = descGo.GetComponent<RectTransform>();
+        descRect.sizeDelta = new Vector2(230f, 80f);
+        view.DescriptionText = descGo.GetComponent<Text>();
+
+        // Cost
+        var costGo = CreateLabel($"Cost_{index}", cardGo.transform, "$0",
+            Color.white, 22);
+        costGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        view.CostText = costGo.GetComponent<Text>();
+
+        // Purchase button
+        var btnGo = CreatePanel($"BuyBtn_{index}", cardGo.transform);
+        var btnRect = btnGo.GetComponent<RectTransform>();
+        btnRect.sizeDelta = new Vector2(200f, 40f);
+        btnGo.GetComponent<Image>().color = new Color(0f, 0.6f, 0.3f, 1f);
+        view.PurchaseButton = btnGo.AddComponent<Button>();
+
+        var btnLabel = CreateLabel($"BuyBtnText_{index}", btnGo.transform, "BUY",
+            Color.white, 16);
+        btnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        view.ButtonText = btnLabel.GetComponent<Text>();
+
+        return view;
     }
 
     private static GameObject CreatePanel(string name, Transform parent)

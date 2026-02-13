@@ -268,6 +268,85 @@ namespace BullRun.Tests.UI
             Assert.AreEqual("MEME", received.TickerSymbol);
         }
 
+        // --- Event Indicator Mapping (Story 5-5) ---
+
+        [Test]
+        public void GetIndicatorType_PumpAndDump_ReturnsVolumePulse()
+        {
+            Assert.AreEqual(IndicatorType.VolumePulse,
+                StockSidebar.GetIndicatorType(MarketEventType.PumpAndDump));
+        }
+
+        [Test]
+        public void GetIndicatorType_SECInvestigation_ReturnsWarning()
+        {
+            Assert.AreEqual(IndicatorType.Warning,
+                StockSidebar.GetIndicatorType(MarketEventType.SECInvestigation));
+        }
+
+        [Test]
+        public void GetIndicatorType_SectorRotation_ReturnsSectorGlow()
+        {
+            Assert.AreEqual(IndicatorType.SectorGlow,
+                StockSidebar.GetIndicatorType(MarketEventType.SectorRotation));
+        }
+
+        [Test]
+        public void GetIndicatorType_EarningsBeat_ReturnsNone()
+        {
+            Assert.AreEqual(IndicatorType.None,
+                StockSidebar.GetIndicatorType(MarketEventType.EarningsBeat));
+        }
+
+        [Test]
+        public void GetIndicatorType_MarketCrash_ReturnsNone()
+        {
+            Assert.AreEqual(IndicatorType.None,
+                StockSidebar.GetIndicatorType(MarketEventType.MarketCrash));
+        }
+
+        [Test]
+        public void GetIndicatorColor_VolumePulse_ReturnsOrange()
+        {
+            var color = StockSidebar.GetIndicatorColor(IndicatorType.VolumePulse);
+            Assert.AreEqual(StockSidebar.VolumeIconColor, color);
+        }
+
+        [Test]
+        public void GetIndicatorColor_Warning_ReturnsYellow()
+        {
+            var color = StockSidebar.GetIndicatorColor(IndicatorType.Warning);
+            Assert.AreEqual(StockSidebar.WarningIconColor, color);
+        }
+
+        [Test]
+        public void GetIndicatorColor_SectorGlow_Positive_ReturnsGreen()
+        {
+            var color = StockSidebar.GetIndicatorColor(IndicatorType.SectorGlow, true);
+            Assert.AreEqual(StockSidebar.SectorWinColor, color);
+        }
+
+        [Test]
+        public void GetIndicatorColor_SectorGlow_Negative_ReturnsRed()
+        {
+            var color = StockSidebar.GetIndicatorColor(IndicatorType.SectorGlow, false);
+            Assert.AreEqual(StockSidebar.SectorLoseColor, color);
+        }
+
+        [Test]
+        public void GetIndicatorSymbol_VolumePulse_ReturnsVolumeChars()
+        {
+            var symbol = StockSidebar.GetIndicatorSymbol(IndicatorType.VolumePulse);
+            Assert.IsNotEmpty(symbol);
+        }
+
+        [Test]
+        public void GetIndicatorSymbol_Warning_ReturnsTriangle()
+        {
+            var symbol = StockSidebar.GetIndicatorSymbol(IndicatorType.Warning);
+            Assert.AreEqual("\u26A0", symbol);
+        }
+
         // --- Helper ---
 
         private List<StockInstance> CreateTestStocks()

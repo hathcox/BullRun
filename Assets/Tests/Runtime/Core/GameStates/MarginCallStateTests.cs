@@ -72,8 +72,8 @@ namespace BullRun.Tests.Core.GameStates
             };
             _sm.TransitionTo<MarginCallState>();
 
-            // Should have transitioned through ShopState (which auto-skips to MarketOpenState)
-            Assert.IsInstanceOf<MarketOpenState>(_sm.CurrentState);
+            // ShopState now waits for timer — no longer auto-skips
+            Assert.IsInstanceOf<ShopState>(_sm.CurrentState);
         }
 
         [Test]
@@ -90,8 +90,8 @@ namespace BullRun.Tests.Core.GameStates
             };
             _sm.TransitionTo<MarginCallState>();
 
-            // Exact target should pass
-            Assert.IsInstanceOf<MarketOpenState>(_sm.CurrentState);
+            // Exact target should pass — ShopState now waits for timer
+            Assert.IsInstanceOf<ShopState>(_sm.CurrentState);
         }
 
         // --- AC3: If round profit < target, MARGIN CALL triggered ---

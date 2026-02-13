@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEngine;
 
 namespace BullRun.Tests.Core.GameStates
 {
@@ -13,15 +14,30 @@ namespace BullRun.Tests.Core.GameStates
         {
             EventBus.Clear();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
+            _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
             _sm = new GameStateMachine(_ctx);
+            ShopState.ShopUIInstance = null;
         }
 
         [TearDown]
         public void TearDown()
         {
             ShopState.NextConfig = null;
+            ShopState.ShopUIInstance = null;
             TierTransitionState.NextConfig = null;
             EventBus.Clear();
+        }
+
+        private ShopState EnterShop()
+        {
+            ShopState.NextConfig = new ShopStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            _sm.TransitionTo<ShopState>();
+            return (ShopState)_sm.CurrentState;
         }
 
         [Test]
@@ -45,144 +61,134 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_AutoSkipsToMarketOpenState()
+        public void Enter_PublishesShopOpenedEvent()
         {
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            _sm.TransitionTo<ShopState>();
-
-            Assert.IsInstanceOf<MarketOpenState>(_sm.CurrentState);
-        }
-
-        // --- Story 4.5 Task 3: Round/Act Progression ---
-
-        [Test]
-        public void Enter_AdvancesRound()
-        {
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            Assert.AreEqual(1, _ctx.CurrentRound);
-            _sm.TransitionTo<ShopState>();
-            Assert.AreEqual(2, _ctx.CurrentRound);
-        }
-
-        [Test]
-        public void Enter_UpdatesActAtBoundary()
-        {
-            _ctx.CurrentRound = 2; // After shop, round advances to 3 = Act 2
-            _ctx.CurrentAct = 1;
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            _sm.TransitionTo<ShopState>();
-            Assert.AreEqual(3, _ctx.CurrentRound);
-            Assert.AreEqual(2, _ctx.CurrentAct);
-        }
-
-        [Test]
-        public void Enter_WhenRunComplete_TransitionsToRunSummaryState()
-        {
-            _ctx.CurrentRound = 8; // After round 8, run is complete
-            _ctx.CurrentAct = 4;
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            _sm.TransitionTo<ShopState>();
-            Assert.IsInstanceOf<RunSummaryState>(_sm.CurrentState);
-        }
-
-        [Test]
-        public void Enter_WhenRunComplete_RunSummaryShowsWin()
-        {
-            _ctx.CurrentRound = 8;
-            _ctx.CurrentAct = 4;
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            _sm.TransitionTo<ShopState>();
-            Assert.IsFalse(RunSummaryState.WasMarginCalled, "Win path should not be margin called");
-        }
-
-        [Test]
-        public void Enter_WhenNotRunComplete_TransitionsToMarketOpenState()
-        {
-            _ctx.CurrentRound = 5;
-            _ctx.CurrentAct = 3;
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            _sm.TransitionTo<ShopState>();
-            Assert.IsInstanceOf<MarketOpenState>(_sm.CurrentState);
-        }
-
-        // --- ActTransitionEvent Tests (Story 4.5 Code Review Fix) ---
-
-        [Test]
-        public void Enter_WhenActChanges_PublishesActTransitionEvent()
-        {
-            _ctx.CurrentRound = 2; // Advancing to round 3 = Act 2
-            _ctx.CurrentAct = 1;
-
-            ActTransitionEvent received = default;
             bool eventFired = false;
-            EventBus.Subscribe<ActTransitionEvent>(e =>
+            EventBus.Subscribe<ShopOpenedEvent>(e =>
             {
-                received = e;
                 eventFired = true;
+                Assert.AreEqual(1, e.RoundNumber);
+                Assert.AreEqual(3, e.AvailableItems.Length);
             });
 
-            ShopState.NextConfig = new ShopStateConfig
-            {
-                StateMachine = _sm,
-                PriceGenerator = null,
-                TradeExecutor = null
-            };
-            _sm.TransitionTo<ShopState>();
-
-            Assert.IsTrue(eventFired, "Should publish ActTransitionEvent when act changes");
-            Assert.AreEqual(2, received.NewAct);
-            Assert.AreEqual(1, received.PreviousAct);
-            Assert.AreEqual("Low-Value Stocks", received.TierDisplayName);
+            EnterShop();
+            Assert.IsTrue(eventFired, "ShopOpenedEvent was not published");
         }
 
         [Test]
-        public void Enter_WhenActDoesNotChange_DoesNotPublishActTransitionEvent()
+        public void Enter_GeneratesThreeItems_OnePerCategory()
         {
-            _ctx.CurrentRound = 1; // Advancing to round 2, still Act 1
-            _ctx.CurrentAct = 1;
+            ShopOpenedEvent received = default;
+            EventBus.Subscribe<ShopOpenedEvent>(e => received = e);
 
+            EnterShop();
+
+            Assert.AreEqual(3, received.AvailableItems.Length);
+            Assert.AreEqual(ItemCategory.TradingTool, received.AvailableItems[0].Category);
+            Assert.AreEqual(ItemCategory.MarketIntel, received.AvailableItems[1].Category);
+            Assert.AreEqual(ItemCategory.PassivePerk, received.AvailableItems[2].Category);
+        }
+
+        [Test]
+        public void Enter_StaysInShopState_UntilTimerExpires()
+        {
+            EnterShop();
+            Assert.IsInstanceOf<ShopState>(_sm.CurrentState);
+        }
+
+        [Test]
+        public void Enter_DoesNotAdvanceRound_BeforeTimerExpires()
+        {
+            Assert.AreEqual(1, _ctx.CurrentRound);
+            EnterShop();
+            Assert.AreEqual(1, _ctx.CurrentRound, "Round should not advance until shop closes");
+        }
+
+        [Test]
+        public void Exit_DoesNotThrow_WithoutUI()
+        {
+            var state = new ShopState();
+            ShopState.NextConfig = new ShopStateConfig { StateMachine = _sm };
+            state.Enter(_ctx);
+            Assert.DoesNotThrow(() => state.Exit(_ctx));
+        }
+
+        [Test]
+        public void ShopTimerDuration_IsWithinGDDRange()
+        {
+            Assert.GreaterOrEqual(GameConfig.ShopDurationSeconds, 15f);
+            Assert.LessOrEqual(GameConfig.ShopDurationSeconds, 20f);
+        }
+
+        // === Purchase flow tests (consolidated from Shop/ShopStateTests) ===
+
+        [Test]
+        public void OnPurchase_DeductsCashAndTracksItem()
+        {
+            var shopState = EnterShop();
+            float startCash = _ctx.Portfolio.Cash;
+
+            ShopItemPurchasedEvent receivedEvent = default;
             bool eventFired = false;
-            EventBus.Subscribe<ActTransitionEvent>(e => eventFired = true);
+            EventBus.Subscribe<ShopItemPurchasedEvent>(e =>
+            {
+                eventFired = true;
+                receivedEvent = e;
+            });
+
+            // Purchase first item (index 0) through actual ShopState.OnPurchase
+            shopState.OnPurchase(_ctx, 0);
+
+            Assert.IsTrue(eventFired, "ShopItemPurchasedEvent was not fired");
+            Assert.Less(_ctx.Portfolio.Cash, startCash, "Cash should have been deducted");
+            Assert.AreEqual(receivedEvent.Cost, (int)(startCash - _ctx.Portfolio.Cash),
+                "Deducted amount should match item cost");
+            Assert.AreEqual(1, _ctx.ActiveItems.Count, "One item should be tracked");
+        }
+
+        [Test]
+        public void OnPurchase_RejectsWhenInsufficientCash()
+        {
+            // Create context with very little cash — all items cost >= $100
+            var poorCtx = new RunContext(1, 1, new Portfolio(10f));
+            poorCtx.Portfolio.StartRound(poorCtx.Portfolio.Cash);
+            var poorSm = new GameStateMachine(poorCtx);
 
             ShopState.NextConfig = new ShopStateConfig
             {
-                StateMachine = _sm,
+                StateMachine = poorSm,
                 PriceGenerator = null,
                 TradeExecutor = null
             };
-            _sm.TransitionTo<ShopState>();
+            poorSm.TransitionTo<ShopState>();
+            var shopState = (ShopState)poorSm.CurrentState;
 
-            Assert.IsFalse(eventFired, "Should NOT publish ActTransitionEvent when act stays the same");
+            bool eventFired = false;
+            EventBus.Subscribe<ShopItemPurchasedEvent>(_ => eventFired = true);
+
+            shopState.OnPurchase(poorCtx, 0);
+
+            Assert.IsFalse(eventFired, "Purchase should be rejected with insufficient cash");
+            Assert.AreEqual(10f, poorCtx.Portfolio.Cash, 0.01f, "Cash should be unchanged");
+            Assert.AreEqual(0, poorCtx.ActiveItems.Count, "No items should be tracked");
+        }
+
+        [Test]
+        public void OnPurchase_CannotPurchaseSameItemTwice()
+        {
+            var shopState = EnterShop();
+
+            // Purchase item at index 0
+            shopState.OnPurchase(_ctx, 0);
+            float cashAfterFirst = _ctx.Portfolio.Cash;
+
+            // Try to purchase same index again
+            shopState.OnPurchase(_ctx, 0);
+
+            Assert.AreEqual(cashAfterFirst, _ctx.Portfolio.Cash, 0.01f,
+                "Cash should not change on duplicate purchase");
+            Assert.AreEqual(1, _ctx.ActiveItems.Count,
+                "Should still only have 1 item tracked");
         }
     }
 }

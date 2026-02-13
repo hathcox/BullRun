@@ -19,10 +19,21 @@ public class StockSidebar : MonoBehaviour
     private static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f);
     private static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);
 
+    // Event indicator colors
+    public static readonly Color VolumeIconColor = new Color(1f, 0.533f, 0f, 1f);    // #FF8800 orange
+    public static readonly Color WarningIconColor = new Color(1f, 0.843f, 0f, 1f);    // #FFD700 yellow
+    public static readonly Color SectorWinColor = new Color(0f, 1f, 0.533f, 0.4f);    // Green glow
+    public static readonly Color SectorLoseColor = new Color(1f, 0.2f, 0.2f, 0.4f);   // Red glow
+    public static readonly float VolumePulseFrequency = 4f;
+
     // Tier-themed colors (defaults to standard colors)
     private Color _selectedBgColor = DefaultSelectedBgColor;
     private Color _normalBgColor = DefaultNormalBgColor;
     private Image _sidebarBackground;
+
+    // Active event indicators per stock (keyed by stock id)
+    private Dictionary<int, ActiveIndicator> _activeIndicators = new Dictionary<int, ActiveIndicator>();
+    private float _pulseTimer;
 
     public StockSidebarData Data => _data;
 
@@ -33,6 +44,8 @@ public class StockSidebar : MonoBehaviour
 
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<ActTransitionEvent>(OnActTransition);
+        EventBus.Subscribe<MarketEventFiredEvent>(OnMarketEventFired);
+        EventBus.Subscribe<MarketEventEndedEvent>(OnMarketEventEnded);
     }
 
     /// <summary>
@@ -48,6 +61,8 @@ public class StockSidebar : MonoBehaviour
     {
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Unsubscribe<ActTransitionEvent>(OnActTransition);
+        EventBus.Unsubscribe<MarketEventFiredEvent>(OnMarketEventFired);
+        EventBus.Unsubscribe<MarketEventEndedEvent>(OnMarketEventEnded);
     }
 
     private void OnActTransition(ActTransitionEvent evt)
@@ -95,13 +110,25 @@ public class StockSidebar : MonoBehaviour
         else if (keyboard.digit2Key.wasPressedThisFrame) { _data.SelectStock(1); _dirty = true; }
         else if (keyboard.digit3Key.wasPressedThisFrame) { _data.SelectStock(2); _dirty = true; }
         else if (keyboard.digit4Key.wasPressedThisFrame) { _data.SelectStock(3); _dirty = true; }
+
+        // Pulse animation for event indicators
+        if (_activeIndicators.Count > 0)
+        {
+            _pulseTimer += Time.deltaTime;
+        }
     }
 
     private void LateUpdate()
     {
-        if (!_dirty) return;
-        _dirty = false;
-        RefreshEntryVisuals();
+        if (_dirty)
+        {
+            _dirty = false;
+            RefreshEntryVisuals();
+        }
+        else if (_activeIndicators.Count > 0)
+        {
+            UpdateIndicatorPulse();
+        }
     }
 
     /// <summary>
@@ -111,6 +138,70 @@ public class StockSidebar : MonoBehaviour
     {
         _data.SelectStock(index);
         RefreshEntryVisuals();
+    }
+
+    private void OnMarketEventFired(MarketEventFiredEvent evt)
+    {
+        if (evt.AffectedStockIds == null) return;
+
+        var indicatorType = GetIndicatorType(evt.EventType);
+        if (indicatorType == IndicatorType.None) return;
+
+        foreach (int stockId in evt.AffectedStockIds)
+        {
+            _activeIndicators[stockId] = new ActiveIndicator
+            {
+                Type = indicatorType,
+                EventType = evt.EventType,
+                IsPositive = evt.IsPositive
+            };
+        }
+        _dirty = true;
+    }
+
+    private void OnMarketEventEnded(MarketEventEndedEvent evt)
+    {
+        if (evt.AffectedStockIds == null) return;
+
+        foreach (int stockId in evt.AffectedStockIds)
+        {
+            if (_activeIndicators.TryGetValue(stockId, out var indicator) &&
+                indicator.EventType == evt.EventType)
+            {
+                _activeIndicators.Remove(stockId);
+            }
+        }
+        _dirty = true;
+    }
+
+    /// <summary>
+    /// Maps event type to indicator type for sidebar display.
+    /// Static for testability.
+    /// </summary>
+    public static IndicatorType GetIndicatorType(MarketEventType eventType)
+    {
+        switch (eventType)
+        {
+            case MarketEventType.PumpAndDump: return IndicatorType.VolumePulse;
+            case MarketEventType.SECInvestigation: return IndicatorType.Warning;
+            case MarketEventType.SectorRotation: return IndicatorType.SectorGlow;
+            default: return IndicatorType.None;
+        }
+    }
+
+    /// <summary>
+    /// Gets the indicator color for a given indicator type and sector direction.
+    /// Static for testability.
+    /// </summary>
+    public static Color GetIndicatorColor(IndicatorType type, bool isPositive = true)
+    {
+        switch (type)
+        {
+            case IndicatorType.VolumePulse: return VolumeIconColor;
+            case IndicatorType.Warning: return WarningIconColor;
+            case IndicatorType.SectorGlow: return isPositive ? SectorWinColor : SectorLoseColor;
+            default: return Color.clear;
+        }
     }
 
     private void RefreshEntryVisuals()
@@ -154,8 +245,105 @@ public class StockSidebar : MonoBehaviour
                     view.SparklineRenderer.SetPosition(p, new Vector3(x, y, 0f));
                 }
             }
+
+            // Update event indicator
+            if (view.EventIndicator != null)
+            {
+                int stockId = entry.StockId;
+                if (_activeIndicators.TryGetValue(stockId, out var indicator))
+                {
+                    view.EventIndicator.gameObject.SetActive(true);
+                    var color = GetIndicatorColor(indicator.Type);
+                    // Pulse alpha for VolumePulse type
+                    if (indicator.Type == IndicatorType.VolumePulse)
+                    {
+                        float pulse = 0.5f + 0.5f * Mathf.Sin(_pulseTimer * VolumePulseFrequency);
+                        color.a = pulse;
+                    }
+                    view.EventIndicator.color = color;
+
+                    if (view.EventIndicatorText != null)
+                    {
+                        view.EventIndicatorText.text = GetIndicatorSymbol(indicator.Type);
+                    }
+                }
+                else
+                {
+                    view.EventIndicator.gameObject.SetActive(false);
+                }
+            }
+
+            // Update sector glow border
+            if (view.GlowBorder != null)
+            {
+                int stockId = entry.StockId;
+                if (_activeIndicators.TryGetValue(stockId, out var glowIndicator) &&
+                    glowIndicator.Type == IndicatorType.SectorGlow)
+                {
+                    view.GlowBorder.gameObject.SetActive(true);
+                    // Determine direction from event type context (stored as isPositive)
+                    view.GlowBorder.color = glowIndicator.IsPositive ? SectorWinColor : SectorLoseColor;
+                }
+                else
+                {
+                    view.GlowBorder.gameObject.SetActive(false);
+                }
+            }
         }
     }
+
+    private void UpdateIndicatorPulse()
+    {
+        if (_entryViews == null) return;
+
+        for (int i = 0; i < _entryViews.Length && i < _data.EntryCount; i++)
+        {
+            var entry = _data.GetEntry(i);
+            var view = _entryViews[i];
+
+            if (view.EventIndicator != null)
+            {
+                int stockId = entry.StockId;
+                if (_activeIndicators.TryGetValue(stockId, out var indicator) &&
+                    indicator.Type == IndicatorType.VolumePulse)
+                {
+                    var color = GetIndicatorColor(indicator.Type);
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(_pulseTimer * VolumePulseFrequency);
+                    color.a = pulse;
+                    view.EventIndicator.color = color;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the Unicode symbol for an indicator type.
+    /// Static for testability.
+    /// </summary>
+    public static string GetIndicatorSymbol(IndicatorType type)
+    {
+        switch (type)
+        {
+            case IndicatorType.VolumePulse: return "\u2581\u2583\u2585\u2587"; // Volume bars
+            case IndicatorType.Warning: return "\u26A0"; // Warning triangle
+            default: return "";
+        }
+    }
+}
+
+public enum IndicatorType
+{
+    None,
+    VolumePulse,
+    Warning,
+    SectorGlow
+}
+
+public class ActiveIndicator
+{
+    public IndicatorType Type;
+    public MarketEventType EventType;
+    public bool IsPositive;
 }
 
 /// <summary>
@@ -170,4 +358,7 @@ public class StockEntryView
     public Image Background;
     public LineRenderer SparklineRenderer;
     public Rect SparklineBounds;
+    public Image EventIndicator;
+    public Text EventIndicatorText;
+    public Image GlowBorder;
 }

@@ -105,9 +105,9 @@ namespace BullRun.Tests.Events
         }
 
         [Test]
-        public void IsPositiveEvent_PumpAndDump_ReturnsFalse()
+        public void IsPositiveEvent_PumpAndDump_ReturnsTrue()
         {
-            Assert.IsFalse(EventHeadlineData.IsPositiveEvent(MarketEventType.PumpAndDump));
+            Assert.IsTrue(EventHeadlineData.IsPositiveEvent(MarketEventType.PumpAndDump));
         }
 
         [Test]

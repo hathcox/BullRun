@@ -23,6 +23,9 @@ public static class GameConfig
     // Tier transition display duration (fade in + hold + fade out)
     public static readonly float TransitionDurationSeconds = 3f;
 
+    // Shop timer duration (GDD: 15-20 seconds)
+    public static readonly float ShopDurationSeconds = 18f;
+
     /// <summary>
     /// Debug starting cash per round for F3 skip-to-round.
     /// Approximate expected cash at each round based on compounding.

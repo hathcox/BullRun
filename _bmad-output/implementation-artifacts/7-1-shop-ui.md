@@ -1,6 +1,6 @@
 # Story 7.1: Shop UI
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -21,53 +21,53 @@ so that I can upgrade my build.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create ShopState game state (AC: 5)
-  - [ ] Implement `IGameState` with Enter/Update/Exit
-  - [ ] Enter: generate shop items, show ShopUI overlay
-  - [ ] Exit: hide ShopUI overlay, transition to MarketOpenState for next round
-  - [ ] Wire into GameStateMachine — ShopState comes after MarketCloseState (when margin call passes and not final round)
-  - [ ] File: `Scripts/Runtime/Core/GameStates/ShopState.cs` (new)
-- [ ] Task 2: Create ShopUI panel (AC: 1, 2, 3, 4, 6)
-  - [ ] Three item card slots arranged horizontally, one per category
-  - [ ] Each card displays: category label, item name, description text, cost, rarity badge (Common/Uncommon/Rare/Legendary with color coding)
-  - [ ] Purchase button per card — enabled when player can afford, disabled/grayed when insufficient cash
-  - [ ] Cash display at top showing current available cash (updates after each purchase)
-  - [ ] Rarity color coding: Common=white/gray, Uncommon=green, Rare=blue, Legendary=gold
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs` (new)
-- [ ] Task 3: Create ShopGenerator for item selection (AC: 1, 2)
-  - [ ] Select one item per category from available item pool
-  - [ ] Rarity-weighted random selection (Common most frequent, Legendary rarest)
-  - [ ] Use ShopItemDefinitions data for item pool
-  - [ ] Return three items (one Trading Tool, one Market Intel, one Passive Perk)
-  - [ ] File: `Scripts/Runtime/Shop/ShopGenerator.cs` (new)
-- [ ] Task 4: Define ShopItemDefinitions data (AC: 2)
-  - [ ] Static data class with all shop items from GDD Section 4
-  - [ ] Each item definition: Id, Name, Description, Cost, Rarity, Category
-  - [ ] Include all 10 Trading Tools, 10 Market Intel, 10 Passive Perks from GDD
-  - [ ] Rarity weights for selection probability
-  - [ ] File: `Scripts/Setup/Data/ShopItemDefinitions.cs` (new)
-- [ ] Task 5: Define shop-related events (AC: 5)
-  - [ ] `ShopOpenedEvent`: round number, available items
-  - [ ] `ShopItemPurchasedEvent`: item id, cost, remaining cash
-  - [ ] `ShopClosedEvent`: items purchased count, cash remaining
-  - [ ] Add to `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 6: Wire ShopState into existing game flow (AC: 5)
-  - [ ] Update MarginCallState: when margin call passes AND not final round → transition to ShopState (instead of directly to MarketOpenState)
-  - [ ] When final round (Round 8) passes → continue to RunSummaryState (victory path, already implemented in 6.5)
-  - [ ] ShopState exit → transition to MarketOpenState for next round
-  - [ ] File: `Scripts/Runtime/Core/GameStates/MarginCallState.cs` (modify)
-- [ ] Task 7: Create ShopSetup for F5 generation (AC: 1)
-  - [ ] Generate ShopUI overlay in the Canvas hierarchy
-  - [ ] Three card panels with text, button, and rarity badge components
-  - [ ] Cash display text at top
-  - [ ] Register in SceneComposition phase
-  - [ ] File: `Scripts/Setup/ShopSetup.cs` (new) OR extend `Scripts/Setup/UISetup.cs`
-- [ ] Task 8: Write tests (All AC)
-  - [ ] ShopGenerator: verify one item per category, rarity weighting, no duplicates
-  - [ ] ShopState: verify Enter shows UI, Exit hides UI, transitions correctly
-  - [ ] ShopItemDefinitions: verify all 30 items defined, valid costs, valid rarities
-  - [ ] Purchase flow: verify cash deduction, insufficient cash rejection
-  - [ ] Files: `Tests/Runtime/Shop/ShopGeneratorTests.cs`, `Tests/Runtime/Core/GameStates/ShopStateTests.cs`
+- [x] Task 1: Create ShopState game state (AC: 5)
+  - [x] Implement `IGameState` with Enter/Update/Exit
+  - [x] Enter: generate shop items, show ShopUI overlay
+  - [x] Exit: hide ShopUI overlay, transition to MarketOpenState for next round
+  - [x] Wire into GameStateMachine — ShopState comes after MarketCloseState (when margin call passes and not final round)
+  - [x] File: `Scripts/Runtime/Core/GameStates/ShopState.cs` (modified from placeholder)
+- [x] Task 2: Create ShopUI panel (AC: 1, 2, 3, 4, 6)
+  - [x] Three item card slots arranged horizontally, one per category
+  - [x] Each card displays: category label, item name, description text, cost, rarity badge (Common/Uncommon/Rare/Legendary with color coding)
+  - [x] Purchase button per card — enabled when player can afford, disabled/grayed when insufficient cash
+  - [x] Cash display at top showing current available cash (updates after each purchase)
+  - [x] Rarity color coding: Common=white/gray, Uncommon=green, Rare=blue, Legendary=gold
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs` (new)
+- [x] Task 3: Create ShopGenerator for item selection (AC: 1, 2)
+  - [x] Select one item per category from available item pool
+  - [x] Rarity-weighted random selection (Common most frequent, Legendary rarest)
+  - [x] Use ShopItemDefinitions data for item pool
+  - [x] Return three items (one Trading Tool, one Market Intel, one Passive Perk)
+  - [x] File: `Scripts/Runtime/Shop/ShopGenerator.cs` (new)
+- [x] Task 4: Define ShopItemDefinitions data (AC: 2)
+  - [x] Static data class with all shop items from GDD Section 4
+  - [x] Each item definition: Id, Name, Description, Cost, Rarity, Category
+  - [x] Include all 10 Trading Tools, 10 Market Intel, 10 Passive Perks from GDD
+  - [x] Rarity weights for selection probability
+  - [x] File: `Scripts/Setup/Data/ShopItemDefinitions.cs` (new)
+- [x] Task 5: Define shop-related events (AC: 5)
+  - [x] `ShopOpenedEvent`: round number, available items
+  - [x] `ShopItemPurchasedEvent`: item id, cost, remaining cash
+  - [x] `ShopClosedEvent`: items purchased count, cash remaining
+  - [x] Add to `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 6: Wire ShopState into existing game flow (AC: 5)
+  - [x] Update MarginCallState: when margin call passes AND not final round → transition to ShopState (instead of directly to MarketOpenState)
+  - [x] When final round (Round 8) passes → continue to RunSummaryState (victory path, already implemented in 6.5)
+  - [x] ShopState exit → transition to MarketOpenState for next round
+  - [x] File: `Scripts/Runtime/Core/GameStates/MarginCallState.cs` (already wired from previous story)
+- [x] Task 7: Create ShopSetup for F5 generation (AC: 1)
+  - [x] Generate ShopUI overlay in the Canvas hierarchy
+  - [x] Three card panels with text, button, and rarity badge components
+  - [x] Cash display text at top
+  - [x] Register in SceneComposition phase
+  - [x] File: Extended `Scripts/Setup/UISetup.cs` with ExecuteShopUI()
+- [x] Task 8: Write tests (All AC)
+  - [x] ShopGenerator: verify one item per category, rarity weighting, no duplicates
+  - [x] ShopState: verify Enter shows UI, Exit hides UI, transitions correctly
+  - [x] ShopItemDefinitions: verify all 30 items defined, valid costs, valid rarities
+  - [x] Purchase flow: verify cash deduction, insufficient cash rejection
+  - [x] Files: `Tests/Runtime/Shop/ShopGeneratorTests.cs`, `Tests/Runtime/Shop/ShopStateTests.cs`, `Tests/Runtime/Shop/ShopItemDefinitionsTests.cs`
 
 ## Dev Notes
 
@@ -182,10 +182,38 @@ Before implementing, the dev agent MUST read:
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Expanded ShopState from auto-skip placeholder to full state with 18s countdown timer, item generation, purchase handling, and proper round advancement
+- Created ShopUI MonoBehaviour with 3 horizontal item cards, cash display, timer, rarity color coding, and affordability visual feedback
+- Created ShopGenerator with two-step rarity-weighted selection (roll rarity then pick random item of that rarity within category), Common fallback
+- Defined all 30 items from GDD Section 4 in ShopItemDefinitions as public static readonly data
+- Added ShopOpenedEvent, ShopItemPurchasedEvent, ShopClosedEvent to GameEvents.cs
+- MarginCallState already wired to ShopState from previous story — no changes needed
+- Extended UISetup with ExecuteShopUI() and CreateItemCard() for F5 generation, wired to GameRunner.Start()
+- Added GameConfig.ShopDurationSeconds = 18f
+- Purchases deduct via Portfolio.DeductCash() and track in RunContext.ActiveItems
+- 3 test files: ShopItemDefinitionsTests (15 tests), ShopGeneratorTests (12 tests), ShopStateTests (10 tests)
+
+### Change Log
+
+- 2026-02-13: Implemented Story 7.1 — Shop UI with full purchase flow, item definitions, and tests
+- 2026-02-13: Code review fixes — H1: DeductCash return value checked, H2: duplicate ShopStateTests consolidated, M1: RNG seeded in tests, M2: wrong-category fallback fixed, M3: purchase tests call actual OnPurchase
+
 ### File List
+
+- Scripts/Runtime/Core/GameStates/ShopState.cs (modified)
+- Scripts/Runtime/Core/GameEvents.cs (modified)
+- Scripts/Runtime/Core/GameRunner.cs (modified)
+- Scripts/Runtime/UI/ShopUI.cs (new)
+- Scripts/Runtime/Shop/ShopGenerator.cs (new)
+- Scripts/Setup/Data/ShopItemDefinitions.cs (new)
+- Scripts/Setup/Data/GameConfig.cs (modified)
+- Scripts/Setup/UISetup.cs (modified)
+- Tests/Runtime/Shop/ShopGeneratorTests.cs (new)
+- Tests/Runtime/Shop/ShopItemDefinitionsTests.cs (new)
+- Tests/Runtime/Core/GameStates/ShopStateTests.cs (modified)

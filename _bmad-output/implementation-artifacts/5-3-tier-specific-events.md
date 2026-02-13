@@ -1,6 +1,6 @@
 # Story 5.3: Tier-Specific Events
 
-Status: review
+Status: done
 
 ## Story
 
@@ -223,6 +223,26 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-12: Implemented Story 5.3 — Tier-Specific Events (all 9 tasks complete)
+- 2026-02-13: Code review — 5 fixes applied (1 HIGH, 4 MEDIUM). 4 LOW items noted as action items.
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Iggy (via Claude Opus 4.6)
+**Date:** 2026-02-13
+**Outcome:** Changes Requested → Fixed
+
+**Fixes Applied:**
+1. [HIGH] Cached `GetActiveEventsForStock()` return list to eliminate ~300 heap allocs/sec in hot path (`EventEffects.cs`)
+2. [MEDIUM] Fixed SectorRotation effect range: was 10-15% (hardcoded floor), now uses config-derived 15% per AC (`EventScheduler.cs`)
+3. [MEDIUM] Cached `keysToRemove` list in `UpdateActiveEvents()` to avoid per-expiration allocation (`EventEffects.cs`)
+4. [MEDIUM] Changed `PumpAndDump` to signal as positive event — supports deception gameplay mechanic (`EventHeadlineData.cs`)
+5. [MEDIUM] Removed unnecessary `new System.Random()` allocation in `FireSectorRotation` headline generation (`EventScheduler.cs`)
+
+**Remaining Action Items (LOW):**
+- [ ] [AI-Review][LOW] `StockInstance.SetSector()` is dead code in production — only used in tests [`StockInstance.cs:90`]
+- [ ] [AI-Review][LOW] No test verifying PriceGenerator sets sector on stocks during round init
+- [ ] [AI-Review][LOW] Story 5-4 tests mixed into 5-3 test files [`EventSchedulerTests.cs:762+`]
+- [ ] [AI-Review][LOW] 1-frame price discontinuity risk at multi-phase transitions under frame drops [`EventEffects.cs:134`]
 
 ### File List
 

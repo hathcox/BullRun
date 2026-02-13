@@ -77,12 +77,12 @@ development_status:
   epic-4-retrospective: optional
 
   # === Epic 5: Event System (Phase 1-2, Weeks 4-7) ===
-  epic-5: in-progress
+  epic-5: done
   5-1-event-scheduler: done
   5-2-core-market-events: done
-  5-3-tier-specific-events: review
-  5-4-global-market-events: review
-  5-5-event-visual-signals: ready-for-dev
+  5-3-tier-specific-events: done
+  5-4-global-market-events: done
+  5-5-event-visual-signals: done
   epic-5-retrospective: optional
 
   # === Epic 6: Run Structure (Phase 2, Weeks 5-8) ===
@@ -96,7 +96,7 @@ development_status:
 
   # === Epic 7: Draft Shop (Phase 2, Weeks 6-8) ===
   epic-7: in-progress
-  7-1-shop-ui: ready-for-dev
+  7-1-shop-ui: done
   7-2-item-pool-generation: ready-for-dev
   7-3-purchase-flow: ready-for-dev
   7-4-item-inventory-display: ready-for-dev

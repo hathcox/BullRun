@@ -158,6 +158,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 #### Test Framework
 - Unity Test Framework 1.6.0 — supports both Edit Mode and Play Mode tests
+- **ABSOLUTE HARD RULE: AI agents must NEVER attempt to run tests. NEVER. Not via `dotnet test`, not via `unity -runTests`, not via any CLI command, not via any shell command. There is NO way to run Unity tests from the command line in this project. The user runs ALL tests manually in the Unity Editor. Do NOT try. Do NOT suggest trying. Do NOT verify test results. Write the tests, leave them for the user.**
 
 #### Test Organization
 - Edit Mode tests for pure logic (price calculations, trade execution, data validation, event dispatch)
@@ -219,6 +220,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **NEVER use `Resources.Load()` or `Addressables`** — assets are wired at F5 setup time
 - **NEVER add multi-scene loading** — single-scene architecture, rebuilt by F5
 - **NEVER use DI containers, service locators, or SO lookup** — direct static class access for data
+- **NEVER create, modify, or delete `.meta` files** — Unity auto-generates `.meta` files for every asset. AI agents must not touch them under any circumstances. If a `.meta` file is missing, Unity will regenerate it on the next Editor refresh.
 
 #### Common Gotchas
 - The `_Generated/` folder is **deleted entirely** on F5 — any manual edits there are lost
@@ -262,4 +264,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review quarterly for outdated rules
 - Remove rules that become obvious over time
 
-Last Updated: 2026-02-10
+Last Updated: 2026-02-13

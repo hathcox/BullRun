@@ -1,6 +1,6 @@
 # Story 5.4: Global Market Events
 
-Status: review
+Status: done
 
 ## Story
 
@@ -16,7 +16,7 @@ so that dramatic moments shake up the entire round and force rapid adaptation.
 4. Short Squeeze: shorted stock spikes 40-100% violently — punishes open short positions
 5. Global events (MarketCrash, BullRun) affect ALL active stocks with `TargetStockId = null`
 6. Short Squeeze prefers targeting a stock the player is currently shorting (portfolio-aware)
-7. All four events are available across all tiers but weighted as rare (rarity 0.1-0.2)
+7. MarketCrash, BullRun, and ShortSqueeze are available across all tiers; FlashCrash is Low/Mid only per GDD — all weighted as rare (rarity 0.1-0.2)
 8. Headlines for all four events added to EventHeadlineData
 
 ## Tasks / Subtasks
@@ -196,10 +196,6 @@ if (selectedConfig.Rarity <= 0.2f)
 - [Source: Portfolio.cs] — GetAllPositions(), Position.IsShort for targeting
 - [Source: GameEvents.cs] — Note about StockId string vs int mismatch
 
-## Change Log
-
-- 2026-02-13: Implemented all 8 tasks — global events (MarketCrash/BullRun verified end-to-end), FlashCrash multi-phase V-shape, Short Squeeze portfolio-aware targeting, RunContext wiring, expanded headlines (4 per event type), rare event cap (max 1 per round), and 14 new tests across EventSchedulerTests and EventEffectsTests.
-
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -218,9 +214,29 @@ Claude Opus 4.6
 - Task 7: Added `_rareEventScheduledThisRound` flag to EventScheduler, reset in InitializeRound(). SelectEventType() filters out events with rarity <= 0.2 after first rare event fires. Falls back to full list if all tier events are rare.
 - Task 8: Added 14 new tests — FlashCrash multi-phase (2), Short Squeeze targeting (4), rare event cap (1), MarketCrash/BullRun end-to-end (2), headline counts (1), global event price application (2), BullRun price increase (2 in EventEffectsTests).
 
+### Change Log
+
+- 2026-02-13: Implemented all 8 tasks — global events, FlashCrash V-shape, Short Squeeze portfolio-aware targeting, rare event cap, headlines, tests.
+- 2026-02-13: Code review — 2 fixes applied (2 MEDIUM). 3 LOW items noted as action items. AC 7 corrected for FlashCrash tier scope.
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Iggy (via Claude Opus 4.6)
+**Date:** 2026-02-13
+**Outcome:** Changes Requested → Fixed
+
+**Fixes Applied:**
+1. [MEDIUM] Fixed Short Squeeze tests to use ticker symbols instead of integer-as-string IDs — now exercises the primary `TickerSymbol` matching path used in production (`EventSchedulerTests.cs`)
+2. [MEDIUM] Corrected AC 7 — FlashCrash is Low/Mid only per GDD, not AllTiers. Config was correct, AC wording was imprecise.
+
+**Remaining Action Items (LOW):**
+- [ ] [AI-Review][LOW] `foreach` over portfolio positions in `SelectShortSqueezeTarget` allocates enumerator [`EventScheduler.cs:280`]
+- [ ] [AI-Review][LOW] Rare event cap only tested for MidValue tier — consider adding Penny/BlueChip tier tests [`EventSchedulerTests.cs:966`]
+- [ ] [AI-Review][LOW] Story Change Log section was outside Dev Agent Record (reformatted during review)
+
 ### File List
 
 - Modified: `Assets/Scripts/Runtime/Events/EventScheduler.cs` — FlashCrash multi-phase, RunContext wiring, Short Squeeze targeting, rare event cap
 - Modified: `Assets/Scripts/Setup/Data/EventHeadlineData.cs` — Expanded headlines for MarketCrash, BullRun, FlashCrash, ShortSqueeze (4 each)
-- Modified: `Assets/Tests/Runtime/Events/EventSchedulerTests.cs` — 12 new tests for Story 5-4
+- Modified: `Assets/Tests/Runtime/Events/EventSchedulerTests.cs` — 12 new tests for Story 5-4, Short Squeeze tests fixed to use ticker symbols
 - Modified: `Assets/Tests/Runtime/Events/EventEffectsTests.cs` — 2 new tests for global event price application

@@ -17,6 +17,9 @@ public class EventEffects
     private readonly Dictionary<(MarketEvent, int), float> _eventTargetPrices = new Dictionary<(MarketEvent, int), float>();
     // Track which phase index was last captured for multi-phase events
     private readonly Dictionary<(MarketEvent, int), int> _eventPhaseIndex = new Dictionary<(MarketEvent, int), int>();
+    // Reusable buffers to avoid per-frame/per-event heap allocations
+    private readonly List<MarketEvent> _stockEventsBuffer = new List<MarketEvent>();
+    private readonly List<(MarketEvent, int)> _keysToRemoveBuffer = new List<(MarketEvent, int)>();
 
     private IReadOnlyList<StockInstance> _activeStocks;
     private System.Random _headlineRandom = new System.Random();
@@ -190,17 +193,17 @@ public class EventEffects
             #endif
 
             // Clean up tracked prices for all stocks affected by this event
-            var keysToRemove = new List<(MarketEvent, int)>();
+            _keysToRemoveBuffer.Clear();
             foreach (var key in _eventStartPrices.Keys)
             {
                 if (key.Item1 == expired)
-                    keysToRemove.Add(key);
+                    _keysToRemoveBuffer.Add(key);
             }
-            for (int j = 0; j < keysToRemove.Count; j++)
+            for (int j = 0; j < _keysToRemoveBuffer.Count; j++)
             {
-                _eventStartPrices.Remove(keysToRemove[j]);
-                _eventTargetPrices.Remove(keysToRemove[j]);
-                _eventPhaseIndex.Remove(keysToRemove[j]);
+                _eventStartPrices.Remove(_keysToRemoveBuffer[j]);
+                _eventTargetPrices.Remove(_keysToRemoveBuffer[j]);
+                _eventPhaseIndex.Remove(_keysToRemoveBuffer[j]);
             }
 
             _activeEvents.Remove(expired);
@@ -209,18 +212,19 @@ public class EventEffects
 
     /// <summary>
     /// Returns all active events that affect a specific stock (targeted + global events).
+    /// WARNING: Returns a shared internal buffer — do NOT cache the returned list across calls.
     /// </summary>
     public List<MarketEvent> GetActiveEventsForStock(int stockId)
     {
-        var result = new List<MarketEvent>();
+        _stockEventsBuffer.Clear();
         for (int i = 0; i < _activeEvents.Count; i++)
         {
             var evt = _activeEvents[i];
             if (evt.IsGlobalEvent || evt.TargetStockId == stockId)
             {
-                result.Add(evt);
+                _stockEventsBuffer.Add(evt);
             }
         }
-        return result;
+        return _stockEventsBuffer;
     }
 }

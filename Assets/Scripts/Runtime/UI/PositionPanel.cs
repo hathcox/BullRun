@@ -14,6 +14,9 @@ public class PositionPanel : MonoBehaviour
     public static readonly Color LongAccentColor = new Color(0f, 1f, 0.533f, 1f); // Neon green
     public static readonly Color ShortAccentColor = new Color(1f, 0.4f, 0.7f, 1f); // Hot pink
 
+    public static readonly Color ShortSqueezeWarningColor = new Color(1f, 0f, 0f, 1f); // Red exclamation
+    public static readonly float WarningPulseFrequency = 5f;
+
     private PositionPanelData _data;
     private Portfolio _portfolio;
     private Dictionary<string, float> _latestPrices = new Dictionary<string, float>();
@@ -24,6 +27,10 @@ public class PositionPanel : MonoBehaviour
     private Transform _entryContainer;
     private Text _emptyText;
     private List<PositionEntryView> _entryViews = new List<PositionEntryView>();
+
+    // Short squeeze warning tracking
+    private HashSet<string> _shortSqueezeStocks = new HashSet<string>();
+    private float _warningPulseTimer;
 
     public PositionPanelData Data => _data;
 
@@ -36,6 +43,8 @@ public class PositionPanel : MonoBehaviour
 
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<TradeExecutedEvent>(OnTradeExecuted);
+        EventBus.Subscribe<MarketEventFiredEvent>(OnMarketEventFired);
+        EventBus.Subscribe<MarketEventEndedEvent>(OnMarketEventEnded);
 
         RefreshPanel();
     }
@@ -44,6 +53,32 @@ public class PositionPanel : MonoBehaviour
     {
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Unsubscribe<TradeExecutedEvent>(OnTradeExecuted);
+        EventBus.Unsubscribe<MarketEventFiredEvent>(OnMarketEventFired);
+        EventBus.Unsubscribe<MarketEventEndedEvent>(OnMarketEventEnded);
+    }
+
+    private void OnMarketEventFired(MarketEventFiredEvent evt)
+    {
+        if (evt.EventType != MarketEventType.ShortSqueeze) return;
+        if (evt.AffectedTickerSymbols == null) return;
+
+        foreach (var ticker in evt.AffectedTickerSymbols)
+        {
+            _shortSqueezeStocks.Add(ticker);
+        }
+        _pnlDirty = true;
+    }
+
+    private void OnMarketEventEnded(MarketEventEndedEvent evt)
+    {
+        if (evt.EventType != MarketEventType.ShortSqueeze) return;
+        if (evt.AffectedTickerSymbols == null) return;
+
+        foreach (var ticker in evt.AffectedTickerSymbols)
+        {
+            _shortSqueezeStocks.Remove(ticker);
+        }
+        _pnlDirty = true;
     }
 
     private void OnPriceUpdated(PriceUpdatedEvent evt)
@@ -55,6 +90,14 @@ public class PositionPanel : MonoBehaviour
     private void OnTradeExecuted(TradeExecutedEvent evt)
     {
         _rebuildDirty = true;
+    }
+
+    private void Update()
+    {
+        if (_shortSqueezeStocks.Count > 0)
+        {
+            _warningPulseTimer += Time.deltaTime;
+        }
     }
 
     private void LateUpdate()
@@ -69,6 +112,10 @@ public class PositionPanel : MonoBehaviour
         {
             _pnlDirty = false;
             UpdatePnLDisplay();
+        }
+        else if (_shortSqueezeStocks.Count > 0)
+        {
+            UpdateWarningPulse();
         }
     }
 
@@ -97,6 +144,42 @@ public class PositionPanel : MonoBehaviour
             {
                 view.PnLText.text = TradingHUD.FormatProfit(entry.UnrealizedPnL);
                 view.PnLText.color = GetPnLColor(entry.UnrealizedPnL);
+            }
+
+            // Short squeeze warning icon
+            if (view.WarningIcon != null)
+            {
+                bool showWarning = _shortSqueezeStocks.Contains(entry.StockId) && !entry.IsLong;
+                view.WarningIcon.gameObject.SetActive(showWarning);
+                if (showWarning)
+                {
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(_warningPulseTimer * WarningPulseFrequency);
+                    var c = ShortSqueezeWarningColor;
+                    c.a = pulse;
+                    view.WarningIcon.color = c;
+                }
+            }
+        }
+    }
+
+    private void UpdateWarningPulse()
+    {
+        for (int i = 0; i < _entryViews.Count && i < _data.EntryCount; i++)
+        {
+            var entry = _data.GetEntry(i);
+            var view = _entryViews[i];
+
+            if (view.WarningIcon != null)
+            {
+                bool showWarning = _shortSqueezeStocks.Contains(entry.StockId) && !entry.IsLong;
+                view.WarningIcon.gameObject.SetActive(showWarning);
+                if (showWarning)
+                {
+                    float pulse = 0.5f + 0.5f * Mathf.Sin(_warningPulseTimer * WarningPulseFrequency);
+                    var c = ShortSqueezeWarningColor;
+                    c.a = pulse;
+                    view.WarningIcon.color = c;
+                }
             }
         }
     }
@@ -185,6 +268,18 @@ public class PositionPanel : MonoBehaviour
             TradingHUD.FormatProfit(entry.UnrealizedPnL), Color.white, 13, FontStyle.Bold, TextAnchor.MiddleRight);
         view.PnLText = pnlGo.GetComponent<Text>();
 
+        // Warning icon for short squeeze (hidden by default)
+        var warningGo = CreateText($"Warning_{entry.StockId}", entryGo.transform,
+            "\u2757", ShortSqueezeWarningColor, 18, FontStyle.Bold, TextAnchor.MiddleCenter);
+        var warningRect = warningGo.GetComponent<RectTransform>();
+        warningRect.anchorMin = new Vector2(1f, 0.5f);
+        warningRect.anchorMax = new Vector2(1f, 0.5f);
+        warningRect.pivot = new Vector2(1f, 0.5f);
+        warningRect.anchoredPosition = new Vector2(-2f, 0f);
+        warningRect.sizeDelta = new Vector2(20f, 20f);
+        view.WarningIcon = warningGo.GetComponent<Text>();
+        warningGo.SetActive(false);
+
         return view;
     }
 
@@ -234,4 +329,5 @@ public class PositionEntryView
     public Text SharesText;
     public Text AvgPriceText;
     public Text PnLText;
+    public Text WarningIcon;
 }

@@ -538,7 +538,7 @@ namespace BullRun.Tests.Events
 
             Assert.AreEqual(MarketEventType.PumpAndDump, received.EventType);
             Assert.AreEqual(8f, received.Duration, 0.01f, "PumpAndDump duration should be 8s");
-            Assert.IsFalse(received.IsPositive, "PumpAndDump net effect is negative (crash)");
+            Assert.IsTrue(received.IsPositive, "PumpAndDump should appear positive to lure players during pump phase");
         }
 
         [Test]
@@ -651,19 +651,22 @@ namespace BullRun.Tests.Events
             scheduler.FireEvent(EventDefinitions.SectorRotation, sectorStocks);
 
             // One stock should go up, one should go down
+            // NOTE: GetActiveEventsForStock returns a shared buffer — extract values before the next call
             var events0 = effects.GetActiveEventsForStock(0);
-            var events1 = effects.GetActiveEventsForStock(1);
-
             Assert.AreEqual(1, events0.Count, "Stock 0 should have one event");
+            float effect0 = events0[0].PriceEffectPercent;
+
+            var events1 = effects.GetActiveEventsForStock(1);
             Assert.AreEqual(1, events1.Count, "Stock 1 should have one event");
+            float effect1 = events1[0].PriceEffectPercent;
 
             // One should be positive, one negative
             bool onePositiveOneNegative =
-                (events0[0].PriceEffectPercent > 0 && events1[0].PriceEffectPercent < 0) ||
-                (events0[0].PriceEffectPercent < 0 && events1[0].PriceEffectPercent > 0);
+                (effect0 > 0 && effect1 < 0) ||
+                (effect0 < 0 && effect1 > 0);
 
             Assert.IsTrue(onePositiveOneNegative,
-                $"One sector should go up and the other down. Got: Stock0={events0[0].PriceEffectPercent}, Stock1={events1[0].PriceEffectPercent}");
+                $"One sector should go up and the other down. Got: Stock0={effect0}, Stock1={effect1}");
         }
 
         [Test]
@@ -843,9 +846,9 @@ namespace BullRun.Tests.Events
             stock1.Initialize(1, "RISK", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
             stocks.Add(stock1);
 
-            // Create portfolio with a short on stock "1" (StockId as string)
+            // Create portfolio with a short using ticker symbol (production matching path)
             var portfolio = new Portfolio(10000f);
-            portfolio.OpenShort("1", 100, 50f);
+            portfolio.OpenShort("RISK", 100, 50f);
 
             var runContext = new RunContext(1, 1, portfolio);
 
@@ -861,7 +864,7 @@ namespace BullRun.Tests.Events
 
             Assert.IsNotNull(received.AffectedStockIds);
             Assert.AreEqual(1, received.AffectedStockIds[0],
-                "Short Squeeze should target stock 1 (player's shorted stock)");
+                "Short Squeeze should target stock 1 (player's shorted stock matched by ticker)");
         }
 
         [Test]
@@ -876,10 +879,10 @@ namespace BullRun.Tests.Events
             stock1.Initialize(1, "BIG", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
             stocks.Add(stock1);
 
-            // Create portfolio with shorts on both stocks — stock "1" has more shares
+            // Create portfolio with shorts using ticker symbols — "BIG" has more shares
             var portfolio = new Portfolio(50000f);
-            portfolio.OpenShort("0", 10, 100f);
-            portfolio.OpenShort("1", 200, 50f);
+            portfolio.OpenShort("SMALL", 10, 100f);
+            portfolio.OpenShort("BIG", 200, 50f);
 
             var runContext = new RunContext(1, 1, portfolio);
 
@@ -894,7 +897,7 @@ namespace BullRun.Tests.Events
             scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
 
             Assert.AreEqual(1, received.AffectedStockIds[0],
-                "Short Squeeze should target stock with largest short position (200 shares)");
+                "Short Squeeze should target stock with largest short position (BIG, 200 shares)");
         }
 
         [Test]
@@ -911,7 +914,7 @@ namespace BullRun.Tests.Events
 
             // Portfolio with no shorts (only longs)
             var portfolio = new Portfolio(10000f);
-            portfolio.OpenPosition("0", 10, 100f);
+            portfolio.OpenPosition("ABC", 10, 100f);
 
             var runContext = new RunContext(1, 1, portfolio);
 
@@ -941,7 +944,7 @@ namespace BullRun.Tests.Events
             stocks.Add(stock);
 
             var portfolio = new Portfolio(10000f);
-            portfolio.OpenShort("0", 50, 100f);
+            portfolio.OpenShort("TEST", 50, 100f);
             float cashBefore = portfolio.Cash;
             int posCountBefore = portfolio.PositionCount;
 

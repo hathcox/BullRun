@@ -64,6 +64,7 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteRoundResultsUI();
         UISetup.ExecuteRunSummaryUI();
         UISetup.ExecuteTierTransitionUI();
+        UISetup.ExecuteShopUI();
 
         // Re-populate sidebar whenever a new round starts (including run restarts)
         var priceGen = _priceGenerator;

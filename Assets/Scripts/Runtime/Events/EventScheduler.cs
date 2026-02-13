@@ -312,7 +312,7 @@ public class EventScheduler
         if (activeStocks.Count < 2)
             return;
 
-        float rotationPercent = RandomRange(0.10f, config.MaxPriceEffect);
+        float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect);
 
         // Group stocks by sector
         var sectorGroups = new Dictionary<StockSector, List<StockInstance>>();
@@ -383,7 +383,7 @@ public class EventScheduler
 
         // Publish one combined headline for the entire sector rotation
         string winnerTicker = winnerStocks.Count > 0 ? winnerStocks[0].TickerSymbol : "the market";
-        string headline = EventHeadlineData.GetHeadline(config.EventType, winnerTicker, new System.Random(_random.Next()));
+        string headline = EventHeadlineData.GetHeadline(config.EventType, winnerTicker, _random);
 
         EventBus.Publish(new MarketEventFiredEvent
         {

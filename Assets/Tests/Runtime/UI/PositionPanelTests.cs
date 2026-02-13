@@ -186,5 +186,15 @@ namespace BullRun.Tests.UI
         {
             Assert.AreEqual("SHORT", PositionPanel.FormatPositionType(false));
         }
+
+        // --- Short Squeeze Warning Color (Story 5-5) ---
+
+        [Test]
+        public void ShortSqueezeWarningColor_IsRed()
+        {
+            Assert.AreEqual(1f, PositionPanel.ShortSqueezeWarningColor.r, 0.01f);
+            Assert.AreEqual(0f, PositionPanel.ShortSqueezeWarningColor.g, 0.01f);
+            Assert.AreEqual(0f, PositionPanel.ShortSqueezeWarningColor.b, 0.01f);
+        }
     }
 }
