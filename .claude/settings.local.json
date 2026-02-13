@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(if not exist \"E:\\\\BullRun\\\\Assets\\\\Tests\\\\Runtime\\\\Events\" mkdir \"E:\\\\BullRun\\\\Assets\\\\Tests\\\\Runtime\\\\Events\")"
+      "Bash(if not exist \"E:\\\\BullRun\\\\Assets\\\\Tests\\\\Runtime\\\\Events\" mkdir \"E:\\\\BullRun\\\\Assets\\\\Tests\\\\Runtime\\\\Events\")",
+      "Bash(ls:*)"
     ]
   }
 }

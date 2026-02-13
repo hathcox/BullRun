@@ -759,6 +759,298 @@ namespace BullRun.Tests.Events
             Assert.IsFalse(seenForNonPenny, "PumpAndDump should NEVER appear for non-Penny tiers");
         }
 
+        // --- Story 5-4: FlashCrash multi-phase tests ---
+
+        [Test]
+        public void FireEvent_FlashCrash_CreatesMultiPhaseEvent()
+        {
+            var lowStocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "ZAPP", StockTier.LowValue, 100f, TrendDirection.Neutral, 0f);
+            lowStocks.Add(stock);
+
+            var effects = new EventEffects();
+            effects.SetActiveStocks(lowStocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+
+            scheduler.FireEvent(EventDefinitions.FlashCrash, lowStocks);
+
+            var activeEvents = effects.GetActiveEventsForStock(0);
+            Assert.AreEqual(1, activeEvents.Count);
+            var evt = activeEvents[0];
+
+            Assert.IsNotNull(evt.Phases, "FlashCrash should have phases");
+            Assert.AreEqual(2, evt.Phases.Count, "FlashCrash should have 2 phases (crash + recovery)");
+            Assert.Less(evt.Phases[0].TargetPricePercent, 0f, "Phase 0 (crash) should be negative");
+            Assert.Greater(evt.Phases[1].TargetPricePercent, 0f, "Phase 1 (recovery) should be positive");
+        }
+
+        [Test]
+        public void FireEvent_FlashCrash_VShapeTrajectory()
+        {
+            var lowStocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "ZAPP", StockTier.LowValue, 100f, TrendDirection.Neutral, 0f);
+            lowStocks.Add(stock);
+
+            var effects = new EventEffects();
+            effects.SetActiveStocks(lowStocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+
+            scheduler.FireEvent(EventDefinitions.FlashCrash, lowStocks);
+
+            var activeEvents = effects.GetActiveEventsForStock(0);
+            var evt = activeEvents[0];
+
+            float startPrice = stock.CurrentPrice;
+            float dt = 0.05f;
+            float lowestPrice = startPrice;
+            float time = 0f;
+
+            // Simulate full timeline
+            while (time < evt.Duration - dt)
+            {
+                time += dt;
+                evt.ElapsedTime = time;
+
+                float price = effects.ApplyEventEffect(stock, evt, dt);
+                if (price < lowestPrice)
+                    lowestPrice = price;
+
+                stock.CurrentPrice = price;
+            }
+
+            // V-shape: price should have dropped significantly during crash phase
+            Assert.Less(lowestPrice, startPrice * 0.80f,
+                $"Price should have crashed at least 20% during flash crash. Lowest={lowestPrice}, Start={startPrice}");
+
+            // Final price should recover near original (within 15%)
+            Assert.Greater(stock.CurrentPrice, startPrice * 0.80f,
+                $"Price should recover near original after flash crash. Final={stock.CurrentPrice}, Start={startPrice}");
+        }
+
+        // --- Story 5-4: Short Squeeze portfolio-aware targeting ---
+
+        [Test]
+        public void FireEvent_ShortSqueeze_TargetsShortedStock()
+        {
+            var stocks = new List<StockInstance>();
+            var stock0 = new StockInstance();
+            stock0.Initialize(0, "SAFE", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock0);
+
+            var stock1 = new StockInstance();
+            stock1.Initialize(1, "RISK", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock1);
+
+            // Create portfolio with a short on stock "1" (StockId as string)
+            var portfolio = new Portfolio(10000f);
+            portfolio.OpenShort("1", 100, 50f);
+
+            var runContext = new RunContext(1, 1, portfolio);
+
+            var effects = new EventEffects();
+            effects.SetActiveStocks(stocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+            scheduler.SetRunContext(runContext);
+
+            MarketEventFiredEvent received = default;
+            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
+
+            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
+
+            Assert.IsNotNull(received.AffectedStockIds);
+            Assert.AreEqual(1, received.AffectedStockIds[0],
+                "Short Squeeze should target stock 1 (player's shorted stock)");
+        }
+
+        [Test]
+        public void FireEvent_ShortSqueeze_TargetsLargestShort()
+        {
+            var stocks = new List<StockInstance>();
+            var stock0 = new StockInstance();
+            stock0.Initialize(0, "SMALL", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock0);
+
+            var stock1 = new StockInstance();
+            stock1.Initialize(1, "BIG", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock1);
+
+            // Create portfolio with shorts on both stocks — stock "1" has more shares
+            var portfolio = new Portfolio(50000f);
+            portfolio.OpenShort("0", 10, 100f);
+            portfolio.OpenShort("1", 200, 50f);
+
+            var runContext = new RunContext(1, 1, portfolio);
+
+            var effects = new EventEffects();
+            effects.SetActiveStocks(stocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+            scheduler.SetRunContext(runContext);
+
+            MarketEventFiredEvent received = default;
+            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
+
+            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
+
+            Assert.AreEqual(1, received.AffectedStockIds[0],
+                "Short Squeeze should target stock with largest short position (200 shares)");
+        }
+
+        [Test]
+        public void FireEvent_ShortSqueeze_RandomTargetWhenNoShorts()
+        {
+            var stocks = new List<StockInstance>();
+            var stock0 = new StockInstance();
+            stock0.Initialize(0, "ABC", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock0);
+
+            var stock1 = new StockInstance();
+            stock1.Initialize(1, "DEF", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock1);
+
+            // Portfolio with no shorts (only longs)
+            var portfolio = new Portfolio(10000f);
+            portfolio.OpenPosition("0", 10, 100f);
+
+            var runContext = new RunContext(1, 1, portfolio);
+
+            var effects = new EventEffects();
+            effects.SetActiveStocks(stocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+            scheduler.SetRunContext(runContext);
+
+            MarketEventFiredEvent received = default;
+            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
+
+            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
+
+            Assert.IsNotNull(received.AffectedStockIds, "Should still target a stock");
+            Assert.AreEqual(1, received.AffectedStockIds.Length);
+            // Target should be one of the active stocks
+            int target = received.AffectedStockIds[0];
+            Assert.IsTrue(target == 0 || target == 1, "Target should be a valid active stock");
+        }
+
+        [Test]
+        public void FireEvent_ShortSqueeze_DoesNotModifyPortfolio()
+        {
+            var stocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock);
+
+            var portfolio = new Portfolio(10000f);
+            portfolio.OpenShort("0", 50, 100f);
+            float cashBefore = portfolio.Cash;
+            int posCountBefore = portfolio.PositionCount;
+
+            var runContext = new RunContext(1, 1, portfolio);
+
+            var effects = new EventEffects();
+            effects.SetActiveStocks(stocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+            scheduler.SetRunContext(runContext);
+
+            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
+
+            Assert.AreEqual(cashBefore, portfolio.Cash, 0.01f,
+                "Short Squeeze targeting should not modify portfolio cash");
+            Assert.AreEqual(posCountBefore, portfolio.PositionCount,
+                "Short Squeeze targeting should not modify position count");
+        }
+
+        // --- Story 5-4: Rare event cap ---
+
+        [Test]
+        public void SelectEventType_RareEventCap_MaxOnePerRound()
+        {
+            // After InitializeRound, fire events and track rare event count
+            int rareEventsInRound = 0;
+            int totalEvents = 0;
+
+            // Test across many seeds
+            for (int seed = 0; seed < 200; seed++)
+            {
+                rareEventsInRound = 0;
+                totalEvents = 0;
+
+                var effects = new EventEffects();
+                var scheduler = new EventScheduler(effects, new System.Random(seed));
+                scheduler.InitializeRound(1, 1, StockTier.MidValue, _activeStocks, 60f);
+
+                // Simulate selecting events for all slots
+                for (int i = 0; i < scheduler.ScheduledEventCount; i++)
+                {
+                    var config = scheduler.SelectEventType(StockTier.MidValue);
+                    if (config.Rarity <= 0.2f)
+                        rareEventsInRound++;
+                    totalEvents++;
+                }
+
+                Assert.LessOrEqual(rareEventsInRound, 1,
+                    $"Seed {seed}: Should have at most 1 rare event per round, got {rareEventsInRound}");
+            }
+        }
+
+        // --- Story 5-4: MarketCrash/BullRun end-to-end verification ---
+
+        [Test]
+        public void FireEvent_MarketCrash_AffectsAllActiveStocks()
+        {
+            var effects = new EventEffects();
+            effects.SetActiveStocks(_activeStocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+
+            scheduler.FireEvent(EventDefinitions.MarketCrash, _activeStocks);
+
+            // Both stocks should see the global event
+            var stock0Events = effects.GetActiveEventsForStock(0);
+            var stock1Events = effects.GetActiveEventsForStock(1);
+
+            Assert.AreEqual(1, stock0Events.Count, "Stock 0 should be affected by MarketCrash");
+            Assert.AreEqual(1, stock1Events.Count, "Stock 1 should be affected by MarketCrash");
+            Assert.AreEqual(stock0Events[0], stock1Events[0],
+                "Both stocks should reference the same global event");
+        }
+
+        [Test]
+        public void FireEvent_BullRun_AffectsAllActiveStocksPositive()
+        {
+            var effects = new EventEffects();
+            effects.SetActiveStocks(_activeStocks);
+            var scheduler = new EventScheduler(effects, new System.Random(42));
+
+            MarketEventFiredEvent received = default;
+            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
+
+            scheduler.FireEvent(EventDefinitions.BullRunEvent, _activeStocks);
+
+            Assert.IsTrue(received.IsPositive, "BullRun should be positive");
+            Assert.Greater(received.PriceEffectPercent, 0f, "BullRun price effect should be positive");
+
+            var stock0Events = effects.GetActiveEventsForStock(0);
+            var stock1Events = effects.GetActiveEventsForStock(1);
+
+            Assert.AreEqual(1, stock0Events.Count, "Stock 0 should be affected by BullRun");
+            Assert.AreEqual(1, stock1Events.Count, "Stock 1 should be affected by BullRun");
+        }
+
+        // --- Story 5-4: Headline tests ---
+
+        [Test]
+        public void EventHeadlineData_AllFourGlobalEventTypesHaveMultipleHeadlines()
+        {
+            Assert.GreaterOrEqual(EventHeadlineData.MarketCrashHeadlines.Length, 3,
+                "MarketCrash should have at least 3 headlines");
+            Assert.GreaterOrEqual(EventHeadlineData.BullRunHeadlines.Length, 3,
+                "BullRun should have at least 3 headlines");
+            Assert.GreaterOrEqual(EventHeadlineData.FlashCrashHeadlines.Length, 3,
+                "FlashCrash should have at least 3 headlines");
+            Assert.GreaterOrEqual(EventHeadlineData.ShortSqueezeHeadlines.Length, 3,
+                "ShortSqueeze should have at least 3 headlines");
+        }
+
         [Test]
         public void TierFiltering_SectorRotation_OnlyMidAndBlue()
         {

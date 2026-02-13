@@ -54,21 +54,33 @@ public static class EventHeadlineData
 
     public static readonly string[] MarketCrashHeadlines = new[]
     {
+        "MARKET CRASH — panic selling across all sectors!",
+        "Markets in freefall — investors flee",
+        "Breaking: massive selloff hits every stock",
         "Market-wide sell-off hits {ticker}",
     };
 
     public static readonly string[] BullRunHeadlines = new[]
     {
+        "BULL RUN — markets surge across the board!",
+        "Euphoria grips Wall Street — everything's up",
+        "Green everywhere — biggest rally this year",
         "Broad rally lifts {ticker} and peers",
     };
 
     public static readonly string[] FlashCrashHeadlines = new[]
     {
+        "Flash crash hits {ticker} — price in freefall!",
+        "Algorithm glitch tanks {ticker}",
+        "{ticker} plunges on mysterious volume spike",
         "Flash crash rattles {ticker} trading",
     };
 
     public static readonly string[] ShortSqueezeHeadlines = new[]
     {
+        "SHORT SQUEEZE on {ticker} — shorts getting crushed!",
+        "Bears trapped as {ticker} rockets upward",
+        "{ticker} skyrockets — margin calls for shorts",
         "Short squeeze sends {ticker} soaring",
     };
 

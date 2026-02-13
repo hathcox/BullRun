@@ -81,7 +81,7 @@ development_status:
   5-1-event-scheduler: done
   5-2-core-market-events: done
   5-3-tier-specific-events: review
-  5-4-global-market-events: ready-for-dev
+  5-4-global-market-events: review
   5-5-event-visual-signals: ready-for-dev
   epic-5-retrospective: optional
 

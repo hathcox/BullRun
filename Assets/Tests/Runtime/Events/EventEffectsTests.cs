@@ -474,6 +474,52 @@ namespace BullRun.Tests.Events
                 $"Global event headline should use 'the market', got: {received.Headline}");
         }
 
+        // --- Story 5-4: Global event price application tests ---
+
+        [Test]
+        public void ApplyEventEffect_GlobalEvent_AppliesSamePercentToAllStocks()
+        {
+            var stock1 = new StockInstance();
+            stock1.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            var stock2 = new StockInstance();
+            stock2.Initialize(1, "STK2", StockTier.MidValue, 200f, TrendDirection.Neutral, 0f);
+
+            // MarketCrash at -40%
+            var evt = new MarketEvent(MarketEventType.MarketCrash, null, -0.40f, 8f);
+            evt.ElapsedTime = 4f; // Peak force = 1.0
+
+            float result1 = _effects.ApplyEventEffect(stock1, evt, 0.016f);
+            float result2 = _effects.ApplyEventEffect(stock2, evt, 0.016f);
+
+            // Stock 1: 100 * (1 - 0.40) = 60
+            // Stock 2: 200 * (1 - 0.40) = 120
+            Assert.AreEqual(60f, result1, 1f, "Stock 1 should drop by 40%");
+            Assert.AreEqual(120f, result2, 1f, "Stock 2 should drop by 40%");
+
+            // Verify same percentage applied
+            float pct1 = (result1 - 100f) / 100f;
+            float pct2 = (result2 - 200f) / 200f;
+            Assert.AreEqual(pct1, pct2, 0.01f, "Same percentage should apply to both stocks");
+        }
+
+        [Test]
+        public void ApplyEventEffect_BullRun_IncreasesAllStockPrices()
+        {
+            var stock1 = new StockInstance();
+            stock1.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            var stock2 = new StockInstance();
+            stock2.Initialize(1, "STK2", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
+
+            var evt = new MarketEvent(MarketEventType.BullRun, null, 0.40f, 8f);
+            evt.ElapsedTime = 4f; // Peak force
+
+            float result1 = _effects.ApplyEventEffect(stock1, evt, 0.016f);
+            float result2 = _effects.ApplyEventEffect(stock2, evt, 0.016f);
+
+            Assert.Greater(result1, 100f, "BullRun should increase stock 1 price");
+            Assert.Greater(result2, 50f, "BullRun should increase stock 2 price");
+        }
+
         [Test]
         public void UpdateActiveEvents_EndedEvent_IncludesTickerSymbols()
         {

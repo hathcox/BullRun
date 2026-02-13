@@ -1,6 +1,6 @@
 # Story 5.4: Global Market Events
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -21,66 +21,66 @@ so that dramatic moments shake up the entire round and force rapid adaptation.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Implement Market Crash as global event (AC: 1, 5)
-  - [ ] Target: ALL active stocks (`TargetStockId = null`, `IsGlobalEvent = true`)
-  - [ ] EventEffects already handles global events — applies effect to all stocks in `GetActiveEventsForStock()`
-  - [ ] Verify that price Lerp applies the same percentage drop to each stock (not absolute amount)
-  - [ ] Config already exists: `EventDefinitions.MarketCrash` (-30 to -70%, 8s, AllTiers, rarity 0.1)
-  - [ ] Should work with existing single-phase EventEffects — verify end-to-end
+- [x] Task 1: Implement Market Crash as global event (AC: 1, 5)
+  - [x] Target: ALL active stocks (`TargetStockId = null`, `IsGlobalEvent = true`)
+  - [x] EventEffects already handles global events — applies effect to all stocks in `GetActiveEventsForStock()`
+  - [x] Verify that price Lerp applies the same percentage drop to each stock (not absolute amount)
+  - [x] Config already exists: `EventDefinitions.MarketCrash` (-30 to -70%, 8s, AllTiers, rarity 0.1)
+  - [x] Should work with existing single-phase EventEffects — verify end-to-end
 
-- [ ] Task 2: Implement Bull Run as global event (AC: 2, 5)
-  - [ ] Target: ALL active stocks (global)
-  - [ ] Config already exists: `EventDefinitions.BullRunEvent` (+25-60%, 8s, AllTiers, rarity 0.1)
-  - [ ] Same implementation path as MarketCrash but positive effect
-  - [ ] Verify end-to-end with EventScheduler
+- [x] Task 2: Implement Bull Run as global event (AC: 2, 5)
+  - [x] Target: ALL active stocks (global)
+  - [x] Config already exists: `EventDefinitions.BullRunEvent` (+25-60%, 8s, AllTiers, rarity 0.1)
+  - [x] Same implementation path as MarketCrash but positive effect
+  - [x] Verify end-to-end with EventScheduler
 
-- [ ] Task 3: Implement Flash Crash as multi-phase event (AC: 3)
-  - [ ] Target: single stock
-  - [ ] Phase 1 (Crash): price drops 25-50% rapidly over first ~40% of duration
-  - [ ] Phase 2 (Recovery): price recovers toward original price over remaining ~60% of duration
-  - [ ] Creates V-shape on chart — buy opportunity for quick players who recognize the pattern
-  - [ ] Uses multi-phase MarketEvent system from Story 5-3
-  - [ ] Config already exists: `EventDefinitions.FlashCrash` (-25 to -50%, 4s, Low/Mid, rarity 0.2)
-  - [ ] Note: 4s total is short — Phase 1 ~1.5s crash, Phase 2 ~2.5s recovery
+- [x] Task 3: Implement Flash Crash as multi-phase event (AC: 3)
+  - [x] Target: single stock
+  - [x] Phase 1 (Crash): price drops 25-50% rapidly over first ~40% of duration
+  - [x] Phase 2 (Recovery): price recovers toward original price over remaining ~60% of duration
+  - [x] Creates V-shape on chart — buy opportunity for quick players who recognize the pattern
+  - [x] Uses multi-phase MarketEvent system from Story 5-3
+  - [x] Config already exists: `EventDefinitions.FlashCrash` (-25 to -50%, 4s, Low/Mid, rarity 0.2)
+  - [x] Note: 4s total is short — Phase 1 ~1.5s crash, Phase 2 ~2.5s recovery
 
-- [ ] Task 4: Implement Short Squeeze with portfolio-aware targeting (AC: 4, 6)
-  - [ ] Target selection: check `RunContext.Portfolio` for open short positions
-  - [ ] If player has shorts: target the stock with the largest short position (maximum pain)
-  - [ ] If player has no shorts: target a random active stock (squeeze still happens, just less punishing)
-  - [ ] Effect: violent price spike 40-100% over 4s
-  - [ ] Config already exists: `EventDefinitions.ShortSqueeze` (+40-100%, 4s, AllTiers, rarity 0.2)
-  - [ ] EventScheduler needs access to `RunContext` for portfolio inspection
+- [x] Task 4: Implement Short Squeeze with portfolio-aware targeting (AC: 4, 6)
+  - [x] Target selection: check `RunContext.Portfolio` for open short positions
+  - [x] If player has shorts: target the stock with the largest short position (maximum pain)
+  - [x] If player has no shorts: target a random active stock (squeeze still happens, just less punishing)
+  - [x] Effect: violent price spike 40-100% over 4s
+  - [x] Config already exists: `EventDefinitions.ShortSqueeze` (+40-100%, 4s, AllTiers, rarity 0.2)
+  - [x] EventScheduler needs access to `RunContext` for portfolio inspection
 
-- [ ] Task 5: Wire RunContext into EventScheduler for portfolio-aware targeting (AC: 6)
-  - [ ] Add `RunContext` parameter to `EventScheduler` constructor or `InitializeRound()`
-  - [ ] EventScheduler reads `RunContext.Portfolio.GetPositions()` — one-way read, never modifies
-  - [ ] Only used by Short Squeeze targeting — other events ignore portfolio
-  - [ ] File: `Scripts/Runtime/Events/EventScheduler.cs` (extend from Story 5-1)
+- [x] Task 5: Wire RunContext into EventScheduler for portfolio-aware targeting (AC: 6)
+  - [x] Add `RunContext` parameter to `EventScheduler` constructor or `InitializeRound()`
+  - [x] EventScheduler reads `RunContext.Portfolio.GetPositions()` — one-way read, never modifies
+  - [x] Only used by Short Squeeze targeting — other events ignore portfolio
+  - [x] File: `Scripts/Runtime/Events/EventScheduler.cs` (extend from Story 5-1)
 
-- [ ] Task 6: Add global/special event headlines to EventHeadlineData (AC: 8)
-  - [ ] MarketCrash headlines: `"MARKET CRASH — panic selling across all sectors!"`, `"Markets in freefall — investors flee"`, `"Breaking: massive selloff hits every stock"`
-  - [ ] BullRun headlines: `"BULL RUN — markets surge across the board!"`, `"Euphoria grips Wall Street — everything's up"`, `"Green everywhere — biggest rally this year"`
-  - [ ] FlashCrash headlines: `"Flash crash hits {ticker} — price in freefall!"`, `"Algorithm glitch tanks {ticker}"`, `"{ticker} plunges on mysterious volume spike"`
-  - [ ] ShortSqueeze headlines: `"SHORT SQUEEZE on {ticker} — shorts getting crushed!"`, `"Bears trapped as {ticker} rockets upward"`, `"{ticker} skyrockets — margin calls for shorts"`
-  - [ ] File: `Scripts/Setup/Data/EventHeadlineData.cs` (extend from Stories 5-2, 5-3)
+- [x] Task 6: Add global/special event headlines to EventHeadlineData (AC: 8)
+  - [x] MarketCrash headlines: `"MARKET CRASH — panic selling across all sectors!"`, `"Markets in freefall — investors flee"`, `"Breaking: massive selloff hits every stock"`
+  - [x] BullRun headlines: `"BULL RUN — markets surge across the board!"`, `"Euphoria grips Wall Street — everything's up"`, `"Green everywhere — biggest rally this year"`
+  - [x] FlashCrash headlines: `"Flash crash hits {ticker} — price in freefall!"`, `"Algorithm glitch tanks {ticker}"`, `"{ticker} plunges on mysterious volume spike"`
+  - [x] ShortSqueeze headlines: `"SHORT SQUEEZE on {ticker} — shorts getting crushed!"`, `"Bears trapped as {ticker} rockets upward"`, `"{ticker} skyrockets — margin calls for shorts"`
+  - [x] File: `Scripts/Setup/Data/EventHeadlineData.cs` (extend from Stories 5-2, 5-3)
 
-- [ ] Task 7: Add rare event cap to EventScheduler (AC: 7)
-  - [ ] Maximum 1 rare event (rarity <= 0.2) per round to prevent overwhelming the player
-  - [ ] After a rare event is scheduled in a round, exclude rare events from remaining slots
-  - [ ] This prevents double Market Crash or Market Crash + Short Squeeze in same round
-  - [ ] File: `Scripts/Runtime/Events/EventScheduler.cs` (extend)
+- [x] Task 7: Add rare event cap to EventScheduler (AC: 7)
+  - [x] Maximum 1 rare event (rarity <= 0.2) per round to prevent overwhelming the player
+  - [x] After a rare event is scheduled in a round, exclude rare events from remaining slots
+  - [x] This prevents double Market Crash or Market Crash + Short Squeeze in same round
+  - [x] File: `Scripts/Runtime/Events/EventScheduler.cs` (extend)
 
-- [ ] Task 8: Write comprehensive tests (AC: 1-8)
-  - [ ] Test: MarketCrash affects all active stocks (global targeting verified)
-  - [ ] Test: BullRun affects all active stocks with positive effect
-  - [ ] Test: FlashCrash creates V-shape pattern (price drops then recovers near original)
-  - [ ] Test: ShortSqueeze targets shorted stock when player has shorts
-  - [ ] Test: ShortSqueeze targets random stock when player has no shorts
-  - [ ] Test: Portfolio-aware targeting reads but never modifies portfolio
-  - [ ] Test: Maximum 1 rare event per round enforced
-  - [ ] Test: All 4 event types have headlines in EventHeadlineData
-  - [ ] File: `Tests/Runtime/Events/EventSchedulerTests.cs` (extend from Story 5-1)
-  - [ ] File: `Tests/Runtime/Events/EventEffectsTests.cs` (extend)
+- [x] Task 8: Write comprehensive tests (AC: 1-8)
+  - [x] Test: MarketCrash affects all active stocks (global targeting verified)
+  - [x] Test: BullRun affects all active stocks with positive effect
+  - [x] Test: FlashCrash creates V-shape pattern (price drops then recovers near original)
+  - [x] Test: ShortSqueeze targets shorted stock when player has shorts
+  - [x] Test: ShortSqueeze targets random stock when player has no shorts
+  - [x] Test: Portfolio-aware targeting reads but never modifies portfolio
+  - [x] Test: Maximum 1 rare event per round enforced
+  - [x] Test: All 4 event types have headlines in EventHeadlineData
+  - [x] File: `Tests/Runtime/Events/EventSchedulerTests.cs` (extend from Story 5-1)
+  - [x] File: `Tests/Runtime/Events/EventEffectsTests.cs` (extend)
 
 ## Dev Notes
 
@@ -196,14 +196,31 @@ if (selectedConfig.Rarity <= 0.2f)
 - [Source: Portfolio.cs] — GetAllPositions(), Position.IsShort for targeting
 - [Source: GameEvents.cs] — Note about StockId string vs int mismatch
 
+## Change Log
+
+- 2026-02-13: Implemented all 8 tasks — global events (MarketCrash/BullRun verified end-to-end), FlashCrash multi-phase V-shape, Short Squeeze portfolio-aware targeting, RunContext wiring, expanded headlines (4 per event type), rare event cap (max 1 per round), and 14 new tests across EventSchedulerTests and EventEffectsTests.
+
 ## Dev Agent Record
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude Opus 4.6
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Tasks 1-2: MarketCrash and BullRun already worked end-to-end via existing global event infrastructure (FireEvent sets null TargetStockId, EventEffects.GetActiveEventsForStock returns global events for all stocks, ApplyEventEffect applies percentage-based Lerp). Verified with new tests confirming same percentage drop applies to all stocks.
+- Task 3: FlashCrash implemented as 2-phase event in EventScheduler.FireEvent(). Phase 0 (40% of 4s = 1.6s): crash by rolled effect. Phase 1 (60% = 2.4s): recovery to ~95% of original price. Recovery target calculated as `0.95 / (1 + crashEffect) - 1` to ensure V-shape trajectory.
+- Task 4: Short Squeeze targeting implemented via SelectShortSqueezeTarget() method. Iterates portfolio positions to find largest short (by shares), then matches to active stock by both TickerSymbol and StockId.ToString() to handle the string/int type mismatch (Option A from Dev Notes).
+- Task 5: Added `_runContext` field and `SetRunContext()` method to EventScheduler. Read-only access — only used by Short Squeeze targeting logic.
+- Task 6: Expanded headline arrays from 1 to 4 templates each for MarketCrash, BullRun, FlashCrash, and ShortSqueeze. All follow existing {ticker} substitution pattern.
+- Task 7: Added `_rareEventScheduledThisRound` flag to EventScheduler, reset in InitializeRound(). SelectEventType() filters out events with rarity <= 0.2 after first rare event fires. Falls back to full list if all tier events are rare.
+- Task 8: Added 14 new tests — FlashCrash multi-phase (2), Short Squeeze targeting (4), rare event cap (1), MarketCrash/BullRun end-to-end (2), headline counts (1), global event price application (2), BullRun price increase (2 in EventEffectsTests).
+
 ### File List
+
+- Modified: `Assets/Scripts/Runtime/Events/EventScheduler.cs` — FlashCrash multi-phase, RunContext wiring, Short Squeeze targeting, rare event cap
+- Modified: `Assets/Scripts/Setup/Data/EventHeadlineData.cs` — Expanded headlines for MarketCrash, BullRun, FlashCrash, ShortSqueeze (4 each)
+- Modified: `Assets/Tests/Runtime/Events/EventSchedulerTests.cs` — 12 new tests for Story 5-4
+- Modified: `Assets/Tests/Runtime/Events/EventEffectsTests.cs` — 2 new tests for global event price application

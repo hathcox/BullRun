@@ -14,6 +14,8 @@ public class EventScheduler
     private float[] _scheduledFireTimes;
     private bool[] _firedSlots;
     private int _eventCount;
+    private RunContext _runContext;
+    private bool _rareEventScheduledThisRound;
 
     public int ScheduledEventCount => _eventCount;
     public EventEffects EventEffects => _eventEffects;
@@ -34,12 +36,22 @@ public class EventScheduler
     }
 
     /// <summary>
+    /// Sets the RunContext for portfolio-aware event targeting (Short Squeeze).
+    /// Read-only access — EventScheduler reads portfolio but never modifies it.
+    /// </summary>
+    public void SetRunContext(RunContext runContext)
+    {
+        _runContext = runContext;
+    }
+
+    /// <summary>
     /// Initializes event schedule for a new round.
     /// Determines event count based on act and pre-schedules fire times.
     /// Event types are selected at fire time to keep events unpredictable.
     /// </summary>
     public void InitializeRound(int round, int act, StockTier tier, IReadOnlyList<StockInstance> activeStocks, float roundDuration)
     {
+        _rareEventScheduledThisRound = false;
         // Determine event count based on act (early vs late)
         bool isLateRound = (act >= 3);
         int minEvents = isLateRound ? EventSchedulerConfig.MinEventsLateRounds : EventSchedulerConfig.MinEventsEarlyRounds;
@@ -108,10 +120,32 @@ public class EventScheduler
 
     /// <summary>
     /// Selects an event type using rarity-weighted random selection from tier-available events.
+    /// If a rare event (rarity &lt;= 0.2) has already been scheduled this round,
+    /// excludes rare events to cap at maximum 1 rare event per round.
     /// </summary>
     public MarketEventConfig SelectEventType(StockTier tier)
     {
-        var available = EventDefinitions.GetEventsForTier(tier);
+        var allAvailable = EventDefinitions.GetEventsForTier(tier);
+
+        // Filter out rare events if one already fired this round
+        List<MarketEventConfig> available;
+        if (_rareEventScheduledThisRound)
+        {
+            available = new List<MarketEventConfig>();
+            for (int i = 0; i < allAvailable.Count; i++)
+            {
+                if (allAvailable[i].Rarity > 0.2f)
+                    available.Add(allAvailable[i]);
+            }
+
+            // If all events for this tier are rare, fall back to full list
+            if (available.Count == 0)
+                available = new List<MarketEventConfig>(allAvailable);
+        }
+        else
+        {
+            available = allAvailable;
+        }
 
         // Sum rarities for weight normalization
         float totalWeight = 0f;
@@ -127,11 +161,19 @@ public class EventScheduler
         {
             cumulative += available[i].Rarity;
             if (roll <= cumulative)
+            {
+                // Track rare event scheduling
+                if (available[i].Rarity <= 0.2f)
+                    _rareEventScheduledThisRound = true;
                 return available[i];
+            }
         }
 
         // Fallback (should never reach here)
-        return available[available.Count - 1];
+        var fallback = available[available.Count - 1];
+        if (fallback.Rarity <= 0.2f)
+            _rareEventScheduledThisRound = true;
+        return fallback;
     }
 
     /// <summary>
@@ -148,8 +190,15 @@ public class EventScheduler
 
         if (!isGlobal && activeStocks.Count > 0)
         {
-            int stockIndex = _random.Next(activeStocks.Count);
-            targetStockId = activeStocks[stockIndex].StockId;
+            if (config.EventType == MarketEventType.ShortSqueeze)
+            {
+                targetStockId = SelectShortSqueezeTarget(activeStocks);
+            }
+            else
+            {
+                int stockIndex = _random.Next(activeStocks.Count);
+                targetStockId = activeStocks[stockIndex].StockId;
+            }
         }
 
         // Roll price effect between min and max
@@ -179,6 +228,28 @@ public class EventScheduler
 
             evt = new MarketEvent(config.EventType, targetStockId, priceEffect, config.Duration, phases);
         }
+        else if (config.EventType == MarketEventType.FlashCrash)
+        {
+            // Multi-phase V-shape: crash then recover
+            // Phase 0: price drops by rolled effect over first ~40% of duration
+            // Phase 1: price recovers ~90% of the drop over remaining ~60% of duration
+            float crashDuration = config.Duration * 0.4f;
+            float recoveryDuration = config.Duration * 0.6f;
+
+            // Recovery target: from crash bottom, recover 90% of the drop
+            // Crash bottom = startPrice * (1 + priceEffect) where priceEffect is negative
+            // Recovery end = crashBottom * (1 + recoveryPercent)
+            // We want to end at ~95% of original: 0.95 / (1 + priceEffect) - 1
+            float recoveryTarget = 0.95f / (1f + priceEffect) - 1f;
+
+            var phases = new List<MarketEventPhase>
+            {
+                new MarketEventPhase(priceEffect, crashDuration),
+                new MarketEventPhase(recoveryTarget, recoveryDuration)
+            };
+
+            evt = new MarketEvent(config.EventType, targetStockId, priceEffect, config.Duration, phases);
+        }
         else if (config.EventType == MarketEventType.SectorRotation)
         {
             // Sector-aware multi-stock targeting handled separately
@@ -191,6 +262,49 @@ public class EventScheduler
         }
 
         _eventEffects.StartEvent(evt);
+    }
+
+    /// <summary>
+    /// Selects target stock for Short Squeeze. Prefers the stock the player
+    /// is currently shorting with the largest position (maximum pain).
+    /// Falls back to random stock if player has no shorts.
+    /// </summary>
+    private int SelectShortSqueezeTarget(IReadOnlyList<StockInstance> activeStocks)
+    {
+        if (_runContext != null)
+        {
+            var positions = _runContext.Portfolio.GetAllPositions();
+            string bestShortId = null;
+            int bestShortShares = 0;
+
+            foreach (var pos in positions)
+            {
+                if (pos.IsShort && pos.Shares > bestShortShares)
+                {
+                    bestShortShares = pos.Shares;
+                    bestShortId = pos.StockId;
+                }
+            }
+
+            if (bestShortId != null)
+            {
+                // Find matching active stock by ticker symbol (Option A from Dev Notes)
+                for (int i = 0; i < activeStocks.Count; i++)
+                {
+                    if (activeStocks[i].TickerSymbol == bestShortId ||
+                        activeStocks[i].StockId.ToString() == bestShortId)
+                    {
+                        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                        Debug.Log($"[EventScheduler] Short Squeeze targeting player's short on {bestShortId} ({bestShortShares} shares)");
+                        #endif
+                        return activeStocks[i].StockId;
+                    }
+                }
+            }
+        }
+
+        // No shorts or no match — target random stock
+        return activeStocks[_random.Next(activeStocks.Count)].StockId;
     }
 
     private void FireSectorRotation(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
