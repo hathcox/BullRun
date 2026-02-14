@@ -436,6 +436,50 @@ As a player, I want market events to dramatically pop up on screen with a headli
 - Event queue prevents stacking pauses
 - Green/red color coding consistent with existing system
 
+### Story FIX-5: Single Stock Per Round
+
+As a player, I want to focus on a single stock each round instead of choosing between 2-4 stocks, so that the game feels more intense and decision-making is clearer.
+
+**Acceptance Criteria:**
+- Each round spawns exactly 1 stock (regardless of tier)
+- The left stock sidebar is removed from the UI
+- The chart area expands to use the freed-up left space
+- All trading actions automatically target the single active stock
+- Stock selection keyboard shortcuts (1-4) are removed
+
+### Story FIX-6: Trading Panel Overhaul — Buy/Sell Buttons with Quantity Presets
+
+As a player, I want large BUY and SELL buttons with quantity presets (x5, x10, x15, x25), so that trading feels fast and intuitive with clear visual actions.
+
+**Acceptance Criteria:**
+- A trade panel with quantity presets (x5, x10, x15, x25) and large BUY/SELL buttons
+- BUY: opens long or auto-covers short position
+- SELL: closes long or auto-opens short if no position held
+- Buttons are large and clearly labeled (BUY green, SELL red)
+- Keyboard shortcuts: B=Buy action, S=Sell action (same smart routing as buttons)
+- Trade feedback shows actual action: "BOUGHT", "SHORTED", "COVERED", "SOLD"
+
+### Story FIX-7: Current Position Overlay — Bottom-Left of Chart
+
+As a player, I want to see my current position (shares, direction, P&L) overlaid on the bottom-left of the stock chart, so that I always know my exposure at a glance.
+
+**Acceptance Criteria:**
+- Compact position panel overlaid on bottom-left of chart area
+- Shows: share count, direction (LONG/SHORT/FLAT), average entry price, unrealized P&L
+- P&L updates in real-time; green for profit, red for loss
+- Semi-transparent so chart is still visible
+- Old right-side PositionPanel is removed
+
+### Story FIX-8: Chart Price Gridlines
+
+As a player, I want horizontal lines drawn across the chart at each price label value, so that I have a visual frame of reference for price levels.
+
+**Acceptance Criteria:**
+- Horizontal lines at each Y-axis price label position across full chart width
+- Lines update dynamically as price range changes
+- Lines are subtle (thin, low-opacity) so they don't obscure the price line
+- Lines match the number of price labels (5)
+
 ---
 
 ## Epic 8: Item/Upgrade System

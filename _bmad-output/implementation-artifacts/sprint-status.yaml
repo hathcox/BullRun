@@ -108,6 +108,10 @@ development_status:
   FIX-2-short-selling-ui: done
   FIX-3-trade-quantity-selection: done
   FIX-4-event-popup-display: review
+  FIX-5-single-stock-per-round: ready-for-dev
+  FIX-6-trading-panel-overhaul: ready-for-dev
+  FIX-7-position-overlay: ready-for-dev
+  FIX-8-chart-price-gridlines: ready-for-dev
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
   epic-8: backlog
