@@ -1227,93 +1227,69 @@ public static class UISetup
     }
 
     /// <summary>
-    /// Generates the key legend panel at the bottom-left showing trading keybindings.
-    /// B=Buy  S=Sell  D=Short  F=Cover
+    /// Generates the trade panel at bottom-center of screen.
+    /// Layout: quantity presets row on top, SELL (red) button left, BUY (green) button right.
+    /// Replaces old ExecuteKeyLegend + ExecuteQuantitySelector.
+    /// BUY/SELL buttons publish TradeButtonPressedEvent for GameRunner to handle.
     /// </summary>
-    public static void ExecuteKeyLegend()
+    public static QuantitySelector ExecuteTradePanel()
     {
-        var legendParent = new GameObject("KeyLegend");
+        var panelParent = new GameObject("TradePanel");
 
-        var canvasGo = new GameObject("KeyLegendCanvas");
-        canvasGo.transform.SetParent(legendParent.transform);
+        var canvasGo = new GameObject("TradePanelCanvas");
+        canvasGo.transform.SetParent(panelParent.transform);
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 16; // Just above sidebar
-
-        var scaler = canvasGo.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        // No GraphicRaycaster — legend should not block input
-
-        // Legend panel — bottom-left, above item inventory bar
-        var panelGo = CreatePanel("LegendPanel", canvasGo.transform);
-        var panelRect = panelGo.GetComponent<RectTransform>();
-        panelRect.anchorMin = new Vector2(0f, 0f);
-        panelRect.anchorMax = new Vector2(0f, 0f);
-        panelRect.pivot = new Vector2(0f, 0f);
-        panelRect.anchoredPosition = new Vector2(8f, 82f); // Above inventory bar + news ticker
-        panelRect.sizeDelta = new Vector2(SidebarWidth - 16f, 22f);
-        panelGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.7f);
-
-        var legendTextGo = CreateLabel("LegendText", panelGo.transform,
-            "B Buy  S Sell  D Short  F Cover  Q Qty", LabelColor, 10);
-        legendTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] KeyLegend created: bottom-left trading keybindings");
-        #endif
-    }
-
-    /// <summary>
-    /// Generates the quantity selector panel above the round timer.
-    /// Horizontal button strip [1x] [5x] [10x] [MAX] with quantity display.
-    /// </summary>
-    public static QuantitySelector ExecuteQuantitySelector()
-    {
-        var selectorParent = new GameObject("QuantitySelector");
-
-        var canvasGo = new GameObject("QuantitySelectorCanvas");
-        canvasGo.transform.SetParent(selectorParent.transform);
-        var canvas = canvasGo.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 24; // Between feedback (22) and timer (25)
+        canvas.sortingOrder = 24; // Between feedback (23) and timer (25)
 
         var scaler = canvasGo.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // Container — centered above round timer
-        var containerGo = CreatePanel("SelectorContainer", canvasGo.transform);
+        // Main container — centered at bottom above inventory bar
+        var containerGo = CreatePanel("TradePanelContainer", canvasGo.transform);
         var containerRect = containerGo.GetComponent<RectTransform>();
         containerRect.anchorMin = new Vector2(0.5f, 0f);
         containerRect.anchorMax = new Vector2(0.5f, 0f);
         containerRect.pivot = new Vector2(0.5f, 0f);
-        containerRect.anchoredPosition = new Vector2(0f, 70f);
-        containerRect.sizeDelta = new Vector2(340f, 32f);
+        containerRect.anchoredPosition = new Vector2(0f, 82f); // Above inventory bar + news ticker
+        containerRect.sizeDelta = new Vector2(420f, 110f);
         containerGo.GetComponent<Image>().color = BarBackgroundColor;
 
-        var hlg = containerGo.AddComponent<HorizontalLayoutGroup>();
-        hlg.spacing = 4f;
-        hlg.padding = new RectOffset(6, 6, 3, 3);
-        hlg.childAlignment = TextAnchor.MiddleCenter;
-        hlg.childForceExpandWidth = false;
-        hlg.childForceExpandHeight = true;
+        var mainLayout = containerGo.AddComponent<VerticalLayoutGroup>();
+        mainLayout.spacing = 6f;
+        mainLayout.padding = new RectOffset(12, 12, 8, 8);
+        mainLayout.childAlignment = TextAnchor.MiddleCenter;
+        mainLayout.childForceExpandWidth = true;
+        mainLayout.childForceExpandHeight = false;
+
+        // === Row 1: Quantity presets ===
+        var presetRow = new GameObject("PresetRow");
+        presetRow.transform.SetParent(containerGo.transform, false);
+        presetRow.AddComponent<RectTransform>();
+        var presetRowLayout = presetRow.AddComponent<LayoutElement>();
+        presetRowLayout.preferredHeight = 30f;
+        var presetHlg = presetRow.AddComponent<HorizontalLayoutGroup>();
+        presetHlg.spacing = 6f;
+        presetHlg.childAlignment = TextAnchor.MiddleCenter;
+        presetHlg.childForceExpandWidth = true;
+        presetHlg.childForceExpandHeight = true;
 
         // Create 4 preset buttons
         var buttonBackgrounds = new Image[4];
         var buttonTexts = new Text[4];
         for (int i = 0; i < 4; i++)
         {
-            var btnGo = CreatePanel($"QtyBtn_{i}", containerGo.transform);
+            var btnGo = CreatePanel($"QtyBtn_{i}", presetRow.transform);
             var btnLayout = btnGo.AddComponent<LayoutElement>();
-            btnLayout.preferredWidth = i == 3 ? 54f : 42f; // MAX button slightly wider
+            btnLayout.preferredWidth = 60f;
             btnLayout.preferredHeight = 26f;
             buttonBackgrounds[i] = btnGo.GetComponent<Image>();
             buttonBackgrounds[i].color = QuantitySelector.InactiveButtonColor;
 
             var labelGo = CreateLabel($"QtyBtnLabel_{i}", btnGo.transform,
-                QuantitySelector.PresetLabels[i], new Color(0.6f, 0.6f, 0.7f, 1f), 13);
+                QuantitySelector.PresetLabels[i], new Color(0.6f, 0.6f, 0.7f, 1f), 14);
             labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
             labelGo.GetComponent<Text>().raycastTarget = false;
             buttonTexts[i] = labelGo.GetComponent<Text>();
@@ -1321,19 +1297,53 @@ public static class UISetup
             btnGo.AddComponent<Button>();
         }
 
-        // Quantity display text
-        var qtyTextGo = CreateLabel("QtyDisplay", containerGo.transform,
-            "Qty: 10", Color.white, 15);
+        // Quantity display text at end of preset row
+        var qtyTextGo = CreateLabel("QtyDisplay", presetRow.transform,
+            "Qty: 10", Color.white, 14);
         qtyTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        qtyTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        qtyTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
         var qtyTextLayout = qtyTextGo.AddComponent<LayoutElement>();
-        qtyTextLayout.preferredWidth = 120f;
+        qtyTextLayout.preferredWidth = 80f;
+
+        // === Row 2: SELL and BUY buttons ===
+        var buttonRow = new GameObject("ButtonRow");
+        buttonRow.transform.SetParent(containerGo.transform, false);
+        buttonRow.AddComponent<RectTransform>();
+        var buttonRowLayout = buttonRow.AddComponent<LayoutElement>();
+        buttonRowLayout.preferredHeight = 52f;
+        var buttonHlg = buttonRow.AddComponent<HorizontalLayoutGroup>();
+        buttonHlg.spacing = 20f;
+        buttonHlg.childAlignment = TextAnchor.MiddleCenter;
+        buttonHlg.childForceExpandWidth = true;
+        buttonHlg.childForceExpandHeight = true;
+
+        // SELL button — red, left side
+        var sellBtnGo = CreatePanel("SellButton", buttonRow.transform);
+        sellBtnGo.GetComponent<Image>().color = TradingHUD.LossRed;
+        var sellBtnLayout = sellBtnGo.AddComponent<LayoutElement>();
+        sellBtnLayout.preferredWidth = 160f;
+        sellBtnLayout.preferredHeight = 48f;
+        var sellButton = sellBtnGo.AddComponent<Button>();
+        var sellLabel = CreateLabel("SellButtonText", sellBtnGo.transform, "SELL", Color.white, 22);
+        sellLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        sellLabel.GetComponent<Text>().raycastTarget = false;
+
+        // BUY button — green, right side
+        var buyBtnGo = CreatePanel("BuyButton", buttonRow.transform);
+        buyBtnGo.GetComponent<Image>().color = TradingHUD.ProfitGreen;
+        var buyBtnLayout = buyBtnGo.AddComponent<LayoutElement>();
+        buyBtnLayout.preferredWidth = 160f;
+        buyBtnLayout.preferredHeight = 48f;
+        var buyButton = buyBtnGo.AddComponent<Button>();
+        var buyLabel = CreateLabel("BuyButtonText", buyBtnGo.transform, "BUY", Color.white, 22);
+        buyLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        buyLabel.GetComponent<Text>().raycastTarget = false;
 
         // Initialize QuantitySelector MonoBehaviour
-        var quantitySelector = selectorParent.AddComponent<QuantitySelector>();
+        var quantitySelector = panelParent.AddComponent<QuantitySelector>();
         quantitySelector.Initialize(qtyTextGo.GetComponent<Text>(), buttonBackgrounds, buttonTexts);
 
-        // Wire button click handlers
+        // Wire preset button click handlers
         for (int i = 0; i < 4; i++)
         {
             int presetIndex = i;
@@ -1341,8 +1351,14 @@ public static class UISetup
                 () => quantitySelector.SelectPreset((QuantitySelector.Preset)presetIndex));
         }
 
+        // Wire BUY/SELL buttons to publish TradeButtonPressedEvent
+        buyButton.onClick.AddListener(() =>
+            EventBus.Publish(new TradeButtonPressedEvent { IsBuy = true }));
+        sellButton.onClick.AddListener(() =>
+            EventBus.Publish(new TradeButtonPressedEvent { IsBuy = false }));
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] QuantitySelector created: bottom-center quantity preset buttons");
+        Debug.Log("[Setup] TradePanel created: bottom-center with BUY/SELL buttons and quantity presets");
         #endif
 
         return quantitySelector;

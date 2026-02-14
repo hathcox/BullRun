@@ -1,18 +1,17 @@
-using System;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Manages trade quantity selection. Preset buttons (1x, 5x, 10x, MAX)
-/// with real-time MAX calculation. Created by UISetup, read by GameRunner at trade time.
-/// Persists selection within a round; resets to 10x on RoundStartedEvent.
+/// Manages trade quantity selection. Preset buttons (x5, x10, x15, x25).
+/// Created by UISetup, read by GameRunner at trade time.
+/// Persists selection within a round; resets to x10 on RoundStartedEvent.
 /// </summary>
 public class QuantitySelector : MonoBehaviour
 {
-    public enum Preset { One, Five, Ten, Max }
+    public enum Preset { Five, Ten, Fifteen, TwentyFive }
 
-    public static readonly int[] PresetValues = { 1, 5, GameConfig.DefaultTradeQuantity, 0 };
-    public static readonly string[] PresetLabels = { "1x", "5x", "10x", "MAX" };
+    public static readonly int[] PresetValues = { 5, GameConfig.DefaultTradeQuantity, 15, 25 };
+    public static readonly string[] PresetLabels = { "x5", "x10", "x15", "x25" };
     public static readonly Color ActiveButtonColor = new Color(0f, 0.5f, 0.25f, 1f);
     public static readonly Color InactiveButtonColor = new Color(0.12f, 0.14f, 0.25f, 0.8f);
 
@@ -20,9 +19,6 @@ public class QuantitySelector : MonoBehaviour
     private Text _quantityDisplayText;
     private Image[] _buttonBackgrounds;
     private Text[] _buttonTexts;
-    private Portfolio _portfolio;
-    private Func<int> _getSelectedStockId;
-    private Func<int, float> _getStockPrice;
 
     /// <summary>Current selected preset.</summary>
     public Preset SelectedPreset => _selectedPreset;
@@ -34,16 +30,6 @@ public class QuantitySelector : MonoBehaviour
         _buttonTexts = buttonTexts;
         SelectPreset(Preset.Ten);
         EventBus.Subscribe<RoundStartedEvent>(OnRoundStarted);
-    }
-
-    /// <summary>
-    /// Sets data sources for MAX calculation and real-time display.
-    /// </summary>
-    public void SetDataSources(Portfolio portfolio, Func<int> getSelectedStockId, Func<int, float> getStockPrice)
-    {
-        _portfolio = portfolio;
-        _getSelectedStockId = getSelectedStockId;
-        _getStockPrice = getStockPrice;
     }
 
     private void OnDestroy()
@@ -64,14 +50,7 @@ public class QuantitySelector : MonoBehaviour
         UpdateQuantityDisplay();
     }
 
-    /// <summary>Cycle to next preset: 1 -> 5 -> 10 -> MAX -> 1...</summary>
-    public void CyclePreset()
-    {
-        int next = ((int)_selectedPreset + 1) % 4;
-        SelectPreset((Preset)next);
-    }
-
-    /// <summary>Reset to default (10x).</summary>
+    /// <summary>Reset to default (x10).</summary>
     public void ResetToDefault()
     {
         SelectPreset(Preset.Ten);
@@ -92,17 +71,7 @@ public class QuantitySelector : MonoBehaviour
     private void UpdateQuantityDisplay()
     {
         if (_quantityDisplayText == null) return;
-        if (_selectedPreset == Preset.Max)
-        {
-            // Show "Qty: MAX" without a preview number — the actual MAX depends on trade type
-            // (buy, sell, short, cover) and is resolved correctly at execution time in GetCurrentQuantity.
-            // Trade feedback displays the actual quantity used: "BOUGHT ACME x40".
-            _quantityDisplayText.text = "Qty: MAX";
-        }
-        else
-        {
-            _quantityDisplayText.text = $"Qty: {PresetValues[(int)_selectedPreset]}";
-        }
+        _quantityDisplayText.text = $"Qty: {PresetValues[(int)_selectedPreset]}";
     }
 
     // --- Static calculation methods (testable without MonoBehaviour) ---
@@ -151,16 +120,12 @@ public class QuantitySelector : MonoBehaviour
 
     /// <summary>
     /// Returns the resolved quantity for a specific trade action.
-    /// For MAX: calculates max for the specific trade type.
-    /// For non-MAX: returns preset value, clamped to affordable/available amount (partial fill).
+    /// Returns preset value, clamped to affordable/available amount (partial fill).
     /// Returns 0 when nothing is affordable/available.
     /// </summary>
     public int GetCurrentQuantity(bool isBuy, bool isShort, string stockId, float price, Portfolio portfolio)
     {
         int max = CalculateMax(isBuy, isShort, portfolio.Cash, price, portfolio, stockId);
-        if (_selectedPreset == Preset.Max)
-            return max;
-
         int qty = PresetValues[(int)_selectedPreset];
         // Partial fill: clamp to what's affordable/available
         if (qty > max) qty = max;

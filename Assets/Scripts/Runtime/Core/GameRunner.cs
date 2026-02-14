@@ -19,6 +19,7 @@ public class GameRunner : MonoBehaviour
     private EventScheduler _eventScheduler;
     private QuantitySelector _quantitySelector;
     private bool _firstFrameSkipped;
+    private bool _tradePanelVisible;
 
     private void Awake()
     {
@@ -60,12 +61,15 @@ public class GameRunner : MonoBehaviour
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);
 
-        // Create trade feedback overlay (FIX-5: key legend removed — will be replaced by FIX-6 trade panel)
+        // Create trade feedback overlay
         UISetup.ExecuteTradeFeedback();
 
-        // Create quantity selector panel (FIX-3: trade quantity selection)
-        _quantitySelector = UISetup.ExecuteQuantitySelector();
-        _quantitySelector.SetDataSources(_ctx.Portfolio, GetSelectedStockId, GetStockPrice);
+        // Create trade panel with BUY/SELL buttons and quantity presets (FIX-6)
+        _quantitySelector = UISetup.ExecuteTradePanel();
+        _quantitySelector.gameObject.SetActive(false); // Hidden until TradingState activates
+
+        // Subscribe to trade button clicks from UI
+        EventBus.Subscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
 
         // Create event display systems (subscribe to MarketEventFiredEvent)
         UISetup.ExecuteNewsBanner();
@@ -113,13 +117,26 @@ public class GameRunner : MonoBehaviour
         }
 
         _stateMachine.Update();
+
+        // Show/hide trade panel based on trading state
+        if (TradingState.IsActive != _tradePanelVisible)
+        {
+            _tradePanelVisible = TradingState.IsActive;
+            _quantitySelector.gameObject.SetActive(_tradePanelVisible);
+        }
+
         HandleTradingInput();
+    }
+
+    private void OnDestroy()
+    {
+        EventBus.Unsubscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
     }
 
     /// <summary>
     /// Keyboard trading during TradingState.
-    /// Q = Cycle quantity preset, B = Buy, S = Sell, D = Short, F = Cover of selected stock.
-    /// Quantity determined by QuantitySelector (1x, 5x, 10x, MAX).
+    /// 1-4 = Select quantity preset (x5/x10/x15/x25).
+    /// B = Smart Buy (buy or cover), S = Smart Sell (sell or short).
     /// </summary>
     private void HandleTradingInput()
     {
@@ -128,30 +145,79 @@ public class GameRunner : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
-        // Q cycles quantity preset
-        if (keyboard.qKey.wasPressedThisFrame)
-        {
-            _quantitySelector.CyclePreset();
-            return;
-        }
+        // Quantity preset shortcuts: 1=x5, 2=x10, 3=x15, 4=x25
+        if (keyboard.digit1Key.wasPressedThisFrame)
+            _quantitySelector.SelectPreset(QuantitySelector.Preset.Five);
+        else if (keyboard.digit2Key.wasPressedThisFrame)
+            _quantitySelector.SelectPreset(QuantitySelector.Preset.Ten);
+        else if (keyboard.digit3Key.wasPressedThisFrame)
+            _quantitySelector.SelectPreset(QuantitySelector.Preset.Fifteen);
+        else if (keyboard.digit4Key.wasPressedThisFrame)
+            _quantitySelector.SelectPreset(QuantitySelector.Preset.TwentyFive);
+        // Trade actions: B=Smart Buy, S=Smart Sell
+        else if (keyboard.bKey.wasPressedThisFrame)
+            ExecuteSmartBuy();
+        else if (keyboard.sKey.wasPressedThisFrame)
+            ExecuteSmartSell();
+    }
 
-        // FIX-5: Single stock per round — target ActiveStocks[0] directly
+    /// <summary>
+    /// Handles TradeButtonPressedEvent from BUY/SELL UI buttons.
+    /// </summary>
+    private void OnTradeButtonPressed(TradeButtonPressedEvent evt)
+    {
+        if (!TradingState.IsActive) return;
+
+        if (evt.IsBuy)
+            ExecuteSmartBuy();
+        else
+            ExecuteSmartSell();
+    }
+
+    /// <summary>
+    /// Smart buy: if player has a SHORT position → cover it. Otherwise → buy (open/add long).
+    /// </summary>
+    private void ExecuteSmartBuy()
+    {
         int selectedStockId = GetSelectedStockId();
         if (selectedStockId < 0) return;
 
         float currentPrice = GetStockPrice(selectedStockId);
         if (currentPrice <= 0f) return;
 
-        // Only compute string conversions when a trade key is actually pressed (avoid per-frame allocation)
-        bool anyTradeKey = keyboard.bKey.wasPressedThisFrame || keyboard.sKey.wasPressedThisFrame ||
-            keyboard.dKey.wasPressedThisFrame || keyboard.fKey.wasPressedThisFrame;
-        if (!anyTradeKey) return;
-
         string stockIdStr = selectedStockId.ToString();
         string ticker = GetSelectedTicker();
+        var position = _ctx.Portfolio.GetPosition(stockIdStr);
 
-        if (keyboard.bKey.wasPressedThisFrame)
+        if (position != null && position.IsShort)
         {
+            // COVER the short position
+            int qty = _quantitySelector.GetCurrentQuantity(true, true, stockIdStr, currentPrice, _ctx.Portfolio);
+            if (qty <= 0)
+            {
+                EventBus.Publish(new TradeFeedbackEvent
+                {
+                    Message = TradeFeedback.GetCoverRejectionReason(_ctx.Portfolio, stockIdStr),
+                    IsSuccess = false, IsBuy = true, IsShort = true
+                });
+                return;
+            }
+            bool success = _tradeExecutor.ExecuteCover(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = success ? $"COVERED {ticker} x{qty}"
+                    : TradeFeedback.GetCoverRejectionReason(_ctx.Portfolio, stockIdStr),
+                IsSuccess = success, IsBuy = true, IsShort = true
+            });
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log(success
+                ? $"[Trade] COVER {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})"
+                : $"[Trade] COVER rejected (Stock {selectedStockId})");
+            #endif
+        }
+        else
+        {
+            // BUY (open/add long position)
             int qty = _quantitySelector.GetCurrentQuantity(true, false, stockIdStr, currentPrice, _ctx.Portfolio);
             if (qty <= 0)
             {
@@ -168,14 +234,31 @@ public class GameRunner : MonoBehaviour
                 IsSuccess = success, IsBuy = true, IsShort = false
             });
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (success)
-                Debug.Log($"[Trade] BUY {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
-            else
-                Debug.Log($"[Trade] BUY rejected \u2014 insufficient cash");
+            Debug.Log(success
+                ? $"[Trade] BUY {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})"
+                : "[Trade] BUY rejected — insufficient cash");
             #endif
         }
-        else if (keyboard.sKey.wasPressedThisFrame)
+    }
+
+    /// <summary>
+    /// Smart sell: if player has a LONG position → sell it. Otherwise → short (open short).
+    /// </summary>
+    private void ExecuteSmartSell()
+    {
+        int selectedStockId = GetSelectedStockId();
+        if (selectedStockId < 0) return;
+
+        float currentPrice = GetStockPrice(selectedStockId);
+        if (currentPrice <= 0f) return;
+
+        string stockIdStr = selectedStockId.ToString();
+        string ticker = GetSelectedTicker();
+        var position = _ctx.Portfolio.GetPosition(stockIdStr);
+
+        if (position != null && !position.IsShort && position.Shares > 0)
         {
+            // SELL the long position
             int qty = _quantitySelector.GetCurrentQuantity(false, false, stockIdStr, currentPrice, _ctx.Portfolio);
             if (qty <= 0)
             {
@@ -192,64 +275,35 @@ public class GameRunner : MonoBehaviour
                 IsSuccess = success, IsBuy = false, IsShort = false
             });
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (success)
-                Debug.Log($"[Trade] SELL {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
-            else
-                Debug.Log($"[Trade] SELL rejected \u2014 no position to sell");
+            Debug.Log(success
+                ? $"[Trade] SELL {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})"
+                : "[Trade] SELL rejected — no position to sell");
             #endif
         }
-        else if (keyboard.dKey.wasPressedThisFrame)
+        else
         {
+            // SHORT (open short position)
             int qty = _quantitySelector.GetCurrentQuantity(false, true, stockIdStr, currentPrice, _ctx.Portfolio);
             if (qty <= 0)
             {
-                string reason = TradeFeedback.GetShortRejectionReason(_ctx.Portfolio, stockIdStr);
                 EventBus.Publish(new TradeFeedbackEvent
                 {
-                    Message = reason, IsSuccess = false, IsBuy = false, IsShort = true
+                    Message = TradeFeedback.GetShortRejectionReason(_ctx.Portfolio, stockIdStr),
+                    IsSuccess = false, IsBuy = false, IsShort = true
                 });
                 return;
             }
             bool success = _tradeExecutor.ExecuteShort(stockIdStr, qty, currentPrice, _ctx.Portfolio);
-            string message = success
-                ? $"SHORTED {ticker} x{qty}"
-                : TradeFeedback.GetShortRejectionReason(_ctx.Portfolio, stockIdStr);
             EventBus.Publish(new TradeFeedbackEvent
             {
-                Message = message, IsSuccess = success, IsBuy = false, IsShort = true
+                Message = success ? $"SHORTED {ticker} x{qty}"
+                    : TradeFeedback.GetShortRejectionReason(_ctx.Portfolio, stockIdStr),
+                IsSuccess = success, IsBuy = false, IsShort = true
             });
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (success)
-                Debug.Log($"[Trade] SHORT {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
-            else
-                Debug.Log($"[Trade] SHORT rejected (Stock {selectedStockId}): {message}");
-            #endif
-        }
-        else if (keyboard.fKey.wasPressedThisFrame)
-        {
-            int qty = _quantitySelector.GetCurrentQuantity(true, true, stockIdStr, currentPrice, _ctx.Portfolio);
-            if (qty <= 0)
-            {
-                string reason = TradeFeedback.GetCoverRejectionReason(_ctx.Portfolio, stockIdStr);
-                EventBus.Publish(new TradeFeedbackEvent
-                {
-                    Message = reason, IsSuccess = false, IsBuy = true, IsShort = true
-                });
-                return;
-            }
-            bool success = _tradeExecutor.ExecuteCover(stockIdStr, qty, currentPrice, _ctx.Portfolio);
-            string message = success
-                ? $"COVERED {ticker} x{qty}"
-                : TradeFeedback.GetCoverRejectionReason(_ctx.Portfolio, stockIdStr);
-            EventBus.Publish(new TradeFeedbackEvent
-            {
-                Message = message, IsSuccess = success, IsBuy = true, IsShort = true
-            });
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            if (success)
-                Debug.Log($"[Trade] COVER {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
-            else
-                Debug.Log($"[Trade] COVER rejected (Stock {selectedStockId}): {message}");
+            Debug.Log(success
+                ? $"[Trade] SHORT {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})"
+                : $"[Trade] SHORT rejected (Stock {selectedStockId})");
             #endif
         }
     }

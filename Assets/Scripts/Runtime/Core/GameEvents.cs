@@ -217,6 +217,15 @@ public struct ShopClosedEvent
 }
 
 /// <summary>
+/// Fired when the player clicks the BUY or SELL button on the trade panel.
+/// GameRunner subscribes to execute the smart trade routing.
+/// </summary>
+public struct TradeButtonPressedEvent
+{
+    public bool IsBuy;
+}
+
+/// <summary>
 /// Fired by GameRunner after every trade attempt (success or failure).
 /// TradeFeedback subscribes to display brief visual feedback text.
 /// </summary>
