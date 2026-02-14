@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Shop UI overlay. Displays 3 item cards (one per category), cash display, and countdown timer.
+/// Shop UI overlay. Displays 3 item cards (one per category) and cash display.
 /// MonoBehaviour created by UISetup during F5 generation.
 /// Subscribes to EventBus for purchase feedback.
 /// </summary>
@@ -16,12 +16,11 @@ public class ShopUI : MonoBehaviour
 
     private GameObject _root;
     private Text _cashText;
-    private Text _timerText;
     private Text _headerText;
     private ItemCardView[] _cards;
     private CanvasGroup _canvasGroup;
 
-    private Button _doneButton;
+    private Button _continueButton;
 
     private ShopItemDef?[] _items;
     private RunContext _ctx;
@@ -45,14 +44,12 @@ public class ShopUI : MonoBehaviour
     public void Initialize(
         GameObject root,
         Text cashText,
-        Text timerText,
         Text headerText,
         ItemCardView[] cards,
         CanvasGroup canvasGroup)
     {
         _root = root;
         _cashText = cashText;
-        _timerText = timerText;
         _headerText = headerText;
         _cards = cards;
         _canvasGroup = canvasGroup;
@@ -60,28 +57,28 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets the Done button reference. Called by UISetup during F5 generation.
+    /// Sets the Continue button reference. Called by UISetup during F5 generation.
     /// </summary>
-    public void SetDoneButton(Button doneButton)
+    public void SetContinueButton(Button continueButton)
     {
-        _doneButton = doneButton;
+        _continueButton = continueButton;
         if (_onClose != null)
         {
-            _doneButton.onClick.RemoveAllListeners();
-            _doneButton.onClick.AddListener(() => _onClose?.Invoke());
+            _continueButton.onClick.RemoveAllListeners();
+            _continueButton.onClick.AddListener(() => _onClose?.Invoke());
         }
     }
 
     /// <summary>
-    /// Registers a callback for the "Done" button. ShopState calls this to close shop early.
+    /// Registers a callback for the Continue button. ShopState calls this to close shop.
     /// </summary>
     public void SetOnCloseCallback(System.Action callback)
     {
         _onClose = callback;
-        if (_doneButton != null)
+        if (_continueButton != null)
         {
-            _doneButton.onClick.RemoveAllListeners();
-            _doneButton.onClick.AddListener(() => _onClose?.Invoke());
+            _continueButton.onClick.RemoveAllListeners();
+            _continueButton.onClick.AddListener(() => _onClose?.Invoke());
         }
     }
 
@@ -119,18 +116,6 @@ public class ShopUI : MonoBehaviour
     {
         if (_root != null)
             _root.SetActive(false);
-    }
-
-    /// <summary>
-    /// Updates the countdown timer display.
-    /// </summary>
-    public void UpdateTimer(float secondsRemaining)
-    {
-        if (_timerText != null)
-        {
-            int secs = Mathf.CeilToInt(secondsRemaining);
-            _timerText.text = $"0:{secs:D2}";
-        }
     }
 
     /// <summary>

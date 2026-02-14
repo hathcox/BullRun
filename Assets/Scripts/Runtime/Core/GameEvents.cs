@@ -196,14 +196,13 @@ public struct ShopItemPurchasedEvent
 }
 
 /// <summary>
-/// Fired when the shop closes (timer expired or player done).
+/// Fired when the shop closes (player clicked Continue).
 /// </summary>
 public struct ShopClosedEvent
 {
     public string[] PurchasedItemIds;
     public float CashRemaining;
     public int RoundNumber;
-    public bool TimerExpired;
 }
 
 /// <summary>

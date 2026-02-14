@@ -41,6 +41,13 @@ namespace BullRun.Tests.Core.GameStates
             return (ShopState)_sm.CurrentState;
         }
 
+        private void InvokeCloseShop(ShopState state, RunContext ctx)
+        {
+            var method = typeof(ShopState).GetMethod("CloseShop",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            method.Invoke(state, new object[] { ctx });
+        }
+
         [Test]
         public void Enter_DoesNotThrow()
         {
@@ -102,14 +109,14 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_StaysInShopState_UntilTimerExpires()
+        public void Enter_StaysInShopState()
         {
             EnterShop();
             Assert.IsInstanceOf<ShopState>(_sm.CurrentState);
         }
 
         [Test]
-        public void Enter_DoesNotAdvanceRound_BeforeTimerExpires()
+        public void Enter_DoesNotAdvanceRound_BeforeClosed()
         {
             Assert.AreEqual(1, _ctx.CurrentRound);
             EnterShop();
@@ -123,13 +130,6 @@ namespace BullRun.Tests.Core.GameStates
             ShopState.NextConfig = new ShopStateConfig { StateMachine = _sm };
             state.Enter(_ctx);
             Assert.DoesNotThrow(() => state.Exit(_ctx));
-        }
-
-        [Test]
-        public void ShopTimerDuration_IsWithinGDDRange()
-        {
-            Assert.GreaterOrEqual(GameConfig.ShopDurationSeconds, 15f);
-            Assert.LessOrEqual(GameConfig.ShopDurationSeconds, 20f);
         }
 
         // === Purchase flow tests ===
@@ -266,17 +266,13 @@ namespace BullRun.Tests.Core.GameStates
                 closedEvent = e;
             });
 
-            // Trigger timer expiry via reflection — set _timeRemaining to 0, then Update
-            var field = typeof(ShopState).GetField("_timeRemaining",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            field.SetValue(state, 0f);
-            state.Update(_ctx);
+            // Trigger close via Continue button callback (reflection)
+            InvokeCloseShop(state, _ctx);
 
-            Assert.IsTrue(closedFired, "ShopClosedEvent should fire when timer expires");
+            Assert.IsTrue(closedFired, "ShopClosedEvent should fire when shop closes");
             Assert.AreEqual(1, closedEvent.PurchasedItemIds.Length);
             Assert.AreEqual(purchasedId, closedEvent.PurchasedItemIds[0]);
             Assert.AreEqual(1, closedEvent.RoundNumber);
-            Assert.IsTrue(closedEvent.TimerExpired);
         }
 
         [Test]
@@ -302,17 +298,38 @@ namespace BullRun.Tests.Core.GameStates
                 closedEvent = e;
             });
 
-            var field = typeof(ShopState).GetField("_timeRemaining",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            field.SetValue(state, 0f);
-            state.Update(_ctx);
+            InvokeCloseShop(state, _ctx);
 
             Assert.IsTrue(closedFired, "ShopClosedEvent should fire");
             Assert.AreEqual(cashAfterPurchase, closedEvent.CashRemaining, 0.01f);
         }
 
         [Test]
-        public void Update_TimerExpiry_TriggersCloseAndPublishesEvent()
+        public void Update_DoesNotAutoCloseShop()
+        {
+            ShopState.NextConfig = new ShopStateConfig
+            {
+                StateMachine = null,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new ShopState();
+            state.Enter(_ctx);
+
+            bool closedFired = false;
+            EventBus.Subscribe<ShopClosedEvent>(_ => closedFired = true);
+
+            // Simulate many Update calls — shop should never auto-close
+            for (int i = 0; i < 1000; i++)
+            {
+                state.Update(_ctx);
+            }
+
+            Assert.IsFalse(closedFired, "Shop should NOT auto-close — player controls when to leave");
+        }
+
+        [Test]
+        public void CloseShop_ViaCallback_PublishesShopClosedEvent()
         {
             ShopState.NextConfig = new ShopStateConfig
             {
@@ -331,14 +348,10 @@ namespace BullRun.Tests.Core.GameStates
                 closedEvent = e;
             });
 
-            // Simulate timer reaching zero
-            var field = typeof(ShopState).GetField("_timeRemaining",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-            field.SetValue(state, 0f);
-            state.Update(_ctx);
+            // Simulate Continue button press via CloseShop
+            InvokeCloseShop(state, _ctx);
 
-            Assert.IsTrue(closedFired, "Timer expiry should trigger ShopClosedEvent");
-            Assert.IsTrue(closedEvent.TimerExpired, "TimerExpired flag should be true");
+            Assert.IsTrue(closedFired, "Continue button should trigger ShopClosedEvent");
             Assert.AreEqual(0, closedEvent.PurchasedItemIds.Length, "No items purchased");
         }
 

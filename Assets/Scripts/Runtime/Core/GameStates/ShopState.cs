@@ -3,9 +3,9 @@ using UnityEngine;
 
 /// <summary>
 /// Draft shop state. Shows shop UI with 3 items (one per category),
-/// runs a countdown timer, handles purchases, then advances to next round.
-/// After timer expires or player closes, transitions to MarketOpenState
-/// (or TierTransitionState if act changes, or RunSummaryState if run complete).
+/// handles purchases, then advances to next round when player clicks Continue.
+/// Transitions to MarketOpenState (or TierTransitionState if act changes,
+/// or RunSummaryState if run complete).
 /// </summary>
 public class ShopState : IGameState
 {
@@ -14,7 +14,6 @@ public class ShopState : IGameState
     private TradeExecutor _tradeExecutor;
     private EventScheduler _eventScheduler;
 
-    private float _timeRemaining;
     private bool _shopActive;
     private ShopItemDef?[] _nullableOffering;
     private bool[] _purchased;
@@ -45,7 +44,6 @@ public class ShopState : IGameState
         _purchased = new bool[_nullableOffering.Length];
         _purchasedItemIds = new List<string>();
         _shopTransaction = new ShopTransaction();
-        _timeRemaining = GameConfig.ShopDurationSeconds;
         _shopActive = true;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -56,7 +54,7 @@ public class ShopState : IGameState
         if (ShopUIInstance != null)
         {
             ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
-            ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx, false));
+            ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
         }
 
         // Publish shop opened event — only include non-null items
@@ -76,27 +74,13 @@ public class ShopState : IGameState
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Enter: Shop opened (Round {ctx.CurrentRound}), {availableItems.Length} items, {GameConfig.ShopDurationSeconds}s timer");
+        Debug.Log($"[ShopState] Enter: Shop opened (Round {ctx.CurrentRound}), {availableItems.Length} items, untimed");
         #endif
     }
 
     public void Update(RunContext ctx)
     {
-        if (!_shopActive) return;
-
-        _timeRemaining -= Time.deltaTime;
-
-        // Update timer display
-        if (ShopUIInstance != null)
-        {
-            ShopUIInstance.UpdateTimer(Mathf.Max(0f, _timeRemaining));
-        }
-
-        // Timer expired — close shop
-        if (_timeRemaining <= 0f)
-        {
-            CloseShop(ctx, true);
-        }
+        // Shop is untimed — player closes via Continue button
     }
 
     public void Exit(RunContext ctx)
@@ -146,10 +130,10 @@ public class ShopState : IGameState
     }
 
     /// <summary>
-    /// Closes the shop (timer expired or "Done" button clicked).
+    /// Closes the shop (player clicked Continue button).
     /// Publishes ShopClosedEvent, advances round, and transitions to next state.
     /// </summary>
-    private void CloseShop(RunContext ctx, bool timerExpired)
+    private void CloseShop(RunContext ctx)
     {
         if (!_shopActive) return;
         _shopActive = false;
@@ -159,8 +143,7 @@ public class ShopState : IGameState
         {
             PurchasedItemIds = _purchasedItemIds.ToArray(),
             CashRemaining = ctx.Portfolio.Cash,
-            RoundNumber = ctx.CurrentRound,
-            TimerExpired = timerExpired
+            RoundNumber = ctx.CurrentRound
         });
 
         // Advance to next round

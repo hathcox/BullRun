@@ -102,6 +102,13 @@ development_status:
   7-4-item-inventory-display: done
   epic-7-retrospective: optional
 
+  # === FIX Sprint: Bugs & Gameplay Critical Fixes ===
+  fix-sprint: in-progress
+  FIX-1-shop-click-and-timer: done
+  FIX-2-short-selling-ui: ready-for-dev
+  FIX-3-trade-quantity-selection: ready-for-dev
+  FIX-4-event-popup-display: ready-for-dev
+
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
   epic-8: backlog
   8-1-trading-tools-framework: backlog

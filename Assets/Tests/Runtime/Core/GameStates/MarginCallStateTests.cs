@@ -13,6 +13,14 @@ namespace BullRun.Tests.Core.GameStates
         public void SetUp()
         {
             EventBus.Clear();
+
+            // Reset god mode so margin call checks are not bypassed
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            var godModeProp = typeof(DebugManager).GetProperty("IsGodMode",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            godModeProp?.GetSetMethod(true)?.Invoke(null, new object[] { false });
+            #endif
+
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
             _sm = new GameStateMachine(_ctx);
 

@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
 /// <summary>
@@ -38,6 +40,14 @@ public static class UISetup
 
     public static void Execute(RunContext runContext, int currentRound, float roundDuration)
     {
+        // Ensure EventSystem exists for uGUI button interactions (shop, etc.)
+        if (EventSystem.current == null)
+        {
+            var eventSystemGo = new GameObject("EventSystem");
+            eventSystemGo.AddComponent<EventSystem>();
+            eventSystemGo.AddComponent<InputSystemUIInputModule>();
+        }
+
         var hudParent = new GameObject("TradingHUD");
 
         // Create Canvas
@@ -950,16 +960,6 @@ public static class UISetup
         cashRect.anchoredPosition = new Vector2(0f, -75f);
         cashRect.sizeDelta = new Vector2(300f, 30f);
 
-        // Timer display
-        var timerGo = CreateLabel("ShopTimer", bgGo.transform, "0:18",
-            LabelColor, 20);
-        var timerRect = timerGo.GetComponent<RectTransform>();
-        timerRect.anchorMin = new Vector2(0.5f, 0f);
-        timerRect.anchorMax = new Vector2(0.5f, 0f);
-        timerRect.pivot = new Vector2(0.5f, 0f);
-        timerRect.anchoredPosition = new Vector2(0f, 30f);
-        timerRect.sizeDelta = new Vector2(200f, 30f);
-
         // Card container — horizontal layout, centered
         var cardContainer = new GameObject("CardContainer");
         cardContainer.transform.SetParent(bgGo.transform, false);
@@ -985,30 +985,30 @@ public static class UISetup
             cards[i] = CreateItemCard(i, defaultCategories[i], cardContainer.transform);
         }
 
-        // Done button — allows player to close shop early
-        var doneBtnGo = CreatePanel("DoneButton", bgGo.transform);
-        var doneBtnRect = doneBtnGo.GetComponent<RectTransform>();
-        doneBtnRect.anchorMin = new Vector2(0.5f, 0f);
-        doneBtnRect.anchorMax = new Vector2(0.5f, 0f);
-        doneBtnRect.pivot = new Vector2(0.5f, 0f);
-        doneBtnRect.anchoredPosition = new Vector2(0f, 60f);
-        doneBtnRect.sizeDelta = new Vector2(120f, 40f);
-        doneBtnGo.GetComponent<Image>().color = new Color(0.3f, 0.3f, 0.4f, 1f);
-        var doneButton = doneBtnGo.AddComponent<Button>();
-        var doneBtnLabel = CreateLabel("DoneButtonText", doneBtnGo.transform, "DONE", Color.white, 16);
-        doneBtnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        // Continue button — player leaves shop when ready (untimed)
+        var continueBtnGo = CreatePanel("ContinueButton", bgGo.transform);
+        var continueBtnRect = continueBtnGo.GetComponent<RectTransform>();
+        continueBtnRect.anchorMin = new Vector2(0.5f, 0f);
+        continueBtnRect.anchorMax = new Vector2(0.5f, 0f);
+        continueBtnRect.pivot = new Vector2(0.5f, 0f);
+        continueBtnRect.anchoredPosition = new Vector2(0f, 40f);
+        continueBtnRect.sizeDelta = new Vector2(240f, 50f);
+        continueBtnGo.GetComponent<Image>().color = new Color(0.15f, 0.3f, 0.6f, 1f);
+        var continueButton = continueBtnGo.AddComponent<Button>();
+        var continueBtnLabel = CreateLabel("ContinueButtonText", continueBtnGo.transform, "NEXT ROUND >>", Color.white, 18);
+        continueBtnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        continueBtnLabel.GetComponent<Text>().raycastTarget = false;
 
         // Initialize ShopUI MonoBehaviour
         var shopUI = overlayParent.AddComponent<ShopUI>();
         shopUI.Initialize(
             bgGo,
             cashGo.GetComponent<Text>(),
-            timerGo.GetComponent<Text>(),
             headerGo.GetComponent<Text>(),
             cards,
             canvasGroup
         );
-        shopUI.SetDoneButton(doneButton);
+        shopUI.SetContinueButton(continueButton);
 
         // Wire to ShopState
         ShopState.ShopUIInstance = shopUI;
@@ -1044,24 +1044,30 @@ public static class UISetup
         var categoryGo = CreateLabel($"Category_{index}", cardGo.transform, category,
             new Color(0.6f, 0.6f, 0.7f, 1f), 11);
         view.CategoryLabel = categoryGo.GetComponent<Text>();
+        view.CategoryLabel.raycastTarget = false;
 
         // Rarity badge (small colored bar)
         var badgeGo = CreatePanel($"RarityBadge_{index}", cardGo.transform);
         var badgeRect = badgeGo.GetComponent<RectTransform>();
         badgeRect.sizeDelta = new Vector2(80f, 4f);
+        var badgeLayoutElem = badgeGo.AddComponent<LayoutElement>();
+        badgeLayoutElem.preferredHeight = 4f;
         view.RarityBadge = badgeGo.GetComponent<Image>();
         view.RarityBadge.color = ShopUI.CommonColor;
+        view.RarityBadge.raycastTarget = false;
 
         // Rarity text
         var rarityGo = CreateLabel($"Rarity_{index}", cardGo.transform, "COMMON",
             ShopUI.CommonColor, 10);
         view.RarityText = rarityGo.GetComponent<Text>();
+        view.RarityText.raycastTarget = false;
 
         // Item name
         var nameGo = CreateLabel($"Name_{index}", cardGo.transform, "Item Name",
             Color.white, 16);
         nameGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         view.NameText = nameGo.GetComponent<Text>();
+        view.NameText.raycastTarget = false;
 
         // Description text
         var descGo = CreateLabel($"Desc_{index}", cardGo.transform, "Item description goes here",
@@ -1069,17 +1075,22 @@ public static class UISetup
         var descRect = descGo.GetComponent<RectTransform>();
         descRect.sizeDelta = new Vector2(230f, 80f);
         view.DescriptionText = descGo.GetComponent<Text>();
+        view.DescriptionText.raycastTarget = false;
 
         // Cost
         var costGo = CreateLabel($"Cost_{index}", cardGo.transform, "$0",
             Color.white, 22);
         costGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         view.CostText = costGo.GetComponent<Text>();
+        view.CostText.raycastTarget = false;
 
         // Purchase button
         var btnGo = CreatePanel($"BuyBtn_{index}", cardGo.transform);
         var btnRect = btnGo.GetComponent<RectTransform>();
         btnRect.sizeDelta = new Vector2(200f, 40f);
+        var btnLayoutElem = btnGo.AddComponent<LayoutElement>();
+        btnLayoutElem.minHeight = 40f;
+        btnLayoutElem.preferredHeight = 40f;
         btnGo.GetComponent<Image>().color = new Color(0f, 0.6f, 0.3f, 1f);
         view.PurchaseButton = btnGo.AddComponent<Button>();
 
@@ -1087,6 +1098,7 @@ public static class UISetup
             Color.white, 16);
         btnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
         view.ButtonText = btnLabel.GetComponent<Text>();
+        view.ButtonText.raycastTarget = false;
 
         return view;
     }
