@@ -29,6 +29,9 @@ public class QuantitySelector : MonoBehaviour
     /// <summary>SELL button Image reference for cooldown visual feedback.</summary>
     public Image SellButtonImage { get; set; }
 
+    /// <summary>Countdown timer Text displayed above buttons during post-trade cooldown.</summary>
+    public Text CooldownTimerText { get; set; }
+
     public void Initialize(Text quantityDisplayText, Image[] buttonBackgrounds, Text[] buttonTexts)
     {
         _quantityDisplayText = quantityDisplayText;
@@ -112,15 +115,15 @@ public class QuantitySelector : MonoBehaviour
     public static int CalculateMaxSell(Portfolio portfolio, string stockId)
     {
         var pos = portfolio.GetPosition(stockId);
-        if (pos == null || pos.IsShort) return 0;
+        if (pos == null) return 0;
         return pos.Shares;
     }
 
     /// <summary>Maximum shares coverable: all held short shares.</summary>
     public static int CalculateMaxCover(Portfolio portfolio, string stockId)
     {
-        var pos = portfolio.GetPosition(stockId);
-        if (pos == null || !pos.IsShort) return 0;
+        var pos = portfolio.GetShortPosition(stockId);
+        if (pos == null) return 0;
         return pos.Shares;
     }
 

@@ -288,35 +288,49 @@ namespace BullRun.Tests.Trading
             Assert.AreEqual(950f, portfolio.Cash, 0.001f);
         }
 
-        // --- Long/Short Collision Tests (Code Review Fix) ---
+        // --- FIX-11: Simultaneous Long+Short Tests ---
 
         [Test]
-        public void OpenPosition_WhenShortExists_ReturnsNull()
+        public void OpenPosition_WhenShortExists_AllowsSimultaneous()
         {
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 875
-            var pos = portfolio.OpenPosition("ACME", 10, 25.00f);
-            Assert.IsNull(pos);
-            Assert.AreEqual(875f, portfolio.Cash, 0.001f); // cash unchanged
+            var pos = portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 625
+            Assert.IsNotNull(pos);
+            Assert.AreEqual(625f, portfolio.Cash, 0.001f);
+            Assert.IsTrue(portfolio.HasPosition("ACME"));
+            Assert.IsTrue(portfolio.HasShortPosition("ACME"));
         }
 
         [Test]
-        public void OpenShort_WhenLongExists_ReturnsNull()
+        public void OpenShort_WhenLongExists_AllowsSimultaneous()
         {
             var portfolio = new Portfolio(1000f);
             portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 750
-            var pos = portfolio.OpenShort("ACME", 5, 50.00f);
-            Assert.IsNull(pos);
-            Assert.AreEqual(750f, portfolio.Cash, 0.001f); // cash unchanged
+            var pos = portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 625
+            Assert.IsNotNull(pos);
+            Assert.AreEqual(625f, portfolio.Cash, 0.001f);
+            Assert.IsTrue(portfolio.HasPosition("ACME"));
+            Assert.IsTrue(portfolio.HasShortPosition("ACME"));
         }
 
         [Test]
-        public void ClosePosition_WhenShortExists_ReturnsZero()
+        public void OpenShort_DuplicateShort_ReturnsNull()
+        {
+            var portfolio = new Portfolio(1000f);
+            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 875
+            var pos = portfolio.OpenShort("ACME", 5, 50.00f); // duplicate rejected
+            Assert.IsNull(pos);
+            Assert.AreEqual(875f, portfolio.Cash, 0.001f);
+        }
+
+        [Test]
+        public void ClosePosition_WhenOnlyShortExists_ReturnsZero()
         {
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 10, 50.00f);
             float pnl = portfolio.ClosePosition("ACME", 10, 30.00f);
-            Assert.AreEqual(0f, pnl, 0.001f); // rejected — must use CoverShort
+            Assert.AreEqual(0f, pnl, 0.001f); // no long position to sell
         }
 
         // --- OpenShort Tests (Story 2.3) ---
@@ -395,7 +409,7 @@ namespace BullRun.Tests.Trading
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 10, 50.00f);
             portfolio.CoverShort("ACME", 10, 30.00f);
-            Assert.IsNull(portfolio.GetPosition("ACME"));
+            Assert.IsNull(portfolio.GetShortPosition("ACME"));
         }
 
         [Test]
@@ -404,7 +418,7 @@ namespace BullRun.Tests.Trading
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250
             portfolio.CoverShort("ACME", 5, 30.00f); // cover half
-            var pos = portfolio.GetPosition("ACME");
+            var pos = portfolio.GetShortPosition("ACME");
             Assert.IsNotNull(pos);
             Assert.AreEqual(5, pos.Shares);
             Assert.IsTrue(pos.IsShort);
@@ -589,12 +603,13 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void GetPositionPnL_ShortPosition_ReturnsUnrealizedPnL()
+        public void GetPositionPnL_ShortOnly_ReturnsZero()
         {
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 10, 50.00f);
+            // GetPositionPnL only checks longs; shorts have separate P&L via state machine
             float pnl = portfolio.GetPositionPnL("ACME", 40.00f);
-            Assert.AreEqual(100.00f, pnl, 0.001f); // (50-40)*10
+            Assert.AreEqual(0f, pnl, 0.001f);
         }
 
         [Test]
@@ -736,6 +751,7 @@ namespace BullRun.Tests.Trading
             portfolio.OpenShort("BBB", 5, 40.00f);
             portfolio.LiquidateAllPositions(id => 25.00f);
             Assert.AreEqual(0, portfolio.PositionCount);
+            Assert.AreEqual(0, portfolio.ShortPositionCount);
         }
 
         [Test]

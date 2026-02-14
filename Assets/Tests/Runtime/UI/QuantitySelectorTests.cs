@@ -325,10 +325,10 @@ namespace BullRun.Tests.UI
         [Test]
         public void SmartBuy_ShortPosition_RoutesCover()
         {
-            // Has short position -> smart buy should route to cover
+            // Has short position -> cover routing uses GetShortPosition
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 10, 20f);
-            var position = portfolio.GetPosition("ACME");
+            var position = portfolio.GetShortPosition("ACME");
             Assert.IsNotNull(position);
             Assert.IsTrue(position.IsShort);
             int max = QuantitySelector.CalculateMax(true, true, portfolio.Cash, 20f, portfolio, "ACME");
@@ -363,10 +363,10 @@ namespace BullRun.Tests.UI
         [Test]
         public void SmartSell_ShortPosition_RoutesShort()
         {
-            // Has short position -> smart sell should route to short (add to short)
+            // Has short position -> short routing checks separate short dictionary
             var portfolio = new Portfolio(1000f);
             portfolio.OpenShort("ACME", 5, 20f); // margin $50, cash = $950
-            var position = portfolio.GetPosition("ACME");
+            var position = portfolio.GetShortPosition("ACME");
             Assert.IsNotNull(position);
             Assert.IsTrue(position.IsShort);
             int max = QuantitySelector.CalculateMax(false, true, portfolio.Cash, 20f, portfolio, "ACME");

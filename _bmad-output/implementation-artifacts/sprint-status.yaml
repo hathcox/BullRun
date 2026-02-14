@@ -114,7 +114,10 @@ development_status:
   FIX-8-chart-price-gridlines: done
   FIX-9-scope-events-to-single-stock: done
   FIX-10-trade-execution-delay: done
-  FIX-11-short-selling-redesign: ready-for-dev
+  FIX-11-short-selling-redesign: done
+  FIX-12-reputation-shop-currency: ready-for-dev
+  FIX-13-single-share-unlock-tiers: ready-for-dev
+  FIX-14-economy-rebalance: ready-for-dev
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
   epic-8: backlog

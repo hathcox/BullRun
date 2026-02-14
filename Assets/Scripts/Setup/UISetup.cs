@@ -1352,6 +1352,19 @@ public static class UISetup
         quantitySelector.BuyButtonImage = buyBtnGo.GetComponent<Image>();
         quantitySelector.SellButtonImage = sellBtnGo.GetComponent<Image>();
 
+        // FIX-10 v2: Countdown timer text positioned just above the trade panel container
+        var cooldownTimerGo = CreateLabel("CooldownTimer", canvasGo.transform, "",
+            new Color(1f, 0.85f, 0.2f, 1f), 18);
+        cooldownTimerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var cooldownTimerRect = cooldownTimerGo.GetComponent<RectTransform>();
+        cooldownTimerRect.anchorMin = new Vector2(0.5f, 0f);
+        cooldownTimerRect.anchorMax = new Vector2(0.5f, 0f);
+        cooldownTimerRect.pivot = new Vector2(0.5f, 0f);
+        cooldownTimerRect.anchoredPosition = new Vector2(0f, 194f); // Just above container (82 + 110 + 2)
+        cooldownTimerRect.sizeDelta = new Vector2(100f, 30f);
+        cooldownTimerGo.SetActive(false);
+        quantitySelector.CooldownTimerText = cooldownTimerGo.GetComponent<Text>();
+
         // Wire preset button click handlers
         for (int i = 0; i < 4; i++)
         {
@@ -1371,6 +1384,92 @@ public static class UISetup
         #endif
 
         return quantitySelector;
+    }
+
+    /// <summary>
+    /// FIX-11: Generates the SHORT button and Short P&L panel.
+    /// SHORT button is visually distinct (hot pink/purple), positioned below the trade panel.
+    /// Short P&L panel shows entry price, current P&L, and auto-close countdown.
+    /// Button click routes to GameRunner.HandleShortInput().
+    /// </summary>
+    public static void ExecuteShortButton(out Image shortButtonImage, out Text shortButtonText,
+        out GameObject shortPnlPanel, out Text shortPnlEntryText, out Text shortPnlValueText, out Text shortPnlCountdownText)
+    {
+        var shortPink = new Color(1f, 0.2f, 0.6f, 1f); // Hot pink
+
+        var canvasGo = new GameObject("ShortButtonCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 24; // Same level as trade panel
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // SHORT button — positioned to the right of the trade panel
+        var btnGo = CreatePanel("ShortButton", canvasGo.transform);
+        var btnRect = btnGo.GetComponent<RectTransform>();
+        btnRect.anchorMin = new Vector2(0.5f, 0f);
+        btnRect.anchorMax = new Vector2(0.5f, 0f);
+        btnRect.pivot = new Vector2(0.5f, 0f);
+        btnRect.anchoredPosition = new Vector2(260f, 100f); // Right of trade panel
+        btnRect.sizeDelta = new Vector2(120f, 48f);
+        shortButtonImage = btnGo.GetComponent<Image>();
+        shortButtonImage.color = shortPink;
+
+        var button = btnGo.AddComponent<Button>();
+
+        var labelGo = CreateLabel("ShortButtonText", btnGo.transform, "SHORT", Color.white, 18);
+        labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        labelGo.GetComponent<Text>().raycastTarget = false;
+        shortButtonText = labelGo.GetComponent<Text>();
+
+        // Wire button click to GameRunner.HandleShortInput via FindObjectOfType
+        button.onClick.AddListener(() =>
+        {
+            var runner = Object.FindObjectOfType<GameRunner>();
+            if (runner != null) runner.HandleShortInput();
+        });
+
+        // Short P&L panel — positioned above the SHORT button
+        var pnlPanelGo = CreatePanel("ShortPnlPanel", canvasGo.transform);
+        var pnlRect = pnlPanelGo.GetComponent<RectTransform>();
+        pnlRect.anchorMin = new Vector2(0.5f, 0f);
+        pnlRect.anchorMax = new Vector2(0.5f, 0f);
+        pnlRect.pivot = new Vector2(0.5f, 0f);
+        pnlRect.anchoredPosition = new Vector2(260f, 152f); // Above SHORT button
+        pnlRect.sizeDelta = new Vector2(160f, 60f);
+        pnlPanelGo.GetComponent<Image>().color = new Color(0.1f, 0.05f, 0.15f, 0.85f);
+        shortPnlPanel = pnlPanelGo;
+
+        var pnlLayout = pnlPanelGo.AddComponent<VerticalLayoutGroup>();
+        pnlLayout.spacing = 1f;
+        pnlLayout.padding = new RectOffset(8, 8, 4, 4);
+        pnlLayout.childAlignment = TextAnchor.MiddleCenter;
+        pnlLayout.childForceExpandWidth = true;
+        pnlLayout.childForceExpandHeight = false;
+
+        var entryGo = CreateLabel("ShortEntryText", pnlPanelGo.transform, "Entry: $0.00",
+            LabelColor, 12);
+        entryGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        shortPnlEntryText = entryGo.GetComponent<Text>();
+
+        var valueGo = CreateLabel("ShortPnlValue", pnlPanelGo.transform, "P&L: +$0.00",
+            Color.white, 14);
+        valueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        valueGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        shortPnlValueText = valueGo.GetComponent<Text>();
+
+        var countdownGo = CreateLabel("ShortCountdown", pnlPanelGo.transform, "",
+            new Color(1f, 0.85f, 0.2f, 1f), 11);
+        countdownGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        shortPnlCountdownText = countdownGo.GetComponent<Text>();
+
+        canvasGo.SetActive(false); // Hidden until TradingState activates
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] ShortButton + ShortPnlPanel created: right of trade panel");
+        #endif
     }
 
     /// <summary>

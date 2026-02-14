@@ -510,69 +510,210 @@ As a player, I want all market events to target the single stock I'm trading eac
 
 ---
 
-### Story FIX-10: Trade Execution Delay & Button Cooldown
+### Story FIX-10: Post-Trade Cooldown with Countdown Timer (v2)
 
-As a player, I want a brief delay after pressing Buy or Sell before the trade executes, so that trading feels deliberate and I can't spam-click to instantly fill massive positions.
+As a player, I want trades to execute instantly when I press Buy or Sell, but then be locked out of ALL trading for 3 seconds with a visible countdown timer, so that I can't spam-click trades but still get the satisfaction of immediate execution.
 
-**Context:** Currently trades execute instantly on button press with zero delay. This removes tension and allows rapid-fire clicking to bypass the quantity system. A short cooldown creates a "market fill" feel and adds weight to each trade decision.
+**Context:** v1 added a pre-trade delay (0.4s) with slippage — wrong intent. v2 corrects this: trades are instant, with a 3-second post-trade cooldown that locks BOTH buttons and shows a countdown timer above the trade panel.
 
 **Acceptance Criteria:**
-- After pressing Buy or Sell (button or keyboard), a brief cooldown of ~0.3-0.5s before the trade executes
-- During cooldown: button appears visually "processing" (dimmed, pulsing, or progress indicator)
-- During cooldown: additional Buy/Sell presses are ignored (no queuing)
-- Trade executes at the price when the cooldown COMPLETES (not when pressed) — this is the "fill price"
-- The fill price creates a natural spread/slippage feel: price may move during the delay
-- TradeFeedback message appears after execution, not on press
-- Keyboard shortcuts (B/S) respect the same cooldown
-- Cooldown duration configurable in GameConfig (e.g., `TradeExecutionDelay = 0.4f`)
-- No cooldown during auto-liquidation at market close
+- Trade executes instantly on Buy/Sell press (button click or B/S keyboard) — no delay
+- After a successful trade, BOTH Buy and Sell buttons lock out for 3 seconds
+- During lockout: both buttons are visually dimmed, presses are ignored
+- A countdown timer text (e.g., "2.4s") is visible just above the trade button section
+- Countdown updates every frame (one decimal place), disappears when cooldown ends
+- Keyboard shortcuts (B/S) also blocked during lockout; quantity presets (1-4) still work
+- Cooldown duration configurable in GameConfig (`PostTradeCooldown = 3.0f`)
+- Cooldown only triggers on successful trades (failed trades don't lock)
+- Auto-liquidation at market close is unaffected by cooldown
+- If trading phase ends during cooldown, cooldown cancels and UI resets
 
-**Files to modify:**
-- `Assets/Scripts/Runtime/Core/GameRunner.cs` — trade orchestration, add cooldown coroutine
-- `Assets/Scripts/Runtime/UI/TradeFeedback.cs` — timing of feedback display
-- `Assets/Scripts/Setup/UISetup.cs` — button visual state during cooldown
-- `Assets/Scripts/Setup/Data/GameConfig.cs` — new config constant
+**Files modified:**
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — `PostTradeCooldown = 3.0f`
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — instant trade + post-trade cooldown + timer display
+- `Assets/Scripts/Setup/UISetup.cs` — countdown timer Text element above trade panel
+- `Assets/Scripts/Runtime/UI/QuantitySelector.cs` — `CooldownTimerText` property
+- `Assets/Tests/Runtime/Core/TradeExecutionDelayTests.cs` — 15 tests
 
 ---
 
-### Story FIX-11: Short Selling Mechanic Redesign — "Bet Against" System
+### Story FIX-11: Short Selling Mechanic Redesign — Separate Short Button with Timed Lifecycle
 
-As a player, I want shorting to be a separate, clear mechanic where I place a "bet against" the stock rather than a confusing financial instrument hidden behind the Sell button, so that bearish plays feel exciting and distinct from selling.
+As a player, I want a dedicated SHORT button completely separate from Buy/Sell that lets me short 1 share with a timed lifecycle (forced hold → cash-out window → cooldown), so that shorting feels like a deliberate side-bet with clear risk windows rather than a confusing hidden mechanic.
 
-**Context:** Currently shorting is buried in the "Smart Sell" system — if you have no long position and press Sell, it silently opens a short. This is confusing: players don't realize they've shorted, don't understand margin, and the P&L display is counterintuitive. Inspired by *Space Warlords Baby Trading Simulator*, shorts should be a distinct, visible mechanic — a "bet" that the price will drop, with clear risk/reward shown upfront.
+**Context:** Currently shorting is buried in the "Smart Sell" system — if you press Sell with no long position, it silently opens a short. Players don't realize they've shorted. This redesign makes shorting a fully separate, visible mechanic with its own button, UI panel, and timed state machine. Shorts are a small bonus play alongside your main long trades — you can hold a long AND a short on the same stock simultaneously. With the new $10 economy (FIX-14) and 1-share trading (FIX-13), a short on a $2 penny stock nets small gains/losses, keeping it as a fun side mechanic rather than the primary money-maker. Items can later enhance shorts (more shares, shorter cooldowns).
 
-**Design Direction (to be refined during implementation):**
-- **Separate UI element**: A dedicated "BET AGAINST" / "SHORT" button or panel, visually distinct from Buy/Sell (e.g., hot pink/purple, different area of screen)
-- **Simplified mental model**: "You're betting $X that the price will drop. If it drops Y%, you win Z. If it rises, you lose your bet." — no margin terminology, no "covering"
-- **Fixed-stake betting**: Instead of share-based shorts with margin collateral, player commits a fixed cash amount as their "bet"
-- **Auto-resolve**: Short bets resolve at end of round (or when player manually cashes out), not via a separate "Cover" action
-- **Clear P&L preview**: Show potential win/loss in real-time on the bet itself ("Your $500 bet: currently +$120" or "-$80")
-- **Risk/reward visibility**: Before placing the bet, show what you stand to gain/lose at different price levels
-- **Unlock timing**: Consider introducing shorts in Act 2+ rather than Round 1, so players learn Buy/Sell first
-- **Short Squeeze interaction**: ShortSqueeze events become even more dramatic — they directly threaten your visible bet
+**Short Button State Machine:**
+
+```
+ROUND START
+  │
+  ▼
+[ROUND_LOCKOUT] ── SHORT button greyed, shows "5s" countdown
+  │ (5 seconds)
+  ▼
+[READY] ── SHORT button enabled, normal color
+  │ (player clicks SHORT)
+  ▼
+[HOLDING] ── 1 share shorted at market price
+  │            Button greyed, shows "8s" forced-hold countdown
+  │            P&L panel appears showing real-time profit/loss
+  │ (8 seconds)
+  ▼
+[CASH_OUT_WINDOW] ── Button re-enables with "CASH OUT" text
+  │                   10s auto-close countdown displayed
+  │                   Countdown flashes when ≤4s remain
+  │ (player clicks CASH OUT — or 10s expires → auto-close)
+  ▼
+[COOLDOWN] ── Short closed, P&L realized
+  │            Button greyed, shows "10s" cooldown countdown
+  │            P&L panel clears
+  │ (10 seconds)
+  ▼
+[READY] ── cycle repeats
+```
+
+**Any state → ROUND END:** Short auto-closes at market price, all cooldowns cancel, UI resets.
 
 **Acceptance Criteria:**
-- Shorting is a SEPARATE action from Sell — Sell ONLY sells long positions, never opens a short
-- Dedicated UI for placing short bets, visually distinct from the Buy/Sell trade panel
-- Player commits a fixed cash amount (not share quantity) when shorting
-- Real-time P&L displayed directly on the short bet UI element
-- Short bets auto-close at market close (like longs) with clear profit/loss shown
-- Player can manually close a short bet early via a "Cash Out" button on the bet
-- No financial jargon: avoid "margin," "collateral," "cover" — use "bet," "cash out," "win/lose"
-- Keyboard shortcut for placing a short bet (D key) and cashing out (F key) preserved
-- ShortSqueeze event still targets active short bets for dramatic effect
+
+*Core Mechanic:*
+- Dedicated SHORT button, visually distinct from Buy/Sell (e.g., hot pink/purple)
+- Shorting is COMPLETELY separate from Sell — Sell ONLY sells long positions, never opens a short
 - Remove Smart Sell logic that auto-opens shorts from the Sell button
+- Player can hold a long position AND a short position on the same stock simultaneously
+- Only ONE short position at a time
+- Short is always 1 share (base, before item upgrades)
+- P&L calculated as `(open_price - close_price) * shares` — profit when price drops
+
+*Timed Lifecycle:*
+- **Round start lockout (5s):** SHORT button greyed with visible countdown. Buy/Sell are NOT affected
+- **Forced hold (8s):** After opening short, button greys with countdown. Cannot cash out early regardless of P&L
+- **Cash-out window (10s):** Button re-enables with "CASH OUT" text. Auto-close timer displayed prominently. Timer flashes/pulses when ≤4 seconds remain
+- **Auto-close:** If player doesn't click CASH OUT within 10s, short closes automatically at market price. No penalty vs. manual close
+- **Post-close cooldown (10s):** Button greys with countdown before next short is available
+- Round end during ANY state: short auto-closes at market price, all timers cancel, UI resets
+
+*UI:*
+- SHORT button with keyboard shortcut (D key to short, D key again to cash out when in cash-out window)
+- Separate Short P&L panel showing: entry price, current P&L (green/red), time held, auto-close countdown
+- P&L panel only visible when a short is active (HOLDING or CASH_OUT_WINDOW states)
+- All countdowns visible on or near the SHORT button (not hidden)
+- Button text changes per state: "SHORT" → "8s" → "CASH OUT (10s)" → "10s" → "SHORT"
+
+*Item Integration Points (for FIX-13 / Epic 8):*
+- Share count upgradeable (e.g., item: "Short 3 shares instead of 1")
+- Forced hold duration reducible (e.g., item: "Reduce short lockout by 3s")
+- Post-close cooldown reducible (e.g., item: "Reduce short cooldown by 4s")
+- Cash-out window extendable (e.g., item: "Short auto-close extended to 15s")
+- All durations sourced from `GameConfig` constants so items can modify them at runtime
+
+*Config Constants (GameConfig):*
+- `ShortRoundStartLockout = 5.0f`
+- `ShortForcedHoldDuration = 8.0f`
+- `ShortCashOutWindow = 10.0f`
+- `ShortCashOutFlashThreshold = 4.0f`
+- `ShortPostCloseCooldown = 10.0f`
+- `ShortBaseShares = 1`
 
 **Files to modify:**
-- `Assets/Scripts/Runtime/Trading/Portfolio.cs` — refactor short position model to bet-based
-- `Assets/Scripts/Runtime/Trading/Position.cs` — new BetAgainst position type or subclass
-- `Assets/Scripts/Runtime/Trading/TradeExecutor.cs` — new ExecuteBet / CashOutBet methods
-- `Assets/Scripts/Runtime/Core/GameRunner.cs` — remove smart-sell short logic, add bet routing
-- `Assets/Scripts/Setup/UISetup.cs` — new short bet UI panel
-- `Assets/Scripts/Runtime/UI/PositionOverlay.cs` — display active bets
-- `Assets/Scripts/Runtime/UI/TradeFeedback.cs` — bet-specific feedback messages
-- `Assets/Scripts/Runtime/Events/EventScheduler.cs` — ShortSqueeze targets bets
-- `Assets/Scripts/Setup/Data/GameConfig.cs` — bet-related config constants
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — short lifecycle timing constants
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — remove smart-sell short logic, add short state machine, D key routing
+- `Assets/Scripts/Setup/UISetup.cs` — SHORT button, Short P&L panel, countdown text elements
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` — support simultaneous long + short on same stock
+- `Assets/Scripts/Runtime/Trading/Position.cs` — ensure short position model works alongside long
+- `Assets/Scripts/Runtime/UI/PositionOverlay.cs` — short P&L display panel
+- `Assets/Scripts/Runtime/UI/TradeFeedback.cs` — short-specific feedback ("SHORTED", "CASHED OUT")
+- `Assets/Scripts/Runtime/UI/QuantitySelector.cs` — short uses fixed share count (not quantity selector)
+- `Assets/Scripts/Runtime/Events/EventScheduler.cs` — ShortSqueeze targets active short position
+
+---
+
+### Story FIX-12: Reputation Shop Currency
+
+As a player, I want the draft shop to use a separate currency called "Reputation" instead of my trading cash, so that shop purchases don't eat into my run capital and I can manage build upgrades independently from in-round trading.
+
+**Context:** Currently shop items cost trading cash (Story 7.3), creating a tension between buying upgrades and having capital for the next round. By introducing Reputation as a dedicated shop currency, trading capital stays intact across rounds and item pricing can be tuned independently. Reputation is earned at the end of each round based on performance (see FIX-14).
+
+**Acceptance Criteria:**
+- New `Reputation` integer field tracked on the player's meta/run state (persists across rounds within a run, and accumulates across runs for meta-progression)
+- Draft Shop prices converted from cash to Reputation costs
+- Shop UI displays current Reputation balance (not cash)
+- Purchase flow deducts Reputation, NOT trading cash
+- Trading cash is no longer reduced by shop purchases — full cash carries forward between rounds
+- HUD shows Reputation balance alongside cash (small icon + number, distinct from cash display)
+- Reputation display uses a distinct visual style (e.g., star icon, gold/amber color) to clearly differentiate from cash
+- Story 7.3 purchase flow updated: replace all cash-deduction logic with Reputation-deduction logic
+- Story 2.5 updated: "Shop purchases deduct from trading capital" is no longer true
+
+**Files to modify:**
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — Reputation-related constants
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` or new `ReputationManager.cs` — Reputation tracking
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — round-end Reputation award, shop integration
+- `Assets/Scripts/Setup/UISetup.cs` — Reputation display in HUD and shop
+- Shop-related scripts — price display and purchase logic
+
+---
+
+### Story FIX-13: Single Share Start with Unlockable Quantity Tiers
+
+As a player, I want to start each run with the ability to buy or sell only 1 share at a time, and unlock higher quantity tiers (x5, x10, x15, x25) by spending Reputation in the shop on upgrades, so that position sizing is a progression mechanic rather than a free choice.
+
+**Context:** Currently `QuantitySelector` offers presets x5, x10, x15, x25 from Round 1 (FIX-3/FIX-6). The user wants quantity to start at 1 and scale up as a shop/upgrade unlock. This turns position sizing into a meaningful progression choice — early rounds are tight (1 share of a penny stock), and unlocking higher quantities with Reputation feels like a power-up.
+
+**Acceptance Criteria:**
+- Game starts with quantity locked to **1 share** — no preset buttons visible, just "x1"
+- Quantity tier upgrades available as shop items purchasable with Reputation:
+  - Tier 1 (default): x1
+  - Tier 2 unlock: x5 (cost: TBD Reputation)
+  - Tier 3 unlock: x10 (cost: TBD Reputation)
+  - Tier 4 unlock: x15 (cost: TBD Reputation)
+  - Tier 5 unlock: x25 (cost: TBD Reputation)
+- Each unlock adds that preset button to the quantity selector UI
+- Unlocks persist for the rest of the run (not per-round)
+- Keyboard shortcuts (1-4) only active for unlocked presets
+- MAX calculation still works — clamped to highest unlocked tier value
+- `QuantitySelector` refactored: `PresetValues` and `PresetLabels` replaced with dynamic unlock-aware system
+- Current default of x10 on round start replaced with "highest unlocked tier" or "x1" if nothing unlocked
+
+**Files to modify:**
+- `Assets/Scripts/Runtime/UI/QuantitySelector.cs` — refactor to unlock-based system
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — quantity tier Reputation costs, default quantity = 1
+- `Assets/Scripts/Setup/UISetup.cs` — dynamic preset button creation based on unlocks
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — keyboard shortcut gating
+- Shop item definitions — new "Trade Volume" upgrade items
+
+---
+
+### Story FIX-14: Economy Rebalance — $10 Start, Low Targets, Reputation Earnings
+
+As a player, I want to start with $10, face a first-round target of $20, and earn Reputation at the end of each round based on how well I did, so that the early game feels tight and scrappy, and every round contributes to my long-term progression.
+
+**Context:** Current `StartingCapital` is $1,000 with targets starting at $200 (Story 6.3). With single-share trading (FIX-13) and penny stocks in Act 1, the economy needs to be dramatically scaled down. Starting at $10 with a $20 target means buying 1 share of a $2 penny stock and needing to sell it for a profit — tense, simple, learnable. Reputation earnings give every round a reward even on failure.
+
+**Acceptance Criteria:**
+- `StartingCapital` changed from `1000f` to `10f`
+- Round profit targets rebalanced (suggested starting point — tune during playtesting):
+  - Round 1: $20 | Round 2: $35
+  - Round 3: $60 | Round 4: $100
+  - Round 5: $175 | Round 6: $300
+  - Round 7: $500 | Round 8: $800
+- `DebugStartingCash` array updated to match new economy scale
+- Reputation earned at end of each completed round:
+  - Base award: scales with round number (e.g., Round 1 = 5 Rep, Round 8 = 40 Rep)
+  - Performance bonus: percentage of target exceeded converts to bonus Rep (e.g., hit 150% of target = +50% bonus Rep)
+  - Failure award: small consolation Rep even on margin call (e.g., 2 Rep per round completed before failure)
+- Round summary screen shows Reputation earned breakdown (base + bonus)
+- Stock tier price ranges may need adjustment to align with $10 starting capital (penny stocks $0.50–$5 range so 1 share is affordable)
+- All item costs (if any still use cash) reviewed against new economy scale
+- Shop Reputation costs tuned so early unlocks are achievable after 2-3 rounds
+
+**Files to modify:**
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — `StartingCapital`, `DebugStartingCash`, new target array, Rep award constants
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — round-end Reputation calculation and award
+- `Assets/Scripts/Setup/UISetup.cs` — Reputation earned display on round summary
+- Stock tier configs — price range adjustments for penny stocks
+- Margin call / round target logic — updated target values
 
 ---
 

@@ -65,12 +65,12 @@ namespace BullRun.Tests.UI
         // --- GetShortRejectionReason ---
 
         [Test]
-        public void GetShortRejectionReason_LongPositionExists_ReturnsLongMessage()
+        public void GetShortRejectionReason_DuplicateShort_ReturnsDuplicateMessage()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenPosition("ACME", 10, 25f);
+            portfolio.OpenShort("ACME", 5, 50f);
             string reason = TradeFeedback.GetShortRejectionReason(portfolio, "ACME");
-            Assert.AreEqual("Can't short \u2014 long position open", reason);
+            Assert.AreEqual("Already shorting this stock", reason);
         }
 
         [Test]
@@ -142,7 +142,7 @@ namespace BullRun.Tests.UI
 
             EventBus.Publish(new TradeFeedbackEvent
             {
-                Message = "Can't short \u2014 long position open",
+                Message = "Already shorting this stock",
                 IsSuccess = false,
                 IsBuy = false,
                 IsShort = true
@@ -150,7 +150,7 @@ namespace BullRun.Tests.UI
 
             Assert.IsTrue(eventFired);
             Assert.IsFalse(received.IsSuccess);
-            Assert.AreEqual("Can't short \u2014 long position open", received.Message);
+            Assert.AreEqual("Already shorting this stock", received.Message);
         }
     }
 }

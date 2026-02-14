@@ -15,9 +15,16 @@ public static class GameConfig
     // Default trade quantity preset (10 shares)
     public static readonly int DefaultTradeQuantity = 10;
 
-    // Delay between pressing Buy/Sell and trade execution (seconds)
-    // Creates a "market fill" feel with natural slippage
-    public static readonly float TradeExecutionDelay = 0.4f;
+    // Short selling lifecycle timing constants (FIX-11)
+    public static readonly float ShortRoundStartLockout = 5.0f;
+    public static readonly float ShortForcedHoldDuration = 8.0f;
+    public static readonly float ShortCashOutWindow = 10.0f;
+    public static readonly float ShortCashOutFlashThreshold = 4.0f;
+    public static readonly float ShortPostCloseCooldown = 10.0f;
+    public static readonly int ShortBaseShares = 1;
+
+    // Post-trade cooldown: locks out all trading for this duration after a successful trade (seconds)
+    public static readonly float PostTradeCooldown = 3.0f;
 
     // Button dim alpha during trade cooldown (0 = invisible, 1 = fully opaque)
     public static readonly float CooldownDimAlpha = 0.35f;

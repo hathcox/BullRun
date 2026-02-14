@@ -89,9 +89,8 @@ public class TradeFeedback : MonoBehaviour
     /// </summary>
     public static string GetShortRejectionReason(Portfolio portfolio, string stockId)
     {
-        var position = portfolio.GetPosition(stockId);
-        if (position != null && !position.IsShort)
-            return "Can't short \u2014 long position open";
+        if (portfolio.HasShortPosition(stockId))
+            return "Already shorting this stock";
         return "Insufficient margin";
     }
 
@@ -101,8 +100,8 @@ public class TradeFeedback : MonoBehaviour
     /// </summary>
     public static string GetCoverRejectionReason(Portfolio portfolio, string stockId)
     {
-        var position = portfolio.GetPosition(stockId);
-        if (position != null && position.IsShort)
+        var shortPos = portfolio.GetShortPosition(stockId);
+        if (shortPos != null)
             return "Insufficient shares to cover";
         return "No short position to cover";
     }

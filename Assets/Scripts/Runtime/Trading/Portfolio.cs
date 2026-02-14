@@ -9,6 +9,7 @@ using UnityEngine;
 public class Portfolio
 {
     private readonly Dictionary<string, Position> _positions = new Dictionary<string, Position>();
+    private readonly Dictionary<string, Position> _shortPositions = new Dictionary<string, Position>();
     private readonly Dictionary<string, float> _latestPrices = new Dictionary<string, float>();
     private float _roundStartValue;
 
@@ -104,18 +105,9 @@ public class Portfolio
             return null;
         }
 
-        // Reject if a short position exists — must cover short first
-        if (_positions.TryGetValue(stockId, out var existing) && existing.IsShort)
-        {
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Trading] Buy rejected: short position exists for {stockId} — cover short first");
-            #endif
-            return null;
-        }
-
         Cash -= cost;
 
-        if (existing != null)
+        if (_positions.TryGetValue(stockId, out var existing))
         {
             int totalShares = existing.Shares + shares;
             float avgPrice = (existing.AverageBuyPrice * existing.Shares + price * shares) / totalShares;
@@ -141,11 +133,11 @@ public class Portfolio
     /// </summary>
     public Position OpenShort(string stockId, int shares, float price)
     {
-        // Reject if a long position exists — must sell long first
-        if (_positions.TryGetValue(stockId, out var existing) && existing.IsLong)
+        // Only one short per stock allowed
+        if (_shortPositions.ContainsKey(stockId))
         {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Trading] Short rejected: long position exists for {stockId} — sell long first");
+            Debug.Log($"[Trading] Short rejected: short position already exists for {stockId}");
             #endif
             return null;
         }
@@ -161,7 +153,7 @@ public class Portfolio
 
         Cash -= margin;
         var position = new Position(stockId, shares, price, margin);
-        _positions[stockId] = position;
+        _shortPositions[stockId] = position;
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Trading] SHORT opened: {shares}x {stockId} at ${price:F2} (margin held: ${margin:F2})");
         #endif
@@ -175,7 +167,7 @@ public class Portfolio
     /// </summary>
     public float CoverShort(string stockId, int shares, float currentPrice)
     {
-        if (!_positions.TryGetValue(stockId, out var position) || !position.IsShort)
+        if (!_shortPositions.TryGetValue(stockId, out var position))
         {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Cover rejected: no short position for {stockId}");
@@ -204,7 +196,7 @@ public class Portfolio
 
         if (shares == position.Shares)
         {
-            _positions.Remove(stockId);
+            _shortPositions.Remove(stockId);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SHORT covered: {stockId} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2}, margin returned: ${marginPortion:F2})");
             #endif
@@ -213,7 +205,7 @@ public class Portfolio
         {
             int remainingShares = position.Shares - shares;
             float remainingMargin = position.MarginHeld - marginPortion;
-            _positions[stockId] = new Position(stockId, remainingShares, position.AverageBuyPrice, remainingMargin);
+            _shortPositions[stockId] = new Position(stockId, remainingShares, position.AverageBuyPrice, remainingMargin);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SHORT partially covered: {stockId} now {remainingShares} shares (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
             #endif
@@ -228,7 +220,7 @@ public class Portfolio
     /// </summary>
     public float ClosePosition(string stockId, int shares, float currentPrice)
     {
-        if (!_positions.TryGetValue(stockId, out var position) || position.IsShort)
+        if (!_positions.TryGetValue(stockId, out var position))
         {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] Sell rejected: no long position for {stockId}");
@@ -267,12 +259,17 @@ public class Portfolio
     }
 
     /// <summary>
-    /// Number of open positions.
+    /// Number of open long positions.
     /// </summary>
     public int PositionCount => _positions.Count;
 
     /// <summary>
-    /// Returns the position for a stock, or null if none exists.
+    /// Number of open short positions.
+    /// </summary>
+    public int ShortPositionCount => _shortPositions.Count;
+
+    /// <summary>
+    /// Returns the long position for a stock, or null if none exists.
     /// </summary>
     public Position GetPosition(string stockId)
     {
@@ -281,7 +278,16 @@ public class Portfolio
     }
 
     /// <summary>
-    /// Returns all open positions as a read-only collection.
+    /// Returns the short position for a stock, or null if none exists.
+    /// </summary>
+    public Position GetShortPosition(string stockId)
+    {
+        _shortPositions.TryGetValue(stockId, out var position);
+        return position;
+    }
+
+    /// <summary>
+    /// Returns all open long positions as a read-only collection.
     /// Returns the underlying collection directly to avoid per-call heap allocation.
     /// </summary>
     public IReadOnlyCollection<Position> GetAllPositions()
@@ -290,7 +296,15 @@ public class Portfolio
     }
 
     /// <summary>
-    /// Closes all positions at current prices. Returns total realized P&L.
+    /// Returns all open short positions as a read-only collection.
+    /// </summary>
+    public IReadOnlyCollection<Position> GetAllShortPositions()
+    {
+        return _shortPositions.Values;
+    }
+
+    /// <summary>
+    /// Closes all positions (both longs and shorts) at current prices. Returns total realized P&L.
     /// Longs: sells all shares, adds proceeds to cash.
     /// Shorts: covers all, returns margin +/- P&L to cash.
     /// Clears position and price caches.
@@ -299,32 +313,38 @@ public class Portfolio
     public float LiquidateAllPositions(Func<string, float> getCurrentPrice)
     {
         float totalPnL = 0f;
+
+        // Liquidate long positions
         foreach (var kvp in _positions)
         {
             var pos = kvp.Value;
             float price = getCurrentPrice(kvp.Key);
             float pnl = pos.UnrealizedPnL(price);
             totalPnL += pnl;
-
-            if (pos.IsShort)
-            {
-                float cashReturn = pos.MarginHeld + pnl;
-                if (cashReturn < 0f)
-                    cashReturn = 0f;
-                Cash += cashReturn;
-            }
-            else
-            {
-                Cash += pos.Shares * price;
-            }
+            Cash += pos.Shares * price;
         }
         _positions.Clear();
+
+        // Liquidate short positions
+        foreach (var kvp in _shortPositions)
+        {
+            var pos = kvp.Value;
+            float price = getCurrentPrice(kvp.Key);
+            float pnl = pos.UnrealizedPnL(price);
+            totalPnL += pnl;
+            float cashReturn = pos.MarginHeld + pnl;
+            if (cashReturn < 0f)
+                cashReturn = 0f;
+            Cash += cashReturn;
+        }
+        _shortPositions.Clear();
+
         _latestPrices.Clear();
         return totalPnL;
     }
 
     /// <summary>
-    /// Returns the unrealized P&L for a specific position, or 0 if no position exists.
+    /// Returns the unrealized P&L for a specific long position, or 0 if no position exists.
     /// </summary>
     public float GetPositionPnL(string stockId, float currentPrice)
     {
@@ -334,11 +354,19 @@ public class Portfolio
     }
 
     /// <summary>
-    /// Returns true if a position exists for the given stock.
+    /// Returns true if a long position exists for the given stock.
     /// </summary>
     public bool HasPosition(string stockId)
     {
         return _positions.ContainsKey(stockId);
+    }
+
+    /// <summary>
+    /// Returns true if a short position exists for the given stock.
+    /// </summary>
+    public bool HasShortPosition(string stockId)
+    {
+        return _shortPositions.ContainsKey(stockId);
     }
 
     /// <summary>
@@ -375,12 +403,14 @@ public class Portfolio
         float total = Cash;
         foreach (var kvp in _positions)
         {
+            float price = getCurrentPrice(kvp.Key);
+            total += kvp.Value.Shares * price;
+        }
+        foreach (var kvp in _shortPositions)
+        {
             var pos = kvp.Value;
             float price = getCurrentPrice(kvp.Key);
-            if (pos.IsShort)
-                total += pos.MarginHeld + pos.UnrealizedPnL(price);
-            else
-                total += pos.Shares * price;
+            total += pos.MarginHeld + pos.UnrealizedPnL(price);
         }
         return total;
     }
@@ -400,6 +430,10 @@ public class Portfolio
     {
         float total = 0f;
         foreach (var kvp in _positions)
+        {
+            total += kvp.Value.UnrealizedPnL(getCurrentPrice(kvp.Key));
+        }
+        foreach (var kvp in _shortPositions)
         {
             total += kvp.Value.UnrealizedPnL(getCurrentPrice(kvp.Key));
         }

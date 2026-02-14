@@ -73,7 +73,7 @@ public class TradeExecutor
         try
         {
             var position = portfolio.GetPosition(stockId);
-            if (position == null || position.IsShort || position.Shares < shares)
+            if (position == null || position.Shares < shares)
             {
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[Trading] Sell rejected: no long position or insufficient shares for {shares}x {stockId}");
@@ -165,8 +165,8 @@ public class TradeExecutor
 
         try
         {
-            var position = portfolio.GetPosition(stockId);
-            if (position == null || !position.IsShort || position.Shares < shares)
+            var position = portfolio.GetShortPosition(stockId);
+            if (position == null || position.Shares < shares)
             {
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
                 Debug.Log($"[Trading] Cover rejected: no short position or insufficient shares for {shares}x {stockId}");

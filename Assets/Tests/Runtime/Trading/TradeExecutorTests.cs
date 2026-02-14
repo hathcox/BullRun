@@ -195,23 +195,27 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void ExecuteBuy_WhenShortExists_Rejected()
+        public void ExecuteBuy_WhenShortExists_AllowsSimultaneous()
         {
-            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // margin 250, cash 750
             _eventReceived = false;
-            bool result = _executor.ExecuteBuy("ACME", 5, 25.00f, _portfolio);
-            Assert.IsFalse(result);
-            Assert.IsFalse(_eventReceived);
+            bool result = _executor.ExecuteBuy("ACME", 5, 25.00f, _portfolio); // cost 125, cash 625
+            Assert.IsTrue(result);
+            Assert.IsTrue(_eventReceived);
+            Assert.IsNotNull(_portfolio.GetPosition("ACME"));
+            Assert.IsNotNull(_portfolio.GetShortPosition("ACME"));
         }
 
         [Test]
-        public void ExecuteShort_WhenLongExists_Rejected()
+        public void ExecuteShort_WhenLongExists_AllowsSimultaneous()
         {
-            _executor.ExecuteBuy("ACME", 10, 25.00f, _portfolio);
+            _executor.ExecuteBuy("ACME", 10, 25.00f, _portfolio); // cost 250, cash 750
             _eventReceived = false;
-            bool result = _executor.ExecuteShort("ACME", 5, 50.00f, _portfolio);
-            Assert.IsFalse(result);
-            Assert.IsFalse(_eventReceived);
+            bool result = _executor.ExecuteShort("ACME", 5, 50.00f, _portfolio); // margin 125, cash 625
+            Assert.IsTrue(result);
+            Assert.IsTrue(_eventReceived);
+            Assert.IsNotNull(_portfolio.GetPosition("ACME"));
+            Assert.IsNotNull(_portfolio.GetShortPosition("ACME"));
         }
 
         // --- ExecuteShort Tests (Story 2.3) ---
@@ -227,7 +231,7 @@ namespace BullRun.Tests.Trading
         public void ExecuteShort_Success_CreatesShortPosition()
         {
             _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
-            var pos = _portfolio.GetPosition("ACME");
+            var pos = _portfolio.GetShortPosition("ACME");
             Assert.IsNotNull(pos);
             Assert.IsTrue(pos.IsShort);
             Assert.AreEqual(10, pos.Shares);
@@ -275,7 +279,7 @@ namespace BullRun.Tests.Trading
         {
             _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
             _executor.ExecuteCover("ACME", 10, 30.00f, _portfolio);
-            Assert.IsNull(_portfolio.GetPosition("ACME"));
+            Assert.IsNull(_portfolio.GetShortPosition("ACME"));
         }
 
         [Test]
