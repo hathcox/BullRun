@@ -8,8 +8,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class ChartSetup
 {
-    // Chart occupies center of screen between sidebar (240px left) and positions panel (180px right)
-    private static readonly float ChartWidthPercent = 0.55f;
+    // FIX-5: Chart expanded — no sidebar on left, positions panel (180px) on right
+    private static readonly float ChartWidthPercent = 0.65f;
     private static readonly float ChartHeightPercent = 0.70f;
     private static readonly int AxisLabelCount = 5;
     private static readonly Color BackgroundColor = new Color(0.039f, 0.055f, 0.153f, 1f); // #0A0E27 dark navy
@@ -39,7 +39,7 @@ public static class ChartSetup
         indicatorSprite.color = ChartVisualConfig.Default.LineColor;
         indicatorGo.SetActive(false);
 
-        // Calculate chart bounds based on screen center ~60%
+        // Calculate chart bounds based on screen center ~65% (FIX-5: wider, no sidebar)
         float screenWidth = Screen.width > 0 ? Screen.width : 1920f;
         float screenHeight = Screen.height > 0 ? Screen.height : 1080f;
 

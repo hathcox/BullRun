@@ -5,7 +5,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Setup class that generates UI Canvas hierarchies during F5 rebuild.
-/// Creates Trading HUD (top bar), Stock Sidebar (left panel), and Round Timer.
+/// Creates Trading HUD (top bar) and Round Timer.
+/// (FIX-5: Stock Sidebar removed — single stock per round, no selection needed)
 /// [SetupClass(SetupPhase.SceneComposition)] attribute to be enabled when SetupPipeline exists.
 /// </summary>
 // Runtime-only: called by GameRunner.Start(), not during F5 rebuild.
@@ -30,11 +31,11 @@ public static class UISetup
     public static void Execute()
     {
         ExecuteMarketOpenUI();
-        ExecuteSidebar();
+        // FIX-5: Sidebar removed — single stock per round, no selection needed
         ExecuteRoundTimer();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] UISetup: All UI hierarchies created (MarketOpenUI, StockSidebar, RoundTimer)");
+        Debug.Log("[Setup] UISetup: All UI hierarchies created (MarketOpenUI, RoundTimer)");
         #endif
     }
 

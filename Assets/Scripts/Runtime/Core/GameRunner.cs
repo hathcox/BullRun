@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -18,7 +17,6 @@ public class GameRunner : MonoBehaviour
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
     private EventScheduler _eventScheduler;
-    private StockSidebarData _sidebarData;
     private QuantitySelector _quantitySelector;
     private bool _firstFrameSkipped;
 
@@ -53,20 +51,17 @@ public class GameRunner : MonoBehaviour
         // Create chart system (subscribes to PriceUpdatedEvent, RoundStartedEvent, etc.)
         ChartSetup.Execute();
 
-        // Create all UI systems with runtime data
+        // Create all UI systems with runtime data (FIX-5: sidebar removed — single stock per round)
         UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
-        var sidebar = UISetup.ExecuteSidebar();
-        _sidebarData = sidebar.Data;
         UISetup.ExecutePositionsPanel(_ctx.Portfolio);
         UISetup.ExecuteRoundTimer();
 
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);
 
-        // Create trade feedback overlay and key legend (FIX-2: short selling UI)
+        // Create trade feedback overlay (FIX-5: key legend removed — will be replaced by FIX-6 trade panel)
         UISetup.ExecuteTradeFeedback();
-        UISetup.ExecuteKeyLegend();
 
         // Create quantity selector panel (FIX-3: trade quantity selection)
         _quantitySelector = UISetup.ExecuteQuantitySelector();
@@ -83,15 +78,6 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteRunSummaryUI();
         UISetup.ExecuteTierTransitionUI();
         UISetup.ExecuteShopUI();
-
-        // Re-populate sidebar whenever a new round starts (including run restarts)
-        var priceGen = _priceGenerator;
-        var sidebarRef = _sidebarData;
-        EventBus.Subscribe<MarketOpenEvent>(_ =>
-        {
-            sidebarRef.InitializeForRound(
-                new List<StockInstance>(priceGen.ActiveStocks));
-        });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring
@@ -110,7 +96,6 @@ public class GameRunner : MonoBehaviour
             EventScheduler = _eventScheduler
         };
         _stateMachine.TransitionTo<MarketOpenState>();
-        // Sidebar is populated via MarketOpenEvent subscription above
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log("[GameRunner] Start: All runtime systems created, game loop started");
@@ -143,14 +128,15 @@ public class GameRunner : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
-        // Q cycles quantity preset — works without stock selection
+        // Q cycles quantity preset
         if (keyboard.qKey.wasPressedThisFrame)
         {
             _quantitySelector.CyclePreset();
             return;
         }
 
-        int selectedStockId = _sidebarData != null ? GetSelectedStockId() : -1;
+        // FIX-5: Single stock per round — target ActiveStocks[0] directly
+        int selectedStockId = GetSelectedStockId();
         if (selectedStockId < 0) return;
 
         float currentPrice = GetStockPrice(selectedStockId);
@@ -268,25 +254,35 @@ public class GameRunner : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// FIX-5: Returns the single active stock's ID directly from PriceGenerator.
+    /// </summary>
     private int GetSelectedStockId()
     {
-        if (_sidebarData == null || _sidebarData.SelectedIndex < 0) return -1;
-        return _sidebarData.GetEntry(_sidebarData.SelectedIndex).StockId;
+        if (_priceGenerator.ActiveStocks.Count == 0) return -1;
+        return _priceGenerator.ActiveStocks[0].StockId;
     }
 
+    /// <summary>
+    /// FIX-5: Returns the single active stock's ticker directly from PriceGenerator.
+    /// </summary>
     private string GetSelectedTicker()
     {
-        if (_sidebarData == null || _sidebarData.SelectedIndex < 0) return "???";
-        return _sidebarData.GetEntry(_sidebarData.SelectedIndex).TickerSymbol;
+        if (_priceGenerator.ActiveStocks.Count == 0) return "???";
+        return _priceGenerator.ActiveStocks[0].TickerSymbol;
     }
 
+    /// <summary>
+    /// FIX-5: Returns the single active stock's current price directly from PriceGenerator.
+    /// Parameter stockId kept for Func&lt;int, float&gt; delegate compatibility (QuantitySelector).
+    /// </summary>
     private float GetStockPrice(int stockId)
     {
-        for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
-        {
-            if (_priceGenerator.ActiveStocks[i].StockId == stockId)
-                return _priceGenerator.ActiveStocks[i].CurrentPrice;
-        }
-        return 0f;
+        if (_priceGenerator.ActiveStocks.Count == 0) return 0f;
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (stockId != _priceGenerator.ActiveStocks[0].StockId)
+            Debug.LogWarning($"[GameRunner] GetStockPrice called with stockId {stockId} but ActiveStocks[0] is {_priceGenerator.ActiveStocks[0].StockId} — FIX-5 assumes single stock");
+        #endif
+        return _priceGenerator.ActiveStocks[0].CurrentPrice;
     }
 }

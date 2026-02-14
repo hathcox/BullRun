@@ -108,7 +108,7 @@ development_status:
   FIX-2-short-selling-ui: done
   FIX-3-trade-quantity-selection: done
   FIX-4-event-popup-display: done
-  FIX-5-single-stock-per-round: ready-for-dev
+  FIX-5-single-stock-per-round: done
   FIX-6-trading-panel-overhaul: ready-for-dev
   FIX-7-position-overlay: ready-for-dev
   FIX-8-chart-price-gridlines: ready-for-dev

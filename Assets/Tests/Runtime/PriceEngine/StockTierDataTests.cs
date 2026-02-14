@@ -216,5 +216,20 @@ namespace BullRun.Tests.PriceEngine
             Assert.Greater(penny.EventFrequencyModifier, blueChip.EventFrequencyModifier,
                 "Penny should have higher event frequency than Blue Chip");
         }
+
+        // --- Single Stock Per Round Tests (FIX-5) ---
+
+        [Test]
+        public void AllTiers_HaveExactlyOneStockPerRound()
+        {
+            foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
+            {
+                var config = StockTierData.GetTierConfig(tier);
+                Assert.AreEqual(1, config.MinStocksPerRound,
+                    $"Tier {tier}: MinStocksPerRound should be 1");
+                Assert.AreEqual(1, config.MaxStocksPerRound,
+                    $"Tier {tier}: MaxStocksPerRound should be 1");
+            }
+        }
     }
 }
