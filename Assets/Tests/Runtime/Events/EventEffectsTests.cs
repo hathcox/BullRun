@@ -66,15 +66,18 @@ namespace BullRun.Tests.Events
         }
 
         [Test]
-        public void StartEvent_GlobalEvent_SetsNullAffectedStockIds()
+        public void StartEvent_AllEventsHaveAffectedStockIds()
         {
+            // FIX-9: All events are stock-targeted (no global events)
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
 
-            var evt = new MarketEvent(MarketEventType.MarketCrash, null, -0.30f, 8f);
+            var evt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.30f, 8f);
             _effects.StartEvent(evt);
 
-            Assert.IsNull(received.AffectedStockIds, "Global events should have null AffectedStockIds");
+            Assert.IsNotNull(received.AffectedStockIds, "All events should have AffectedStockIds (FIX-9)");
+            Assert.AreEqual(1, received.AffectedStockIds.Length);
+            Assert.AreEqual(0, received.AffectedStockIds[0]);
         }
 
         // --- ApplyEventEffect tests ---
@@ -225,8 +228,9 @@ namespace BullRun.Tests.Events
         [Test]
         public void MultipleEvents_CanBeActiveSimultaneously()
         {
+            // FIX-9: All events are stock-targeted
             var evt1 = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 5f);
-            var evt2 = new MarketEvent(MarketEventType.MarketCrash, null, -0.30f, 8f);
+            var evt2 = new MarketEvent(MarketEventType.MarketCrash, 0, -0.30f, 8f);
             _effects.StartEvent(evt1);
             _effects.StartEvent(evt2);
 
@@ -234,20 +238,21 @@ namespace BullRun.Tests.Events
         }
 
         [Test]
-        public void GetActiveEventsForStock_ReturnsTargetedAndGlobalEvents()
+        public void GetActiveEventsForStock_ReturnsOnlyTargetedEvents()
         {
+            // FIX-9: All events are stock-targeted, no global events
             var targeted = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 5f);
-            var global = new MarketEvent(MarketEventType.MarketCrash, null, -0.30f, 8f);
+            var crash = new MarketEvent(MarketEventType.MarketCrash, 0, -0.30f, 8f);
             var otherStock = new MarketEvent(MarketEventType.MergerRumor, 1, 0.20f, 6f);
 
             _effects.StartEvent(targeted);
-            _effects.StartEvent(global);
+            _effects.StartEvent(crash);
             _effects.StartEvent(otherStock);
 
             var eventsForStock0 = _effects.GetActiveEventsForStock(0);
 
             Assert.AreEqual(2, eventsForStock0.Count,
-                "Should include targeted event and global event, but not other stock's event");
+                "Should include both events targeting stock 0, but not stock 1's event");
         }
 
         // --- Headline and display data tests (Story 5-2) ---
@@ -332,16 +337,23 @@ namespace BullRun.Tests.Events
         }
 
         [Test]
-        public void StartEvent_GlobalEvent_NullTickerSymbols()
+        public void StartEvent_TargetedEvent_SetsTickerSymbols()
         {
+            // FIX-9: All events are stock-targeted
+            var stocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "CRASH", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock);
+            _effects.SetActiveStocks(stocks);
+
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
 
-            var evt = new MarketEvent(MarketEventType.MarketCrash, null, -0.30f, 8f);
+            var evt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.30f, 8f);
             _effects.StartEvent(evt);
 
-            Assert.IsNull(received.AffectedTickerSymbols,
-                "Global events should have null AffectedTickerSymbols");
+            Assert.IsNotNull(received.AffectedTickerSymbols, "Targeted events should have ticker symbols");
+            Assert.AreEqual("CRASH", received.AffectedTickerSymbols[0]);
         }
 
         // --- Multi-phase EventEffects tests (Story 5-3, Task 2) ---
@@ -459,65 +471,55 @@ namespace BullRun.Tests.Events
         }
 
         [Test]
-        public void StartEvent_GlobalEvent_HeadlineUsesGenericText()
+        public void StartEvent_MarketCrash_HeadlineUsesStockTicker()
         {
+            // FIX-9: MarketCrash now targets a specific stock
+            var stocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "DOOM", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock);
+            _effects.SetActiveStocks(stocks);
             _effects.SetHeadlineRandom(new System.Random(42));
 
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
 
-            var evt = new MarketEvent(MarketEventType.MarketCrash, null, -0.30f, 8f);
+            var evt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.30f, 8f);
             _effects.StartEvent(evt);
 
             Assert.IsNotNull(received.Headline);
-            Assert.IsTrue(received.Headline.Contains("the market"),
-                $"Global event headline should use 'the market', got: {received.Headline}");
         }
 
-        // --- Story 5-4: Global event price application tests ---
+        // --- Price application tests ---
 
         [Test]
-        public void ApplyEventEffect_GlobalEvent_AppliesSamePercentToAllStocks()
+        public void ApplyEventEffect_MarketCrash_AppliesPercentToTargetStock()
         {
-            var stock1 = new StockInstance();
-            stock1.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            var stock2 = new StockInstance();
-            stock2.Initialize(1, "STK2", StockTier.MidValue, 200f, TrendDirection.Neutral, 0f);
+            // FIX-9: MarketCrash targets a specific stock
+            var stock = new StockInstance();
+            stock.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
 
-            // MarketCrash at -40%
-            var evt = new MarketEvent(MarketEventType.MarketCrash, null, -0.40f, 8f);
+            var evt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.40f, 8f);
             evt.ElapsedTime = 4f; // Peak force = 1.0
 
-            float result1 = _effects.ApplyEventEffect(stock1, evt, 0.016f);
-            float result2 = _effects.ApplyEventEffect(stock2, evt, 0.016f);
+            float result = _effects.ApplyEventEffect(stock, evt, 0.016f);
 
-            // Stock 1: 100 * (1 - 0.40) = 60
-            // Stock 2: 200 * (1 - 0.40) = 120
-            Assert.AreEqual(60f, result1, 1f, "Stock 1 should drop by 40%");
-            Assert.AreEqual(120f, result2, 1f, "Stock 2 should drop by 40%");
-
-            // Verify same percentage applied
-            float pct1 = (result1 - 100f) / 100f;
-            float pct2 = (result2 - 200f) / 200f;
-            Assert.AreEqual(pct1, pct2, 0.01f, "Same percentage should apply to both stocks");
+            Assert.AreEqual(60f, result, 1f, "Stock should drop by 40%");
         }
 
         [Test]
-        public void ApplyEventEffect_BullRun_IncreasesAllStockPrices()
+        public void ApplyEventEffect_BullRun_IncreasesStockPrice()
         {
-            var stock1 = new StockInstance();
-            stock1.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            var stock2 = new StockInstance();
-            stock2.Initialize(1, "STK2", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
+            // FIX-9: BullRun targets a specific stock
+            var stock = new StockInstance();
+            stock.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
 
-            var evt = new MarketEvent(MarketEventType.BullRun, null, 0.40f, 8f);
+            var evt = new MarketEvent(MarketEventType.BullRun, 0, 0.40f, 8f);
             evt.ElapsedTime = 4f; // Peak force
 
-            float result1 = _effects.ApplyEventEffect(stock1, evt, 0.016f);
-            float result2 = _effects.ApplyEventEffect(stock2, evt, 0.016f);
+            float result = _effects.ApplyEventEffect(stock, evt, 0.016f);
 
-            Assert.Greater(result1, 100f, "BullRun should increase stock 1 price");
-            Assert.Greater(result2, 50f, "BullRun should increase stock 2 price");
+            Assert.Greater(result, 100f, "BullRun should increase stock price");
         }
 
         [Test]

@@ -44,27 +44,24 @@ public class EventEffects
     }
 
     /// <summary>
-    /// Adds an event to the active list without publishing a headline.
-    /// Used by SectorRotation to avoid flooding the news ticker with duplicate headlines.
-    /// </summary>
-    public void StartEventSilent(MarketEvent evt)
-    {
-        _activeEvents.Add(evt);
-    }
-
-    /// <summary>
     /// Starts a new market event. Publishes MarketEventFiredEvent via EventBus.
-    /// Generates headline using EventHeadlineData and resolves ticker symbols.
+    /// All events target a specific stock (FIX-9: no global events).
     /// </summary>
     public void StartEvent(MarketEvent evt)
     {
+        if (!evt.TargetStockId.HasValue)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogError($"[Events] StartEvent called with null TargetStockId for {evt.EventType} — skipping");
+            #endif
+            return;
+        }
+
         _activeEvents.Add(evt);
 
-        // Resolve ticker symbols and generate headline
+        // Resolve ticker symbol for headline
         string tickerForHeadline = "the market";
-        string[] affectedTickers = null;
-
-        if (!evt.IsGlobalEvent && _activeStocks != null)
+        if (_activeStocks != null && evt.TargetStockId.HasValue)
         {
             for (int i = 0; i < _activeStocks.Count; i++)
             {
@@ -74,7 +71,6 @@ public class EventEffects
                     break;
                 }
             }
-            affectedTickers = new[] { tickerForHeadline };
         }
 
         string headline = EventHeadlineData.GetHeadline(evt.EventType, tickerForHeadline, _headlineRandom);
@@ -82,17 +78,16 @@ public class EventEffects
         EventBus.Publish(new MarketEventFiredEvent
         {
             EventType = evt.EventType,
-            AffectedStockIds = evt.IsGlobalEvent ? null : new[] { evt.TargetStockId.Value },
+            AffectedStockIds = new[] { evt.TargetStockId.Value },
             PriceEffectPercent = evt.PriceEffectPercent,
             Headline = headline,
-            AffectedTickerSymbols = affectedTickers,
+            AffectedTickerSymbols = new[] { tickerForHeadline },
             IsPositive = EventHeadlineData.IsPositiveEvent(evt.EventType),
             Duration = evt.Duration
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        string target = evt.IsGlobalEvent ? "ALL" : $"Stock {evt.TargetStockId} ({tickerForHeadline})";
-        Debug.Log($"[Events] Event fired: {evt.EventType} on {target} ({evt.PriceEffectPercent:+0.0%;-0.0%} over {evt.Duration}s) — \"{headline}\"");
+        Debug.Log($"[Events] Event fired: {evt.EventType} on {tickerForHeadline} ({evt.PriceEffectPercent:+0.0%;-0.0%} over {evt.Duration}s) — \"{headline}\"");
         #endif
     }
 
@@ -167,15 +162,21 @@ public class EventEffects
         {
             var expired = _eventsToRemove[i];
 
-            // Resolve ticker symbols for ended event
-            string[] endedTickers = null;
-            if (!expired.IsGlobalEvent && _activeStocks != null)
+            if (!expired.TargetStockId.HasValue)
+            {
+                _activeEvents.Remove(expired);
+                continue;
+            }
+
+            // Resolve ticker symbol for ended event (FIX-9: all events are stock-targeted)
+            string endedTicker = "unknown";
+            if (_activeStocks != null)
             {
                 for (int j = 0; j < _activeStocks.Count; j++)
                 {
                     if (_activeStocks[j].StockId == expired.TargetStockId.Value)
                     {
-                        endedTickers = new[] { _activeStocks[j].TickerSymbol };
+                        endedTicker = _activeStocks[j].TickerSymbol;
                         break;
                     }
                 }
@@ -184,8 +185,8 @@ public class EventEffects
             EventBus.Publish(new MarketEventEndedEvent
             {
                 EventType = expired.EventType,
-                AffectedStockIds = expired.IsGlobalEvent ? null : new[] { expired.TargetStockId.Value },
-                AffectedTickerSymbols = endedTickers
+                AffectedStockIds = new[] { expired.TargetStockId.Value },
+                AffectedTickerSymbols = new[] { endedTicker }
             });
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -211,7 +212,7 @@ public class EventEffects
     }
 
     /// <summary>
-    /// Returns all active events that affect a specific stock (targeted + global events).
+    /// Returns all active events that affect a specific stock.
     /// WARNING: Returns a shared internal buffer — do NOT cache the returned list across calls.
     /// </summary>
     public List<MarketEvent> GetActiveEventsForStock(int stockId)
@@ -220,7 +221,7 @@ public class EventEffects
         for (int i = 0; i < _activeEvents.Count; i++)
         {
             var evt = _activeEvents[i];
-            if (evt.IsGlobalEvent || evt.TargetStockId == stockId)
+            if (evt.TargetStockId == stockId)
             {
                 _stockEventsBuffer.Add(evt);
             }

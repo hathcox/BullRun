@@ -322,42 +322,31 @@ namespace BullRun.Tests.PriceEngine
         }
 
         [Test]
-        public void UpdatePrice_GlobalEvent_AffectsAllStocks()
+        public void UpdatePrice_CrashEvent_AffectsTargetStock()
         {
+            // FIX-9: MarketCrash targets a specific stock (no global events)
             _generator.InitializeRound(1, 1);
             var stocks = _generator.ActiveStocks;
-            Assert.Greater(stocks.Count, 1, "Need multiple stocks");
+            Assert.Greater(stocks.Count, 0, "Need at least one stock");
 
+            var targetStock = stocks[0];
             var eventEffects = new EventEffects();
+            eventEffects.SetActiveStocks(stocks);
             _generator.SetEventEffects(eventEffects);
 
-            // Record initial prices
-            var initialPrices = new Dictionary<int, float>();
-            foreach (var stock in stocks)
-                initialPrices[stock.StockId] = stock.CurrentPrice;
+            float initialPrice = targetStock.CurrentPrice;
 
-            // Start global crash event at peak
-            var evt = new MarketEvent(MarketEventType.MarketCrash, null, -0.30f, 4f);
+            // Start crash event targeting first stock, at peak force
+            var evt = new MarketEvent(MarketEventType.MarketCrash, targetStock.StockId, -0.30f, 4f);
             evt.ElapsedTime = 2f;
             eventEffects.StartEvent(evt);
 
             // Run several frames
             for (int i = 0; i < 30; i++)
-            {
-                foreach (var stock in stocks)
-                    _generator.UpdatePrice(stock, 0.016f);
-            }
+                _generator.UpdatePrice(targetStock, 0.016f);
 
-            // All stocks should have dropped from the crash
-            int droppedCount = 0;
-            foreach (var stock in stocks)
-            {
-                if (stock.CurrentPrice < initialPrices[stock.StockId])
-                    droppedCount++;
-            }
-
-            Assert.Greater(droppedCount, stocks.Count / 2,
-                "Global crash should affect majority of stocks");
+            Assert.Less(targetStock.CurrentPrice, initialPrice,
+                "Crash event should drop the target stock's price");
         }
 
         // --- Mean Reversion Tests (Story 1.4) ---

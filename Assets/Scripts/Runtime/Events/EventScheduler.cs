@@ -14,7 +14,6 @@ public class EventScheduler
     private float[] _scheduledFireTimes;
     private bool[] _firedSlots;
     private int _eventCount;
-    private RunContext _runContext;
     private bool _rareEventScheduledThisRound;
 
     public int ScheduledEventCount => _eventCount;
@@ -33,15 +32,6 @@ public class EventScheduler
     {
         _eventEffects = eventEffects;
         _random = random;
-    }
-
-    /// <summary>
-    /// Sets the RunContext for portfolio-aware event targeting (Short Squeeze).
-    /// Read-only access — EventScheduler reads portfolio but never modifies it.
-    /// </summary>
-    public void SetRunContext(RunContext runContext)
-    {
-        _runContext = runContext;
     }
 
     /// <summary>
@@ -178,28 +168,15 @@ public class EventScheduler
 
     /// <summary>
     /// Creates a MarketEvent instance and fires it via EventEffects.StartEvent().
-    /// Global events (MarketCrash, BullRun) target all stocks (null TargetStockId).
-    /// Stock-specific events target a random stock from the active list.
+    /// All events target activeStocks[0] — single stock per round (FIX-5/FIX-9).
     /// </summary>
     public void FireEvent(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
     {
-        // Determine targeting
-        int? targetStockId = null;
-        bool isGlobal = (config.EventType == MarketEventType.MarketCrash ||
-                         config.EventType == MarketEventType.BullRun);
+        if (activeStocks.Count == 0)
+            return;
 
-        if (!isGlobal && activeStocks.Count > 0)
-        {
-            if (config.EventType == MarketEventType.ShortSqueeze)
-            {
-                targetStockId = SelectShortSqueezeTarget(activeStocks);
-            }
-            else
-            {
-                int stockIndex = _random.Next(activeStocks.Count);
-                targetStockId = activeStocks[stockIndex].StockId;
-            }
-        }
+        // All events target the single active stock
+        int targetStockId = activeStocks[0].StockId;
 
         // Roll price effect between min and max
         float priceEffect = RandomRange(config.MinPriceEffect, config.MaxPriceEffect);
@@ -252,7 +229,7 @@ public class EventScheduler
         }
         else if (config.EventType == MarketEventType.SectorRotation)
         {
-            // Sector-aware multi-stock targeting handled separately
+            // Single-stock directional effect (FIX-9: no multi-stock sector splitting)
             FireSectorRotation(config, activeStocks);
             return;
         }
@@ -265,139 +242,25 @@ public class EventScheduler
     }
 
     /// <summary>
-    /// Selects target stock for Short Squeeze. Prefers the stock the player
-    /// is currently shorting with the largest position (maximum pain).
-    /// Falls back to random stock if player has no shorts.
+    /// Fires a sector rotation as a single directional effect on the active stock (FIX-9).
+    /// Randomly chooses positive or negative direction since there's only one stock.
     /// </summary>
-    private int SelectShortSqueezeTarget(IReadOnlyList<StockInstance> activeStocks)
-    {
-        if (_runContext != null)
-        {
-            var positions = _runContext.Portfolio.GetAllPositions();
-            string bestShortId = null;
-            int bestShortShares = 0;
-
-            foreach (var pos in positions)
-            {
-                if (pos.IsShort && pos.Shares > bestShortShares)
-                {
-                    bestShortShares = pos.Shares;
-                    bestShortId = pos.StockId;
-                }
-            }
-
-            if (bestShortId != null)
-            {
-                // Find matching active stock by ticker symbol (Option A from Dev Notes)
-                for (int i = 0; i < activeStocks.Count; i++)
-                {
-                    if (activeStocks[i].TickerSymbol == bestShortId ||
-                        activeStocks[i].StockId.ToString() == bestShortId)
-                    {
-                        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                        Debug.Log($"[EventScheduler] Short Squeeze targeting player's short on {bestShortId} ({bestShortShares} shares)");
-                        #endif
-                        return activeStocks[i].StockId;
-                    }
-                }
-            }
-        }
-
-        // No shorts or no match — target random stock
-        return activeStocks[_random.Next(activeStocks.Count)].StockId;
-    }
-
     private void FireSectorRotation(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
     {
-        if (activeStocks.Count < 2)
+        if (activeStocks.Count == 0)
             return;
 
         float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect);
 
-        // Group stocks by sector
-        var sectorGroups = new Dictionary<StockSector, List<StockInstance>>();
-        for (int i = 0; i < activeStocks.Count; i++)
-        {
-            var stock = activeStocks[i];
-            var sector = stock.Sector;
-            if (sector == StockSector.None)
-                continue;
+        // Randomly choose direction: 50/50 positive or negative
+        bool isPositive = _random.NextDouble() >= 0.5;
+        float effect = isPositive ? rotationPercent : -rotationPercent;
 
-            if (!sectorGroups.ContainsKey(sector))
-                sectorGroups[sector] = new List<StockInstance>();
-            sectorGroups[sector].Add(stock);
-        }
-
-        List<StockInstance> winnerStocks;
-        List<StockInstance> loserStocks;
-
-        if (sectorGroups.Count >= 2)
-        {
-            // Pick two random sectors
-            var sectors = new List<StockSector>(sectorGroups.Keys);
-            int idx1 = _random.Next(sectors.Count);
-            int idx2;
-            do { idx2 = _random.Next(sectors.Count); } while (idx2 == idx1);
-
-            winnerStocks = sectorGroups[sectors[idx1]];
-            loserStocks = sectorGroups[sectors[idx2]];
-        }
-        else
-        {
-            // Fallback: random split
-            var shuffled = new List<StockInstance>(activeStocks);
-            for (int i = shuffled.Count - 1; i > 0; i--)
-            {
-                int j = _random.Next(i + 1);
-                var temp = shuffled[i];
-                shuffled[i] = shuffled[j];
-                shuffled[j] = temp;
-            }
-
-            int half = shuffled.Count / 2;
-            winnerStocks = shuffled.GetRange(0, half);
-            loserStocks = shuffled.GetRange(half, shuffled.Count - half);
-        }
-
-        // Collect all affected stock IDs and tickers for the combined headline
-        var allAffectedIds = new List<int>();
-        var allAffectedTickers = new List<string>();
-
-        // Fire positive events on winner stocks (silent — no individual headlines)
-        for (int i = 0; i < winnerStocks.Count; i++)
-        {
-            var evt = new MarketEvent(config.EventType, winnerStocks[i].StockId, rotationPercent, config.Duration);
-            _eventEffects.StartEventSilent(evt);
-            allAffectedIds.Add(winnerStocks[i].StockId);
-            allAffectedTickers.Add(winnerStocks[i].TickerSymbol);
-        }
-
-        // Fire negative events on loser stocks (silent — no individual headlines)
-        for (int i = 0; i < loserStocks.Count; i++)
-        {
-            var evt = new MarketEvent(config.EventType, loserStocks[i].StockId, -rotationPercent, config.Duration);
-            _eventEffects.StartEventSilent(evt);
-            allAffectedIds.Add(loserStocks[i].StockId);
-            allAffectedTickers.Add(loserStocks[i].TickerSymbol);
-        }
-
-        // Publish one combined headline for the entire sector rotation
-        string winnerTicker = winnerStocks.Count > 0 ? winnerStocks[0].TickerSymbol : "the market";
-        string headline = EventHeadlineData.GetHeadline(config.EventType, winnerTicker, _random);
-
-        EventBus.Publish(new MarketEventFiredEvent
-        {
-            EventType = config.EventType,
-            AffectedStockIds = allAffectedIds.ToArray(),
-            PriceEffectPercent = rotationPercent,
-            Headline = headline,
-            AffectedTickerSymbols = allAffectedTickers.ToArray(),
-            IsPositive = EventHeadlineData.IsPositiveEvent(config.EventType),
-            Duration = config.Duration
-        });
+        var evt = new MarketEvent(config.EventType, activeStocks[0].StockId, effect, config.Duration);
+        _eventEffects.StartEvent(evt);
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[Events] SectorRotation fired: {winnerStocks.Count} winners, {loserStocks.Count} losers ({rotationPercent:+0.0%;-0.0%} over {config.Duration}s)");
+        Debug.Log($"[Events] SectorRotation fired on {activeStocks[0].TickerSymbol}: {effect:+0.0%;-0.0%} over {config.Duration}s");
         #endif
     }
 

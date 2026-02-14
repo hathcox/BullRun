@@ -249,29 +249,33 @@ namespace BullRun.Tests.Events
         // --- Task 3: Event firing with stock targeting ---
 
         [Test]
-        public void FireEvent_GlobalEvent_SetsNullTargetStockId()
+        public void FireEvent_MarketCrash_TargetsFirstActiveStock()
         {
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
 
             _scheduler.FireEvent(EventDefinitions.MarketCrash, _activeStocks);
 
-            Assert.IsNull(received.AffectedStockIds, "MarketCrash should be global (null AffectedStockIds)");
+            Assert.IsNotNull(received.AffectedStockIds, "MarketCrash should target active stock (FIX-9)");
+            Assert.AreEqual(1, received.AffectedStockIds.Length);
+            Assert.AreEqual(_activeStocks[0].StockId, received.AffectedStockIds[0]);
         }
 
         [Test]
-        public void FireEvent_BullRunEvent_SetsNullTargetStockId()
+        public void FireEvent_BullRunEvent_TargetsFirstActiveStock()
         {
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
 
             _scheduler.FireEvent(EventDefinitions.BullRunEvent, _activeStocks);
 
-            Assert.IsNull(received.AffectedStockIds, "BullRun should be global (null AffectedStockIds)");
+            Assert.IsNotNull(received.AffectedStockIds, "BullRun should target active stock (FIX-9)");
+            Assert.AreEqual(1, received.AffectedStockIds.Length);
+            Assert.AreEqual(_activeStocks[0].StockId, received.AffectedStockIds[0]);
         }
 
         [Test]
-        public void FireEvent_StockSpecificEvent_SetsValidTargetStockId()
+        public void FireEvent_StockSpecificEvent_AlwaysTargetsFirstActiveStock()
         {
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
@@ -281,18 +285,9 @@ namespace BullRun.Tests.Events
             Assert.IsNotNull(received.AffectedStockIds, "EarningsBeat should target a specific stock");
             Assert.AreEqual(1, received.AffectedStockIds.Length);
 
-            // Target should be one of the active stocks
-            int targetId = received.AffectedStockIds[0];
-            bool validTarget = false;
-            for (int i = 0; i < _activeStocks.Count; i++)
-            {
-                if (_activeStocks[i].StockId == targetId)
-                {
-                    validTarget = true;
-                    break;
-                }
-            }
-            Assert.IsTrue(validTarget, $"Target stock ID {targetId} should be in active stocks list");
+            // FIX-9: Must always target activeStocks[0], not any random stock
+            Assert.AreEqual(_activeStocks[0].StockId, received.AffectedStockIds[0],
+                "Should always target activeStocks[0] (FIX-9)");
         }
 
         [Test]
@@ -600,141 +595,79 @@ namespace BullRun.Tests.Events
         }
 
         [Test]
-        public void FireEvent_SectorRotation_CreatesEventsForMultipleStocks()
+        public void FireEvent_SectorRotation_TargetsSingleActiveStock()
         {
-            // Create stocks with different sectors
-            var sectorStocks = new List<StockInstance>();
-            var tech1 = new StockInstance();
-            tech1.Initialize(0, "NOVA", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            tech1.SetSector(StockSector.Tech);
-            sectorStocks.Add(tech1);
-
-            var tech2 = new StockInstance();
-            tech2.Initialize(1, "CHIP", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            tech2.SetSector(StockSector.Tech);
-            sectorStocks.Add(tech2);
-
-            var energy1 = new StockInstance();
-            energy1.Initialize(2, "SOLR", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            energy1.SetSector(StockSector.Energy);
-            sectorStocks.Add(energy1);
+            // FIX-9: SectorRotation now applies a single directional effect to activeStocks[0]
+            var singleStock = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "NOVA", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            singleStock.Add(stock);
 
             var effects = new EventEffects();
-            effects.SetActiveStocks(sectorStocks);
+            effects.SetActiveStocks(singleStock);
             var scheduler = new EventScheduler(effects, new System.Random(42));
 
-            scheduler.FireEvent(EventDefinitions.SectorRotation, sectorStocks);
+            scheduler.FireEvent(EventDefinitions.SectorRotation, singleStock);
 
-            // Should fire events on multiple stocks (winners + losers)
-            Assert.GreaterOrEqual(effects.ActiveEventCount, 2,
-                "SectorRotation should create events for at least 2 stocks (winner + loser sectors)");
+            Assert.AreEqual(1, effects.ActiveEventCount,
+                "SectorRotation should create exactly 1 event for the single active stock");
+
+            var events = effects.GetActiveEventsForStock(0);
+            Assert.AreEqual(1, events.Count);
+            Assert.AreEqual(0, events[0].TargetStockId, "Event should target stock 0");
         }
 
         [Test]
-        public void FireEvent_SectorRotation_WinnerPositiveLoserNegative()
+        public void FireEvent_SectorRotation_RandomDirection()
         {
-            var sectorStocks = new List<StockInstance>();
-            var tech = new StockInstance();
-            tech.Initialize(0, "NOVA", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            tech.SetSector(StockSector.Tech);
-            sectorStocks.Add(tech);
+            // FIX-9: SectorRotation randomly picks positive or negative
+            bool seenPositive = false;
+            bool seenNegative = false;
 
-            var energy = new StockInstance();
-            energy.Initialize(1, "SOLR", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            energy.SetSector(StockSector.Energy);
-            sectorStocks.Add(energy);
-
-            var effects = new EventEffects();
-            effects.SetActiveStocks(sectorStocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-
-            scheduler.FireEvent(EventDefinitions.SectorRotation, sectorStocks);
-
-            // One stock should go up, one should go down
-            // NOTE: GetActiveEventsForStock returns a shared buffer — extract values before the next call
-            var events0 = effects.GetActiveEventsForStock(0);
-            Assert.AreEqual(1, events0.Count, "Stock 0 should have one event");
-            float effect0 = events0[0].PriceEffectPercent;
-
-            var events1 = effects.GetActiveEventsForStock(1);
-            Assert.AreEqual(1, events1.Count, "Stock 1 should have one event");
-            float effect1 = events1[0].PriceEffectPercent;
-
-            // One should be positive, one negative
-            bool onePositiveOneNegative =
-                (effect0 > 0 && effect1 < 0) ||
-                (effect0 < 0 && effect1 > 0);
-
-            Assert.IsTrue(onePositiveOneNegative,
-                $"One sector should go up and the other down. Got: Stock0={effect0}, Stock1={effect1}");
-        }
-
-        [Test]
-        public void FireEvent_SectorRotation_FallsBackToRandomSplit_WhenNoSectorDiversity()
-        {
-            // All stocks have the same sector — should fall back to random split
-            var sameSecStocks = new List<StockInstance>();
-            for (int i = 0; i < 4; i++)
+            for (int seed = 0; seed < 100; seed++)
             {
+                EventBus.Clear();
+                var singleStock = new List<StockInstance>();
                 var stock = new StockInstance();
-                stock.Initialize(i, $"STK{i}", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-                stock.SetSector(StockSector.Tech); // All same sector
-                sameSecStocks.Add(stock);
-            }
+                stock.Initialize(0, "NOVA", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+                singleStock.Add(stock);
 
-            var effects = new EventEffects();
-            effects.SetActiveStocks(sameSecStocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
+                var effects = new EventEffects();
+                effects.SetActiveStocks(singleStock);
+                var scheduler = new EventScheduler(effects, new System.Random(seed));
 
-            scheduler.FireEvent(EventDefinitions.SectorRotation, sameSecStocks);
+                scheduler.FireEvent(EventDefinitions.SectorRotation, singleStock);
 
-            // Should still create events via random split
-            Assert.GreaterOrEqual(effects.ActiveEventCount, 2,
-                "SectorRotation should still work via random split when no sector diversity");
-
-            // Verify some go up and some go down
-            bool hasPositive = false;
-            bool hasNegative = false;
-            for (int i = 0; i < sameSecStocks.Count; i++)
-            {
-                var events = effects.GetActiveEventsForStock(i);
-                for (int j = 0; j < events.Count; j++)
+                var events = effects.GetActiveEventsForStock(0);
+                if (events.Count > 0)
                 {
-                    if (events[j].PriceEffectPercent > 0) hasPositive = true;
-                    if (events[j].PriceEffectPercent < 0) hasNegative = true;
+                    if (events[0].PriceEffectPercent > 0) seenPositive = true;
+                    if (events[0].PriceEffectPercent < 0) seenNegative = true;
                 }
             }
-            Assert.IsTrue(hasPositive && hasNegative,
-                "Random split should produce both positive and negative effects");
+
+            Assert.IsTrue(seenPositive, "SectorRotation should sometimes be positive");
+            Assert.IsTrue(seenNegative, "SectorRotation should sometimes be negative");
         }
 
         [Test]
-        public void FireEvent_SectorRotation_PublishesSingleCombinedHeadline()
+        public void FireEvent_SectorRotation_PublishesSingleHeadline()
         {
-            var sectorStocks = new List<StockInstance>();
-            var tech = new StockInstance();
-            tech.Initialize(0, "NOVA", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            tech.SetSector(StockSector.Tech);
-            sectorStocks.Add(tech);
-
-            var energy = new StockInstance();
-            energy.Initialize(1, "SOLR", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            energy.SetSector(StockSector.Energy);
-            sectorStocks.Add(energy);
+            var singleStock = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "NOVA", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            singleStock.Add(stock);
 
             var effects = new EventEffects();
-            effects.SetActiveStocks(sectorStocks);
+            effects.SetActiveStocks(singleStock);
             var scheduler = new EventScheduler(effects, new System.Random(42));
 
             int headlineCount = 0;
             EventBus.Subscribe<MarketEventFiredEvent>(e => headlineCount++);
 
-            scheduler.FireEvent(EventDefinitions.SectorRotation, sectorStocks);
+            scheduler.FireEvent(EventDefinitions.SectorRotation, singleStock);
 
-            Assert.AreEqual(1, headlineCount,
-                "SectorRotation should publish exactly 1 combined headline, not one per stock");
-            Assert.GreaterOrEqual(effects.ActiveEventCount, 2,
-                "Individual stock events should still be active");
+            Assert.AreEqual(1, headlineCount, "SectorRotation should publish exactly 1 headline");
         }
 
         [Test]
@@ -832,137 +765,6 @@ namespace BullRun.Tests.Events
                 $"Price should recover near original after flash crash. Final={stock.CurrentPrice}, Start={startPrice}");
         }
 
-        // --- Story 5-4: Short Squeeze portfolio-aware targeting ---
-
-        [Test]
-        public void FireEvent_ShortSqueeze_TargetsShortedStock()
-        {
-            var stocks = new List<StockInstance>();
-            var stock0 = new StockInstance();
-            stock0.Initialize(0, "SAFE", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock0);
-
-            var stock1 = new StockInstance();
-            stock1.Initialize(1, "RISK", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock1);
-
-            // Create portfolio with a short using ticker symbol (production matching path)
-            var portfolio = new Portfolio(10000f);
-            portfolio.OpenShort("RISK", 100, 50f);
-
-            var runContext = new RunContext(1, 1, portfolio);
-
-            var effects = new EventEffects();
-            effects.SetActiveStocks(stocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-            scheduler.SetRunContext(runContext);
-
-            MarketEventFiredEvent received = default;
-            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
-
-            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
-
-            Assert.IsNotNull(received.AffectedStockIds);
-            Assert.AreEqual(1, received.AffectedStockIds[0],
-                "Short Squeeze should target stock 1 (player's shorted stock matched by ticker)");
-        }
-
-        [Test]
-        public void FireEvent_ShortSqueeze_TargetsLargestShort()
-        {
-            var stocks = new List<StockInstance>();
-            var stock0 = new StockInstance();
-            stock0.Initialize(0, "SMALL", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock0);
-
-            var stock1 = new StockInstance();
-            stock1.Initialize(1, "BIG", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock1);
-
-            // Create portfolio with shorts using ticker symbols — "BIG" has more shares
-            var portfolio = new Portfolio(50000f);
-            portfolio.OpenShort("SMALL", 10, 100f);
-            portfolio.OpenShort("BIG", 200, 50f);
-
-            var runContext = new RunContext(1, 1, portfolio);
-
-            var effects = new EventEffects();
-            effects.SetActiveStocks(stocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-            scheduler.SetRunContext(runContext);
-
-            MarketEventFiredEvent received = default;
-            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
-
-            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
-
-            Assert.AreEqual(1, received.AffectedStockIds[0],
-                "Short Squeeze should target stock with largest short position (BIG, 200 shares)");
-        }
-
-        [Test]
-        public void FireEvent_ShortSqueeze_RandomTargetWhenNoShorts()
-        {
-            var stocks = new List<StockInstance>();
-            var stock0 = new StockInstance();
-            stock0.Initialize(0, "ABC", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock0);
-
-            var stock1 = new StockInstance();
-            stock1.Initialize(1, "DEF", StockTier.MidValue, 50f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock1);
-
-            // Portfolio with no shorts (only longs)
-            var portfolio = new Portfolio(10000f);
-            portfolio.OpenPosition("ABC", 10, 100f);
-
-            var runContext = new RunContext(1, 1, portfolio);
-
-            var effects = new EventEffects();
-            effects.SetActiveStocks(stocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-            scheduler.SetRunContext(runContext);
-
-            MarketEventFiredEvent received = default;
-            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
-
-            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
-
-            Assert.IsNotNull(received.AffectedStockIds, "Should still target a stock");
-            Assert.AreEqual(1, received.AffectedStockIds.Length);
-            // Target should be one of the active stocks
-            int target = received.AffectedStockIds[0];
-            Assert.IsTrue(target == 0 || target == 1, "Target should be a valid active stock");
-        }
-
-        [Test]
-        public void FireEvent_ShortSqueeze_DoesNotModifyPortfolio()
-        {
-            var stocks = new List<StockInstance>();
-            var stock = new StockInstance();
-            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
-            stocks.Add(stock);
-
-            var portfolio = new Portfolio(10000f);
-            portfolio.OpenShort("TEST", 50, 100f);
-            float cashBefore = portfolio.Cash;
-            int posCountBefore = portfolio.PositionCount;
-
-            var runContext = new RunContext(1, 1, portfolio);
-
-            var effects = new EventEffects();
-            effects.SetActiveStocks(stocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-            scheduler.SetRunContext(runContext);
-
-            scheduler.FireEvent(EventDefinitions.ShortSqueeze, stocks);
-
-            Assert.AreEqual(cashBefore, portfolio.Cash, 0.01f,
-                "Short Squeeze targeting should not modify portfolio cash");
-            Assert.AreEqual(posCountBefore, portfolio.PositionCount,
-                "Short Squeeze targeting should not modify position count");
-        }
-
         // --- Story 5-4: Rare event cap ---
 
         [Test]
@@ -994,49 +796,6 @@ namespace BullRun.Tests.Events
                 Assert.LessOrEqual(rareEventsInRound, 1,
                     $"Seed {seed}: Should have at most 1 rare event per round, got {rareEventsInRound}");
             }
-        }
-
-        // --- Story 5-4: MarketCrash/BullRun end-to-end verification ---
-
-        [Test]
-        public void FireEvent_MarketCrash_AffectsAllActiveStocks()
-        {
-            var effects = new EventEffects();
-            effects.SetActiveStocks(_activeStocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-
-            scheduler.FireEvent(EventDefinitions.MarketCrash, _activeStocks);
-
-            // Both stocks should see the global event
-            var stock0Events = effects.GetActiveEventsForStock(0);
-            var stock1Events = effects.GetActiveEventsForStock(1);
-
-            Assert.AreEqual(1, stock0Events.Count, "Stock 0 should be affected by MarketCrash");
-            Assert.AreEqual(1, stock1Events.Count, "Stock 1 should be affected by MarketCrash");
-            Assert.AreEqual(stock0Events[0], stock1Events[0],
-                "Both stocks should reference the same global event");
-        }
-
-        [Test]
-        public void FireEvent_BullRun_AffectsAllActiveStocksPositive()
-        {
-            var effects = new EventEffects();
-            effects.SetActiveStocks(_activeStocks);
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-
-            MarketEventFiredEvent received = default;
-            EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
-
-            scheduler.FireEvent(EventDefinitions.BullRunEvent, _activeStocks);
-
-            Assert.IsTrue(received.IsPositive, "BullRun should be positive");
-            Assert.Greater(received.PriceEffectPercent, 0f, "BullRun price effect should be positive");
-
-            var stock0Events = effects.GetActiveEventsForStock(0);
-            var stock1Events = effects.GetActiveEventsForStock(1);
-
-            Assert.AreEqual(1, stock0Events.Count, "Stock 0 should be affected by BullRun");
-            Assert.AreEqual(1, stock1Events.Count, "Stock 1 should be affected by BullRun");
         }
 
         // --- Story 5-4: Headline tests ---

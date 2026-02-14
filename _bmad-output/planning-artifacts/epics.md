@@ -482,6 +482,100 @@ As a player, I want horizontal lines drawn across the chart at each price label 
 
 ---
 
+## FIX Sprint 2: Gameplay Feel & Mechanic Redesigns
+
+**Description:** Event scoping fix, trade execution feel, and short selling mechanic overhaul
+**Phase:** Inserted before Epic 8 — these are gameplay-critical changes that affect core loop feel
+
+### Story FIX-9: Scope Events to Single Active Stock
+
+As a player, I want all market events to target the single stock I'm trading each round, so that every event feels relevant and actionable rather than referencing stocks I can't interact with.
+
+**Context:** FIX-5 changed the game to one stock per round, but the event system still contains multi-stock logic. `EventScheduler` can select random stocks from the pool, fire global events affecting "all stocks," and `SectorRotation` splits stocks into winner/loser groups — none of which makes sense when there's only one stock active.
+
+**Acceptance Criteria:**
+- ALL events target `ActiveStocks[0]` — no random stock selection, no null TargetStockId
+- Remove or bypass global event logic (MarketCrash, BullRun) that iterates multiple stocks — these should simply affect the single active stock directly
+- SectorRotation event reworked: instead of splitting stocks into sectors, apply a single directional effect to the active stock (or replace with a new single-stock event)
+- ShortSqueeze targeting still works correctly with single stock (currently checks portfolio for largest short — should just target the active stock)
+- Event headlines and news ticker reference the correct (and only) stock ticker
+- EventPopup displays correctly for single-stock context
+- No dead code paths referencing multi-stock event routing remain active
+
+**Files to modify:**
+- `Assets/Scripts/Runtime/Events/EventScheduler.cs` — stock selection logic, SectorRotation
+- `Assets/Scripts/Runtime/Events/EventEffects.cs` — event application routing
+- `Assets/Scripts/Setup/Data/EventDefinitions.cs` — review event configs for multi-stock assumptions
+- `Assets/Scripts/Runtime/UI/NewsBanner.cs` / `NewsTicker.cs` — headline stock references
+
+---
+
+### Story FIX-10: Trade Execution Delay & Button Cooldown
+
+As a player, I want a brief delay after pressing Buy or Sell before the trade executes, so that trading feels deliberate and I can't spam-click to instantly fill massive positions.
+
+**Context:** Currently trades execute instantly on button press with zero delay. This removes tension and allows rapid-fire clicking to bypass the quantity system. A short cooldown creates a "market fill" feel and adds weight to each trade decision.
+
+**Acceptance Criteria:**
+- After pressing Buy or Sell (button or keyboard), a brief cooldown of ~0.3-0.5s before the trade executes
+- During cooldown: button appears visually "processing" (dimmed, pulsing, or progress indicator)
+- During cooldown: additional Buy/Sell presses are ignored (no queuing)
+- Trade executes at the price when the cooldown COMPLETES (not when pressed) — this is the "fill price"
+- The fill price creates a natural spread/slippage feel: price may move during the delay
+- TradeFeedback message appears after execution, not on press
+- Keyboard shortcuts (B/S) respect the same cooldown
+- Cooldown duration configurable in GameConfig (e.g., `TradeExecutionDelay = 0.4f`)
+- No cooldown during auto-liquidation at market close
+
+**Files to modify:**
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — trade orchestration, add cooldown coroutine
+- `Assets/Scripts/Runtime/UI/TradeFeedback.cs` — timing of feedback display
+- `Assets/Scripts/Setup/UISetup.cs` — button visual state during cooldown
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — new config constant
+
+---
+
+### Story FIX-11: Short Selling Mechanic Redesign — "Bet Against" System
+
+As a player, I want shorting to be a separate, clear mechanic where I place a "bet against" the stock rather than a confusing financial instrument hidden behind the Sell button, so that bearish plays feel exciting and distinct from selling.
+
+**Context:** Currently shorting is buried in the "Smart Sell" system — if you have no long position and press Sell, it silently opens a short. This is confusing: players don't realize they've shorted, don't understand margin, and the P&L display is counterintuitive. Inspired by *Space Warlords Baby Trading Simulator*, shorts should be a distinct, visible mechanic — a "bet" that the price will drop, with clear risk/reward shown upfront.
+
+**Design Direction (to be refined during implementation):**
+- **Separate UI element**: A dedicated "BET AGAINST" / "SHORT" button or panel, visually distinct from Buy/Sell (e.g., hot pink/purple, different area of screen)
+- **Simplified mental model**: "You're betting $X that the price will drop. If it drops Y%, you win Z. If it rises, you lose your bet." — no margin terminology, no "covering"
+- **Fixed-stake betting**: Instead of share-based shorts with margin collateral, player commits a fixed cash amount as their "bet"
+- **Auto-resolve**: Short bets resolve at end of round (or when player manually cashes out), not via a separate "Cover" action
+- **Clear P&L preview**: Show potential win/loss in real-time on the bet itself ("Your $500 bet: currently +$120" or "-$80")
+- **Risk/reward visibility**: Before placing the bet, show what you stand to gain/lose at different price levels
+- **Unlock timing**: Consider introducing shorts in Act 2+ rather than Round 1, so players learn Buy/Sell first
+- **Short Squeeze interaction**: ShortSqueeze events become even more dramatic — they directly threaten your visible bet
+
+**Acceptance Criteria:**
+- Shorting is a SEPARATE action from Sell — Sell ONLY sells long positions, never opens a short
+- Dedicated UI for placing short bets, visually distinct from the Buy/Sell trade panel
+- Player commits a fixed cash amount (not share quantity) when shorting
+- Real-time P&L displayed directly on the short bet UI element
+- Short bets auto-close at market close (like longs) with clear profit/loss shown
+- Player can manually close a short bet early via a "Cash Out" button on the bet
+- No financial jargon: avoid "margin," "collateral," "cover" — use "bet," "cash out," "win/lose"
+- Keyboard shortcut for placing a short bet (D key) and cashing out (F key) preserved
+- ShortSqueeze event still targets active short bets for dramatic effect
+- Remove Smart Sell logic that auto-opens shorts from the Sell button
+
+**Files to modify:**
+- `Assets/Scripts/Runtime/Trading/Portfolio.cs` — refactor short position model to bet-based
+- `Assets/Scripts/Runtime/Trading/Position.cs` — new BetAgainst position type or subclass
+- `Assets/Scripts/Runtime/Trading/TradeExecutor.cs` — new ExecuteBet / CashOutBet methods
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — remove smart-sell short logic, add bet routing
+- `Assets/Scripts/Setup/UISetup.cs` — new short bet UI panel
+- `Assets/Scripts/Runtime/UI/PositionOverlay.cs` — display active bets
+- `Assets/Scripts/Runtime/UI/TradeFeedback.cs` — bet-specific feedback messages
+- `Assets/Scripts/Runtime/Events/EventScheduler.cs` — ShortSqueeze targets bets
+- `Assets/Scripts/Setup/Data/GameConfig.cs` — bet-related config constants
+
+---
+
 ## Epic 8: Item/Upgrade System
 
 **Description:** Trading Tools, Intel, Perks implementation and balancing
