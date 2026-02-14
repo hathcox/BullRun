@@ -79,7 +79,7 @@ namespace BullRun.Tests.Core
         [Test]
         public void PennyStockMinPrice_IsAffordableAt10()
         {
-            var pennyConfig = StockTierData.GetTier(StockTier.Penny);
+            var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
             Assert.LessOrEqual(pennyConfig.MinPrice, 5f,
                 "Penny stock min price must be <= $5 to be affordable with $10 starting capital");
         }
@@ -87,7 +87,7 @@ namespace BullRun.Tests.Core
         [Test]
         public void PennyStockMinPrice_AllowsAtLeast1ShareAt10()
         {
-            var pennyConfig = StockTierData.GetTier(StockTier.Penny);
+            var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
             Assert.LessOrEqual(pennyConfig.MinPrice, GameConfig.StartingCapital,
                 "Player must be able to afford at least 1 penny stock share with starting capital");
         }
