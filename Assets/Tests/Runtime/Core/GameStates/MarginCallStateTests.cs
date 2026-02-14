@@ -21,7 +21,8 @@ namespace BullRun.Tests.Core.GameStates
             godModeProp?.GetSetMethod(true)?.Invoke(null, new object[] { false });
             #endif
 
-            _ctx = new RunContext(1, 1, new Portfolio(1000f));
+            // FIX-14: Start with $10 (new economy). Round 1 target is $20 (value target).
+            _ctx = new RunContext(1, 1, new Portfolio(10f));
             _sm = new GameStateMachine(_ctx);
 
             MarginCallState.NextConfig = new MarginCallStateConfig
@@ -41,12 +42,12 @@ namespace BullRun.Tests.Core.GameStates
             EventBus.Clear();
         }
 
-        // --- AC1: After market close, round profit is compared against target ---
+        // --- FIX-14: Margin call now compares total cash against value target ---
 
         [Test]
-        public void Enter_WithZeroProfit_TriggersMarginCall()
+        public void Enter_WithCashBelowTarget_TriggersMarginCall()
         {
-            // Round 1 target is $200. Default RoundProfit is 0 -> margin call
+            // Round 1 target is $20. Portfolio cash $10 < $20 -> margin call
             MarginCallTriggeredEvent received = default;
             bool eventFired = false;
             EventBus.Subscribe<MarginCallTriggeredEvent>(e =>
@@ -58,19 +59,19 @@ namespace BullRun.Tests.Core.GameStates
             MarketCloseState.RoundProfit = 0f;
             _state.Enter(_ctx);
 
-            Assert.IsTrue(eventFired, "Margin call should trigger when profit is 0 (below $200 target)");
+            Assert.IsTrue(eventFired, "Margin call should trigger when cash ($10) is below target ($20)");
             Assert.AreEqual(1, received.RoundNumber);
-            Assert.AreEqual(0f, received.RoundProfit, 0.01f);
-            Assert.AreEqual(200f, received.RequiredTarget, 0.01f);
+            Assert.AreEqual(20f, received.RequiredTarget, 0.01f);
         }
 
-        // --- AC2: If round profit >= target, proceed to shop ---
+        // --- FIX-14: If total cash >= target, proceed to shop ---
 
         [Test]
-        public void Enter_WhenProfitMeetsTarget_TransitionsToShopState()
+        public void Enter_WhenCashMeetsTarget_TransitionsToShopState()
         {
-            // Set round profit above target ($200 for round 1)
-            MarketCloseState.RoundProfit = 250f;
+            // Give portfolio enough cash to meet $20 target
+            var ctx = new RunContext(1, 1, new Portfolio(25f));
+            MarketCloseState.RoundProfit = 15f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -78,17 +79,18 @@ namespace BullRun.Tests.Core.GameStates
                 PriceGenerator = null,
                 TradeExecutor = null
             };
-            _sm.TransitionTo<MarginCallState>();
+            var state = new MarginCallState();
+            state.Enter(ctx);
 
-            // ShopState now waits for timer — no longer auto-skips
             Assert.IsInstanceOf<ShopState>(_sm.CurrentState);
         }
 
         [Test]
-        public void Enter_WhenProfitExactlyMeetsTarget_TransitionsToShopState()
+        public void Enter_WhenCashExactlyMeetsTarget_TransitionsToShopState()
         {
-            float target = MarginCallTargets.GetTarget(1); // $200
-            MarketCloseState.RoundProfit = target;
+            float target = MarginCallTargets.GetTarget(1); // $20
+            var ctx = new RunContext(1, 1, new Portfolio(target));
+            MarketCloseState.RoundProfit = target - 10f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -96,18 +98,19 @@ namespace BullRun.Tests.Core.GameStates
                 PriceGenerator = null,
                 TradeExecutor = null
             };
-            _sm.TransitionTo<MarginCallState>();
+            var state = new MarginCallState();
+            state.Enter(ctx);
 
-            // Exact target should pass — ShopState now waits for timer
             Assert.IsInstanceOf<ShopState>(_sm.CurrentState);
         }
 
-        // --- AC3: If round profit < target, MARGIN CALL triggered ---
+        // --- FIX-14: If total cash < target, MARGIN CALL triggered ---
 
         [Test]
-        public void Enter_WhenProfitBelowTarget_TransitionsToRunSummaryState()
+        public void Enter_WhenCashBelowTarget_TransitionsToRunSummaryState()
         {
-            MarketCloseState.RoundProfit = 30f; // Below $200 target
+            // Cash $10 < $20 target
+            MarketCloseState.RoundProfit = 0f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -121,7 +124,7 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_WhenProfitBelowTarget_PublishesMarginCallTriggeredEvent()
+        public void Enter_WhenCashBelowTarget_PublishesMarginCallTriggeredEvent()
         {
             MarginCallTriggeredEvent received = default;
             bool eventFired = false;
@@ -131,40 +134,47 @@ namespace BullRun.Tests.Core.GameStates
                 eventFired = true;
             });
 
-            MarketCloseState.RoundProfit = 30f; // Below $200 target
-
+            MarketCloseState.RoundProfit = 0f; // Cash stays at $10, below $20 target
             _state.Enter(_ctx);
 
             Assert.IsTrue(eventFired);
             Assert.AreEqual(1, received.RoundNumber);
-            Assert.AreEqual(30f, received.RoundProfit, 0.01f);
-            Assert.AreEqual(200f, received.RequiredTarget, 0.01f);
-            Assert.AreEqual(170f, received.Shortfall, 0.01f);
+            Assert.AreEqual(20f, received.RequiredTarget, 0.01f);
+            Assert.AreEqual(10f, received.Shortfall, 0.01f); // $20 - $10 = $10 shortfall
         }
 
         [Test]
-        public void Enter_WhenProfitMeetsTarget_DoesNotPublishMarginCallEvent()
+        public void Enter_WhenCashMeetsTarget_DoesNotPublishMarginCallEvent()
         {
             bool eventFired = false;
             EventBus.Subscribe<MarginCallTriggeredEvent>(e => eventFired = true);
 
-            MarketCloseState.RoundProfit = 300f; // Above $200 target
+            var ctx = new RunContext(1, 1, new Portfolio(30f)); // $30 > $20 target
+            MarketCloseState.RoundProfit = 20f;
 
-            _state.Enter(_ctx);
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new MarginCallState();
+            state.Enter(ctx);
 
             Assert.IsFalse(eventFired);
         }
 
-        // --- AC4: Uses escalating targets per round ---
+        // --- Uses correct escalating targets per round ---
 
         [Test]
         public void Enter_UsesCorrectTargetForRound()
         {
-            var ctx = new RunContext(1, 3, new Portfolio(1000f)); // Round 3
+            // Round 3 target is $60
+            var ctx = new RunContext(1, 3, new Portfolio(50f)); // $50 < $60 target
             MarginCallTriggeredEvent received = default;
             EventBus.Subscribe<MarginCallTriggeredEvent>(e => received = e);
 
-            MarketCloseState.RoundProfit = 500f; // Below $600 target for round 3
+            MarketCloseState.RoundProfit = 10f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -176,33 +186,13 @@ namespace BullRun.Tests.Core.GameStates
             _state = new MarginCallState();
             _state.Enter(ctx);
 
-            Assert.AreEqual(600f, received.RequiredTarget, 0.01f);
+            Assert.AreEqual(60f, received.RequiredTarget, 0.01f);
         }
 
-        [Test]
-        public void Enter_WhenNegativeProfit_TriggersMarginCall()
-        {
-            MarginCallTriggeredEvent received = default;
-            bool eventFired = false;
-            EventBus.Subscribe<MarginCallTriggeredEvent>(e =>
-            {
-                received = e;
-                eventFired = true;
-            });
-
-            MarketCloseState.RoundProfit = -100f;
-
-            _state.Enter(_ctx);
-
-            Assert.IsTrue(eventFired);
-            Assert.AreEqual(-100f, received.RoundProfit, 0.01f);
-            Assert.AreEqual(300f, received.Shortfall, 0.01f); // 200 - (-100) = 300
-        }
-
-        // --- RoundCompletedEvent Tests (Story 4.5 Task 3) ---
+        // --- RoundCompletedEvent Tests ---
 
         [Test]
-        public void Enter_WhenProfitMeetsTarget_PublishesRoundCompletedEvent()
+        public void Enter_WhenCashMeetsTarget_PublishesRoundCompletedEvent()
         {
             RoundCompletedEvent received = default;
             bool eventFired = false;
@@ -212,36 +202,45 @@ namespace BullRun.Tests.Core.GameStates
                 eventFired = true;
             });
 
-            MarketCloseState.RoundProfit = 300f; // Above $200 target for round 1
+            var ctx = new RunContext(1, 1, new Portfolio(30f)); // $30 > $20 target
+            MarketCloseState.RoundProfit = 20f;
 
-            _state.Enter(_ctx);
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new MarginCallState();
+            state.Enter(ctx);
 
             Assert.IsTrue(eventFired, "Should publish RoundCompletedEvent when margin call passes");
             Assert.AreEqual(1, received.RoundNumber);
-            Assert.AreEqual(300f, received.RoundProfit, 0.01f);
-            Assert.AreEqual(200f, received.ProfitTarget, 0.01f);
+            Assert.AreEqual(20f, received.RoundProfit, 0.01f);
+            Assert.AreEqual(20f, received.ProfitTarget, 0.01f);
             Assert.IsTrue(received.TargetMet);
+            Assert.AreEqual(30f, received.TotalCash, 0.01f);
         }
 
         [Test]
-        public void Enter_WhenProfitBelowTarget_DoesNotPublishRoundCompletedEvent()
+        public void Enter_WhenCashBelowTarget_DoesNotPublishRoundCompletedEvent()
         {
             bool eventFired = false;
             EventBus.Subscribe<RoundCompletedEvent>(e => eventFired = true);
 
-            MarketCloseState.RoundProfit = 30f; // Below $200 target
-
+            MarketCloseState.RoundProfit = 0f; // Cash $10 < $20 target
             _state.Enter(_ctx);
 
             Assert.IsFalse(eventFired, "Should NOT publish RoundCompletedEvent on margin call");
         }
-        // --- Victory Detection Tests (Story 6.5 Task 1) ---
+
+        // --- Victory Detection Tests ---
 
         [Test]
         public void Enter_Round8Passes_SetsRunCompletedTrue()
         {
-            var ctx = new RunContext(4, 8, new Portfolio(5000f)); // Round 8, Act 4
-            MarketCloseState.RoundProfit = 6000f; // Well above any target
+            var ctx = new RunContext(4, 8, new Portfolio(1000f)); // $1000 > $800 target
+            MarketCloseState.RoundProfit = 200f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -259,18 +258,26 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void Enter_Round1Passes_DoesNotSetRunCompleted()
         {
-            MarketCloseState.RoundProfit = 300f; // Above $200 target for round 1
+            var ctx = new RunContext(1, 1, new Portfolio(30f)); // $30 > $20 target
+            MarketCloseState.RoundProfit = 20f;
 
-            _state.Enter(_ctx);
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new MarginCallState();
+            state.Enter(ctx);
 
-            Assert.IsFalse(_ctx.RunCompleted, "RunCompleted should NOT be set for non-final rounds");
+            Assert.IsFalse(ctx.RunCompleted, "RunCompleted should NOT be set for non-final rounds");
         }
 
         [Test]
         public void Enter_Round8Fails_DoesNotSetRunCompleted()
         {
-            var ctx = new RunContext(4, 8, new Portfolio(5000f));
-            MarketCloseState.RoundProfit = 0f; // Below target — margin call
+            var ctx = new RunContext(4, 8, new Portfolio(500f)); // $500 < $800 target
+            MarketCloseState.RoundProfit = 0f;
 
             MarginCallState.NextConfig = new MarginCallStateConfig
             {
@@ -283,6 +290,130 @@ namespace BullRun.Tests.Core.GameStates
             _state.Enter(ctx);
 
             Assert.IsFalse(ctx.RunCompleted, "RunCompleted should NOT be set when round 8 margin call fails");
+        }
+
+        // --- FIX-14: Reputation earning on round completion ---
+
+        [Test]
+        public void Enter_RoundPassed_AwardsBaseReputation()
+        {
+            var ctx = new RunContext(1, 1, new Portfolio(20f)); // Exactly meets $20 target
+            MarketCloseState.RoundProfit = 10f;
+
+            RoundCompletedEvent received = default;
+            EventBus.Subscribe<RoundCompletedEvent>(e => received = e);
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new MarginCallState();
+            state.Enter(ctx);
+
+            // Round 1 base = 5 Rep, exactly met target = 0 bonus
+            Assert.AreEqual(5, received.RepEarned);
+            Assert.AreEqual(5, received.BaseRep);
+            Assert.AreEqual(0, received.BonusRep);
+            Assert.AreEqual(5, ctx.Reputation.Current);
+            Assert.AreEqual(5, ctx.ReputationEarned);
+        }
+
+        [Test]
+        public void Enter_RoundPassed_AwardsBonusRepForExceedingTarget()
+        {
+            // Cash $30, target $20 → excess ratio = (30-20)/20 = 0.5
+            // baseRep = 5, bonusRep = floor(5 * 0.5 * 0.5) = floor(1.25) = 1
+            var ctx = new RunContext(1, 1, new Portfolio(30f));
+            MarketCloseState.RoundProfit = 20f;
+
+            RoundCompletedEvent received = default;
+            EventBus.Subscribe<RoundCompletedEvent>(e => received = e);
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new MarginCallState();
+            state.Enter(ctx);
+
+            Assert.AreEqual(6, received.RepEarned); // 5 base + 1 bonus
+            Assert.AreEqual(5, received.BaseRep);
+            Assert.AreEqual(1, received.BonusRep);
+            Assert.AreEqual(6, ctx.Reputation.Current);
+        }
+
+        // --- FIX-14: Consolation Reputation on margin call failure ---
+
+        [Test]
+        public void Enter_MarginCallRound1_Awards0ConsolationRep()
+        {
+            // Round 1 failure: 0 rounds completed * 2 = 0 consolation
+            MarketCloseState.RoundProfit = 0f;
+            _state.Enter(_ctx);
+
+            Assert.AreEqual(0, _ctx.ReputationEarned);
+            Assert.AreEqual(0, _ctx.Reputation.Current);
+        }
+
+        [Test]
+        public void Enter_MarginCallRound4_Awards6ConsolationRep()
+        {
+            // Round 4 failure: 3 rounds completed * 2 = 6 consolation Rep
+            var ctx = new RunContext(2, 4, new Portfolio(50f)); // $50 < $100 target
+            MarketCloseState.RoundProfit = 0f;
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            var state = new MarginCallState();
+            state.Enter(ctx);
+
+            Assert.AreEqual(6, ctx.ReputationEarned); // 3 rounds * 2 Rep
+            Assert.AreEqual(6, ctx.Reputation.Current);
+        }
+
+        // --- FIX-14: Rep accumulates across rounds ---
+
+        [Test]
+        public void RepAccumulates_AcrossMultipleRounds()
+        {
+            // Round 1: cash $25, target $20 → excess (25-20)/20=0.25
+            // baseRep=5, bonus=floor(5*0.25*0.5)=floor(0.625)=0 → total 5
+            var ctx = new RunContext(1, 1, new Portfolio(25f));
+            MarketCloseState.RoundProfit = 15f;
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            new MarginCallState().Enter(ctx);
+            Assert.AreEqual(5, ctx.ReputationEarned);
+
+            // Simulate advancing to round 2: cash $40, target $35
+            ctx.CurrentRound = 2;
+            ctx.Portfolio = new Portfolio(40f);
+            MarketCloseState.RoundProfit = 15f;
+
+            MarginCallState.NextConfig = new MarginCallStateConfig
+            {
+                StateMachine = _sm,
+                PriceGenerator = null,
+                TradeExecutor = null
+            };
+            new MarginCallState().Enter(ctx);
+
+            // Round 2 base=8, excess=(40-35)/35≈0.143, bonus=floor(8*0.143*0.5)=0 → total 8
+            Assert.AreEqual(13, ctx.ReputationEarned); // 5 + 8
+            Assert.AreEqual(13, ctx.Reputation.Current);
         }
     }
 }

@@ -3,7 +3,7 @@
 /// </summary>
 public static class GameConfig
 {
-    public static readonly float StartingCapital = 1000f;
+    public static readonly float StartingCapital = 10f;
     public static readonly float RoundDurationSeconds = 60f;
 
     // 0 = per-frame updates (no fixed interval, UpdatePrice called every frame)
@@ -40,8 +40,21 @@ public static class GameConfig
     // Button dim alpha during trade cooldown (0 = invisible, 1 = fully opaque)
     public static readonly float CooldownDimAlpha = 0.35f;
 
-    // Reputation: shop currency (FIX-12). Earning logic in FIX-14.
+    // Reputation: shop currency (FIX-12). Earning logic below (FIX-14).
     public static readonly int StartingReputation = 0;
+
+    // FIX-14: Reputation earning constants
+    // Base Rep awarded per round completion (0-indexed: index 0 = Round 1)
+    public static readonly int[] RepBaseAwardPerRound = new int[]
+    {
+        5, 8, 11, 15, 20, 26, 33, 40
+    };
+
+    // Bonus multiplier on target excess (e.g., 50% excess at 0.5 rate = 25% bonus on baseRep)
+    public static readonly float RepPerformanceBonusRate = 0.5f;
+
+    // Consolation Rep per round completed before margin call failure
+    public static readonly int RepConsolationPerRound = 2;
 
     // Market Open preview duration before trading begins
     public static readonly float MarketOpenDurationSeconds = 7f;
@@ -56,19 +69,19 @@ public static class GameConfig
 
     /// <summary>
     /// Debug starting cash per round for F3 skip-to-round.
-    /// Approximate expected cash at each round based on compounding.
-    /// 0-indexed (index 0 = Round 1).
+    /// Approximate expected cash at each round based on hitting targets + compounding.
+    /// 0-indexed (index 0 = Round 1). FIX-14: Rebalanced for $10 economy.
     /// </summary>
     public static readonly float[] DebugStartingCash = new float[]
     {
-        1000f,   // Round 1
-        1500f,   // Round 2
-        2000f,   // Round 3
-        3000f,   // Round 4
-        4000f,   // Round 5
-        6000f,   // Round 6
-        8000f,   // Round 7
-        12000f,  // Round 8
+        10f,    // Round 1
+        20f,    // Round 2
+        40f,    // Round 3
+        75f,    // Round 4
+        130f,   // Round 5
+        225f,   // Round 6
+        400f,   // Round 7
+        700f,   // Round 8
     };
 
     /// <summary>

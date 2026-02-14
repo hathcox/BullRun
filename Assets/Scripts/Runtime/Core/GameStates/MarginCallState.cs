@@ -29,14 +29,17 @@ public class MarginCallState : IGameState
         }
 
         float roundProfit = MarketCloseState.RoundProfit;
+        float totalCash = ctx.Portfolio.Cash;
         float target = MarginCallTargets.GetTarget(ctx.CurrentRound);
 
-        bool targetMet = roundProfit >= target;
+        // FIX-14: Targets are cumulative portfolio value targets, not profit deltas.
+        // Compare total cash against target value.
+        bool targetMet = totalCash >= target;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (DebugManager.IsGodMode && !targetMet)
         {
-            Debug.Log($"[MarginCallState] GOD MODE — bypassing margin call (Round {ctx.CurrentRound}, actual profit: ${roundProfit:F2} vs target: ${target:F2})");
+            Debug.Log($"[MarginCallState] GOD MODE — bypassing margin call (Round {ctx.CurrentRound}, cash: ${totalCash:F2} vs target: ${target:F2})");
             targetMet = true;
         }
         #endif
@@ -49,8 +52,18 @@ public class MarginCallState : IGameState
                 ctx.RunCompleted = true;
             }
 
+            // FIX-14: Award Reputation for completing this round
+            int repEarned = CalculateRoundReputation(ctx.CurrentRound, totalCash, target);
+            ctx.Reputation.Add(repEarned);
+            ctx.ReputationEarned += repEarned;
+
+            // Compute base/bonus breakdown for UI display (AC 6)
+            int roundIndex = Mathf.Clamp(ctx.CurrentRound - 1, 0, GameConfig.RepBaseAwardPerRound.Length - 1);
+            int baseRep = GameConfig.RepBaseAwardPerRound[roundIndex];
+            int bonusRep = repEarned - baseRep;
+
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[MarginCallState] Round {ctx.CurrentRound} PASSED: ${roundProfit:F2} >= ${target:F2}");
+            Debug.Log($"[MarginCallState] Round {ctx.CurrentRound} PASSED: cash ${totalCash:F2} >= target ${target:F2}, Rep earned: {repEarned} (base: {baseRep}, bonus: {bonusRep})");
             #endif
 
             EventBus.Publish(new RoundCompletedEvent
@@ -59,7 +72,10 @@ public class MarginCallState : IGameState
                 RoundProfit = roundProfit,
                 ProfitTarget = target,
                 TargetMet = true,
-                TotalCash = ctx.Portfolio.Cash
+                TotalCash = totalCash,
+                RepEarned = repEarned,
+                BaseRep = baseRep,
+                BonusRep = bonusRep
             });
 
             // Proceed to shop (which auto-skips to next MarketOpenState for now)
@@ -77,10 +93,19 @@ public class MarginCallState : IGameState
         }
         else
         {
-            float shortfall = target - roundProfit;
+            float shortfall = target - totalCash;
+
+            // FIX-14: Award consolation Reputation on margin call failure
+            int roundsCompleted = ctx.CurrentRound - 1; // Failed this round, completed previous
+            int consolationRep = roundsCompleted * GameConfig.RepConsolationPerRound;
+            if (consolationRep > 0)
+            {
+                ctx.Reputation.Add(consolationRep);
+                ctx.ReputationEarned += consolationRep;
+            }
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[MarginCallState] MARGIN CALL! Round {ctx.CurrentRound}: ${roundProfit:F2} < ${target:F2} (shortfall: ${shortfall:F2})");
+            Debug.Log($"[MarginCallState] MARGIN CALL! Round {ctx.CurrentRound}: cash ${totalCash:F2} < target ${target:F2} (shortfall: ${shortfall:F2}), consolation Rep: {consolationRep}");
             #endif
 
             EventBus.Publish(new MarginCallTriggeredEvent
@@ -116,6 +141,22 @@ public class MarginCallState : IGameState
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log("[MarginCallState] Exit");
         #endif
+    }
+
+    /// <summary>
+    /// FIX-14: Calculates Reputation earned for completing a round.
+    /// Base award scales with round number + performance bonus for exceeding target.
+    /// </summary>
+    public static int CalculateRoundReputation(int roundNumber, float totalCash, float target)
+    {
+        int roundIndex = Mathf.Clamp(roundNumber - 1, 0, GameConfig.RepBaseAwardPerRound.Length - 1);
+        int baseRep = GameConfig.RepBaseAwardPerRound[roundIndex];
+
+        // Performance bonus: how much player exceeded target as a ratio
+        float excessRatio = target > 0f ? Mathf.Max(0f, (totalCash - target) / target) : 0f;
+        int bonusRep = Mathf.FloorToInt(baseRep * excessRatio * GameConfig.RepPerformanceBonusRate);
+
+        return baseRep + bonusRep;
     }
 }
 

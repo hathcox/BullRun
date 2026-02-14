@@ -110,24 +110,29 @@ public class RoundResultsUI : MonoBehaviour
     public static string FormatProfit(float profit)
     {
         string sign = profit >= 0 ? "+" : "-";
-        return $"{sign}${Mathf.Abs(profit):F0}";
+        return $"{sign}${Mathf.Abs(profit):F2}";
     }
 
     public static string FormatTarget(float target, bool met)
     {
         string status = met ? "PASSED" : "FAILED";
-        return $"${target:F0} \u2014 {status}";
+        return $"${target:F2} \u2014 {status}";
     }
 
     public static string FormatCash(float amount)
     {
-        return $"${amount:N0}";
+        return $"${amount:N2}";
     }
 
     public static string BuildStatsText(RoundCompletedEvent evt)
     {
+        string repLine = evt.BonusRep > 0
+            ? $"Reputation Earned: \u2605 {evt.RepEarned} (Base: {evt.BaseRep} + Bonus: {evt.BonusRep})"
+            : $"Reputation Earned: \u2605 {evt.RepEarned} (Base: {evt.BaseRep})";
+
         return $"Round Profit: {FormatProfit(evt.RoundProfit)}\n" +
                $"Target: {FormatTarget(evt.ProfitTarget, evt.TargetMet)}\n" +
-               $"Total Cash: {FormatCash(evt.TotalCash)}";
+               $"Total Cash: {FormatCash(evt.TotalCash)}\n" +
+               repLine;
     }
 }

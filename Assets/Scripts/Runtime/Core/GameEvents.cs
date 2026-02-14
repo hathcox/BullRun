@@ -164,6 +164,7 @@ public struct MarginCallTriggeredEvent
 /// <summary>
 /// Fired when a round is completed successfully (margin call passed).
 /// UI subscribes to display round results overlay.
+/// FIX-14: ProfitTarget is a cumulative value target (total cash threshold), not profit delta.
 /// </summary>
 public struct RoundCompletedEvent
 {
@@ -172,6 +173,12 @@ public struct RoundCompletedEvent
     public float ProfitTarget;
     public bool TargetMet;
     public float TotalCash;
+    /// <summary>FIX-14: Reputation earned this round (base + performance bonus).</summary>
+    public int RepEarned;
+    /// <summary>FIX-14: Base Reputation component (scales with round number).</summary>
+    public int BaseRep;
+    /// <summary>FIX-14: Bonus Reputation component (performance excess over target).</summary>
+    public int BonusRep;
 }
 
 /// <summary>

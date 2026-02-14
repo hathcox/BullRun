@@ -64,9 +64,9 @@ public class RunSummaryState : IGameState
         // Reconcile RunContext.TotalRunProfit with authoritative calculation
         ctx.TotalRunProfit = totalProfit;
 
-        // Calculate reputation: win gets 100 + profit bonus, loss gets 10 + 5*rounds
-        int reputationEarned = CalculateReputation(isVictory, totalProfit, roundsCompleted);
-        ctx.ReputationEarned = reputationEarned;
+        // FIX-14: Reputation is earned per-round (accumulated in MarginCallState).
+        // Just read the accumulated value — no lump sum calculation needed.
+        int reputationEarned = ctx.ReputationEarned;
 
         // Set static accessors for UI
         IsActive = true;
@@ -138,21 +138,6 @@ public class RunSummaryState : IGameState
                 _stateMachine.TransitionTo<MetaHubState>();
             }
         }
-    }
-
-    /// <summary>
-    /// Calculates reputation earned based on run outcome.
-    /// Win: 100 + floor(totalProfit / 100). Loss: 10 + (5 * roundsCompleted).
-    /// </summary>
-    public static int CalculateReputation(bool isVictory, float totalProfit, int roundsCompleted)
-    {
-        if (isVictory)
-        {
-            int profitBonus = Mathf.FloorToInt(totalProfit / 100f);
-            if (profitBonus < 0) profitBonus = 0;
-            return 100 + profitBonus;
-        }
-        return 10 + (5 * roundsCompleted);
     }
 
     /// <summary>

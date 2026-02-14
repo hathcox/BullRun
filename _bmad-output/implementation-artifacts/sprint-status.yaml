@@ -117,7 +117,7 @@ development_status:
   FIX-11-short-selling-redesign: done
   FIX-12-reputation-shop-currency: done
   FIX-13-single-share-unlock-tiers: done
-  FIX-14-economy-rebalance: ready-for-dev
+  FIX-14-economy-rebalance: done
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
   epic-8: backlog

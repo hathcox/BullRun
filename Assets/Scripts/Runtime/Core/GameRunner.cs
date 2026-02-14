@@ -68,7 +68,7 @@ public class GameRunner : MonoBehaviour
         // Subscribe portfolio to price updates so GetTotalValue/GetRoundProfit work
         _ctx.Portfolio.SubscribeToPriceUpdates();
 
-        // Set round start baseline so round profit starts at $0 (not $1,000)
+        // Set round start baseline so round profit starts at $0 (not starting capital)
         _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD

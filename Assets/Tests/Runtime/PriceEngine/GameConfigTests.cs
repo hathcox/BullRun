@@ -6,9 +6,9 @@ namespace BullRun.Tests.PriceEngine
     public class GameConfigTests
     {
         [Test]
-        public void StartingCapital_Is1000()
+        public void StartingCapital_Is10()
         {
-            Assert.AreEqual(1000f, GameConfig.StartingCapital);
+            Assert.AreEqual(10f, GameConfig.StartingCapital);
         }
 
         [Test]
@@ -187,16 +187,16 @@ namespace BullRun.Tests.PriceEngine
         }
 
         [Test]
-        public void DebugStartingCash_MatchesStorySpec()
+        public void DebugStartingCash_MatchesRebalancedValues()
         {
-            Assert.AreEqual(1000f, GameConfig.DebugStartingCash[0], 0.01f); // Round 1
-            Assert.AreEqual(1500f, GameConfig.DebugStartingCash[1], 0.01f); // Round 2
-            Assert.AreEqual(2000f, GameConfig.DebugStartingCash[2], 0.01f); // Round 3
-            Assert.AreEqual(3000f, GameConfig.DebugStartingCash[3], 0.01f); // Round 4
-            Assert.AreEqual(4000f, GameConfig.DebugStartingCash[4], 0.01f); // Round 5
-            Assert.AreEqual(6000f, GameConfig.DebugStartingCash[5], 0.01f); // Round 6
-            Assert.AreEqual(8000f, GameConfig.DebugStartingCash[6], 0.01f); // Round 7
-            Assert.AreEqual(12000f, GameConfig.DebugStartingCash[7], 0.01f); // Round 8
+            Assert.AreEqual(10f, GameConfig.DebugStartingCash[0], 0.01f);   // Round 1
+            Assert.AreEqual(20f, GameConfig.DebugStartingCash[1], 0.01f);   // Round 2
+            Assert.AreEqual(40f, GameConfig.DebugStartingCash[2], 0.01f);   // Round 3
+            Assert.AreEqual(75f, GameConfig.DebugStartingCash[3], 0.01f);   // Round 4
+            Assert.AreEqual(130f, GameConfig.DebugStartingCash[4], 0.01f);  // Round 5
+            Assert.AreEqual(225f, GameConfig.DebugStartingCash[5], 0.01f);  // Round 6
+            Assert.AreEqual(400f, GameConfig.DebugStartingCash[6], 0.01f);  // Round 7
+            Assert.AreEqual(700f, GameConfig.DebugStartingCash[7], 0.01f);  // Round 8
         }
 
         [Test]

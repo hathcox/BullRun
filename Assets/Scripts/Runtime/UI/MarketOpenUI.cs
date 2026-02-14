@@ -64,7 +64,7 @@ public class MarketOpenUI : MonoBehaviour
             _headlineText.text = $"\"{evt.Headline}\"";
 
         if (_targetText != null)
-            _targetText.text = $"${evt.ProfitTarget:N0}";
+            _targetText.text = $"${evt.ProfitTarget:N2}";
 
         _visible = true;
         _fadeTimer = 0f;

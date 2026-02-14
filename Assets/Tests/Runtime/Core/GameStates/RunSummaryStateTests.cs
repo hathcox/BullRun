@@ -164,8 +164,10 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_ReputationEarnedCalculatedForLoss()
+        public void Enter_ReputationReflectsAccumulatedPerRoundRep()
         {
+            // FIX-14: Rep is now accumulated per-round in MarginCallState, not calculated at end.
+            // ctx.ReputationEarned starts at 0 if no rounds were processed.
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
 
@@ -180,8 +182,8 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(_ctx);
 
-            // Loss at round 1: 10 + (5 * 1) = 15
-            Assert.AreEqual(15, received.ReputationEarned);
+            // No rounds processed through MarginCallState → 0 accumulated Rep
+            Assert.AreEqual(0, received.ReputationEarned);
         }
 
         [Test]
@@ -232,15 +234,16 @@ namespace BullRun.Tests.Core.GameStates
             Assert.AreEqual(0f, received.TotalProfit, 0.01f);
         }
 
-        // --- Reputation Calculation Tests (Story 6.5 Task 3) ---
+        // --- FIX-14: Reputation is now accumulated per-round, not calculated at end ---
 
         [Test]
-        public void Enter_VictoryPath_CalculatesReputationWithProfitBonus()
+        public void Enter_VictoryPath_UsesAccumulatedRep()
         {
-            // Win with $4000 total profit → 100 + floor(4000/100) = 140
+            // FIX-14: Rep earned per-round. Simulate accumulated Rep.
             var ctx = new RunContext(4, 9, new Portfolio(5000f));
-            ctx.StartingCapital = 1000f; // Profit = 5000 - 1000 = 4000
-            ctx.RunCompleted = true; // Must be set for victory path
+            ctx.StartingCapital = 1000f;
+            ctx.RunCompleted = true;
+            ctx.ReputationEarned = 158; // Simulated accumulated per-round Rep
 
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -256,14 +259,15 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(ctx);
 
-            Assert.AreEqual(140, received.ReputationEarned, "Win rep: 100 + floor(4000/100) = 140");
+            Assert.AreEqual(158, received.ReputationEarned, "Should use pre-accumulated Rep, not recalculate");
         }
 
         [Test]
-        public void Enter_LossPath_CalculatesReputationFromRounds()
+        public void Enter_LossPath_UsesAccumulatedRep()
         {
-            // Loss at round 3 → 10 + (5 * 3) = 25
+            // FIX-14: Rep earned per-round. Consolation awarded in MarginCallState.
             var ctx = new RunContext(2, 3, new Portfolio(800f));
+            ctx.ReputationEarned = 17; // Simulated: 2 rounds of base Rep + consolation
 
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -279,38 +283,35 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(ctx);
 
-            Assert.AreEqual(25, received.ReputationEarned, "Loss rep: 10 + (5 * 3) = 25");
+            Assert.AreEqual(17, received.ReputationEarned, "Should use pre-accumulated Rep");
         }
 
         [Test]
-        public void Enter_VictoryWithSmallProfit_ReputationFloors()
+        public void Enter_NoRoundsCompleted_ZeroRep()
         {
-            // Win with $50 profit → 100 + floor(50/100) = 100
-            var ctx = new RunContext(4, 9, new Portfolio(1050f));
-            ctx.StartingCapital = 1000f;
-            ctx.RunCompleted = true;
-
+            // FIX-14: No rounds processed → 0 Rep
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
 
             RunSummaryState.NextConfig = new RunSummaryStateConfig
             {
-                WasMarginCalled = false,
+                WasMarginCalled = true,
                 RoundProfit = 0f,
-                RequiredTarget = 0f,
+                RequiredTarget = 20f,
                 StateMachine = _sm
             };
 
             var state = new RunSummaryState();
-            state.Enter(ctx);
+            state.Enter(_ctx);
 
-            Assert.AreEqual(100, received.ReputationEarned, "Win rep with small profit: 100 + 0 = 100");
+            Assert.AreEqual(0, received.ReputationEarned);
         }
 
         [Test]
         public void Enter_StoresReputationInStaticAccessor()
         {
             var ctx = new RunContext(2, 3, new Portfolio(800f));
+            ctx.ReputationEarned = 42; // Pre-accumulated
 
             RunSummaryState.NextConfig = new RunSummaryStateConfig
             {
@@ -323,7 +324,7 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(ctx);
 
-            Assert.AreEqual(25, RunSummaryState.ReputationEarned, "Static accessor should match calculated reputation");
+            Assert.AreEqual(42, RunSummaryState.ReputationEarned, "Static accessor should match accumulated reputation");
         }
 
         // --- Win State Tests (Story 4.5 Task 5) ---
@@ -374,6 +375,7 @@ namespace BullRun.Tests.Core.GameStates
             ctx.RunCompleted = true;
             ctx.PeakCash = 6000f;
             ctx.BestRoundProfit = 1200f;
+            ctx.ReputationEarned = 158; // FIX-14: Pre-accumulated per-round Rep
             ctx.ActiveItems.Add("item1");
             ctx.ActiveItems.Add("item2");
 
@@ -402,6 +404,7 @@ namespace BullRun.Tests.Core.GameStates
             Assert.AreEqual(6000f, received.PeakCash, 0.01f);
             Assert.AreEqual(9, received.RoundsCompleted);
             Assert.AreEqual(2, received.ItemsCollected);
+            Assert.AreEqual(158, received.ReputationEarned);
         }
 
         [Test]
@@ -430,15 +433,17 @@ namespace BullRun.Tests.Core.GameStates
             Assert.IsFalse(received.IsVictory);
         }
 
-        // --- Negative-profit victory edge case (Story 6.5 Code Review) ---
+        // --- FIX-14: Negative-profit victory edge case ---
 
         [Test]
-        public void Enter_VictoryWithNegativeProfit_ReputationClampedToBase()
+        public void Enter_VictoryWithNegativeProfit_UsesAccumulatedRep()
         {
-            // Win but lose money (possible via debug jump with inflated StartingCapital)
+            // FIX-14: Rep is accumulated per-round. Even with negative total profit,
+            // the per-round Rep was already awarded in MarginCallState.
             var ctx = new RunContext(4, 9, new Portfolio(800f));
             ctx.StartingCapital = 1000f; // Profit = 800 - 1000 = -200
             ctx.RunCompleted = true;
+            ctx.ReputationEarned = 158; // Per-round accumulated
 
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -454,8 +459,7 @@ namespace BullRun.Tests.Core.GameStates
             var state = new RunSummaryState();
             state.Enter(ctx);
 
-            // profitBonus = floor(-200/100) = -2, clamped to 0 → rep = 100
-            Assert.AreEqual(100, received.ReputationEarned, "Negative profit bonus should clamp to 0, giving base 100 rep");
+            Assert.AreEqual(158, received.ReputationEarned, "Should use accumulated per-round Rep regardless of total profit");
         }
 
         // --- Input handling tests ---

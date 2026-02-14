@@ -5,54 +5,54 @@ namespace BullRun.Tests.Trading
     [TestFixture]
     public class MarginCallTargetsTests
     {
-        // --- GDD Section 2.3 Target Values (AC: 1) ---
+        // --- FIX-14: Rebalanced cumulative value targets (AC: 2, 8) ---
 
         [Test]
-        public void GetTarget_Round1_Returns200()
+        public void GetTarget_Round1_Returns20()
         {
-            Assert.AreEqual(200f, MarginCallTargets.GetTarget(1), 0.01f);
+            Assert.AreEqual(20f, MarginCallTargets.GetTarget(1), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round2_Returns350()
+        public void GetTarget_Round2_Returns35()
         {
-            Assert.AreEqual(350f, MarginCallTargets.GetTarget(2), 0.01f);
+            Assert.AreEqual(35f, MarginCallTargets.GetTarget(2), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round3_Returns600()
+        public void GetTarget_Round3_Returns60()
         {
-            Assert.AreEqual(600f, MarginCallTargets.GetTarget(3), 0.01f);
+            Assert.AreEqual(60f, MarginCallTargets.GetTarget(3), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round4_Returns900()
+        public void GetTarget_Round4_Returns100()
         {
-            Assert.AreEqual(900f, MarginCallTargets.GetTarget(4), 0.01f);
+            Assert.AreEqual(100f, MarginCallTargets.GetTarget(4), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round5_Returns1500()
+        public void GetTarget_Round5_Returns175()
         {
-            Assert.AreEqual(1500f, MarginCallTargets.GetTarget(5), 0.01f);
+            Assert.AreEqual(175f, MarginCallTargets.GetTarget(5), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round6_Returns2200()
+        public void GetTarget_Round6_Returns300()
         {
-            Assert.AreEqual(2200f, MarginCallTargets.GetTarget(6), 0.01f);
+            Assert.AreEqual(300f, MarginCallTargets.GetTarget(6), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round7_Returns3500()
+        public void GetTarget_Round7_Returns500()
         {
-            Assert.AreEqual(3500f, MarginCallTargets.GetTarget(7), 0.01f);
+            Assert.AreEqual(500f, MarginCallTargets.GetTarget(7), 0.01f);
         }
 
         [Test]
-        public void GetTarget_Round8_Returns5000()
+        public void GetTarget_Round8_Returns800()
         {
-            Assert.AreEqual(5000f, MarginCallTargets.GetTarget(8), 0.01f);
+            Assert.AreEqual(800f, MarginCallTargets.GetTarget(8), 0.01f);
         }
 
         // --- Boundary Tests ---
@@ -60,20 +60,20 @@ namespace BullRun.Tests.Trading
         [Test]
         public void GetTarget_Round0_ReturnsFirstTarget()
         {
-            Assert.AreEqual(200f, MarginCallTargets.GetTarget(0), 0.01f);
+            Assert.AreEqual(20f, MarginCallTargets.GetTarget(0), 0.01f);
         }
 
         [Test]
         public void GetTarget_NegativeRound_ReturnsFirstTarget()
         {
-            Assert.AreEqual(200f, MarginCallTargets.GetTarget(-1), 0.01f);
+            Assert.AreEqual(20f, MarginCallTargets.GetTarget(-1), 0.01f);
         }
 
         [Test]
         public void GetTarget_BeyondRound8_ReturnsLastTarget()
         {
-            Assert.AreEqual(5000f, MarginCallTargets.GetTarget(9), 0.01f);
-            Assert.AreEqual(5000f, MarginCallTargets.GetTarget(20), 0.01f);
+            Assert.AreEqual(800f, MarginCallTargets.GetTarget(9), 0.01f);
+            Assert.AreEqual(800f, MarginCallTargets.GetTarget(20), 0.01f);
         }
 
         [Test]
@@ -82,7 +82,7 @@ namespace BullRun.Tests.Trading
             Assert.AreEqual(8, MarginCallTargets.TotalRounds);
         }
 
-        // --- Scaling Multipliers (AC: 2) ---
+        // --- Scaling Multipliers ---
 
         [Test]
         public void ScalingMultipliers_Has8Entries()
@@ -90,35 +90,7 @@ namespace BullRun.Tests.Trading
             Assert.AreEqual(8, MarginCallTargets.ScalingMultipliers.Length);
         }
 
-        [Test]
-        public void ScalingMultipliers_Act1_Is1x()
-        {
-            Assert.AreEqual(1.0f, MarginCallTargets.ScalingMultipliers[0], 0.01f); // Round 1
-            Assert.AreEqual(1.0f, MarginCallTargets.ScalingMultipliers[1], 0.01f); // Round 2
-        }
-
-        [Test]
-        public void ScalingMultipliers_Act2_Is1_5x()
-        {
-            Assert.AreEqual(1.5f, MarginCallTargets.ScalingMultipliers[2], 0.01f); // Round 3
-            Assert.AreEqual(1.5f, MarginCallTargets.ScalingMultipliers[3], 0.01f); // Round 4
-        }
-
-        [Test]
-        public void ScalingMultipliers_Act3_Is2x()
-        {
-            Assert.AreEqual(2.0f, MarginCallTargets.ScalingMultipliers[4], 0.01f); // Round 5
-            Assert.AreEqual(2.0f, MarginCallTargets.ScalingMultipliers[5], 0.01f); // Round 6
-        }
-
-        [Test]
-        public void ScalingMultipliers_Act4_Is2_5xAnd3x()
-        {
-            Assert.AreEqual(2.5f, MarginCallTargets.ScalingMultipliers[6], 0.01f); // Round 7
-            Assert.AreEqual(3.0f, MarginCallTargets.ScalingMultipliers[7], 0.01f); // Round 8
-        }
-
-        // --- GetAllTargets (AC: 4, debug display support) ---
+        // --- GetAllTargets ---
 
         [Test]
         public void GetAllTargets_Returns8Targets()
@@ -128,9 +100,9 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void GetAllTargets_MatchesGDDTable()
+        public void GetAllTargets_MatchesRebalancedValues()
         {
-            float[] expected = { 200f, 350f, 600f, 900f, 1500f, 2200f, 3500f, 5000f };
+            float[] expected = { 20f, 35f, 60f, 100f, 175f, 300f, 500f, 800f };
             float[] targets = MarginCallTargets.GetAllTargets();
             for (int i = 0; i < expected.Length; i++)
             {
@@ -146,7 +118,7 @@ namespace BullRun.Tests.Trading
             Assert.AreNotSame(first, second, "GetAllTargets should return a copy, not the internal array");
         }
 
-        // --- Difficulty curve validation (AC: 6) ---
+        // --- Difficulty curve validation ---
 
         [Test]
         public void Targets_AreMonotonicallyIncreasing()
@@ -169,7 +141,7 @@ namespace BullRun.Tests.Trading
             }
         }
 
-        // --- ScalingMultipliers validation (Story 6.3 Code Review) ---
+        // --- ScalingMultipliers validation ---
 
         [Test]
         public void ScalingMultipliers_SameLengthAsTargets()
@@ -181,7 +153,6 @@ namespace BullRun.Tests.Trading
         [Test]
         public void ScalingMultipliers_NonDecreasingAcrossActs()
         {
-            // Each act boundary (every 2 rounds) should have >= the previous act's multiplier
             float[] m = MarginCallTargets.ScalingMultipliers;
             for (int act = 1; act < GameConfig.TotalActs; act++)
             {

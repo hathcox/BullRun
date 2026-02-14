@@ -155,12 +155,13 @@ public class TradingHUD : MonoBehaviour
             _roundProfitText.color = GetProfitColor(roundProfit);
         }
 
-        // Margin target — use live round from RunContext, not cached _currentRound
+        // FIX-14: Margin target — targets are now cumulative value targets (total portfolio value).
+        // Show total value vs target, not profit vs target.
         float target = MarginCallTargets.GetTarget(_runContext.CurrentRound);
-        float targetProgress = CalculateTargetProgress(roundProfit, target);
+        float targetProgress = CalculateTargetProgress(totalValue, target);
 
         if (_targetText != null)
-            _targetText.text = $"{FormatCurrency(roundProfit)} / {FormatCurrency(target)}";
+            _targetText.text = $"{FormatCurrency(totalValue)} / {FormatCurrency(target)}";
 
         if (_targetProgressBar != null)
         {
@@ -221,10 +222,10 @@ public class TradingHUD : MonoBehaviour
     /// <summary>
     /// Calculates progress toward margin call target (0-1 clamped).
     /// </summary>
-    public static float CalculateTargetProgress(float currentProfit, float target)
+    public static float CalculateTargetProgress(float currentValue, float target)
     {
         if (target <= 0f) return 1f;
-        return Mathf.Clamp01(currentProfit / target);
+        return Mathf.Clamp01(currentValue / target);
     }
 
     /// <summary>
