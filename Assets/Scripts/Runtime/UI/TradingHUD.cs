@@ -25,6 +25,9 @@ public class TradingHUD : MonoBehaviour
     private Text _targetText;
     private Image _targetProgressBar;
 
+    // FIX-12: Reputation display in HUD
+    private Text _reputationText;
+
     private float _startingPortfolioValue;
     private bool _initialized;
     private bool _dirty;
@@ -64,6 +67,14 @@ public class TradingHUD : MonoBehaviour
     public void SetTopBarBackground(Image topBarBackground)
     {
         _topBarBackground = topBarBackground;
+    }
+
+    /// <summary>
+    /// FIX-12: Sets the Reputation display text reference. Called by UISetup.
+    /// </summary>
+    public void SetReputationDisplay(Text reputationText)
+    {
+        _reputationText = reputationText;
     }
 
     private void OnDestroy()
@@ -117,6 +128,10 @@ public class TradingHUD : MonoBehaviour
         // Cash
         if (_cashText != null)
             _cashText.text = FormatCurrency(portfolio.Cash);
+
+        // FIX-12: Reputation
+        if (_reputationText != null)
+            _reputationText.text = $"\u2605 {_runContext.Reputation.Current}";
 
         // Portfolio value + % change
         float totalValue = portfolio.GetTotalValue();

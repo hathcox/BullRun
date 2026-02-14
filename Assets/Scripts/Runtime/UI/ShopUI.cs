@@ -2,9 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Shop UI overlay. Displays 3 item cards (one per category) and cash display.
+/// Shop UI overlay. Displays 3 item cards (one per category) and Reputation display.
+/// FIX-12: Shop uses Reputation currency, not Portfolio.Cash.
 /// MonoBehaviour created by UISetup during F5 generation.
-/// Subscribes to EventBus for purchase feedback.
 /// </summary>
 public class ShopUI : MonoBehaviour
 {
@@ -14,8 +14,11 @@ public class ShopUI : MonoBehaviour
     public static readonly Color RareColor = new Color(0.3f, 0.5f, 1f, 1f);
     public static readonly Color LegendaryColor = new Color(1f, 0.84f, 0f, 1f);
 
+    // FIX-12: Reputation display color (amber/gold)
+    public static readonly Color ReputationColor = new Color(1f, 0.7f, 0f, 1f);
+
     private GameObject _root;
-    private Text _cashText;
+    private Text _repText;
     private Text _headerText;
     private ItemCardView[] _cards;
     private CanvasGroup _canvasGroup;
@@ -43,13 +46,13 @@ public class ShopUI : MonoBehaviour
 
     public void Initialize(
         GameObject root,
-        Text cashText,
+        Text repText,
         Text headerText,
         ItemCardView[] cards,
         CanvasGroup canvasGroup)
     {
         _root = root;
-        _cashText = cashText;
+        _repText = repText;
         _headerText = headerText;
         _cards = cards;
         _canvasGroup = canvasGroup;
@@ -94,7 +97,7 @@ public class ShopUI : MonoBehaviour
         _root.SetActive(true);
 
         _headerText.text = $"DRAFT SHOP \u2014 ROUND {ctx.CurrentRound}";
-        UpdateCashDisplay();
+        UpdateReputationDisplay();
 
         for (int i = 0; i < _cards.Length && i < items.Length; i++)
         {
@@ -120,10 +123,11 @@ public class ShopUI : MonoBehaviour
 
     /// <summary>
     /// Called after a purchase to refresh affordability state.
+    /// FIX-12: Uses Reputation.CanAfford instead of Portfolio.CanAfford.
     /// </summary>
     public void RefreshAfterPurchase(int cardIndex)
     {
-        UpdateCashDisplay();
+        UpdateReputationDisplay();
 
         // Mark purchased card as sold
         if (cardIndex >= 0 && cardIndex < _cards.Length)
@@ -133,14 +137,14 @@ public class ShopUI : MonoBehaviour
             _cards[cardIndex].CardBackground.color = new Color(0.1f, 0.15f, 0.1f, 0.7f);
         }
 
-        // Update affordability on remaining cards
+        // Update affordability on remaining cards (FIX-12: Rep, not cash)
         for (int i = 0; i < _cards.Length && i < _items.Length; i++)
         {
             if (i == cardIndex) continue;
             if (!_items[i].HasValue) continue; // sold out slot
             if (!_cards[i].PurchaseButton.interactable) continue; // already purchased
 
-            bool canAfford = _ctx.Portfolio.CanAfford(_items[i].Value.Cost);
+            bool canAfford = _ctx.Reputation.CanAfford(_items[i].Value.Cost);
             _cards[i].PurchaseButton.interactable = canAfford;
             _cards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _cards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
@@ -183,14 +187,16 @@ public class ShopUI : MonoBehaviour
         card.CategoryLabel.text = categoryName;
         card.NameText.text = item.Name;
         card.DescriptionText.text = item.Description;
-        card.CostText.text = $"${item.Cost}";
+        // FIX-12: Show Rep cost with star icon instead of $
+        card.CostText.text = $"\u2605 {item.Cost}";
 
         Color rarityColor = GetRarityColor(item.Rarity);
         card.RarityText.text = item.Rarity.ToString().ToUpper();
         card.RarityText.color = rarityColor;
         card.RarityBadge.color = rarityColor;
 
-        bool canAfford = _ctx.Portfolio.CanAfford(item.Cost);
+        // FIX-12: Check Reputation affordability, not cash
+        bool canAfford = _ctx.Reputation.CanAfford(item.Cost);
         card.PurchaseButton.interactable = canAfford;
         card.ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
         card.CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
@@ -201,11 +207,14 @@ public class ShopUI : MonoBehaviour
         card.PurchaseButton.onClick.AddListener(() => _onPurchase?.Invoke(capturedIndex));
     }
 
-    private void UpdateCashDisplay()
+    /// <summary>
+    /// FIX-12: Updates the Reputation balance display (was cash display).
+    /// </summary>
+    private void UpdateReputationDisplay()
     {
-        if (_cashText != null && _ctx != null)
+        if (_repText != null && _ctx != null)
         {
-            _cashText.text = $"${_ctx.Portfolio.Cash:F0}";
+            _repText.text = $"\u2605 {_ctx.Reputation.Current}";
         }
     }
 

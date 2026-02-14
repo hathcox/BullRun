@@ -4,6 +4,9 @@ using UnityEngine;
 
 namespace BullRun.Tests.Core.GameStates
 {
+    /// <summary>
+    /// FIX-12: Updated to use Reputation currency instead of Portfolio.Cash for shop purchases.
+    /// </summary>
     [TestFixture]
     public class ShopStateTests
     {
@@ -16,6 +19,8 @@ namespace BullRun.Tests.Core.GameStates
             EventBus.Clear();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
             _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
+            // FIX-12: Seed Reputation for shop tests
+            _ctx.Reputation.Add(10000);
             _sm = new GameStateMachine(_ctx);
             ShopState.ShopUIInstance = null;
         }
@@ -83,15 +88,16 @@ namespace BullRun.Tests.Core.GameStates
             Assert.IsTrue(eventFired, "ShopOpenedEvent was not published");
         }
 
+        // FIX-12: ShopOpenedEvent now carries Reputation, not cash
         [Test]
-        public void Enter_PublishesShopOpenedEvent_WithCurrentCash()
+        public void Enter_PublishesShopOpenedEvent_WithCurrentReputation()
         {
             ShopOpenedEvent received = default;
             EventBus.Subscribe<ShopOpenedEvent>(e => received = e);
 
             EnterShop();
 
-            Assert.AreEqual(1000f, received.CurrentCash, 0.01f);
+            Assert.AreEqual(10000, received.CurrentReputation);
         }
 
         [Test]
@@ -132,13 +138,13 @@ namespace BullRun.Tests.Core.GameStates
             Assert.DoesNotThrow(() => state.Exit(_ctx));
         }
 
-        // === Purchase flow tests ===
+        // === Purchase flow tests (FIX-12: uses Reputation) ===
 
         [Test]
-        public void OnPurchaseRequested_DeductsCashAndTracksItem()
+        public void OnPurchaseRequested_DeductsReputationAndTracksItem()
         {
             var shopState = EnterShop();
-            float startCash = _ctx.Portfolio.Cash;
+            int startRep = _ctx.Reputation.Current;
 
             ShopItemPurchasedEvent receivedEvent = default;
             bool eventFired = false;
@@ -151,10 +157,12 @@ namespace BullRun.Tests.Core.GameStates
             shopState.OnPurchaseRequested(_ctx, 0);
 
             Assert.IsTrue(eventFired, "ShopItemPurchasedEvent was not fired");
-            Assert.Less(_ctx.Portfolio.Cash, startCash, "Cash should have been deducted");
-            Assert.AreEqual(receivedEvent.Cost, (int)(startCash - _ctx.Portfolio.Cash),
+            Assert.Less(_ctx.Reputation.Current, startRep, "Rep should have been deducted");
+            Assert.AreEqual(receivedEvent.Cost, startRep - _ctx.Reputation.Current,
                 "Deducted amount should match item cost");
             Assert.AreEqual(1, _ctx.ActiveItems.Count, "One item should be tracked");
+            // FIX-12 AC 5: Cash must be untouched
+            Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f, "Cash must not be deducted by shop");
         }
 
         [Test]
@@ -171,11 +179,13 @@ namespace BullRun.Tests.Core.GameStates
             Assert.IsNotEmpty(received.ItemName, "ItemName should not be empty");
         }
 
+        // FIX-12: Insufficient Reputation (not cash) rejects purchase
         [Test]
-        public void OnPurchaseRequested_RejectsWhenInsufficientCash()
+        public void OnPurchaseRequested_RejectsWhenInsufficientReputation()
         {
-            var poorCtx = new RunContext(1, 1, new Portfolio(10f));
+            var poorCtx = new RunContext(1, 1, new Portfolio(10000f));
             poorCtx.Portfolio.StartRound(poorCtx.Portfolio.Cash);
+            // 0 Reputation — can't afford anything
             var poorSm = new GameStateMachine(poorCtx);
 
             ShopState.NextConfig = new ShopStateConfig
@@ -192,8 +202,8 @@ namespace BullRun.Tests.Core.GameStates
 
             shopState.OnPurchaseRequested(poorCtx, 0);
 
-            Assert.IsFalse(eventFired, "Purchase should be rejected with insufficient cash");
-            Assert.AreEqual(10f, poorCtx.Portfolio.Cash, 0.01f, "Cash should be unchanged");
+            Assert.IsFalse(eventFired, "Purchase should be rejected with insufficient Reputation");
+            Assert.AreEqual(0, poorCtx.Reputation.Current, "Rep should be unchanged");
             Assert.AreEqual(0, poorCtx.ActiveItems.Count, "No items should be tracked");
         }
 
@@ -203,12 +213,12 @@ namespace BullRun.Tests.Core.GameStates
             var shopState = EnterShop();
 
             shopState.OnPurchaseRequested(_ctx, 0);
-            float cashAfterFirst = _ctx.Portfolio.Cash;
+            int repAfterFirst = _ctx.Reputation.Current;
 
             shopState.OnPurchaseRequested(_ctx, 0);
 
-            Assert.AreEqual(cashAfterFirst, _ctx.Portfolio.Cash, 0.01f,
-                "Cash should not change on duplicate purchase");
+            Assert.AreEqual(repAfterFirst, _ctx.Reputation.Current,
+                "Rep should not change on duplicate purchase");
             Assert.AreEqual(1, _ctx.ActiveItems.Count,
                 "Should still only have 1 item tracked");
         }
@@ -216,9 +226,10 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void OnPurchaseRequested_CanBuyMultipleCards()
         {
-            // Use ample cash so all 3 items are guaranteed affordable (max item cost is $600)
+            // Use ample Rep so all 3 items are guaranteed affordable
             var richCtx = new RunContext(1, 1, new Portfolio(10000f));
             richCtx.Portfolio.StartRound(richCtx.Portfolio.Cash);
+            richCtx.Reputation.Add(10000);
             var richSm = new GameStateMachine(richCtx);
 
             ShopState.NextConfig = new ShopStateConfig
@@ -235,15 +246,14 @@ namespace BullRun.Tests.Core.GameStates
             shopState.OnPurchaseRequested(richCtx, 2);
 
             Assert.AreEqual(3, richCtx.ActiveItems.Count,
-                "All 3 items should be purchased with ample cash");
+                "All 3 items should be purchased with ample Rep");
         }
 
-        // === ShopClosedEvent tests ===
+        // === ShopClosedEvent tests (FIX-12: carries Rep, not cash) ===
 
         [Test]
         public void ShopClosedEvent_ContainsPurchasedItemIds()
         {
-            // Use null StateMachine so CloseShop skips state transitions
             ShopState.NextConfig = new ShopStateConfig
             {
                 StateMachine = null,
@@ -253,7 +263,6 @@ namespace BullRun.Tests.Core.GameStates
             var state = new ShopState();
             state.Enter(_ctx);
 
-            // Purchase first item
             state.OnPurchaseRequested(_ctx, 0);
             Assert.AreEqual(1, _ctx.ActiveItems.Count, "Setup: one item should be purchased");
             string purchasedId = _ctx.ActiveItems[0];
@@ -266,7 +275,6 @@ namespace BullRun.Tests.Core.GameStates
                 closedEvent = e;
             });
 
-            // Trigger close via Continue button callback (reflection)
             InvokeCloseShop(state, _ctx);
 
             Assert.IsTrue(closedFired, "ShopClosedEvent should fire when shop closes");
@@ -276,7 +284,7 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void ShopClosedEvent_ContainsCashRemaining()
+        public void ShopClosedEvent_ContainsReputationRemaining()
         {
             ShopState.NextConfig = new ShopStateConfig
             {
@@ -288,7 +296,7 @@ namespace BullRun.Tests.Core.GameStates
             state.Enter(_ctx);
 
             state.OnPurchaseRequested(_ctx, 0);
-            float cashAfterPurchase = _ctx.Portfolio.Cash;
+            int repAfterPurchase = _ctx.Reputation.Current;
 
             ShopClosedEvent closedEvent = default;
             bool closedFired = false;
@@ -301,7 +309,7 @@ namespace BullRun.Tests.Core.GameStates
             InvokeCloseShop(state, _ctx);
 
             Assert.IsTrue(closedFired, "ShopClosedEvent should fire");
-            Assert.AreEqual(cashAfterPurchase, closedEvent.CashRemaining, 0.01f);
+            Assert.AreEqual(repAfterPurchase, closedEvent.ReputationRemaining);
         }
 
         [Test]
@@ -319,7 +327,6 @@ namespace BullRun.Tests.Core.GameStates
             bool closedFired = false;
             EventBus.Subscribe<ShopClosedEvent>(_ => closedFired = true);
 
-            // Simulate many Update calls — shop should never auto-close
             for (int i = 0; i < 1000; i++)
             {
                 state.Update(_ctx);
@@ -348,20 +355,18 @@ namespace BullRun.Tests.Core.GameStates
                 closedEvent = e;
             });
 
-            // Simulate Continue button press via CloseShop
             InvokeCloseShop(state, _ctx);
 
             Assert.IsTrue(closedFired, "Continue button should trigger ShopClosedEvent");
             Assert.AreEqual(0, closedEvent.PurchasedItemIds.Length, "No items purchased");
         }
 
-        // === Zero purchases test (AC: 2 — can buy 0 items) ===
+        // === Zero purchases test ===
 
         [Test]
         public void NoPurchases_CashUnchanged()
         {
             EnterShop();
-            // Don't buy anything — cash should remain at starting value
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);
         }
     }

@@ -1,6 +1,6 @@
 # Story FIX-12: Reputation Shop Currency
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -50,69 +50,70 @@ Currently the draft shop deducts item costs from `Portfolio.Cash` via `Portfolio
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create ReputationManager class (AC: 1, 2, 12)
-  - [ ] New file: `Assets/Scripts/Runtime/Core/ReputationManager.cs`
-  - [ ] Simple class with: `int Current { get; private set; }`, `void Add(int amount)`, `void Spend(int amount)`, `bool CanAfford(int cost)`, `void Reset()`
-  - [ ] Not a MonoBehaviour — plain C# class, instantiated by GameRunner or RunContext
-  - [ ] Reputation is an integer (no fractional Rep)
-  - [ ] Initialize to 0 on new run
+- [x] Task 1: Create ReputationManager class (AC: 1, 2, 12)
+  - [x] New file: `Assets/Scripts/Runtime/Core/ReputationManager.cs`
+  - [x] Simple class with: `int Current { get; private set; }`, `void Add(int amount)`, `void Spend(int amount)`, `bool CanAfford(int cost)`, `void Reset()`
+  - [x] Not a MonoBehaviour — plain C# class, instantiated by GameRunner or RunContext
+  - [x] Reputation is an integer (no fractional Rep)
+  - [x] Initialize to 0 on new run
 
-- [ ] Task 2: Wire ReputationManager into RunContext / GameRunner (AC: 1, 2)
-  - [ ] Add `ReputationManager` field to RunContext (or GameRunner if RunContext doesn't exist as a class)
-  - [ ] Initialize on run start: `new ReputationManager()` with 0 Rep
-  - [ ] Accessible to ShopState and ShopUI for purchase validation
-  - [ ] File: `Assets/Scripts/Runtime/Core/GameRunner.cs`
+- [x] Task 2: Wire ReputationManager into RunContext / GameRunner (AC: 1, 2)
+  - [x] Add `ReputationManager` field to RunContext (or GameRunner if RunContext doesn't exist as a class)
+  - [x] Initialize on run start: `new ReputationManager()` with 0 Rep
+  - [x] Accessible to ShopState and ShopUI for purchase validation
+  - [x] File: `Assets/Scripts/Runtime/Core/RunContext.cs`
 
-- [ ] Task 3: Update ShopUI purchase flow — Rep instead of Cash (AC: 3, 4, 5, 11)
-  - [ ] In `ShopUI.OnItemPurchased()`: replace `Portfolio.CanAfford(cost)` → `ReputationManager.CanAfford(cost)`
-  - [ ] Replace `Portfolio.DeductCash(cost)` → `ReputationManager.Spend(cost)`
-  - [ ] Item card cost labels: show Rep icon/symbol instead of "$" (e.g., "★ 15" or "15 Rep")
-  - [ ] BUY button dimmed when `!ReputationManager.CanAfford(cost)`
-  - [ ] Verify: Portfolio.Cash is NOT touched by any shop code path
-  - [ ] Files: Shop UI scripts (find exact file — likely in UISetup or a ShopUI component)
+- [x] Task 3: Update ShopUI purchase flow — Rep instead of Cash (AC: 3, 4, 5, 11)
+  - [x] In `ShopUI.SetupCard()`: replace `Portfolio.CanAfford(cost)` → `Reputation.CanAfford(cost)`
+  - [x] In `ShopTransaction.TryPurchase()`: replace `Portfolio.DeductCash(cost)` → `Reputation.Spend(cost)`
+  - [x] Item card cost labels: show Rep icon/symbol instead of "$" (e.g., "★ 15")
+  - [x] BUY button dimmed when `!Reputation.CanAfford(cost)`
+  - [x] Verify: Portfolio.Cash is NOT touched by any shop code path
+  - [x] Files: `Assets/Scripts/Runtime/UI/ShopUI.cs`, `Assets/Scripts/Runtime/Shop/ShopTransaction.cs`
 
-- [ ] Task 4: Update ShopOpenedEvent and ShopItemPurchasedEvent (AC: 9, 10)
-  - [ ] `ShopOpenedEvent`: add `int Reputation` field (or replace cash field)
-  - [ ] `ShopItemPurchasedEvent`: change `RemainingCash` to `RemainingReputation` (or add Rep field)
-  - [ ] Update all publishers and subscribers of these events
-  - [ ] File: `Assets/Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 4: Update ShopOpenedEvent and ShopItemPurchasedEvent (AC: 9, 10)
+  - [x] `ShopOpenedEvent`: replaced `CurrentCash` with `CurrentReputation` (int)
+  - [x] `ShopItemPurchasedEvent`: replaced `RemainingCash` with `RemainingReputation` (int)
+  - [x] `ShopClosedEvent`: replaced `CashRemaining` with `ReputationRemaining` (int)
+  - [x] Updated all publishers (ShopState, ShopTransaction) and subscribers
+  - [x] File: `Assets/Scripts/Runtime/Core/GameEvents.cs`
 
-- [ ] Task 5: Update Shop UI header to show Reputation balance (AC: 6, 8)
-  - [ ] In `UISetup.ExecuteShopUI()`: replace the cash display text with Reputation display
-  - [ ] Format: "★ 42" or "42 REP" in gold/amber color
-  - [ ] Update dynamically when items purchased (Rep decreases)
-  - [ ] File: `Assets/Scripts/Setup/UISetup.cs`
+- [x] Task 5: Update Shop UI header to show Reputation balance (AC: 6, 8)
+  - [x] In `UISetup.ExecuteShopUI()`: replaced cash display with Reputation display
+  - [x] Format: "★ 42" in amber/gold color (ShopUI.ReputationColor)
+  - [x] Updates dynamically when items purchased (Rep decreases)
+  - [x] File: `Assets/Scripts/Setup/UISetup.cs`
 
-- [ ] Task 6: Add Reputation display to Trading HUD (AC: 7, 8)
-  - [ ] Add compact Reputation counter to the top HUD bar (alongside Cash, Portfolio Value, etc.)
-  - [ ] Format: small star icon + number, amber/gold color (#FFB300 or similar)
-  - [ ] Updates when Reputation changes (awarded at round end via FIX-14)
-  - [ ] Position: right side of top bar or below cash display — visually distinct
-  - [ ] File: `Assets/Scripts/Setup/UISetup.cs`
+- [x] Task 6: Add Reputation display to Trading HUD (AC: 7, 8)
+  - [x] Added compact Reputation counter to the top HUD bar (Section 5: REP)
+  - [x] Format: star icon + number, amber/gold color (ShopUI.ReputationColor)
+  - [x] Updates when Reputation changes (via TradingHUD.RefreshDisplay)
+  - [x] Position: right side of top bar, after Target section — visually distinct
+  - [x] Files: `Assets/Scripts/Setup/UISetup.cs`, `Assets/Scripts/Runtime/UI/TradingHUD.cs`
 
-- [ ] Task 7: Add Reputation config constants to GameConfig (AC: 3)
-  - [ ] Add `StartingReputation = 0` — Rep at run start
-  - [ ] Item Rep costs can be defined here or in item definitions — for now, placeholder constants or a simple mapping
-  - [ ] Note: actual Rep EARNING logic is in FIX-14 — this story only handles tracking and spending
-  - [ ] File: `Assets/Scripts/Setup/Data/GameConfig.cs`
+- [x] Task 7: Add Reputation config constants to GameConfig (AC: 3)
+  - [x] Added `StartingReputation = 0` — Rep at run start
+  - [x] Item costs remain as-is (1:1 mapping to Rep), tuning deferred to FIX-14
+  - [x] File: `Assets/Scripts/Setup/Data/GameConfig.cs`
 
-- [ ] Task 8: Remove Portfolio.DeductCash from shop path (AC: 5)
-  - [ ] Audit all code paths where shop purchases call Portfolio methods
-  - [ ] Remove or guard any `Portfolio.DeductCash()` calls from shop flow
-  - [ ] `Portfolio.DeductCash()` method can remain (may be used elsewhere) but shop must NOT call it
-  - [ ] Files: Shop-related scripts, GameRunner shop integration
+- [x] Task 8: Remove Portfolio.DeductCash from shop path (AC: 5)
+  - [x] Audited all code paths: ShopTransaction.TryPurchase was the only shop→Portfolio.DeductCash caller
+  - [x] Replaced with ReputationManager.Spend in ShopTransaction
+  - [x] Portfolio.DeductCash() method retained (used by trading/position code)
+  - [x] Files: `Assets/Scripts/Runtime/Shop/ShopTransaction.cs`
 
-- [ ] Task 9: Write tests (AC: 1-12)
-  - [ ] Test: ReputationManager.Add increases balance correctly
-  - [ ] Test: ReputationManager.Spend decreases balance correctly
-  - [ ] Test: ReputationManager.CanAfford returns true/false correctly
-  - [ ] Test: ReputationManager.Spend rejects if insufficient (balance unchanged)
-  - [ ] Test: Shop purchase deducts Reputation, NOT Portfolio.Cash
-  - [ ] Test: Portfolio.Cash unchanged after shop purchase
-  - [ ] Test: BUY button disabled when insufficient Reputation
-  - [ ] Test: Reputation starts at 0 on new run
-  - [ ] Test: Reputation persists across rounds (not reset on round start)
-  - [ ] File: `Assets/Tests/Runtime/Core/ReputationManagerTests.cs`
+- [x] Task 9: Write tests (AC: 1-12)
+  - [x] Test: ReputationManager.Add increases balance correctly
+  - [x] Test: ReputationManager.Spend decreases balance correctly
+  - [x] Test: ReputationManager.CanAfford returns true/false correctly
+  - [x] Test: ReputationManager.Spend rejects if insufficient (balance unchanged)
+  - [x] Test: Shop purchase deducts Reputation, NOT Portfolio.Cash
+  - [x] Test: Portfolio.Cash unchanged after shop purchase
+  - [x] Test: CanAfford logic underlies BUY button disabled when insufficient Reputation
+  - [x] Test: Reputation starts at 0 on new run
+  - [x] Test: Reputation persists across rounds (not reset on round start)
+  - [x] File: `Assets/Tests/Runtime/Core/ReputationManagerTests.cs`
+  - [x] Updated existing tests: `ShopTransactionTests.cs`, `ShopStateTests.cs`
 
 ## Dev Notes
 
@@ -141,18 +142,43 @@ Currently the draft shop deducts item costs from `Portfolio.Cash` via `Portfolio
 ## Dev Agent Record
 
 ### Implementation Plan
-_To be filled during implementation_
+- **Approach:** Tasks implemented in story order (1-9). Red-green-refactor adapted per project rules: tests written but not executed by agent (Unity Test Framework requires manual run in Editor).
+- **Key Integration Points:** ShopTransaction.TryPurchase uses Portfolio.CanAfford/DeductCash — will switch to ReputationManager. ShopUI.UpdateCashDisplay/SetupCard reference Portfolio.Cash — will switch to ReputationManager.Current. ShopState.Enter publishes ShopOpenedEvent with Portfolio.Cash — will carry Rep. ShopUI.RefreshAfterPurchase checks Portfolio.CanAfford — will switch to ReputationManager.
+- **Item Cost Conversion:** Existing item costs (150-500) are already integers. Will keep same cost values as Rep costs (1:1 mapping) since Rep earning rates will be tuned in FIX-14.
+- **ReputationManager Location:** Plain C# class in Scripts/Runtime/Core/ — owned by RunContext, not MonoBehaviour.
+- **HUD Display:** Amber/gold star icon + number in top bar, visually distinct from green cash display.
 
 ### Completion Notes
-_To be filled after implementation_
+- Created ReputationManager as a plain C# class owned by RunContext (not MonoBehaviour)
+- Fully replaced shop currency from Portfolio.Cash to Reputation across all shop code paths
+- ShopTransaction.TryPurchase now validates and deducts Reputation, never touches Portfolio.Cash
+- ShopUI displays costs as "★ {cost}" with amber/gold color, checks Reputation.CanAfford for affordability
+- All 3 shop events (ShopOpenedEvent, ShopItemPurchasedEvent, ShopClosedEvent) updated to carry Reputation fields
+- Trading HUD now includes a REP section (Section 5) with star icon in amber/gold
+- 20 new unit tests in ReputationManagerTests covering all ACs
+- Updated 2 existing test files (ShopTransactionTests, ShopStateTests) for Reputation integration
+- Portfolio.DeductCash() retained for trading use, but completely removed from shop path
 
 ### Debug Log
-_To be filled during implementation_
+- No issues encountered during implementation. Clean separation between Reputation and Portfolio cash.
 
 ## File List
 
-_To be filled during implementation_
+- `Assets/Scripts/Runtime/Core/ReputationManager.cs` (NEW)
+- `Assets/Scripts/Runtime/Core/RunContext.cs` (MODIFIED — added Reputation property, init in constructor + ResetForNewRun)
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` (MODIFIED — ShopOpenedEvent, ShopItemPurchasedEvent, ShopClosedEvent fields)
+- `Assets/Scripts/Setup/Data/GameConfig.cs` (MODIFIED — added StartingReputation constant)
+- `Assets/Scripts/Runtime/Shop/ShopTransaction.cs` (MODIFIED — Reputation instead of Portfolio.Cash)
+- `Assets/Scripts/Runtime/UI/ShopUI.cs` (MODIFIED — Reputation display, CanAfford checks, star icon costs)
+- `Assets/Scripts/Runtime/UI/TradingHUD.cs` (MODIFIED — added Reputation display section)
+- `Assets/Scripts/Setup/UISetup.cs` (MODIFIED — Rep display in shop + HUD Section 5)
+- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs` (MODIFIED — event publishers updated for Rep)
+- `Assets/Tests/Runtime/Core/ReputationManagerTests.cs` (NEW — 20 tests)
+- `Assets/Tests/Runtime/Shop/ShopTransactionTests.cs` (MODIFIED — updated for Reputation)
+- `Assets/Tests/Runtime/Core/GameStates/ShopStateTests.cs` (MODIFIED — updated for Reputation)
 
 ## Change Log
 
 - 2026-02-14: Story created — Reputation as shop currency, decoupled from trading cash
+- 2026-02-14: Implementation complete — All 9 tasks done, 20 new tests + updated existing tests
+- 2026-02-14: Code review fixes — H1: Fixed CanAfford/Spend API inconsistency for zero-cost items; H2: Added Reputation rollback to ShopTransaction catch block; M1: ReputationManager now reads GameConfig.StartingReputation; M2: Corrected test count (20, not 22); L1: Fixed stale UISetup doc comment

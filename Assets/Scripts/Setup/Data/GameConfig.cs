@@ -29,6 +29,9 @@ public static class GameConfig
     // Button dim alpha during trade cooldown (0 = invisible, 1 = fully opaque)
     public static readonly float CooldownDimAlpha = 0.35f;
 
+    // Reputation: shop currency (FIX-12). Earning logic in FIX-14.
+    public static readonly int StartingReputation = 0;
+
     // Market Open preview duration before trading begins
     public static readonly float MarketOpenDurationSeconds = 7f;
 

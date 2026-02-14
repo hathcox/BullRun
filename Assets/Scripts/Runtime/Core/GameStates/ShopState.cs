@@ -70,7 +70,7 @@ public class ShopState : IGameState
         {
             RoundNumber = ctx.CurrentRound,
             AvailableItems = availableItems,
-            CurrentCash = ctx.Portfolio.Cash
+            CurrentReputation = ctx.Reputation.Current
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -142,7 +142,7 @@ public class ShopState : IGameState
         EventBus.Publish(new ShopClosedEvent
         {
             PurchasedItemIds = _purchasedItemIds.ToArray(),
-            CashRemaining = ctx.Portfolio.Cash,
+            ReputationRemaining = ctx.Reputation.Current,
             RoundNumber = ctx.CurrentRound
         });
 

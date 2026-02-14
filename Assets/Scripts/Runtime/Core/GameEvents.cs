@@ -187,32 +187,35 @@ public struct ActTransitionEvent
 
 /// <summary>
 /// Fired when the draft shop opens after a successful round.
+/// FIX-12: Carries Reputation balance (shop currency) instead of cash.
 /// </summary>
 public struct ShopOpenedEvent
 {
     public int RoundNumber;
     public ShopItemDef[] AvailableItems;
-    public float CurrentCash;
+    public int CurrentReputation;
 }
 
 /// <summary>
 /// Fired when the player purchases an item from the shop.
+/// FIX-12: Cost and remaining balance are in Reputation, not cash.
 /// </summary>
 public struct ShopItemPurchasedEvent
 {
     public string ItemId;
     public string ItemName;
     public int Cost;
-    public float RemainingCash;
+    public int RemainingReputation;
 }
 
 /// <summary>
 /// Fired when the shop closes (player clicked Continue).
+/// FIX-12: Remaining balance is in Reputation, not cash.
 /// </summary>
 public struct ShopClosedEvent
 {
     public string[] PurchasedItemIds;
-    public float CashRemaining;
+    public int ReputationRemaining;
     public int RoundNumber;
 }
 

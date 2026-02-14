@@ -103,6 +103,12 @@ public static class UISetup
         var targetValue = CreateLabel("TargetValue", targetSection.transform, "$0 / $0", ValueColor, 16);
         var targetBar = CreateProgressBar("TargetBar", targetSection.transform);
 
+        // FIX-12: Section 5: Reputation (amber/gold, star icon)
+        var repSection = CreateHUDSection("ReputationSection", topBar.transform);
+        var repLabel = CreateLabel("RepLabel", repSection.transform, "REP", LabelColor, 12);
+        var repValue = CreateLabel("RepValue", repSection.transform, "\u2605 0",
+            ShopUI.ReputationColor, 20);
+
         // Initialize TradingHUD MonoBehaviour
         var tradingHUD = hudParent.AddComponent<TradingHUD>();
         tradingHUD.Initialize(
@@ -115,6 +121,7 @@ public static class UISetup
             targetBar
         );
         tradingHUD.SetTopBarBackground(topBar.GetComponent<Image>());
+        tradingHUD.SetReputationDisplay(repValue.GetComponent<Text>());
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Setup] TradingHUD created: round={currentRound}, target=${MarginCallTargets.GetTarget(currentRound):F0}");
@@ -917,7 +924,7 @@ public static class UISetup
 
     /// <summary>
     /// Generates the Shop UI overlay panel.
-    /// Three item cards horizontally arranged, cash display at top, countdown timer.
+    /// Three item cards horizontally arranged, Reputation display at top, untimed.
     /// Wired to ShopState via ShopState.ShopUIInstance.
     /// </summary>
     public static ShopUI ExecuteShopUI()
@@ -957,16 +964,16 @@ public static class UISetup
         headerRect.anchoredPosition = new Vector2(0f, -30f);
         headerRect.sizeDelta = new Vector2(400f, 40f);
 
-        // Cash display
-        var cashGo = CreateLabel("ShopCash", bgGo.transform, "$1000",
-            new Color(1f, 0.85f, 0.2f, 1f), 24);
-        cashGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        var cashRect = cashGo.GetComponent<RectTransform>();
-        cashRect.anchorMin = new Vector2(0.5f, 1f);
-        cashRect.anchorMax = new Vector2(0.5f, 1f);
-        cashRect.pivot = new Vector2(0.5f, 1f);
-        cashRect.anchoredPosition = new Vector2(0f, -75f);
-        cashRect.sizeDelta = new Vector2(300f, 30f);
+        // FIX-12: Reputation display (amber/gold star icon) instead of cash
+        var repGo = CreateLabel("ShopReputation", bgGo.transform, "\u2605 0",
+            ShopUI.ReputationColor, 24);
+        repGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var repRect = repGo.GetComponent<RectTransform>();
+        repRect.anchorMin = new Vector2(0.5f, 1f);
+        repRect.anchorMax = new Vector2(0.5f, 1f);
+        repRect.pivot = new Vector2(0.5f, 1f);
+        repRect.anchoredPosition = new Vector2(0f, -75f);
+        repRect.sizeDelta = new Vector2(300f, 30f);
 
         // Card container — horizontal layout, centered
         var cardContainer = new GameObject("CardContainer");
@@ -1011,7 +1018,7 @@ public static class UISetup
         var shopUI = overlayParent.AddComponent<ShopUI>();
         shopUI.Initialize(
             bgGo,
-            cashGo.GetComponent<Text>(),
+            repGo.GetComponent<Text>(),
             headerGo.GetComponent<Text>(),
             cards,
             canvasGroup

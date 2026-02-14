@@ -14,6 +14,7 @@ public class RunContext
     public int CurrentRound { get; internal set; }
     public Portfolio Portfolio { get; internal set; }
     public List<string> ActiveItems { get; private set; }
+    public ReputationManager Reputation { get; private set; }
     public float StartingCapital { get; internal set; }
 
     /// <summary>
@@ -74,6 +75,7 @@ public class RunContext
         CurrentRound = currentRound;
         Portfolio = portfolio;
         ActiveItems = new List<string>();
+        Reputation = new ReputationManager();
         StartingCapital = portfolio.Cash;
         PeakCash = portfolio.Cash;
     }
@@ -188,6 +190,7 @@ public class RunContext
         CurrentAct = 1;
         CurrentRound = 1;
         ActiveItems.Clear();
+        Reputation.Reset();
         StartingCapital = Portfolio.Cash;
         RunCompleted = false;
         PeakCash = Portfolio.Cash;

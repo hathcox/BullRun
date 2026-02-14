@@ -115,7 +115,7 @@ development_status:
   FIX-9-scope-events-to-single-stock: done
   FIX-10-trade-execution-delay: done
   FIX-11-short-selling-redesign: done
-  FIX-12-reputation-shop-currency: ready-for-dev
+  FIX-12-reputation-shop-currency: done
   FIX-13-single-share-unlock-tiers: ready-for-dev
   FIX-14-economy-rebalance: ready-for-dev
 
