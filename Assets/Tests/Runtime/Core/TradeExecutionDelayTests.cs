@@ -49,7 +49,7 @@ namespace BullRun.Tests.Core
         {
             // AC 8: Auto-liquidation at market close is unaffected by cooldown.
             // MarketCloseState calls Portfolio.LiquidateAllPositions() directly.
-            var portfolio = new Portfolio();
+            var portfolio = new Portfolio(GameConfig.StartingCapital);
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
@@ -68,7 +68,7 @@ namespace BullRun.Tests.Core
         [Test]
         public void AutoLiquidation_WorksWithShortPositions()
         {
-            var portfolio = new Portfolio();
+            var portfolio = new Portfolio(GameConfig.StartingCapital);
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
@@ -281,7 +281,7 @@ namespace BullRun.Tests.Core
         {
             // AC 4: Trade executes at the price when cooldown COMPLETES.
             // TradeExecutor uses the price passed at call time.
-            var portfolio = new Portfolio();
+            var portfolio = new Portfolio(GameConfig.StartingCapital);
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
@@ -289,7 +289,7 @@ namespace BullRun.Tests.Core
             Assert.IsTrue(success);
 
             var pos = portfolio.GetPosition("0");
-            Assert.AreEqual(10f, pos.AveragePrice, 0.01f,
+            Assert.AreEqual(10f, pos.AverageBuyPrice, 0.01f,
                 "Trade should execute at the provided price (current price at execution time)");
         }
 
@@ -298,8 +298,8 @@ namespace BullRun.Tests.Core
         {
             // Verify that passing a different price (as happens after cooldown delay)
             // produces different trade costs — confirms natural slippage behavior
-            var portfolio1 = new Portfolio();
-            var portfolio2 = new Portfolio();
+            var portfolio1 = new Portfolio(GameConfig.StartingCapital);
+            var portfolio2 = new Portfolio(GameConfig.StartingCapital);
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
