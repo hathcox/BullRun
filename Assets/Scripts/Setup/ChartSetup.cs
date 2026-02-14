@@ -8,8 +8,8 @@ using UnityEngine.UI;
 /// </summary>
 public static class ChartSetup
 {
-    // FIX-5: Chart expanded — no sidebar on left, positions panel (180px) on right
-    private static readonly float ChartWidthPercent = 0.65f;
+    // FIX-5: No sidebar on left. FIX-7: No positions panel on right — chart uses full width.
+    private static readonly float ChartWidthPercent = 0.80f;
     private static readonly float ChartHeightPercent = 0.70f;
     private static readonly int AxisLabelCount = 5;
     private static readonly Color BackgroundColor = new Color(0.039f, 0.055f, 0.153f, 1f); // #0A0E27 dark navy
@@ -193,11 +193,10 @@ public static class ChartSetup
 
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // Create Y-axis labels on right side — must fit between chart edge and positions panel (180px from right)
+        // Create Y-axis labels on right side (FIX-7: no positions panel, labels at chart edge)
         var axisLabels = new Text[AxisLabelCount];
-        // 960 = half canvas width. Positions panel occupies rightmost 180px (780-960 from center).
-        // Place labels just left of positions panel with 10px margin.
-        float axisLabelX = 960f - 180f - 70f - 10f; // = 700 from center
+        // 960 = half canvas width. Labels placed at right edge of chart area with margin.
+        float axisLabelX = 960f * ChartWidthPercent + 10f; // Just past right edge of chart
 
         for (int i = 0; i < AxisLabelCount; i++)
         {

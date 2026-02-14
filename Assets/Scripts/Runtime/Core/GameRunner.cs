@@ -18,6 +18,7 @@ public class GameRunner : MonoBehaviour
     private TradeExecutor _tradeExecutor;
     private EventScheduler _eventScheduler;
     private QuantitySelector _quantitySelector;
+    private PositionOverlay _positionOverlay;
     private bool _firstFrameSkipped;
     private bool _tradePanelVisible;
 
@@ -55,7 +56,8 @@ public class GameRunner : MonoBehaviour
         // Create all UI systems with runtime data (FIX-5: sidebar removed — single stock per round)
         UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
-        UISetup.ExecutePositionsPanel(_ctx.Portfolio);
+        // FIX-7: Compact position overlay replaces old right-side PositionPanel
+        _positionOverlay = UISetup.ExecutePositionOverlay(_ctx.Portfolio);
         UISetup.ExecuteRoundTimer();
 
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
@@ -70,6 +72,9 @@ public class GameRunner : MonoBehaviour
 
         // Subscribe to trade button clicks from UI
         EventBus.Subscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
+
+        // FIX-7: Wire position overlay to track the active stock
+        EventBus.Subscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
 
         // Create event display systems (subscribe to MarketEventFiredEvent)
         UISetup.ExecuteNewsBanner();
@@ -131,6 +136,18 @@ public class GameRunner : MonoBehaviour
     private void OnDestroy()
     {
         EventBus.Unsubscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
+        EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
+    }
+
+    /// <summary>
+    /// FIX-7: Sets the position overlay's active stock when the market opens.
+    /// </summary>
+    private void OnMarketOpenForOverlay(MarketOpenEvent evt)
+    {
+        if (_positionOverlay != null && evt.StockIds != null && evt.StockIds.Length > 0)
+        {
+            _positionOverlay.SetActiveStock(evt.StockIds[0].ToString());
+        }
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 # Story FIX-7: Current Position Overlay — Bottom-Left of Chart
 
-Status: pending
+Status: review
 
 ## Story
 
@@ -32,10 +32,10 @@ Currently the `PositionPanel` is a right sidebar (180px wide) that lists all ope
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create compact position overlay UI (AC: 1, 2, 3, 4, 7, 9)
-  - [ ] Create `ExecutePositionOverlay()` in UISetup (replaces `ExecutePositionsPanel()`)
-  - [ ] Position: anchored to bottom-left of chart canvas area
-  - [ ] Layout (compact, ~200x80px):
+- [x] Task 1: Create compact position overlay UI (AC: 1, 2, 3, 4, 7, 9)
+  - [x] Create `ExecutePositionOverlay()` in UISetup (replaces `ExecutePositionsPanel()`)
+  - [x] Position: anchored to bottom-left of chart canvas area
+  - [x] Layout (compact, ~200x80px):
     ```
     ┌─────────────────────┐
     │ 15x LONG            │
@@ -43,42 +43,42 @@ Currently the `PositionPanel` is a right sidebar (180px wide) that lists all ope
     │ P&L: +$3.75         │
     └─────────────────────┘
     ```
-  - [ ] When flat:
+  - [x] When flat:
     ```
     ┌─────────────────────┐
     │ FLAT                │
     └─────────────────────┘
     ```
-  - [ ] Background: semi-transparent dark (alpha ~0.6)
-  - [ ] Canvas: use ChartCanvas (sorting order 10) or a dedicated overlay canvas at order 11
-  - [ ] File: `Scripts/Setup/UISetup.cs`
+  - [x] Background: semi-transparent dark (alpha ~0.6)
+  - [x] Canvas: use ChartCanvas (sorting order 10) or a dedicated overlay canvas at order 11
+  - [x] File: `Scripts/Setup/UISetup.cs`
 
-- [ ] Task 2: Create PositionOverlay MonoBehaviour (AC: 2, 3, 4, 5, 6)
-  - [ ] New file: `Scripts/Runtime/UI/PositionOverlay.cs`
-  - [ ] Subscribe to `PriceUpdatedEvent` for real-time P&L updates
-  - [ ] Subscribe to `TradeExecutedEvent` to refresh position state
-  - [ ] Subscribe to `RoundStartedEvent` to reset to FLAT
-  - [ ] Fields: shares count text, direction label, avg price text, P&L text
-  - [ ] Colors: LONG = neon green (#00FF88), SHORT = hot pink (#FF66B3), FLAT = gray, P&L green/red
-  - [ ] `RefreshDisplay()`: reads from Portfolio for current position state
-  - [ ] File: `Scripts/Runtime/UI/PositionOverlay.cs`
+- [x] Task 2: Create PositionOverlay MonoBehaviour (AC: 2, 3, 4, 5, 6)
+  - [x] New file: `Scripts/Runtime/UI/PositionOverlay.cs`
+  - [x] Subscribe to `PriceUpdatedEvent` for real-time P&L updates
+  - [x] Subscribe to `TradeExecutedEvent` to refresh position state
+  - [x] Subscribe to `RoundStartedEvent` to reset to FLAT
+  - [x] Fields: shares count text, direction label, avg price text, P&L text
+  - [x] Colors: LONG = neon green (#00FF88), SHORT = hot pink (#FF66B3), FLAT = gray, P&L green/red
+  - [x] `RefreshDisplay()`: reads from Portfolio for current position state
+  - [x] File: `Scripts/Runtime/UI/PositionOverlay.cs`
 
-- [ ] Task 3: Remove old PositionPanel (AC: 8)
-  - [ ] Remove `UISetup.ExecutePositionsPanel()` call from `GameRunner.Start()`
-  - [ ] Keep `PositionPanel.cs` and `PositionPanelData.cs` files (don't delete — cleanup pass later)
-  - [ ] Files: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Setup/UISetup.cs`
+- [x] Task 3: Remove old PositionPanel (AC: 8)
+  - [x] Remove `UISetup.ExecutePositionsPanel()` call from `GameRunner.Start()`
+  - [x] Keep `PositionPanel.cs` and `PositionPanelData.cs` files (don't delete — cleanup pass later)
+  - [x] Files: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Setup/UISetup.cs`
 
-- [ ] Task 4: Expand chart to use freed right-side space (AC: 8)
-  - [ ] Adjust `ChartSetup.ChartWidthPercent` to account for no right sidebar (180px freed)
-  - [ ] Reposition Y-axis labels further right if needed
-  - [ ] Note: coordinate with FIX-5 which also expands chart (left sidebar removal)
-  - [ ] File: `Scripts/Setup/ChartSetup.cs`
+- [x] Task 4: Expand chart to use freed right-side space (AC: 8)
+  - [x] Adjust `ChartSetup.ChartWidthPercent` to account for no right sidebar (180px freed)
+  - [x] Reposition Y-axis labels further right if needed
+  - [x] Note: coordinate with FIX-5 which also expands chart (left sidebar removal)
+  - [x] File: `Scripts/Setup/ChartSetup.cs`
 
-- [ ] Task 5: Wire PositionOverlay to Portfolio (AC: 5, 6)
-  - [ ] Pass Portfolio reference to PositionOverlay.Initialize()
-  - [ ] Wire in GameRunner.Start() after portfolio is created
-  - [ ] Since FIX-5 means single stock, the overlay always queries the single active stock's position
-  - [ ] File: `Scripts/Runtime/Core/GameRunner.cs`
+- [x] Task 5: Wire PositionOverlay to Portfolio (AC: 5, 6)
+  - [x] Pass Portfolio reference to PositionOverlay.Initialize()
+  - [x] Wire in GameRunner.Start() after portfolio is created
+  - [x] Since FIX-5 means single stock, the overlay always queries the single active stock's position
+  - [x] File: `Scripts/Runtime/Core/GameRunner.cs`
 
 ## Dev Notes
 
@@ -109,3 +109,32 @@ Currently the `PositionPanel` is a right sidebar (180px wide) that lists all ope
 - `Scripts/Setup/UISetup.cs:292-353` — `ExecutePositionsPanel()` (to be replaced)
 - `Scripts/Runtime/Core/GameRunner.cs:61` — current positions panel creation
 - `Scripts/Runtime/Trading/Portfolio.cs` — position data source
+
+## Dev Agent Record
+
+### Implementation Plan
+- Created `PositionOverlay.cs` MonoBehaviour with event-driven updates (PriceUpdatedEvent, TradeExecutedEvent, RoundStartedEvent)
+- Added `ExecutePositionOverlay()` to UISetup following the established Setup-Oriented Generation pattern
+- Replaced `ExecutePositionsPanel()` call in GameRunner with `ExecutePositionOverlay()`
+- Expanded chart from 65% to 80% width now that neither sidebar nor positions panel occupies screen space
+- Repositioned Y-axis labels to match new chart width
+- Wired overlay to track active stock via MarketOpenEvent subscription in GameRunner
+
+### Completion Notes
+- All 5 tasks implemented and tested
+- PositionOverlay uses dirty-flag pattern (same as PositionPanel) for efficient updates
+- Semi-transparent background (alpha 0.6) at bottom-left corner (20px, 100px from screen edge)
+- Dedicated canvas at sorting order 11 (just above ChartCanvas at 10)
+- Old PositionPanel.cs and PositionPanelData.cs files retained per story instructions (cleanup pass later)
+- ExecutePositionsPanel() method retained in UISetup for backward compatibility but no longer called
+- Unit tests cover static utility methods: color logic, direction formatting, flat state
+
+## File List
+- `Assets/Scripts/Runtime/UI/PositionOverlay.cs` (new)
+- `Assets/Scripts/Setup/UISetup.cs` (modified — added ExecutePositionOverlay)
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` (modified — replaced ExecutePositionsPanel with ExecutePositionOverlay, added MarketOpenEvent wiring)
+- `Assets/Scripts/Setup/ChartSetup.cs` (modified — expanded ChartWidthPercent 0.65 → 0.80, updated axis label positioning)
+- `Assets/Tests/Runtime/UI/PositionOverlayTests.cs` (new)
+
+## Change Log
+- 2026-02-13: Implemented FIX-7 — compact position overlay replacing right-side PositionPanel, chart expanded to 80% width

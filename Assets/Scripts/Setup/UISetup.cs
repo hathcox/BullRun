@@ -354,6 +354,80 @@ public static class UISetup
     }
 
     /// <summary>
+    /// Generates the compact position overlay on the bottom-left of the chart area.
+    /// Shows direction (LONG/SHORT/FLAT), share count, avg price, and real-time P&L.
+    /// Replaces the old ExecutePositionsPanel() right sidebar (FIX-7).
+    /// </summary>
+    public static PositionOverlay ExecutePositionOverlay(Portfolio portfolio)
+    {
+        var overlayParent = new GameObject("PositionOverlay");
+
+        // Create Canvas — use ChartCanvas sorting order range
+        var canvasGo = new GameObject("PositionOverlayCanvas");
+        canvasGo.transform.SetParent(overlayParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 11; // Just above ChartCanvas (10)
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        // No GraphicRaycaster — overlay should not block input
+
+        // Overlay container — bottom-left of chart area
+        var containerGo = CreatePanel("OverlayContainer", canvasGo.transform);
+        var containerRect = containerGo.GetComponent<RectTransform>();
+        containerRect.anchorMin = new Vector2(0f, 0f);
+        containerRect.anchorMax = new Vector2(0f, 0f);
+        containerRect.pivot = new Vector2(0f, 0f);
+        containerRect.anchoredPosition = new Vector2(20f, 100f); // Above inventory bar + news ticker
+        containerRect.sizeDelta = new Vector2(200f, 80f);
+        containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.6f); // Semi-transparent dark
+
+        // Vertical layout for rows
+        var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 2f;
+        vlg.padding = new RectOffset(10, 10, 6, 6);
+        vlg.childAlignment = TextAnchor.UpperLeft;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Row 1: Direction — "15x LONG" or "FLAT"
+        var directionGo = CreateLabel("DirectionText", containerGo.transform, "FLAT",
+            new Color(0.5f, 0.5f, 0.55f, 1f), 16);
+        directionGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        directionGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        // Row 2: Avg price — "Avg: $2.45"
+        var avgPriceGo = CreateLabel("AvgPriceText", containerGo.transform, "Avg: $0.00",
+            LabelColor, 13);
+        avgPriceGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        // Row 3: P&L — "P&L: +$3.75"
+        var pnlGo = CreateLabel("PnLText", containerGo.transform, "P&L: +$0.00",
+            Color.white, 14);
+        pnlGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        pnlGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        // Initialize PositionOverlay MonoBehaviour
+        var positionOverlay = overlayParent.AddComponent<PositionOverlay>();
+        positionOverlay.Initialize(
+            portfolio,
+            directionGo.GetComponent<Text>(),
+            avgPriceGo.GetComponent<Text>(),
+            pnlGo.GetComponent<Text>(),
+            avgPriceGo,
+            pnlGo
+        );
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] PositionOverlay created: bottom-left chart overlay");
+        #endif
+
+        return positionOverlay;
+    }
+
+    /// <summary>
     /// Generates the Market Open preview overlay panel.
     /// Shows act/round, stock list, news headline, profit target, and countdown.
     /// </summary>
