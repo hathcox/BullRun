@@ -1,6 +1,6 @@
 # Story FIX-4: Event Pop-Up Display with Pause & Directional Fly
 
-Status: review
+Status: done
 
 ## Story
 
@@ -179,7 +179,7 @@ From `MarketEventFiredEvent`:
 ### Implementation Notes
 - **Task 1 (Critical Bug Fix):** Added three missing `UISetup.Execute*()` calls to `GameRunner.Start()` — `ExecuteNewsBanner()`, `ExecuteNewsTicker()`, `ExecuteScreenEffects()`. Placed after existing UI setup calls and before overlay/state-transition UIs. This restores all existing event visual feedback (banners, ticker scrolling, screen shake/pulse/tint/flash).
 - **Tasks 2-7 (EventPopup):** Created new `EventPopup` MonoBehaviour and `UISetup.ExecuteEventPopup()`. The popup uses a dedicated overlay Canvas (sortingOrder 50) with a ~60% width panel containing a large directional arrow (48pt), bold headline (26pt), and affected tickers (18pt). Subscribes to `MarketEventFiredEvent` via EventBus. On event: pauses game (`Time.timeScale = 0`), waits 1.2s (unscaled), then flies popup up/down with ease-in curve, scale-up (1.0→1.2), and alpha fade over 0.4s. All animation uses `Time.unscaledDeltaTime` and `WaitForSecondsRealtime`. Event queuing via `Queue<MarketEventFiredEvent>` with reduced 0.8s pause for queued events. TimeScale safely restored on completion and in `OnDestroy()`.
-- **Task 8 (Tests):** 15 tests in `EventPopupTests.cs` covering: direction arrows, popup colors, color values, configuration constants, activation on event, timeScale pausing, headline display, positive/negative styling, ticker display, global events, event queuing, and empty/null headline handling. Existing `NewsBannerTests.cs` already covers NewsBanner event reception (7 tests including event-driven creation).
+- **Task 8 (Tests):** 22 tests in `EventPopupTests.cs` covering: direction arrows, popup colors, color values, configuration constants, activation on event, timeScale pausing, headline display, positive/negative styling, ticker display, global events, event queuing, empty/null headline handling, OnDestroy timeScale restoration, and EventPopupCompletedEvent publication. Existing `NewsBannerTests.cs` already covers NewsBanner event reception (7 tests including event-driven creation). `NewsTickerTests.cs` covers ticker event reception (8 tests including event-driven creation).
 - **Architecture Compliance:** All patterns followed — programmatic uGUI, EventBus subscription, setup-oriented generation, no Inspector configuration, no direct system references, no `UnityEditor` in Runtime.
 
 ### Completion Notes
@@ -197,10 +197,32 @@ All 8 tasks and all subtasks completed. Implementation satisfies all 9 acceptanc
 ## File List
 
 - `Assets/Scripts/Runtime/Core/GameRunner.cs` — Modified: added 4 init calls (NewsBanner, NewsTicker, ScreenEffects, EventPopup)
-- `Assets/Scripts/Runtime/UI/EventPopup.cs` — New: dramatic event popup MonoBehaviour with pause, fly animation, and queuing
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` — Modified: added EventPopupCompletedEvent struct
+- `Assets/Scripts/Runtime/UI/EventPopup.cs` — New: dramatic event popup MonoBehaviour with pause, fly animation, queuing, and completion event
+- `Assets/Scripts/Runtime/UI/ScreenEffects.cs` — Modified: subscribes to EventPopupCompletedEvent instead of MarketEventFiredEvent
 - `Assets/Scripts/Setup/UISetup.cs` — Modified: added ExecuteEventPopup() method
-- `Assets/Tests/Runtime/UI/EventPopupTests.cs` — New: 15 unit tests for EventPopup
+- `Assets/Tests/Runtime/UI/EventPopupTests.cs` — New: 22 unit tests for EventPopup
+- `Assets/Tests/Runtime/UI/ScreenEffectsTests.cs` — Modified: updated activation tests for EventPopupCompletedEvent
+- `Assets/_Generated/Scenes/MainScene.unity` — Auto-generated scene update
+- `ProjectSettings/TimeManager.asset` — Unity editor serialization format migration (no functional change)
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Iggy on 2026-02-13
+
+### Findings Fixed (Code Review)
+- **H1 — ScreenEffects timing (Task 6 AC violation):** ScreenEffects subscribed to `MarketEventFiredEvent` directly, causing effects to activate during popup pause instead of after. Fixed by introducing `EventPopupCompletedEvent` — EventPopup publishes it after animation completes (and for skipped popups). ScreenEffects now subscribes to `EventPopupCompletedEvent` so effects start AFTER the popup flies away and timeScale resumes.
+- **H2 — Test count mismatch:** Story claimed "15 tests" but file had 20. Added 2 more tests (OnDestroy timeScale restoration, EventPopupCompletedEvent publication). Updated doc to reflect 22 tests.
+- **H3/M4 — Undocumented file changes:** `ProjectSettings/TimeManager.asset`, `MainScene.unity`, `GameEvents.cs`, `ScreenEffects.cs`, `ScreenEffectsTests.cs` added to File List.
+- **M1 — Missing timeScale restoration test:** Added `EventPopup_OnDestroy_RestoresTimeScale` test verifying the safety net.
+- **M3 — Dead `_isFirstEvent` field:** Removed unused member variable from `EventPopup.cs`.
+
+### Remaining (Low, Accepted)
+- L1: `static readonly` for primitive constants — acceptable, no functional impact
+- L2: No coroutine cancellation on state transition — edge case, OnDestroy safety net covers it
+- L3: Test suite weighted toward static/constant assertions — adequate for current scope
 
 ## Change Log
 
 - 2026-02-13: Fixed critical bug — NewsBanner, NewsTicker, and ScreenEffects were never instantiated (missing init calls in GameRunner.Start()). Added new EventPopup system for dramatic center-screen event display with pause-and-fly animation.
+- 2026-02-13: Code review fixes — Added EventPopupCompletedEvent so ScreenEffects activates after popup (not during pause). Removed dead _isFirstEvent field. Added 2 new tests. Updated File List and test documentation.

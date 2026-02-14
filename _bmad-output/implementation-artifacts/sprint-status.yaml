@@ -107,7 +107,7 @@ development_status:
   FIX-1-shop-click-and-timer: done
   FIX-2-short-selling-ui: done
   FIX-3-trade-quantity-selection: done
-  FIX-4-event-popup-display: review
+  FIX-4-event-popup-display: done
   FIX-5-single-stock-per-round: ready-for-dev
   FIX-6-trading-panel-overhaul: ready-for-dev
   FIX-7-position-overlay: ready-for-dev

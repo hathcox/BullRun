@@ -108,12 +108,10 @@ namespace BullRun.Tests.UI
         {
             var go = CreateScreenEffectsGO(out var effects);
 
-            EventBus.Publish(new MarketEventFiredEvent
+            EventBus.Publish(new EventPopupCompletedEvent
             {
                 EventType = MarketEventType.MarketCrash,
-                Headline = "Market Crash!",
-                IsPositive = false,
-                Duration = 8f
+                IsPositive = false
             });
 
             Assert.IsTrue(effects.IsShaking, "Should be shaking after MarketCrash");
@@ -127,12 +125,10 @@ namespace BullRun.Tests.UI
         {
             var go = CreateScreenEffectsGO(out var effects);
 
-            EventBus.Publish(new MarketEventFiredEvent
+            EventBus.Publish(new EventPopupCompletedEvent
             {
                 EventType = MarketEventType.BullRun,
-                Headline = "Bull Run!",
-                IsPositive = true,
-                Duration = 8f
+                IsPositive = true
             });
 
             Assert.IsTrue(effects.IsGreenTinting, "Should be green tinting after BullRun");
@@ -146,12 +142,10 @@ namespace BullRun.Tests.UI
         {
             var go = CreateScreenEffectsGO(out var effects);
 
-            EventBus.Publish(new MarketEventFiredEvent
+            EventBus.Publish(new EventPopupCompletedEvent
             {
                 EventType = MarketEventType.FlashCrash,
-                Headline = "Flash Crash!",
-                IsPositive = false,
-                Duration = 8f
+                IsPositive = false
             });
 
             Assert.IsTrue(effects.IsFlashing, "Should be flashing after FlashCrash");
@@ -165,12 +159,11 @@ namespace BullRun.Tests.UI
         {
             var go = CreateScreenEffectsGO(out var effects);
 
-            EventBus.Publish(new MarketEventFiredEvent
+            // Start effect via popup completion
+            EventBus.Publish(new EventPopupCompletedEvent
             {
                 EventType = MarketEventType.MarketCrash,
-                Headline = "Crash!",
-                IsPositive = false,
-                Duration = 8f
+                IsPositive = false
             });
 
             Assert.IsTrue(effects.IsShaking);
@@ -191,12 +184,10 @@ namespace BullRun.Tests.UI
         {
             var go = CreateScreenEffectsGO(out var effects);
 
-            EventBus.Publish(new MarketEventFiredEvent
+            EventBus.Publish(new EventPopupCompletedEvent
             {
                 EventType = MarketEventType.EarningsBeat,
-                Headline = "Earnings Beat!",
-                IsPositive = true,
-                Duration = 5f
+                IsPositive = true
             });
 
             Assert.IsFalse(effects.IsShaking);

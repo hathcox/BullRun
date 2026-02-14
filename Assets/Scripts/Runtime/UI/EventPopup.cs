@@ -34,7 +34,6 @@ public class EventPopup : MonoBehaviour
 
     private Queue<MarketEventFiredEvent> _eventQueue = new Queue<MarketEventFiredEvent>();
     private bool _isActive;
-    private bool _isFirstEvent = true;
     private float _savedTimeScale = 1f;
 
     public bool IsActive => _isActive;
@@ -75,7 +74,16 @@ public class EventPopup : MonoBehaviour
 
     private void OnMarketEventFired(MarketEventFiredEvent evt)
     {
-        if (string.IsNullOrEmpty(evt.Headline)) return;
+        if (string.IsNullOrEmpty(evt.Headline))
+        {
+            // Skip popup but still signal completion so ScreenEffects can activate
+            EventBus.Publish(new EventPopupCompletedEvent
+            {
+                EventType = evt.EventType,
+                IsPositive = evt.IsPositive
+            });
+            return;
+        }
 
         if (_isActive)
         {
@@ -89,7 +97,6 @@ public class EventPopup : MonoBehaviour
     private void ShowPopup(MarketEventFiredEvent evt, bool isFirst)
     {
         _isActive = true;
-        _isFirstEvent = isFirst;
 
         // Configure visuals based on positive/negative
         bool positive = evt.IsPositive;
@@ -121,10 +128,10 @@ public class EventPopup : MonoBehaviour
         Time.timeScale = 0f;
 
         // Start the popup sequence using unscaled time
-        StartCoroutine(PopupSequence(positive, isFirst));
+        StartCoroutine(PopupSequence(positive, isFirst, evt.EventType));
     }
 
-    private IEnumerator PopupSequence(bool isPositive, bool isFirst)
+    private IEnumerator PopupSequence(bool isPositive, bool isFirst, MarketEventType eventType)
     {
         // Pause duration — shorter for queued events
         float pause = isFirst ? PauseDuration : QueuedPauseDuration;
@@ -164,6 +171,13 @@ public class EventPopup : MonoBehaviour
         Time.timeScale = _savedTimeScale;
 
         _isActive = false;
+
+        // Signal completion so ScreenEffects can start after popup
+        EventBus.Publish(new EventPopupCompletedEvent
+        {
+            EventType = eventType,
+            IsPositive = isPositive
+        });
 
         // Check queue for next event
         if (_eventQueue.Count > 0)

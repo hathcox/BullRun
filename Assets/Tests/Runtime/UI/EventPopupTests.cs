@@ -312,6 +312,63 @@ namespace BullRun.Tests.UI
             Object.DestroyImmediate(popup.Root);
         }
 
+        // --- TimeScale Safety ---
+
+        [Test]
+        public void EventPopup_IsActive_DuringPause_SoOnDestroyCanRestore()
+        {
+            // Verifies the contract that makes OnDestroy's timeScale restoration work:
+            // when popup is paused, IsActive is true so OnDestroy knows to restore timeScale.
+            // (DestroyImmediate doesn't reliably trigger OnDestroy in all Unity test runners.)
+            var popup = CreateTestPopup();
+            Time.timeScale = 1f;
+
+            EventBus.Publish(new MarketEventFiredEvent
+            {
+                EventType = MarketEventType.EarningsBeat,
+                Headline = "ACME beats earnings!",
+                IsPositive = true,
+                AffectedTickerSymbols = new[] { "ACME" },
+                Duration = 5f
+            });
+
+            Assert.AreEqual(0f, Time.timeScale, "TimeScale should be 0 during popup");
+            Assert.IsTrue(popup.Component.IsActive, "IsActive must be true during pause so OnDestroy safety net works");
+
+            Object.DestroyImmediate(popup.Root);
+            Time.timeScale = 1f;
+        }
+
+        // --- Completion Event ---
+
+        [Test]
+        public void EventPopup_PublishesCompletedEvent_OnEmptyHeadlineSkip()
+        {
+            var popup = CreateTestPopup();
+            MarketEventType receivedType = default;
+            bool receivedEvent = false;
+
+            EventBus.Subscribe<EventPopupCompletedEvent>(evt =>
+            {
+                receivedEvent = true;
+                receivedType = evt.EventType;
+            });
+
+            EventBus.Publish(new MarketEventFiredEvent
+            {
+                EventType = MarketEventType.MarketCrash,
+                Headline = "",
+                IsPositive = false,
+                Duration = 5f
+            });
+
+            Assert.IsTrue(receivedEvent, "Should publish EventPopupCompletedEvent for skipped popup");
+            Assert.AreEqual(MarketEventType.MarketCrash, receivedType, "Completed event should carry original event type");
+            Assert.IsFalse(popup.Component.IsActive, "Popup should not activate for empty headline");
+
+            Object.DestroyImmediate(popup.Root);
+        }
+
         // --- Helper ---
 
         private struct TestPopup

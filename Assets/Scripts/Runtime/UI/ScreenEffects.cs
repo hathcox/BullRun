@@ -4,7 +4,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Full-screen visual effects for dramatic market events.
 /// MarketCrash: screen shake + red pulse. BullRun: green tint. FlashCrash: red flash.
-/// Subscribes to MarketEventFiredEvent and MarketEventEndedEvent.
+/// Subscribes to EventPopupCompletedEvent (effects start after popup) and MarketEventEndedEvent (effects stop).
 /// </summary>
 public class ScreenEffects : MonoBehaviour
 {
@@ -50,17 +50,19 @@ public class ScreenEffects : MonoBehaviour
         SetImageAlpha(_greenTintImage, 0f);
         SetImageAlpha(_flashImage, 0f);
 
-        EventBus.Subscribe<MarketEventFiredEvent>(OnMarketEventFired);
+        // Subscribe to EventPopupCompletedEvent so effects start AFTER the popup
+        // flies away and timeScale resumes (not during the popup pause)
+        EventBus.Subscribe<EventPopupCompletedEvent>(OnEventPopupCompleted);
         EventBus.Subscribe<MarketEventEndedEvent>(OnMarketEventEnded);
     }
 
     private void OnDestroy()
     {
-        EventBus.Unsubscribe<MarketEventFiredEvent>(OnMarketEventFired);
+        EventBus.Unsubscribe<EventPopupCompletedEvent>(OnEventPopupCompleted);
         EventBus.Unsubscribe<MarketEventEndedEvent>(OnMarketEventEnded);
     }
 
-    private void OnMarketEventFired(MarketEventFiredEvent evt)
+    private void OnEventPopupCompleted(EventPopupCompletedEvent evt)
     {
         switch (evt.EventType)
         {

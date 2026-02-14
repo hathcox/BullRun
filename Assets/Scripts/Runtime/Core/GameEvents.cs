@@ -31,6 +31,17 @@ public struct MarketEventFiredEvent
 }
 
 /// <summary>
+/// Fired when the EventPopup finishes displaying (or skips) a market event.
+/// ScreenEffects subscribes to this instead of MarketEventFiredEvent
+/// so dramatic visual effects start AFTER the popup flies away and timeScale resumes.
+/// </summary>
+public struct EventPopupCompletedEvent
+{
+    public MarketEventType EventType;
+    public bool IsPositive;
+}
+
+/// <summary>
 /// Fired when a market event expires and stops affecting stock prices.
 /// AffectedStockIds is null for global events.
 /// </summary>
