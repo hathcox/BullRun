@@ -217,18 +217,18 @@ namespace BullRun.Tests.PriceEngine
                 "Penny should have higher event frequency than Blue Chip");
         }
 
-        // --- Single Stock Per Round Tests (FIX-5) ---
+        // --- Multiple Stocks Per Round Tests ---
 
         [Test]
-        public void AllTiers_HaveExactlyOneStockPerRound()
+        public void AllTiers_HaveMultipleStocksPerRound()
         {
             foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
             {
                 var config = StockTierData.GetTierConfig(tier);
-                Assert.AreEqual(1, config.MinStocksPerRound,
-                    $"Tier {tier}: MinStocksPerRound should be 1");
-                Assert.AreEqual(1, config.MaxStocksPerRound,
-                    $"Tier {tier}: MaxStocksPerRound should be 1");
+                Assert.GreaterOrEqual(config.MinStocksPerRound, 2,
+                    $"Tier {tier}: MinStocksPerRound should be at least 2 for multi-stock gameplay");
+                Assert.GreaterOrEqual(config.MaxStocksPerRound, config.MinStocksPerRound,
+                    $"Tier {tier}: MaxStocksPerRound should be >= MinStocksPerRound");
             }
         }
     }
