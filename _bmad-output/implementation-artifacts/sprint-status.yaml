@@ -113,7 +113,7 @@ development_status:
   FIX-7-position-overlay: done
   FIX-8-chart-price-gridlines: done
   FIX-9-scope-events-to-single-stock: done
-  FIX-10-trade-execution-delay: ready-for-dev
+  FIX-10-trade-execution-delay: done
   FIX-11-short-selling-redesign: ready-for-dev
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===

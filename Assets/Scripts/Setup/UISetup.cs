@@ -1349,6 +1349,8 @@ public static class UISetup
         // Initialize QuantitySelector MonoBehaviour
         var quantitySelector = panelParent.AddComponent<QuantitySelector>();
         quantitySelector.Initialize(qtyTextGo.GetComponent<Text>(), buttonBackgrounds, buttonTexts);
+        quantitySelector.BuyButtonImage = buyBtnGo.GetComponent<Image>();
+        quantitySelector.SellButtonImage = sellBtnGo.GetComponent<Image>();
 
         // Wire preset button click handlers
         for (int i = 0; i < 4; i++)

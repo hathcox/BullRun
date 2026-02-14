@@ -15,6 +15,13 @@ public static class GameConfig
     // Default trade quantity preset (10 shares)
     public static readonly int DefaultTradeQuantity = 10;
 
+    // Delay between pressing Buy/Sell and trade execution (seconds)
+    // Creates a "market fill" feel with natural slippage
+    public static readonly float TradeExecutionDelay = 0.4f;
+
+    // Button dim alpha during trade cooldown (0 = invisible, 1 = fully opaque)
+    public static readonly float CooldownDimAlpha = 0.35f;
+
     // Market Open preview duration before trading begins
     public static readonly float MarketOpenDurationSeconds = 7f;
 

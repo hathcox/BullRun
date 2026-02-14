@@ -23,6 +23,12 @@ public class QuantitySelector : MonoBehaviour
     /// <summary>Current selected preset.</summary>
     public Preset SelectedPreset => _selectedPreset;
 
+    /// <summary>BUY button Image reference for cooldown visual feedback.</summary>
+    public Image BuyButtonImage { get; set; }
+
+    /// <summary>SELL button Image reference for cooldown visual feedback.</summary>
+    public Image SellButtonImage { get; set; }
+
     public void Initialize(Text quantityDisplayText, Image[] buttonBackgrounds, Text[] buttonTexts)
     {
         _quantityDisplayText = quantityDisplayText;

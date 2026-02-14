@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 /// <summary>
 /// Bootstrap MonoBehaviour. Created by GameRunnerSetup during F5 rebuild.
@@ -21,6 +22,13 @@ public class GameRunner : MonoBehaviour
     private PositionOverlay _positionOverlay;
     private bool _firstFrameSkipped;
     private bool _tradePanelVisible;
+
+    // Trade execution delay (FIX-10)
+    private float _tradeCooldownTimer;
+    private bool _pendingTradeIsBuy;
+    private bool _isTradeCooldownActive;
+    private Color _buyButtonOriginalColor;
+    private Color _sellButtonOriginalColor;
 
     private void Awake()
     {
@@ -70,8 +78,17 @@ public class GameRunner : MonoBehaviour
         _quantitySelector = UISetup.ExecuteTradePanel();
         _quantitySelector.gameObject.SetActive(false); // Hidden until TradingState activates
 
+        // Store original button colors for cooldown visual reset (FIX-10)
+        if (_quantitySelector.BuyButtonImage != null)
+            _buyButtonOriginalColor = _quantitySelector.BuyButtonImage.color;
+        if (_quantitySelector.SellButtonImage != null)
+            _sellButtonOriginalColor = _quantitySelector.SellButtonImage.color;
+
         // Subscribe to trade button clicks from UI
         EventBus.Subscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
+
+        // FIX-10: Cancel cooldown when trading phase ends
+        EventBus.Subscribe<TradingPhaseEndedEvent>(OnTradingPhaseEnded);
 
         // FIX-7: Wire position overlay to track the active stock
         EventBus.Subscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
@@ -130,12 +147,39 @@ public class GameRunner : MonoBehaviour
             _quantitySelector.gameObject.SetActive(_tradePanelVisible);
         }
 
+        // FIX-10: Tick trade cooldown timer
+        if (_isTradeCooldownActive)
+        {
+            _tradeCooldownTimer -= Time.deltaTime;
+            if (_tradeCooldownTimer <= 0f)
+            {
+                _tradeCooldownTimer = 0f;
+                _isTradeCooldownActive = false;
+
+                // Cancel if trading phase ended during cooldown
+                if (TradingState.IsActive)
+                {
+                    ExecutePendingTrade();
+                }
+                else
+                {
+                    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    Debug.Log("[GameRunner] Trade cooldown expired but TradingState no longer active — cancelling pending trade");
+                    #endif
+                }
+
+                // Restore button visuals
+                RestoreButtonVisuals();
+            }
+        }
+
         HandleTradingInput();
     }
 
     private void OnDestroy()
     {
         EventBus.Unsubscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
+        EventBus.Unsubscribe<TradingPhaseEndedEvent>(OnTradingPhaseEnded);
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
     }
 
@@ -154,6 +198,7 @@ public class GameRunner : MonoBehaviour
     /// Keyboard trading during TradingState.
     /// 1-4 = Select quantity preset (x5/x10/x15/x25).
     /// B = Smart Buy (buy or cover), S = Smart Sell (sell or short).
+    /// FIX-10: B/S now start a cooldown instead of executing immediately.
     /// </summary>
     private void HandleTradingInput()
     {
@@ -171,21 +216,91 @@ public class GameRunner : MonoBehaviour
             _quantitySelector.SelectPreset(QuantitySelector.Preset.Fifteen);
         else if (keyboard.digit4Key.wasPressedThisFrame)
             _quantitySelector.SelectPreset(QuantitySelector.Preset.TwentyFive);
-        // Trade actions: B=Smart Buy, S=Smart Sell
+        // Trade actions: B=Smart Buy, S=Smart Sell (FIX-10: starts cooldown)
         else if (keyboard.bKey.wasPressedThisFrame)
-            ExecuteSmartBuy();
+            StartTradeCooldown(true);
         else if (keyboard.sKey.wasPressedThisFrame)
-            ExecuteSmartSell();
+            StartTradeCooldown(false);
     }
 
     /// <summary>
     /// Handles TradeButtonPressedEvent from BUY/SELL UI buttons.
+    /// FIX-10: Starts cooldown instead of executing immediately.
     /// </summary>
     private void OnTradeButtonPressed(TradeButtonPressedEvent evt)
     {
         if (!TradingState.IsActive) return;
+        StartTradeCooldown(evt.IsBuy);
+    }
 
-        if (evt.IsBuy)
+    /// <summary>
+    /// FIX-10: Cancels pending trade and restores button visuals when trading phase ends.
+    /// </summary>
+    private void OnTradingPhaseEnded(TradingPhaseEndedEvent evt)
+    {
+        if (_isTradeCooldownActive)
+        {
+            _isTradeCooldownActive = false;
+            _tradeCooldownTimer = 0f;
+            RestoreButtonVisuals();
+
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log("[GameRunner] Trading phase ended — cancelled pending trade cooldown");
+            #endif
+        }
+    }
+
+    /// <summary>
+    /// FIX-10: Starts the trade execution cooldown. Ignores input if cooldown already active.
+    /// </summary>
+    private void StartTradeCooldown(bool isBuy)
+    {
+        if (_isTradeCooldownActive) return; // No queuing — ignore additional presses
+
+        _isTradeCooldownActive = true;
+        _pendingTradeIsBuy = isBuy;
+        _tradeCooldownTimer = GameConfig.TradeExecutionDelay;
+
+        // Dim the active button during cooldown
+        DimButton(isBuy);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[GameRunner] Trade cooldown started: {(isBuy ? "BUY" : "SELL")}, delay={GameConfig.TradeExecutionDelay}s");
+        #endif
+    }
+
+    /// <summary>
+    /// FIX-10: Dims the BUY or SELL button Image to indicate processing.
+    /// </summary>
+    private void DimButton(bool isBuy)
+    {
+        Image buttonImage = isBuy ? _quantitySelector.BuyButtonImage : _quantitySelector.SellButtonImage;
+        if (buttonImage != null)
+        {
+            Color dimmed = buttonImage.color;
+            dimmed.a = GameConfig.CooldownDimAlpha;
+            buttonImage.color = dimmed;
+        }
+    }
+
+    /// <summary>
+    /// FIX-10: Restores both BUY and SELL buttons to their original colors.
+    /// </summary>
+    private void RestoreButtonVisuals()
+    {
+        if (_quantitySelector.BuyButtonImage != null)
+            _quantitySelector.BuyButtonImage.color = _buyButtonOriginalColor;
+        if (_quantitySelector.SellButtonImage != null)
+            _quantitySelector.SellButtonImage.color = _sellButtonOriginalColor;
+    }
+
+    /// <summary>
+    /// FIX-10: Executes the pending trade at the CURRENT price (not the price at press time).
+    /// This creates natural slippage — price may have moved during the cooldown.
+    /// </summary>
+    private void ExecutePendingTrade()
+    {
+        if (_pendingTradeIsBuy)
             ExecuteSmartBuy();
         else
             ExecuteSmartSell();
