@@ -78,6 +78,25 @@ public static class ChartSetup
         breakEvenLR.alignment = LineAlignment.TransformZ;
         breakEvenGo.SetActive(false);
 
+        // Create price gridlines (FIX-8: horizontal reference lines at each axis label)
+        var gridlinesParent = new GameObject("PriceGridlines");
+        gridlinesParent.transform.SetParent(chartParent.transform);
+        var gridlines = new LineRenderer[AxisLabelCount];
+        for (int i = 0; i < AxisLabelCount; i++)
+        {
+            var gridlineGo = CreateLineRendererObject($"Gridline_{i}", gridlinesParent.transform);
+            var lr = gridlineGo.GetComponent<LineRenderer>();
+            lr.startColor = new Color(0.4f, 0.4f, 0.5f, 0.15f);
+            lr.endColor = new Color(0.4f, 0.4f, 0.5f, 0.15f);
+            lr.startWidth = 0.005f;
+            lr.endWidth = 0.005f;
+            lr.sortingOrder = -2;
+            lr.alignment = LineAlignment.TransformZ;
+            gridlineGo.SetActive(false);
+            gridlines[i] = lr;
+        }
+        chartLineView.SetGridlines(gridlines);
+
         // Create marker pool parent
         var markerPoolGo = new GameObject("TradeMarkerPool");
         markerPoolGo.transform.SetParent(chartParent.transform);

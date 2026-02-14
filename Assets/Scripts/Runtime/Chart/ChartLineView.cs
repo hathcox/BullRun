@@ -16,6 +16,9 @@ public class ChartLineView : MonoBehaviour
     private Transform _indicator;
     private ChartVisualConfig _config;
 
+    // Price gridlines (FIX-8)
+    private LineRenderer[] _gridlines;
+
     // Break-even line and trade markers
     private LineRenderer _breakEvenLine;
     private Transform _markerPool;
@@ -65,6 +68,11 @@ public class ChartLineView : MonoBehaviour
         }
     }
 
+    public void SetGridlines(LineRenderer[] gridlines)
+    {
+        _gridlines = gridlines;
+    }
+
     public void SetTradeVisuals(LineRenderer breakEvenLine, Transform markerPool)
     {
         _breakEvenLine = breakEvenLine;
@@ -105,6 +113,7 @@ public class ChartLineView : MonoBehaviour
             _mainMeshLine.Clear();
             _glowMeshLine.Clear();
             if (_indicator != null) _indicator.gameObject.SetActive(false);
+            HideGridlines();
             UpdateTradeMarkers(0f, 1f, _chartBottom, _chartTop);
             UpdateBreakEvenLine(0f, 1f, _chartBottom, _chartTop);
             return;
@@ -125,6 +134,9 @@ public class ChartLineView : MonoBehaviour
         float padding = chartHeight * 0.1f;
         float paddedBottom = _chartBottom + padding;
         float paddedTop = _chartTop - padding;
+
+        // Update price gridlines (FIX-8)
+        UpdateGridlines(paddedBottom, paddedTop);
 
         // Build position list
         _positionBuffer.Clear();
@@ -154,6 +166,38 @@ public class ChartLineView : MonoBehaviour
         // Update trade markers and break-even line
         UpdateTradeMarkers(minPrice, priceRange, paddedBottom, paddedTop);
         UpdateBreakEvenLine(minPrice, priceRange, paddedBottom, paddedTop);
+    }
+
+    private void UpdateGridlines(float paddedBottom, float paddedTop)
+    {
+        if (_gridlines == null) return;
+
+        for (int i = 0; i < _gridlines.Length; i++)
+        {
+            if (_gridlines[i] == null) continue;
+
+            float t = _gridlines.Length > 1 ? (float)i / (_gridlines.Length - 1) : 0f;
+            float y = Mathf.Lerp(paddedBottom, paddedTop, t);
+
+            _gridlines[i].positionCount = 2;
+            _gridlines[i].SetPosition(0, new Vector3(_chartLeft, y, 0f));
+            _gridlines[i].SetPosition(1, new Vector3(_chartRight, y, 0f));
+            if (!_gridlines[i].gameObject.activeSelf)
+                _gridlines[i].gameObject.SetActive(true);
+        }
+    }
+
+    private void HideGridlines()
+    {
+        if (_gridlines == null) return;
+
+        for (int i = 0; i < _gridlines.Length; i++)
+        {
+            if (_gridlines[i] != null)
+            {
+                _gridlines[i].gameObject.SetActive(false);
+            }
+        }
     }
 
     private void UpdateTradeMarkers(float minPrice, float priceRange, float paddedBottom, float paddedTop)
@@ -195,6 +239,23 @@ public class ChartLineView : MonoBehaviour
         {
             _markerObjects[i].SetActive(false);
         }
+    }
+
+    /// <summary>
+    /// Calculates evenly spaced Y world positions for gridlines between pre-padded chart bounds.
+    /// Uses the same coordinate math as the runtime UpdateGridlines path.
+    /// Callers must apply 10% padding to raw chart bounds before passing.
+    /// Static for testability.
+    /// </summary>
+    public static float[] CalculateGridlineYPositions(float paddedBottom, float paddedTop, int count)
+    {
+        var positions = new float[count];
+        for (int i = 0; i < count; i++)
+        {
+            float t = count > 1 ? (float)i / (count - 1) : 0f;
+            positions[i] = Mathf.Lerp(paddedBottom, paddedTop, t);
+        }
+        return positions;
     }
 
     private void UpdateBreakEvenLine(float minPrice, float priceRange, float paddedBottom, float paddedTop)

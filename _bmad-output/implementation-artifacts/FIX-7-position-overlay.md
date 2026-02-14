@@ -1,6 +1,6 @@
 # Story FIX-7: Current Position Overlay — Bottom-Left of Chart
 
-Status: review
+Status: done
 
 ## Story
 
@@ -131,10 +131,31 @@ Currently the `PositionPanel` is a right sidebar (180px wide) that lists all ope
 
 ## File List
 - `Assets/Scripts/Runtime/UI/PositionOverlay.cs` (new)
-- `Assets/Scripts/Setup/UISetup.cs` (modified — added ExecutePositionOverlay)
+- `Assets/Scripts/Setup/UISetup.cs` (modified — added ExecutePositionOverlay, removed dead ExecutePositionsPanel)
 - `Assets/Scripts/Runtime/Core/GameRunner.cs` (modified — replaced ExecutePositionsPanel with ExecutePositionOverlay, added MarketOpenEvent wiring)
 - `Assets/Scripts/Setup/ChartSetup.cs` (modified — expanded ChartWidthPercent 0.65 → 0.80, updated axis label positioning)
 - `Assets/Tests/Runtime/UI/PositionOverlayTests.cs` (new)
 
+## Senior Developer Review (AI)
+
+**Reviewer:** Iggy | **Date:** 2026-02-13
+
+### Findings (5 total: 0 High, 3 Medium, 2 Low)
+
+**Fixed (3 Medium):**
+- M1: `PositionOverlay.OnPriceUpdated` allocated a string via `ToString()` every price tick for StockId comparison. Changed `SetActiveStock` to accept `int`, stored both int and string representations, compare ints directly in hot path. Zero-allocation per-tick comparison.
+- M3: `RefreshDisplay()` and `UpdatePnL()` didn't guard against `position.Shares <= 0`. Added defensive check to show FLAT state. (Portfolio removes positions at 0 shares, but defensive coding prevents edge-case display bugs.)
+- M4: Removed dead `ExecutePositionsPanel()` method from `UISetup.cs` (60+ lines). Story said retain PositionPanel.cs/PositionPanelData.cs files, not the Setup method that nothing calls.
+
+**Not Fixed (2 Low — acceptable):**
+- L1: StockId type inconsistency (string vs int) across overlay wiring. Mitigated by M1 fix but not fully standardized project-wide.
+- L2: Magic positioning numbers `(20f, 100f)` in overlay setup without constant coupling to inventory bar/ticker heights.
+
+**Known Gap:**
+- M2: Tests only cover trivial static utility methods. Behavioral testing of dirty-flag update pattern and event-driven refresh requires PlayMode test infrastructure not currently in place.
+
+### Outcome: Changes Applied
+
 ## Change Log
 - 2026-02-13: Implemented FIX-7 — compact position overlay replacing right-side PositionPanel, chart expanded to 80% width
+- 2026-02-13: Code review fixes — SetActiveStock(int) for zero-alloc tick comparison, 0-shares defensive guard, removed dead ExecutePositionsPanel()

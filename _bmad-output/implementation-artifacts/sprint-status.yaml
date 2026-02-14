@@ -110,8 +110,8 @@ development_status:
   FIX-4-event-popup-display: done
   FIX-5-single-stock-per-round: done
   FIX-6-trading-panel-overhaul: done
-  FIX-7-position-overlay: review
-  FIX-8-chart-price-gridlines: ready-for-dev
+  FIX-7-position-overlay: done
+  FIX-8-chart-price-gridlines: done
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
   epic-8: backlog

@@ -146,7 +146,7 @@ public class GameRunner : MonoBehaviour
     {
         if (_positionOverlay != null && evt.StockIds != null && evt.StockIds.Length > 0)
         {
-            _positionOverlay.SetActiveStock(evt.StockIds[0].ToString());
+            _positionOverlay.SetActiveStock(evt.StockIds[0]);
         }
     }
 

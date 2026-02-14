@@ -23,6 +23,7 @@ public class PositionOverlay : MonoBehaviour
     private GameObject _pnlRow;
 
     private string _activeStockId;
+    private int _activeStockIdInt = -1;
     private float _lastKnownPrice;
     private bool _pnlDirty;
     private bool _rebuildDirty;
@@ -53,8 +54,8 @@ public class PositionOverlay : MonoBehaviour
 
     private void OnPriceUpdated(PriceUpdatedEvent evt)
     {
-        if (_activeStockId == null) return;
-        if (evt.StockId.ToString() == _activeStockId)
+        if (_activeStockIdInt < 0) return;
+        if (evt.StockId == _activeStockIdInt)
         {
             _lastKnownPrice = evt.NewPrice;
             _pnlDirty = true;
@@ -88,10 +89,12 @@ public class PositionOverlay : MonoBehaviour
 
     /// <summary>
     /// Sets which stock the overlay tracks. Called when the active stock changes.
+    /// Accepts int StockId to avoid per-tick string allocations in OnPriceUpdated.
     /// </summary>
-    public void SetActiveStock(string stockId)
+    public void SetActiveStock(int stockId)
     {
-        _activeStockId = stockId;
+        _activeStockIdInt = stockId;
+        _activeStockId = stockId.ToString();
         _rebuildDirty = true;
     }
 
@@ -104,7 +107,7 @@ public class PositionOverlay : MonoBehaviour
 
         var position = _activeStockId != null ? _portfolio.GetPosition(_activeStockId) : null;
 
-        if (position == null)
+        if (position == null || position.Shares <= 0)
         {
             ShowFlat();
             return;
@@ -154,7 +157,7 @@ public class PositionOverlay : MonoBehaviour
         if (_portfolio == null || _activeStockId == null) return;
 
         var position = _portfolio.GetPosition(_activeStockId);
-        if (position == null)
+        if (position == null || position.Shares <= 0)
         {
             ShowFlat();
             return;
