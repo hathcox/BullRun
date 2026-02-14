@@ -1,6 +1,6 @@
 # Story FIX-3: Trade Quantity Selection
 
-Status: review
+Status: done
 
 ## Story
 
@@ -38,7 +38,7 @@ All trades currently execute with a **hardcoded quantity of 10 shares** in `Game
 - [x] Task 2: Add keyboard shortcuts for quantity presets (AC: 1, 2)
   - [x] **1 key** is taken (stock selection) — use number pad or alternative keys
   - [x] Proposed: **Q** = cycle quantity preset (1 → 5 → 10 → MAX → 1...) for fast one-key cycling
-  - [x] Alternative: **Mouse scroll wheel** while hovering quantity panel to cycle
+  - [ ] Alternative: **Mouse scroll wheel** while hovering quantity panel to cycle _(deferred — Q key + click covers the use case)_
   - [x] The quantity buttons are also clickable with mouse
   - [x] File: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Runtime/UI/QuantitySelector.cs`
 
@@ -138,3 +138,23 @@ All trades currently execute with a **hardcoded quantity of 10 shares** in `Game
 ## Change Log
 
 - 2026-02-13: FIX-3 implemented — trade quantity selection with preset buttons (1x/5x/10x/MAX), Q key cycling, MAX calculation, partial fill, and round reset
+- 2026-02-13: Code review fixes — MAX display changed from misleading buy-only preview to "Qty: MAX" (actual qty shown in trade feedback), removed per-frame Update for MAX, PresetValues wired to GameConfig.DefaultTradeQuantity, extracted static CalculateMax routing method with 4 tests, GetCurrentQuantity simplified via CalculateMax, mouse scroll wheel task corrected to [ ]
+
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-02-13
+**Reviewer:** Claude Opus 4.6 (adversarial code review)
+**Outcome:** Approve (after fixes)
+
+### Findings Summary
+- **Git vs Story Discrepancies:** 0 (cross-story bleed with FIX-2 previously flagged)
+- **AC Validation:** All 7 ACs verified — AC3/AC7 display accuracy improved by removing misleading buy-only MAX preview
+- **Task Audit:** Task 2 "mouse scroll wheel" corrected from [x] to [ ] (deferred)
+
+### Action Items
+- [x] [High] MAX display showed buy-only preview number misleading for short/sell/cover — changed to "Qty: MAX", removed per-frame Update [QuantitySelector.cs:92-106]
+- [x] [Med] Task 2 "Mouse scroll wheel" marked [x] but deferred — corrected to [ ] [FIX-3-trade-quantity-selection.md:41]
+- [x] [Med] GameConfig.DefaultTradeQuantity unused — PresetValues[2] now references it [QuantitySelector.cs:14]
+- [x] [Med] GetCurrentQuantity branching untested — extracted static CalculateMax, added 4 routing tests, simplified GetCurrentQuantity [QuantitySelector.cs:114-120, QuantitySelectorTests.cs]
+- [ ] [Low] Task 6 "quantity persists" and "quantity resets" sub-items marked [x] but tests verify EventBus dispatch, not QuantitySelector behavior (trivial logic, low risk)
+- [ ] [Low] Story claims 24 tests but file contains 30 (26 original + 4 new) — positive discrepancy

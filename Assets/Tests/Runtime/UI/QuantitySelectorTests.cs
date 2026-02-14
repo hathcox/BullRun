@@ -137,6 +137,42 @@ namespace BullRun.Tests.UI
             Assert.AreEqual(0, QuantitySelector.CalculateMaxCover(portfolio, "ACME"));
         }
 
+        // --- CalculateMax (routing logic) ---
+
+        [Test]
+        public void CalculateMax_BuyNotShort_DelegatesToMaxBuy()
+        {
+            // isBuy=true, isShort=false → CalculateMaxBuy: $1000 / $25 = 40
+            var portfolio = new Portfolio(1000f);
+            Assert.AreEqual(40, QuantitySelector.CalculateMax(true, false, 1000f, 25f, portfolio, "ACME"));
+        }
+
+        [Test]
+        public void CalculateMax_SellNotShort_DelegatesToMaxSell()
+        {
+            // isBuy=false, isShort=false → CalculateMaxSell: 15 shares held
+            var portfolio = new Portfolio(1000f);
+            portfolio.OpenPosition("ACME", 15, 10f);
+            Assert.AreEqual(15, QuantitySelector.CalculateMax(false, false, portfolio.Cash, 10f, portfolio, "ACME"));
+        }
+
+        [Test]
+        public void CalculateMax_ShortNotBuy_DelegatesToMaxShort()
+        {
+            // isBuy=false, isShort=true → CalculateMaxShort: $1000 / ($25 * 0.5) = 80
+            var portfolio = new Portfolio(1000f);
+            Assert.AreEqual(80, QuantitySelector.CalculateMax(false, true, 1000f, 25f, portfolio, "ACME"));
+        }
+
+        [Test]
+        public void CalculateMax_CoverBuyAndShort_DelegatesToMaxCover()
+        {
+            // isBuy=true, isShort=true → CalculateMaxCover: 8 short shares
+            var portfolio = new Portfolio(1000f);
+            portfolio.OpenShort("ACME", 8, 20f);
+            Assert.AreEqual(8, QuantitySelector.CalculateMax(true, true, portfolio.Cash, 20f, portfolio, "ACME"));
+        }
+
         // --- PresetValues ---
 
         [Test]

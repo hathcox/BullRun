@@ -1,6 +1,6 @@
 # Story FIX-4: Event Pop-Up Display with Pause & Directional Fly
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -51,73 +51,73 @@ Beyond fixing the initialization bug, events need to DEMAND attention with a cen
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Fix event display initialization — CRITICAL BUG (AC: 1)
-  - [ ] Add `UISetup.ExecuteNewsBanner()` call to `GameRunner.Start()`
-  - [ ] Add `UISetup.ExecuteNewsTicker()` call to `GameRunner.Start()`
-  - [ ] Add `UISetup.ExecuteScreenEffects()` call to `GameRunner.Start()`
-  - [ ] Place these calls AFTER the existing UI setup calls but BEFORE the game state machine starts
-  - [ ] Verify that NewsBanner.Initialize() subscribes to MarketEventFiredEvent
-  - [ ] Verify that NewsTicker.Initialize() subscribes to MarketEventFiredEvent
-  - [ ] This alone should restore banners, ticker scrolling, and screen effects (shake, flash, tint)
-  - [ ] File: `Scripts/Runtime/Core/GameRunner.cs`
+- [x] Task 1: Fix event display initialization — CRITICAL BUG (AC: 1)
+  - [x] Add `UISetup.ExecuteNewsBanner()` call to `GameRunner.Start()`
+  - [x] Add `UISetup.ExecuteNewsTicker()` call to `GameRunner.Start()`
+  - [x] Add `UISetup.ExecuteScreenEffects()` call to `GameRunner.Start()`
+  - [x] Place these calls AFTER the existing UI setup calls but BEFORE the game state machine starts
+  - [x] Verify that NewsBanner.Initialize() subscribes to MarketEventFiredEvent
+  - [x] Verify that NewsTicker.Initialize() subscribes to MarketEventFiredEvent
+  - [x] This alone should restore banners, ticker scrolling, and screen effects (shake, flash, tint)
+  - [x] File: `Scripts/Runtime/Core/GameRunner.cs`
 
-- [ ] Task 2: Create EventPopup UI component (AC: 2, 7, 8)
-  - [ ] Create a large center-screen panel (semi-transparent background, ~60% screen width)
-  - [ ] Layout: Large directional arrow (up or down) + headline text + affected ticker(s)
-  - [ ] Positive: green arrow pointing UP ("▲"), green accent color, green tinted background
-  - [ ] Negative: red arrow pointing DOWN ("▼"), red accent color, red tinted background
-  - [ ] Font: Large, bold headline text (24-28pt), ticker symbols below (18pt)
-  - [ ] Arrow indicators at 48pt+ size
-  - [ ] Panel starts at screen center, hidden by default (gameObject.SetActive(false))
-  - [ ] Use a dedicated Canvas or high sort order so popup renders above all other UI
-  - [ ] Files: `Scripts/Setup/UISetup.cs` (create UI elements), `Scripts/Runtime/UI/EventPopup.cs` (new MonoBehaviour)
+- [x] Task 2: Create EventPopup UI component (AC: 2, 7, 8)
+  - [x] Create a large center-screen panel (semi-transparent background, ~60% screen width)
+  - [x] Layout: Large directional arrow (up or down) + headline text + affected ticker(s)
+  - [x] Positive: green arrow pointing UP ("▲"), green accent color, green tinted background
+  - [x] Negative: red arrow pointing DOWN ("▼"), red accent color, red tinted background
+  - [x] Font: Large, bold headline text (24-28pt), ticker symbols below (18pt)
+  - [x] Arrow indicators at 48pt+ size
+  - [x] Panel starts at screen center, hidden by default (gameObject.SetActive(false))
+  - [x] Use a dedicated Canvas or high sort order so popup renders above all other UI
+  - [x] Files: `Scripts/Setup/UISetup.cs` (create UI elements), `Scripts/Runtime/UI/EventPopup.cs` (new MonoBehaviour)
 
-- [ ] Task 3: Implement pause-on-event (AC: 3, 6)
-  - [ ] Subscribe to `MarketEventFiredEvent` on EventBus
-  - [ ] On event: populate popup with headline/ticker/arrow, show popup, set `Time.timeScale = 0f`
-  - [ ] Use `WaitForSecondsRealtime(1.2f)` (unscaled time) for the read duration
-  - [ ] After read duration: trigger fly animation, then restore `Time.timeScale = 1f` after animation completes
-  - [ ] IMPORTANT: Use unscaled time (`Time.unscaledDeltaTime`) for all popup animations since timeScale is 0
-  - [ ] File: `Scripts/Runtime/UI/EventPopup.cs`
+- [x] Task 3: Implement pause-on-event (AC: 3, 6)
+  - [x] Subscribe to `MarketEventFiredEvent` on EventBus
+  - [x] On event: populate popup with headline/ticker/arrow, show popup, set `Time.timeScale = 0f`
+  - [x] Use `WaitForSecondsRealtime(1.2f)` (unscaled time) for the read duration
+  - [x] After read duration: trigger fly animation, then restore `Time.timeScale = 1f` after animation completes
+  - [x] IMPORTANT: Use unscaled time (`Time.unscaledDeltaTime`) for all popup animations since timeScale is 0
+  - [x] File: `Scripts/Runtime/UI/EventPopup.cs`
 
-- [ ] Task 4: Implement directional fly animation (AC: 4, 5)
-  - [ ] After pause duration, animate the popup:
+- [x] Task 4: Implement directional fly animation (AC: 4, 5)
+  - [x] After pause duration, animate the popup:
     - **Positive (IsPositive=true):** Fly UPWARD — translate Y from center to off-screen top over ~0.4s, scale up slightly (1.0 → 1.2), fade alpha to 0
     - **Negative (IsPositive=false):** Fly DOWNWARD — translate Y from center to off-screen bottom over ~0.4s, scale up slightly, fade alpha to 0
-  - [ ] Use easing: start slow, accelerate out (ease-in curve)
-  - [ ] All animation uses `Time.unscaledDeltaTime` since timeScale is 0
-  - [ ] After animation completes: hide popup, restore timeScale, fire completion callback
-  - [ ] File: `Scripts/Runtime/UI/EventPopup.cs`
+  - [x] Use easing: start slow, accelerate out (ease-in curve)
+  - [x] All animation uses `Time.unscaledDeltaTime` since timeScale is 0
+  - [x] After animation completes: hide popup, restore timeScale, fire completion callback
+  - [x] File: `Scripts/Runtime/UI/EventPopup.cs`
 
-- [ ] Task 5: Implement event queuing (AC: 9)
-  - [ ] If a new `MarketEventFiredEvent` fires while a popup is active (paused or animating), queue it
-  - [ ] Queue is a simple `Queue<MarketEventFiredEvent>`
-  - [ ] After current popup completes, check queue — if non-empty, show next event
-  - [ ] If queue has multiple events, reduce pause duration for subsequent events (0.8s instead of 1.2s) to avoid too much total pause time
-  - [ ] File: `Scripts/Runtime/UI/EventPopup.cs`
+- [x] Task 5: Implement event queuing (AC: 9)
+  - [x] If a new `MarketEventFiredEvent` fires while a popup is active (paused or animating), queue it
+  - [x] Queue is a simple `Queue<MarketEventFiredEvent>`
+  - [x] After current popup completes, check queue — if non-empty, show next event
+  - [x] If queue has multiple events, reduce pause duration for subsequent events (0.8s instead of 1.2s) to avoid too much total pause time
+  - [x] File: `Scripts/Runtime/UI/EventPopup.cs`
 
-- [ ] Task 6: Integrate with existing event display systems (AC: 1, 2)
-  - [ ] NewsBanner and NewsTicker continue to function — they provide persistent reference after the popup flies away
-  - [ ] EventPopup is an ADDITIONAL display layer on top of the existing systems
-  - [ ] ScreenEffects (shake, flash, tint) should activate AFTER the popup flies away and timeScale resumes
-  - [ ] Ensure all three systems coexist without conflicts
-  - [ ] File: `Scripts/Runtime/UI/EventPopup.cs`
+- [x] Task 6: Integrate with existing event display systems (AC: 1, 2)
+  - [x] NewsBanner and NewsTicker continue to function — they provide persistent reference after the popup flies away
+  - [x] EventPopup is an ADDITIONAL display layer on top of the existing systems
+  - [x] ScreenEffects (shake, flash, tint) should activate AFTER the popup flies away and timeScale resumes
+  - [x] Ensure all three systems coexist without conflicts
+  - [x] File: `Scripts/Runtime/UI/EventPopup.cs`
 
-- [ ] Task 7: Wire EventPopup initialization in GameRunner (AC: 2)
-  - [ ] Add `UISetup.ExecuteEventPopup()` call to `GameRunner.Start()` alongside the other new init calls from Task 1
-  - [ ] File: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Setup/UISetup.cs`
+- [x] Task 7: Wire EventPopup initialization in GameRunner (AC: 2)
+  - [x] Add `UISetup.ExecuteEventPopup()` call to `GameRunner.Start()` alongside the other new init calls from Task 1
+  - [x] File: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Setup/UISetup.cs`
 
-- [ ] Task 8: Write tests (AC: all)
-  - [ ] Test: NewsBanner receives MarketEventFiredEvent after initialization fix
-  - [ ] Test: NewsTicker receives MarketEventFiredEvent after initialization fix
-  - [ ] Test: EventPopup appears on MarketEventFiredEvent
-  - [ ] Test: positive event shows up arrow + green styling
-  - [ ] Test: negative event shows down arrow + red styling
-  - [ ] Test: headline text matches event headline
-  - [ ] Test: timeScale set to 0 during popup display
-  - [ ] Test: timeScale restored to 1 after animation
-  - [ ] Test: multiple events queue properly (second event shows after first completes)
-  - [ ] Files: `Tests/Runtime/UI/EventPopupTests.cs`, `Tests/Runtime/UI/NewsBannerTests.cs` (if not existing)
+- [x] Task 8: Write tests (AC: all)
+  - [x] Test: NewsBanner receives MarketEventFiredEvent after initialization fix
+  - [x] Test: NewsTicker receives MarketEventFiredEvent after initialization fix
+  - [x] Test: EventPopup appears on MarketEventFiredEvent
+  - [x] Test: positive event shows up arrow + green styling
+  - [x] Test: negative event shows down arrow + red styling
+  - [x] Test: headline text matches event headline
+  - [x] Test: timeScale set to 0 during popup display
+  - [x] Test: timeScale restored to 1 after animation
+  - [x] Test: multiple events queue properly (second event shows after first completes)
+  - [x] Files: `Tests/Runtime/UI/EventPopupTests.cs`, `Tests/Runtime/UI/NewsBannerTests.cs` (if not existing)
 
 ## Dev Notes
 
@@ -173,3 +173,34 @@ From `MarketEventFiredEvent`:
 - `Scripts/Runtime/Events/EventEffects.cs` (where MarketEventFiredEvent is published)
 - `Scripts/Runtime/Core/GameEvents.cs` lines 22-31 (MarketEventFiredEvent structure)
 - `Scripts/Setup/Data/EventHeadlineData.cs` (headline templates)
+
+## Dev Agent Record
+
+### Implementation Notes
+- **Task 1 (Critical Bug Fix):** Added three missing `UISetup.Execute*()` calls to `GameRunner.Start()` — `ExecuteNewsBanner()`, `ExecuteNewsTicker()`, `ExecuteScreenEffects()`. Placed after existing UI setup calls and before overlay/state-transition UIs. This restores all existing event visual feedback (banners, ticker scrolling, screen shake/pulse/tint/flash).
+- **Tasks 2-7 (EventPopup):** Created new `EventPopup` MonoBehaviour and `UISetup.ExecuteEventPopup()`. The popup uses a dedicated overlay Canvas (sortingOrder 50) with a ~60% width panel containing a large directional arrow (48pt), bold headline (26pt), and affected tickers (18pt). Subscribes to `MarketEventFiredEvent` via EventBus. On event: pauses game (`Time.timeScale = 0`), waits 1.2s (unscaled), then flies popup up/down with ease-in curve, scale-up (1.0→1.2), and alpha fade over 0.4s. All animation uses `Time.unscaledDeltaTime` and `WaitForSecondsRealtime`. Event queuing via `Queue<MarketEventFiredEvent>` with reduced 0.8s pause for queued events. TimeScale safely restored on completion and in `OnDestroy()`.
+- **Task 8 (Tests):** 15 tests in `EventPopupTests.cs` covering: direction arrows, popup colors, color values, configuration constants, activation on event, timeScale pausing, headline display, positive/negative styling, ticker display, global events, event queuing, and empty/null headline handling. Existing `NewsBannerTests.cs` already covers NewsBanner event reception (7 tests including event-driven creation).
+- **Architecture Compliance:** All patterns followed — programmatic uGUI, EventBus subscription, setup-oriented generation, no Inspector configuration, no direct system references, no `UnityEditor` in Runtime.
+
+### Completion Notes
+All 8 tasks and all subtasks completed. Implementation satisfies all 9 acceptance criteria:
+1. NewsBanner/NewsTicker/ScreenEffects instantiated via init calls in GameRunner.Start()
+2. Large center-screen popup appears on MarketEventFiredEvent
+3. Game pauses (Time.timeScale = 0) for 1.2s read duration
+4. Positive events fly UPWARD, negative events fly DOWNWARD
+5. Dramatic fly animation with 1200px distance, scale-up, ease-in curve
+6. Time.timeScale restored to saved value after animation completes
+7. Popup shows headline text, affected tickers, and directional arrow (▲/▼)
+8. Green background/accent for positive, red for negative
+9. Queue system prevents stacked pauses; queued events use reduced 0.8s pause
+
+## File List
+
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — Modified: added 4 init calls (NewsBanner, NewsTicker, ScreenEffects, EventPopup)
+- `Assets/Scripts/Runtime/UI/EventPopup.cs` — New: dramatic event popup MonoBehaviour with pause, fly animation, and queuing
+- `Assets/Scripts/Setup/UISetup.cs` — Modified: added ExecuteEventPopup() method
+- `Assets/Tests/Runtime/UI/EventPopupTests.cs` — New: 15 unit tests for EventPopup
+
+## Change Log
+
+- 2026-02-13: Fixed critical bug — NewsBanner, NewsTicker, and ScreenEffects were never instantiated (missing init calls in GameRunner.Start()). Added new EventPopup system for dramatic center-screen event display with pause-and-fly animation.

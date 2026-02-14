@@ -11,7 +11,7 @@ public class QuantitySelector : MonoBehaviour
 {
     public enum Preset { One, Five, Ten, Max }
 
-    public static readonly int[] PresetValues = { 1, 5, 10, 0 };
+    public static readonly int[] PresetValues = { 1, 5, GameConfig.DefaultTradeQuantity, 0 };
     public static readonly string[] PresetLabels = { "1x", "5x", "10x", "MAX" };
     public static readonly Color ActiveButtonColor = new Color(0f, 0.5f, 0.25f, 1f);
     public static readonly Color InactiveButtonColor = new Color(0.12f, 0.14f, 0.25f, 0.8f);
@@ -77,13 +77,6 @@ public class QuantitySelector : MonoBehaviour
         SelectPreset(Preset.Ten);
     }
 
-    private void Update()
-    {
-        // Recalculate MAX display every frame when MAX is selected (AC 7)
-        if (_selectedPreset == Preset.Max && TradingState.IsActive)
-            UpdateQuantityDisplay();
-    }
-
     private void UpdateButtonHighlights()
     {
         if (_buttonBackgrounds == null) return;
@@ -101,8 +94,10 @@ public class QuantitySelector : MonoBehaviour
         if (_quantityDisplayText == null) return;
         if (_selectedPreset == Preset.Max)
         {
-            int maxQty = GetMaxBuyQuantity();
-            _quantityDisplayText.text = $"Qty: MAX ({maxQty})";
+            // Show "Qty: MAX" without a preview number — the actual MAX depends on trade type
+            // (buy, sell, short, cover) and is resolved correctly at execution time in GetCurrentQuantity.
+            // Trade feedback displays the actual quantity used: "BOUGHT ACME x40".
+            _quantityDisplayText.text = "Qty: MAX";
         }
         else
         {
@@ -110,17 +105,19 @@ public class QuantitySelector : MonoBehaviour
         }
     }
 
-    private int GetMaxBuyQuantity()
-    {
-        if (_portfolio == null || _getSelectedStockId == null || _getStockPrice == null)
-            return 0;
-        int stockId = _getSelectedStockId();
-        if (stockId < 0) return 0;
-        float price = _getStockPrice(stockId);
-        return CalculateMaxBuy(_portfolio.Cash, price);
-    }
-
     // --- Static calculation methods (testable without MonoBehaviour) ---
+
+    /// <summary>
+    /// Routes MAX calculation to the correct method based on trade type.
+    /// Buy: cash/price. Short: cash/(price*margin). Sell: position shares. Cover: short shares.
+    /// </summary>
+    public static int CalculateMax(bool isBuy, bool isShort, float cash, float price, Portfolio portfolio, string stockId)
+    {
+        if (isBuy && !isShort) return CalculateMaxBuy(cash, price);
+        if (!isBuy && !isShort) return CalculateMaxSell(portfolio, stockId);
+        if (!isBuy && isShort) return CalculateMaxShort(cash, price);
+        return CalculateMaxCover(portfolio, stockId);
+    }
 
     /// <summary>Maximum shares affordable for a buy: floor(cash / price).</summary>
     public static int CalculateMaxBuy(float cash, float price)
@@ -160,38 +157,13 @@ public class QuantitySelector : MonoBehaviour
     /// </summary>
     public int GetCurrentQuantity(bool isBuy, bool isShort, string stockId, float price, Portfolio portfolio)
     {
+        int max = CalculateMax(isBuy, isShort, portfolio.Cash, price, portfolio, stockId);
         if (_selectedPreset == Preset.Max)
-        {
-            if (isBuy && !isShort) return CalculateMaxBuy(portfolio.Cash, price);
-            if (!isBuy && !isShort) return CalculateMaxSell(portfolio, stockId);
-            if (!isBuy && isShort) return CalculateMaxShort(portfolio.Cash, price);
-            return CalculateMaxCover(portfolio, stockId);
-        }
+            return max;
 
         int qty = PresetValues[(int)_selectedPreset];
-
         // Partial fill: clamp to what's affordable/available
-        if (isBuy && !isShort)
-        {
-            int max = CalculateMaxBuy(portfolio.Cash, price);
-            if (qty > max) qty = max;
-        }
-        else if (!isBuy && !isShort)
-        {
-            int max = CalculateMaxSell(portfolio, stockId);
-            if (qty > max) qty = max;
-        }
-        else if (!isBuy && isShort)
-        {
-            int max = CalculateMaxShort(portfolio.Cash, price);
-            if (qty > max) qty = max;
-        }
-        else
-        {
-            int max = CalculateMaxCover(portfolio, stockId);
-            if (qty > max) qty = max;
-        }
-
+        if (qty > max) qty = max;
         return qty;
     }
 }

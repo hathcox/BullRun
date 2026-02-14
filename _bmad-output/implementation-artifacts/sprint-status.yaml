@@ -106,8 +106,8 @@ development_status:
   fix-sprint: in-progress
   FIX-1-shop-click-and-timer: done
   FIX-2-short-selling-ui: done
-  FIX-3-trade-quantity-selection: review
-  FIX-4-event-popup-display: ready-for-dev
+  FIX-3-trade-quantity-selection: done
+  FIX-4-event-popup-display: review
 
   # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
   epic-8: backlog

@@ -72,6 +72,12 @@ public class GameRunner : MonoBehaviour
         _quantitySelector = UISetup.ExecuteQuantitySelector();
         _quantitySelector.SetDataSources(_ctx.Portfolio, GetSelectedStockId, GetStockPrice);
 
+        // Create event display systems (subscribe to MarketEventFiredEvent)
+        UISetup.ExecuteNewsBanner();
+        UISetup.ExecuteNewsTicker();
+        UISetup.ExecuteScreenEffects();
+        UISetup.ExecuteEventPopup();
+
         // Create overlay UIs that subscribe to state transition events
         UISetup.ExecuteRoundResultsUI();
         UISetup.ExecuteRunSummaryUI();

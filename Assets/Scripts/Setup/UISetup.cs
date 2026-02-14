@@ -1104,6 +1104,82 @@ public static class UISetup
     }
 
     /// <summary>
+    /// Generates the EventPopup center-screen overlay for dramatic market event display.
+    /// Large popup with directional arrow, headline, affected tickers.
+    /// Pauses game, then flies up (positive) or down (negative).
+    /// </summary>
+    public static EventPopup ExecuteEventPopup()
+    {
+        var popupParent = new GameObject("EventPopupOverlay");
+
+        var canvasGo = new GameObject("EventPopupCanvas");
+        canvasGo.transform.SetParent(popupParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 50; // Above NewsBanner (30), below state overlays (100+)
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        // No GraphicRaycaster — popup should not block input during pause
+
+        // Center-screen popup panel (~60% screen width)
+        var popupPanel = CreatePanel("PopupPanel", canvasGo.transform);
+        var panelRect = popupPanel.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.pivot = new Vector2(0.5f, 0.5f);
+        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.sizeDelta = new Vector2(1152f, 200f); // ~60% of 1920
+        var bgImage = popupPanel.GetComponent<Image>();
+        bgImage.color = EventPopup.PositiveColor;
+
+        var canvasGroup = popupPanel.AddComponent<CanvasGroup>();
+
+        // Vertical layout inside popup
+        var vlg = popupPanel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 8f;
+        vlg.padding = new RectOffset(30, 30, 20, 20);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Directional arrow (large)
+        var arrowGo = CreateLabel("ArrowText", popupPanel.transform, EventPopup.UpArrow,
+            EventPopup.PositiveTextColor, 48);
+        arrowGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        // Headline text (large, bold)
+        var headlineGo = CreateLabel("HeadlineText", popupPanel.transform, "BREAKING NEWS",
+            Color.white, 26);
+        headlineGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var headlineRect = headlineGo.GetComponent<RectTransform>();
+        headlineRect.sizeDelta = new Vector2(1000f, 40f);
+
+        // Affected ticker symbols
+        var tickerGo = CreateLabel("TickerText", popupPanel.transform, "ACME",
+            EventPopup.PositiveTextColor, 18);
+
+        // Initialize EventPopup MonoBehaviour
+        var eventPopup = popupParent.AddComponent<EventPopup>();
+        eventPopup.Initialize(
+            popupPanel,
+            bgImage,
+            arrowGo.GetComponent<Text>(),
+            headlineGo.GetComponent<Text>(),
+            tickerGo.GetComponent<Text>(),
+            canvasGroup,
+            panelRect
+        );
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] EventPopup created: center-screen dramatic event overlay");
+        #endif
+
+        return eventPopup;
+    }
+
+    /// <summary>
     /// Generates the trade feedback overlay positioned below the top bar.
     /// Shows brief text like "SHORTED ACME x10" that fades out after 1.5s.
     /// </summary>
