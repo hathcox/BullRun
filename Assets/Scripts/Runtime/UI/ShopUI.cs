@@ -2,8 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Shop UI overlay. Displays 3 item cards (one per category) and Reputation display.
+/// Shop UI overlay. Displays 3 item cards (one per category), optional upgrade card, and Reputation display.
 /// FIX-12: Shop uses Reputation currency, not Portfolio.Cash.
+/// FIX-13: Adds Trade Volume upgrade card for quantity tier unlocks.
 /// MonoBehaviour created by UISetup during F5 generation.
 /// </summary>
 public class ShopUI : MonoBehaviour
@@ -17,6 +18,9 @@ public class ShopUI : MonoBehaviour
     // FIX-12: Reputation display color (amber/gold)
     public static readonly Color ReputationColor = new Color(1f, 0.7f, 0f, 1f);
 
+    // FIX-13: Upgrade card accent color (cyan/teal)
+    public static readonly Color UpgradeAccentColor = new Color(0f, 0.8f, 0.9f, 1f);
+
     private GameObject _root;
     private Text _repText;
     private Text _headerText;
@@ -29,6 +33,16 @@ public class ShopUI : MonoBehaviour
     private RunContext _ctx;
     private System.Action<int> _onPurchase;
     private System.Action _onClose;
+
+    // FIX-13: Upgrade card elements
+    private GameObject _upgradeCardRoot;
+    private Text _upgradeNameText;
+    private Text _upgradeDescText;
+    private Text _upgradeCostText;
+    private Button _upgradeBuyButton;
+    private Text _upgradeBuyButtonText;
+    private int _upgradeCost;
+    private System.Action _onUpgradePurchase;
 
     public struct ItemCardView
     {
@@ -57,6 +71,20 @@ public class ShopUI : MonoBehaviour
         _cards = cards;
         _canvasGroup = canvasGroup;
         _root.SetActive(false);
+    }
+
+    /// <summary>
+    /// FIX-13: Sets the upgrade card UI element references. Called by UISetup during F5.
+    /// </summary>
+    public void SetUpgradeCard(GameObject root, Text nameText, Text descText, Text costText,
+        Button buyButton, Text buyButtonText)
+    {
+        _upgradeCardRoot = root;
+        _upgradeNameText = nameText;
+        _upgradeDescText = descText;
+        _upgradeCostText = costText;
+        _upgradeBuyButton = buyButton;
+        _upgradeBuyButtonText = buyButtonText;
     }
 
     /// <summary>
@@ -113,6 +141,56 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
+    /// FIX-13: Shows the Trade Volume upgrade card with the next available tier.
+    /// </summary>
+    public void ShowUpgrade(int tierValue, int repCost, System.Action onPurchase)
+    {
+        if (_upgradeCardRoot == null) return;
+
+        _onUpgradePurchase = onPurchase;
+        _upgradeCost = repCost;
+        _upgradeCardRoot.SetActive(true);
+        _upgradeNameText.text = $"Trade Volume: x{tierValue}";
+        _upgradeDescText.text = $"Unlock x{tierValue} quantity preset for trading";
+        _upgradeCostText.text = $"\u2605 {repCost}";
+
+        bool canAfford = _ctx != null && _ctx.Reputation.CanAfford(repCost);
+        _upgradeBuyButton.interactable = canAfford;
+        _upgradeBuyButtonText.text = canAfford ? "UNLOCK" : "CAN'T AFFORD";
+        _upgradeCostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+
+        _upgradeBuyButton.onClick.RemoveAllListeners();
+        _upgradeBuyButton.onClick.AddListener(() => _onUpgradePurchase?.Invoke());
+    }
+
+    /// <summary>
+    /// FIX-13: Hides the upgrade card (all tiers unlocked or no upgrade available).
+    /// </summary>
+    public void HideUpgrade()
+    {
+        if (_upgradeCardRoot != null)
+            _upgradeCardRoot.SetActive(false);
+    }
+
+    /// <summary>
+    /// FIX-13: Marks upgrade as purchased and refreshes affordability on all cards.
+    /// </summary>
+    public void RefreshAfterUpgradePurchase()
+    {
+        UpdateReputationDisplay();
+
+        // Mark upgrade card as purchased
+        if (_upgradeCardRoot != null)
+        {
+            _upgradeBuyButton.interactable = false;
+            _upgradeBuyButtonText.text = "UNLOCKED";
+        }
+
+        // Refresh affordability on item cards
+        RefreshItemCardAffordability();
+    }
+
+    /// <summary>
     /// Hides the shop overlay. Called by ShopState.Exit.
     /// </summary>
     public void Hide()
@@ -137,10 +215,15 @@ public class ShopUI : MonoBehaviour
             _cards[cardIndex].CardBackground.color = new Color(0.1f, 0.15f, 0.1f, 0.7f);
         }
 
-        // Update affordability on remaining cards (FIX-12: Rep, not cash)
+        // Update affordability on remaining cards and upgrade card
+        RefreshItemCardAffordability();
+        RefreshUpgradeAffordability();
+    }
+
+    private void RefreshItemCardAffordability()
+    {
         for (int i = 0; i < _cards.Length && i < _items.Length; i++)
         {
-            if (i == cardIndex) continue;
             if (!_items[i].HasValue) continue; // sold out slot
             if (!_cards[i].PurchaseButton.interactable) continue; // already purchased
 
@@ -148,6 +231,23 @@ public class ShopUI : MonoBehaviour
             _cards[i].PurchaseButton.interactable = canAfford;
             _cards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _cards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        }
+    }
+
+    /// <summary>
+    /// FIX-13: Refreshes upgrade card affordability after any purchase.
+    /// </summary>
+    private void RefreshUpgradeAffordability()
+    {
+        if (_upgradeCardRoot == null || !_upgradeCardRoot.activeSelf) return;
+        if (_upgradeBuyButtonText.text == "UNLOCKED") return; // Already purchased this session
+
+        if (_ctx != null)
+        {
+            bool canAfford = _ctx.Reputation.CanAfford(_upgradeCost);
+            _upgradeBuyButton.interactable = canAfford;
+            _upgradeBuyButtonText.text = canAfford ? "UNLOCK" : "CAN'T AFFORD";
+            _upgradeCostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
         }
     }
 

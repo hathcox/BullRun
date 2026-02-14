@@ -1,27 +1,36 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>
-/// Manages trade quantity selection. Preset buttons (x5, x10, x15, x25).
+/// Manages trade quantity selection with unlock-based tiers (FIX-13).
+/// Starts at x1 (no preset buttons). Higher tiers (x5, x10, x15, x25) unlocked via Reputation shop.
 /// Created by UISetup, read by GameRunner at trade time.
-/// Persists selection within a round; resets to x10 on RoundStartedEvent.
+/// Resets to x1 on RoundStartedEvent. Unlocks persist for the run.
 /// </summary>
 public class QuantitySelector : MonoBehaviour
 {
-    public enum Preset { Five, Ten, Fifteen, TwentyFive }
-
-    public static readonly int[] PresetValues = { 5, GameConfig.DefaultTradeQuantity, 15, 25 };
-    public static readonly string[] PresetLabels = { "x5", "x10", "x15", "x25" };
     public static readonly Color ActiveButtonColor = new Color(0f, 0.5f, 0.25f, 1f);
     public static readonly Color InactiveButtonColor = new Color(0.12f, 0.14f, 0.25f, 0.8f);
 
-    private Preset _selectedPreset = Preset.Ten;
+    // Tier 0 = x1 (default, always unlocked). Tiers 1-4 = x5, x10, x15, x25.
+    private int _unlockedTierIndex = 0;
+    private int _selectedQuantity;
+    private int _selectedPresetTierIndex = -1; // -1 means no preset selected (using default x1)
     private Text _quantityDisplayText;
-    private Image[] _buttonBackgrounds;
-    private Text[] _buttonTexts;
 
-    /// <summary>Current selected preset.</summary>
-    public Preset SelectedPreset => _selectedPreset;
+    // Dynamic preset button arrays — grow as tiers are unlocked
+    private List<Image> _buttonBackgrounds = new List<Image>();
+    private List<Text> _buttonTexts = new List<Text>();
+
+    /// <summary>Current selected quantity value.</summary>
+    public int SelectedQuantity => _selectedQuantity;
+
+    /// <summary>Index of the highest unlocked tier (0 = x1 only, 4 = all unlocked).</summary>
+    public int UnlockedTierIndex => _unlockedTierIndex;
+
+    /// <summary>Highest unlocked quantity value.</summary>
+    public int HighestUnlockedQuantity => GameConfig.QuantityTiers[_unlockedTierIndex].Value;
 
     /// <summary>BUY button Image reference for cooldown visual feedback.</summary>
     public Image BuyButtonImage { get; set; }
@@ -32,18 +41,29 @@ public class QuantitySelector : MonoBehaviour
     /// <summary>Countdown timer Text displayed above buttons during post-trade cooldown.</summary>
     public Text CooldownTimerText { get; set; }
 
-    public void Initialize(Text quantityDisplayText, Image[] buttonBackgrounds, Text[] buttonTexts)
+    /// <summary>Callback invoked when a tier is unlocked, so UISetup can add a button.</summary>
+    public System.Action<int> OnTierUnlocked { get; set; }
+
+    public void Initialize(Text quantityDisplayText)
     {
         _quantityDisplayText = quantityDisplayText;
-        _buttonBackgrounds = buttonBackgrounds;
-        _buttonTexts = buttonTexts;
-        SelectPreset(Preset.Ten);
+        _unlockedTierIndex = 0;
+        _selectedQuantity = GameConfig.DefaultTradeQuantity; // x1
+        _selectedPresetTierIndex = -1;
+        UpdateQuantityDisplay();
         EventBus.Subscribe<RoundStartedEvent>(OnRoundStarted);
+        EventBus.Subscribe<QuantityTierUnlockedEvent>(OnQuantityTierUnlocked);
     }
 
     private void OnDestroy()
     {
         EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStarted);
+        EventBus.Unsubscribe<QuantityTierUnlockedEvent>(OnQuantityTierUnlocked);
+    }
+
+    private void OnQuantityTierUnlocked(QuantityTierUnlockedEvent evt)
+    {
+        UnlockTier(evt.TierIndex);
     }
 
     private void OnRoundStarted(RoundStartedEvent evt)
@@ -51,28 +71,92 @@ public class QuantitySelector : MonoBehaviour
         ResetToDefault();
     }
 
-    /// <summary>Select a specific quantity preset and update UI.</summary>
-    public void SelectPreset(Preset preset)
+    /// <summary>
+    /// Unlocks the next quantity tier. Called when player buys the upgrade in shop.
+    /// Returns true if a new tier was unlocked, false if already at max.
+    /// </summary>
+    public bool UnlockNextTier()
     {
-        _selectedPreset = preset;
+        int nextTier = _unlockedTierIndex + 1;
+        if (nextTier >= GameConfig.QuantityTiers.Length) return false;
+        return UnlockTier(nextTier);
+    }
+
+    /// <summary>
+    /// Unlocks a specific tier index. Tiers must be unlocked sequentially.
+    /// </summary>
+    public bool UnlockTier(int tierIndex)
+    {
+        if (tierIndex <= _unlockedTierIndex) return false;
+        if (tierIndex >= GameConfig.QuantityTiers.Length) return false;
+        if (tierIndex != _unlockedTierIndex + 1) return false; // Sequential only
+
+        _unlockedTierIndex = tierIndex;
+        OnTierUnlocked?.Invoke(tierIndex);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[QuantitySelector] Tier {tierIndex} unlocked: x{GameConfig.QuantityTiers[tierIndex].Value}");
+        #endif
+
+        return true;
+    }
+
+    /// <summary>
+    /// Selects a preset by tier index (1=x5, 2=x10, 3=x15, 4=x25).
+    /// Rejects if tier is not unlocked.
+    /// </summary>
+    public bool SelectPresetByTier(int tierIndex)
+    {
+        if (tierIndex < 1 || tierIndex >= GameConfig.QuantityTiers.Length) return false;
+        if (tierIndex > _unlockedTierIndex) return false;
+
+        _selectedPresetTierIndex = tierIndex;
+        _selectedQuantity = GameConfig.QuantityTiers[tierIndex].Value;
+        UpdateButtonHighlights();
+        UpdateQuantityDisplay();
+        return true;
+    }
+
+    /// <summary>Reset to x1 default on round start.</summary>
+    public void ResetToDefault()
+    {
+        _selectedPresetTierIndex = -1;
+        _selectedQuantity = GameConfig.DefaultTradeQuantity; // x1
         UpdateButtonHighlights();
         UpdateQuantityDisplay();
     }
 
-    /// <summary>Reset to default (x10).</summary>
-    public void ResetToDefault()
+    /// <summary>Returns the list of unlocked preset values (tiers 1+ only, not the x1 default).</summary>
+    public int[] GetUnlockedPresets()
     {
-        SelectPreset(Preset.Ten);
+        if (_unlockedTierIndex < 1) return new int[0];
+        var result = new int[_unlockedTierIndex];
+        for (int i = 1; i <= _unlockedTierIndex; i++)
+            result[i - 1] = GameConfig.QuantityTiers[i].Value;
+        return result;
+    }
+
+    /// <summary>Checks if a tier index is unlocked.</summary>
+    public bool IsTierUnlocked(int tierIndex)
+    {
+        return tierIndex >= 0 && tierIndex <= _unlockedTierIndex;
+    }
+
+    /// <summary>Registers a preset button (called by UISetup when dynamically adding buttons).</summary>
+    public void RegisterPresetButton(Image background, Text text)
+    {
+        _buttonBackgrounds.Add(background);
+        _buttonTexts.Add(text);
     }
 
     private void UpdateButtonHighlights()
     {
-        if (_buttonBackgrounds == null) return;
-        for (int i = 0; i < _buttonBackgrounds.Length; i++)
+        for (int i = 0; i < _buttonBackgrounds.Count; i++)
         {
-            bool active = i == (int)_selectedPreset;
+            // Button index i corresponds to tier index (i + 1)
+            bool active = _selectedPresetTierIndex == (i + 1);
             _buttonBackgrounds[i].color = active ? ActiveButtonColor : InactiveButtonColor;
-            if (_buttonTexts != null && i < _buttonTexts.Length)
+            if (i < _buttonTexts.Count)
                 _buttonTexts[i].color = active ? Color.white : new Color(0.6f, 0.6f, 0.7f, 1f);
         }
     }
@@ -80,7 +164,7 @@ public class QuantitySelector : MonoBehaviour
     private void UpdateQuantityDisplay()
     {
         if (_quantityDisplayText == null) return;
-        _quantityDisplayText.text = $"Qty: {PresetValues[(int)_selectedPreset]}";
+        _quantityDisplayText.text = $"Qty: {_selectedQuantity}";
     }
 
     // --- Static calculation methods (testable without MonoBehaviour) ---
@@ -129,13 +213,17 @@ public class QuantitySelector : MonoBehaviour
 
     /// <summary>
     /// Returns the resolved quantity for a specific trade action.
-    /// Returns preset value, clamped to affordable/available amount (partial fill).
+    /// FIX-13: Uses selected quantity (x1 default or unlocked preset), clamped to
+    /// affordable/available amount AND highest unlocked tier value.
     /// Returns 0 when nothing is affordable/available.
     /// </summary>
     public int GetCurrentQuantity(bool isBuy, bool isShort, string stockId, float price, Portfolio portfolio)
     {
         int max = CalculateMax(isBuy, isShort, portfolio.Cash, price, portfolio, stockId);
-        int qty = PresetValues[(int)_selectedPreset];
+        int qty = _selectedQuantity;
+        // Clamp to highest unlocked tier value
+        int highestUnlocked = HighestUnlockedQuantity;
+        if (qty > highestUnlocked) qty = highestUnlocked;
         // Partial fill: clamp to what's affordable/available
         if (qty > max) qty = max;
         return qty;

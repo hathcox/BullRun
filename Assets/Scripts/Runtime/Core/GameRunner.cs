@@ -491,11 +491,12 @@ public class GameRunner : MonoBehaviour
 
     /// <summary>
     /// Keyboard trading during TradingState.
-    /// 1-4 = Select quantity preset (x5/x10/x15/x25) — always available, even during cooldown.
+    /// 1-4 = Select quantity preset (x5/x10/x15/x25) — only if tier is unlocked (FIX-13).
     /// B = Buy (long only), S = Sell (long only) — blocked during cooldown.
     /// D = Short (Ready state) or Cash Out (CashOutWindow state).
     /// FIX-10 v2: Trades execute instantly, then post-trade cooldown locks Buy/Sell buttons.
     /// FIX-11: D key for short actions, separate from Buy/Sell cooldown.
+    /// FIX-13: Keyboard shortcuts gated to unlocked tiers only.
     /// </summary>
     private void HandleTradingInput()
     {
@@ -504,15 +505,16 @@ public class GameRunner : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
-        // Quantity preset shortcuts: always available even during cooldown
-        if (keyboard.digit1Key.wasPressedThisFrame)
-            _quantitySelector.SelectPreset(QuantitySelector.Preset.Five);
-        else if (keyboard.digit2Key.wasPressedThisFrame)
-            _quantitySelector.SelectPreset(QuantitySelector.Preset.Ten);
-        else if (keyboard.digit3Key.wasPressedThisFrame)
-            _quantitySelector.SelectPreset(QuantitySelector.Preset.Fifteen);
-        else if (keyboard.digit4Key.wasPressedThisFrame)
-            _quantitySelector.SelectPreset(QuantitySelector.Preset.TwentyFive);
+        // FIX-13: Quantity preset shortcuts — only for unlocked tiers
+        // Key 1 = tier 1 (x5), Key 2 = tier 2 (x10), Key 3 = tier 3 (x15), Key 4 = tier 4 (x25)
+        if (keyboard.digit1Key.wasPressedThisFrame && _quantitySelector.IsTierUnlocked(1))
+            _quantitySelector.SelectPresetByTier(1);
+        else if (keyboard.digit2Key.wasPressedThisFrame && _quantitySelector.IsTierUnlocked(2))
+            _quantitySelector.SelectPresetByTier(2);
+        else if (keyboard.digit3Key.wasPressedThisFrame && _quantitySelector.IsTierUnlocked(3))
+            _quantitySelector.SelectPresetByTier(3);
+        else if (keyboard.digit4Key.wasPressedThisFrame && _quantitySelector.IsTierUnlocked(4))
+            _quantitySelector.SelectPresetByTier(4);
 
         // FIX-11: D key for short actions (independent of Buy/Sell cooldown)
         if (keyboard.dKey.wasPressedThisFrame)

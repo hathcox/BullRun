@@ -3,7 +3,8 @@ using UnityEngine;
 
 /// <summary>
 /// Draft shop state. Shows shop UI with 3 items (one per category),
-/// handles purchases, then advances to next round when player clicks Continue.
+/// plus optional Trade Volume upgrade (FIX-13).
+/// Handles purchases, then advances to next round when player clicks Continue.
 /// Transitions to MarketOpenState (or TierTransitionState if act changes,
 /// or RunSummaryState if run complete).
 /// </summary>
@@ -55,6 +56,9 @@ public class ShopState : IGameState
         {
             ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
+
+            // FIX-13: Show Trade Volume upgrade if next tier is available
+            ShowQuantityUpgrade(ctx);
         }
 
         // Publish shop opened event — only include non-null items
@@ -127,6 +131,73 @@ public class ShopState : IGameState
                 ShopUIInstance.RefreshAfterPurchase(cardIndex);
             }
         }
+    }
+
+    /// <summary>
+    /// FIX-13: Shows the Trade Volume upgrade card if next tier is available.
+    /// </summary>
+    private void ShowQuantityUpgrade(RunContext ctx)
+    {
+        int nextTier = ctx.UnlockedQuantityTier + 1;
+        if (nextTier >= GameConfig.QuantityTiers.Length)
+        {
+            // All tiers unlocked — hide upgrade card
+            ShopUIInstance.HideUpgrade();
+            return;
+        }
+
+        var tier = GameConfig.QuantityTiers[nextTier];
+        ShopUIInstance.ShowUpgrade(tier.Value, tier.RepCost, () => OnUpgradePurchaseRequested(ctx, nextTier));
+    }
+
+    /// <summary>
+    /// FIX-13: Handles Trade Volume upgrade purchase.
+    /// Validates Rep affordability, deducts Rep, publishes unlock event.
+    /// </summary>
+    private void OnUpgradePurchaseRequested(RunContext ctx, int tierIndex)
+    {
+        if (!_shopActive) return;
+        if (tierIndex >= GameConfig.QuantityTiers.Length) return;
+
+        // Validate sequential unlock (mirrors QuantitySelector's sequential check)
+        if (tierIndex != ctx.UnlockedQuantityTier + 1) return;
+
+        var tier = GameConfig.QuantityTiers[tierIndex];
+
+        // Validate affordability
+        if (!ctx.Reputation.CanAfford(tier.RepCost))
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[ShopState] Upgrade rejected: insufficient Rep {ctx.Reputation.Current} for x{tier.Value} ({tier.RepCost} Rep)");
+            #endif
+            return;
+        }
+
+        // Deduct Reputation
+        if (!ctx.Reputation.Spend(tier.RepCost))
+            return;
+
+        // Publish event for QuantitySelector to handle (synchronous — processed before next line)
+        EventBus.Publish(new QuantityTierUnlockedEvent
+        {
+            TierIndex = tierIndex,
+            TierValue = tier.Value,
+            RepCost = tier.RepCost
+        });
+
+        // Update RunContext tracking after event published successfully
+        ctx.UnlockedQuantityTier = tierIndex;
+
+        // Update UI: refresh rep display, then show next tier (or hide if all unlocked)
+        if (ShopUIInstance != null)
+        {
+            ShopUIInstance.RefreshAfterUpgradePurchase();
+            ShowQuantityUpgrade(ctx);
+        }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ShopState] Upgrade purchased: x{tier.Value} for {tier.RepCost} Rep (remaining: {ctx.Reputation.Current} Rep)");
+        #endif
     }
 
     /// <summary>

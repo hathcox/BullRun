@@ -1000,6 +1000,68 @@ public static class UISetup
             cards[i] = CreateItemCard(i, defaultCategories[i], cardContainer.transform);
         }
 
+        // FIX-13: Trade Volume upgrade card — horizontal bar below item cards, above Continue button
+        var upgradeCardGo = CreatePanel("UpgradeCard", bgGo.transform);
+        var upgradeCardRect = upgradeCardGo.GetComponent<RectTransform>();
+        upgradeCardRect.anchorMin = new Vector2(0.5f, 0f);
+        upgradeCardRect.anchorMax = new Vector2(0.5f, 0f);
+        upgradeCardRect.pivot = new Vector2(0.5f, 0f);
+        upgradeCardRect.anchoredPosition = new Vector2(0f, 100f);
+        upgradeCardRect.sizeDelta = new Vector2(500f, 60f);
+        upgradeCardGo.GetComponent<Image>().color = new Color(0.05f, 0.12f, 0.18f, 0.95f);
+
+        var upgradeHlg = upgradeCardGo.AddComponent<HorizontalLayoutGroup>();
+        upgradeHlg.spacing = 10f;
+        upgradeHlg.padding = new RectOffset(12, 12, 8, 8);
+        upgradeHlg.childAlignment = TextAnchor.MiddleCenter;
+        upgradeHlg.childForceExpandWidth = false;
+        upgradeHlg.childForceExpandHeight = true;
+
+        // Upgrade label
+        var upgradeCategoryGo = CreateLabel("UpgradeCategory", upgradeCardGo.transform, "UPGRADE",
+            ShopUI.UpgradeAccentColor, 11);
+        upgradeCategoryGo.GetComponent<Text>().raycastTarget = false;
+        var upgradeCatLayout = upgradeCategoryGo.AddComponent<LayoutElement>();
+        upgradeCatLayout.preferredWidth = 60f;
+
+        // Upgrade name
+        var upgradeNameGo = CreateLabel("UpgradeName", upgradeCardGo.transform, "Trade Volume: x5",
+            Color.white, 14);
+        upgradeNameGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        upgradeNameGo.GetComponent<Text>().raycastTarget = false;
+        var upgradeNameLayout = upgradeNameGo.AddComponent<LayoutElement>();
+        upgradeNameLayout.preferredWidth = 140f;
+
+        // Upgrade description
+        var upgradeDescGo = CreateLabel("UpgradeDesc", upgradeCardGo.transform, "Unlock x5 quantity preset",
+            new Color(0.7f, 0.7f, 0.8f, 1f), 11);
+        upgradeDescGo.GetComponent<Text>().raycastTarget = false;
+        var upgradeDescLayout = upgradeDescGo.AddComponent<LayoutElement>();
+        upgradeDescLayout.preferredWidth = 160f;
+        upgradeDescLayout.flexibleWidth = 1f;
+
+        // Upgrade cost
+        var upgradeCostGo = CreateLabel("UpgradeCost", upgradeCardGo.transform, "\u2605 10",
+            Color.white, 16);
+        upgradeCostGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        upgradeCostGo.GetComponent<Text>().raycastTarget = false;
+        var upgradeCostLayout = upgradeCostGo.AddComponent<LayoutElement>();
+        upgradeCostLayout.preferredWidth = 50f;
+
+        // Upgrade buy button
+        var upgradeBtnGo = CreatePanel("UpgradeBuyBtn", upgradeCardGo.transform);
+        upgradeBtnGo.GetComponent<Image>().color = new Color(0f, 0.5f, 0.6f, 1f);
+        var upgradeBtnLayout = upgradeBtnGo.AddComponent<LayoutElement>();
+        upgradeBtnLayout.preferredWidth = 80f;
+        upgradeBtnLayout.preferredHeight = 32f;
+        var upgradeButton = upgradeBtnGo.AddComponent<Button>();
+        var upgradeBtnLabel = CreateLabel("UpgradeBuyBtnText", upgradeBtnGo.transform, "UNLOCK",
+            Color.white, 12);
+        upgradeBtnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        upgradeBtnLabel.GetComponent<Text>().raycastTarget = false;
+
+        upgradeCardGo.SetActive(false); // Hidden by default; shown by ShopState if upgrade available
+
         // Continue button — player leaves shop when ready (untimed)
         var continueBtnGo = CreatePanel("ContinueButton", bgGo.transform);
         var continueBtnRect = continueBtnGo.GetComponent<RectTransform>();
@@ -1025,11 +1087,21 @@ public static class UISetup
         );
         shopUI.SetContinueButton(continueButton);
 
+        // FIX-13: Wire upgrade card references
+        shopUI.SetUpgradeCard(
+            upgradeCardGo,
+            upgradeNameGo.GetComponent<Text>(),
+            upgradeDescGo.GetComponent<Text>(),
+            upgradeCostGo.GetComponent<Text>(),
+            upgradeButton,
+            upgradeBtnLabel.GetComponent<Text>()
+        );
+
         // Wire to ShopState
         ShopState.ShopUIInstance = shopUI;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] ShopUI created: full-screen overlay with 3 item cards");
+        Debug.Log("[Setup] ShopUI created: full-screen overlay with 3 item cards + upgrade slot (FIX-13)");
         #endif
 
         return shopUI;
@@ -1242,8 +1314,9 @@ public static class UISetup
 
     /// <summary>
     /// Generates the trade panel at bottom-center of screen.
-    /// Layout: quantity presets row on top, SELL (red) button left, BUY (green) button right.
-    /// Replaces old ExecuteKeyLegend + ExecuteQuantitySelector.
+    /// FIX-13: Starts with no preset buttons (x1 only). Buttons added dynamically via AddPresetButton
+    /// when tiers are unlocked through Reputation shop.
+    /// Layout: quantity display row on top, SELL (red) button left, BUY (green) button right.
     /// BUY/SELL buttons publish TradeButtonPressedEvent for GameRunner to handle.
     /// </summary>
     public static QuantitySelector ExecuteTradePanel()
@@ -1278,7 +1351,7 @@ public static class UISetup
         mainLayout.childForceExpandWidth = true;
         mainLayout.childForceExpandHeight = false;
 
-        // === Row 1: Quantity presets ===
+        // === Row 1: Quantity display + preset buttons (FIX-13: starts empty, buttons added on unlock) ===
         var presetRow = new GameObject("PresetRow");
         presetRow.transform.SetParent(containerGo.transform, false);
         presetRow.AddComponent<RectTransform>();
@@ -1290,30 +1363,12 @@ public static class UISetup
         presetHlg.childForceExpandWidth = true;
         presetHlg.childForceExpandHeight = true;
 
-        // Create 4 preset buttons
-        var buttonBackgrounds = new Image[4];
-        var buttonTexts = new Text[4];
-        for (int i = 0; i < 4; i++)
-        {
-            var btnGo = CreatePanel($"QtyBtn_{i}", presetRow.transform);
-            var btnLayout = btnGo.AddComponent<LayoutElement>();
-            btnLayout.preferredWidth = 60f;
-            btnLayout.preferredHeight = 26f;
-            buttonBackgrounds[i] = btnGo.GetComponent<Image>();
-            buttonBackgrounds[i].color = QuantitySelector.InactiveButtonColor;
+        // FIX-13: No preset buttons created at setup — only the quantity display
+        // Preset buttons are added dynamically when tiers are unlocked via AddPresetButton
 
-            var labelGo = CreateLabel($"QtyBtnLabel_{i}", btnGo.transform,
-                QuantitySelector.PresetLabels[i], new Color(0.6f, 0.6f, 0.7f, 1f), 14);
-            labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-            labelGo.GetComponent<Text>().raycastTarget = false;
-            buttonTexts[i] = labelGo.GetComponent<Text>();
-
-            btnGo.AddComponent<Button>();
-        }
-
-        // Quantity display text at end of preset row
+        // Quantity display text (shows "Qty: 1" at start)
         var qtyTextGo = CreateLabel("QtyDisplay", presetRow.transform,
-            "Qty: 10", Color.white, 14);
+            $"Qty: {GameConfig.DefaultTradeQuantity}", Color.white, 14);
         qtyTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         qtyTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
         var qtyTextLayout = qtyTextGo.AddComponent<LayoutElement>();
@@ -1353,9 +1408,9 @@ public static class UISetup
         buyLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
         buyLabel.GetComponent<Text>().raycastTarget = false;
 
-        // Initialize QuantitySelector MonoBehaviour
+        // Initialize QuantitySelector MonoBehaviour (FIX-13: no preset buttons at start)
         var quantitySelector = panelParent.AddComponent<QuantitySelector>();
-        quantitySelector.Initialize(qtyTextGo.GetComponent<Text>(), buttonBackgrounds, buttonTexts);
+        quantitySelector.Initialize(qtyTextGo.GetComponent<Text>());
         quantitySelector.BuyButtonImage = buyBtnGo.GetComponent<Image>();
         quantitySelector.SellButtonImage = sellBtnGo.GetComponent<Image>();
 
@@ -1372,13 +1427,14 @@ public static class UISetup
         cooldownTimerGo.SetActive(false);
         quantitySelector.CooldownTimerText = cooldownTimerGo.GetComponent<Text>();
 
-        // Wire preset button click handlers
-        for (int i = 0; i < 4; i++)
+        // FIX-13: Wire OnTierUnlocked callback to dynamically add preset buttons
+        // Capture presetRow transform for dynamic button creation
+        var presetRowTransform = presetRow.transform;
+        var qtyDisplayTransform = qtyTextGo.transform; // Move qty display to end after buttons
+        quantitySelector.OnTierUnlocked = (tierIndex) =>
         {
-            int presetIndex = i;
-            buttonBackgrounds[i].GetComponent<Button>().onClick.AddListener(
-                () => quantitySelector.SelectPreset((QuantitySelector.Preset)presetIndex));
-        }
+            AddPresetButton(quantitySelector, presetRowTransform, qtyDisplayTransform, tierIndex);
+        };
 
         // Wire BUY/SELL buttons to publish TradeButtonPressedEvent
         buyButton.onClick.AddListener(() =>
@@ -1387,10 +1443,50 @@ public static class UISetup
             EventBus.Publish(new TradeButtonPressedEvent { IsBuy = false }));
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] TradePanel created: bottom-center with BUY/SELL buttons and quantity presets");
+        Debug.Log("[Setup] TradePanel created: bottom-center with BUY/SELL buttons, x1 default (FIX-13)");
         #endif
 
         return quantitySelector;
+    }
+
+    /// <summary>
+    /// FIX-13: Dynamically adds a preset button to the quantity row when a tier is unlocked.
+    /// Buttons appear left-to-right as tiers are unlocked: [x5] then [x5][x10] etc.
+    /// Quantity display is moved to stay at the end of the row.
+    /// </summary>
+    public static void AddPresetButton(QuantitySelector quantitySelector, Transform presetRow, Transform qtyDisplay, int tierIndex)
+    {
+        if (tierIndex < 1 || tierIndex >= GameConfig.QuantityTiers.Length) return;
+
+        int tierValue = GameConfig.QuantityTiers[tierIndex].Value;
+        string label = $"x{tierValue}";
+
+        var btnGo = CreatePanel($"QtyBtn_{tierIndex}", presetRow);
+        var btnLayout = btnGo.AddComponent<LayoutElement>();
+        btnLayout.preferredWidth = 60f;
+        btnLayout.preferredHeight = 26f;
+        var btnBackground = btnGo.GetComponent<Image>();
+        btnBackground.color = QuantitySelector.InactiveButtonColor;
+
+        var labelGo = CreateLabel($"QtyBtnLabel_{tierIndex}", btnGo.transform,
+            label, new Color(0.6f, 0.6f, 0.7f, 1f), 14);
+        labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        labelGo.GetComponent<Text>().raycastTarget = false;
+        var btnText = labelGo.GetComponent<Text>();
+
+        var button = btnGo.AddComponent<Button>();
+        int capturedTier = tierIndex;
+        button.onClick.AddListener(() => quantitySelector.SelectPresetByTier(capturedTier));
+
+        // Register button with QuantitySelector for highlight tracking
+        quantitySelector.RegisterPresetButton(btnBackground, btnText);
+
+        // Move quantity display text to remain at the end of the row
+        qtyDisplay.SetAsLastSibling();
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[Setup] Preset button added: {label} (tier {tierIndex})");
+        #endif
     }
 
     /// <summary>

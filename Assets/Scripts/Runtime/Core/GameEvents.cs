@@ -220,6 +220,17 @@ public struct ShopClosedEvent
 }
 
 /// <summary>
+/// FIX-13: Fired when a quantity tier is unlocked via Reputation shop purchase.
+/// QuantitySelector subscribes to add preset button and update unlock state.
+/// </summary>
+public struct QuantityTierUnlockedEvent
+{
+    public int TierIndex;
+    public int TierValue;
+    public int RepCost;
+}
+
+/// <summary>
 /// Fired when the player clicks the BUY or SELL button on the trade panel.
 /// GameRunner subscribes to execute the smart trade routing.
 /// </summary>
