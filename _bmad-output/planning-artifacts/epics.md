@@ -388,6 +388,56 @@ As a player, I want to see my collected items during trading rounds, so that I k
 
 ---
 
+## FIX Sprint: Bugs & Gameplay Critical Fixes
+
+**Description:** Critical bug fixes and missing gameplay features that must be resolved before Epic 8
+**Phase:** Inserted between Epic 7 and Epic 8
+
+### Story FIX-1: Shop Click Fix & Timer Removal
+
+As a player, I want shop item buttons to respond when I click them and have unlimited time to make my draft choices, so that I can actually purchase upgrades and make thoughtful decisions.
+
+**Acceptance Criteria:**
+- All three shop item purchase buttons respond to mouse clicks
+- Shop has NO countdown timer — player browses at their own pace
+- A "Continue" / "Next Round" button lets the player leave the shop when ready
+- Timer text element is removed from shop UI
+- No regressions in purchase flow
+
+### Story FIX-2: Short Selling UI Bindings
+
+As a player, I want to open short positions and cover them using keyboard controls, so that I can profit from price drops as a core trading mechanic.
+
+**Acceptance Criteria:**
+- Player can open a short position via keyboard (D key = Short)
+- Player can cover a short position via keyboard (F key = Cover)
+- Visual feedback on short/cover execution
+- Feedback when short/cover is blocked (already long, no position, insufficient margin)
+
+### Story FIX-3: Trade Quantity Selection
+
+As a player, I want to choose how many shares to buy, sell, short, or cover at a time, so that I can control my position sizes and manage risk.
+
+**Acceptance Criteria:**
+- Preset quantity buttons: 1x, 5x, 10x, MAX
+- MAX calculates maximum affordable/held shares dynamically
+- Selected quantity persists until changed, resets each round
+- All trade types (buy, sell, short, cover) use selected quantity
+
+### Story FIX-4: Event Pop-Up Display with Pause & Directional Fly
+
+As a player, I want market events to dramatically pop up on screen with a headline, briefly pause the action, and fly in the direction the stock will move, so that events feel impactful and I can react to them.
+
+**Acceptance Criteria:**
+- CRITICAL BUG FIX: NewsBanner, NewsTicker, ScreenEffects actually instantiated (missing init calls in GameRunner.Start)
+- Large center-screen popup with event headline and direction arrow
+- Brief game pause (Time.timeScale = 0) for ~1.2s so player can read
+- Popup flies UP for positive events, DOWN for negative events
+- Event queue prevents stacking pauses
+- Green/red color coding consistent with existing system
+
+---
+
 ## Epic 8: Item/Upgrade System
 
 **Description:** Trading Tools, Intel, Perks implementation and balancing

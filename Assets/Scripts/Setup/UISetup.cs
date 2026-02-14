@@ -1104,6 +1104,174 @@ public static class UISetup
     }
 
     /// <summary>
+    /// Generates the trade feedback overlay positioned below the top bar.
+    /// Shows brief text like "SHORTED ACME x10" that fades out after 1.5s.
+    /// </summary>
+    public static TradeFeedback ExecuteTradeFeedback()
+    {
+        var feedbackParent = new GameObject("TradeFeedback");
+
+        var canvasGo = new GameObject("TradeFeedbackCanvas");
+        canvasGo.transform.SetParent(feedbackParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 23; // Above HUD and NewsTicker (22)
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        // No GraphicRaycaster — feedback should not block input
+
+        // Feedback container — centered below top bar, with dark background for readability
+        var containerGo = CreatePanel("FeedbackContainer", canvasGo.transform);
+        var containerRect = containerGo.GetComponent<RectTransform>();
+        containerRect.anchorMin = new Vector2(0.5f, 1f);
+        containerRect.anchorMax = new Vector2(0.5f, 1f);
+        containerRect.pivot = new Vector2(0.5f, 1f);
+        containerRect.anchoredPosition = new Vector2(0f, -(TopBarHeight + 8f));
+        containerRect.sizeDelta = new Vector2(300f, 30f);
+        containerGo.GetComponent<Image>().color = BarBackgroundColor;
+        containerGo.GetComponent<Image>().raycastTarget = false;
+
+        var canvasGroup = containerGo.AddComponent<CanvasGroup>();
+
+        var feedbackTextGo = CreateLabel("FeedbackText", containerGo.transform, "",
+            Color.white, 18);
+        feedbackTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+
+        var tradeFeedback = feedbackParent.AddComponent<TradeFeedback>();
+        tradeFeedback.Initialize(feedbackTextGo.GetComponent<Text>(), canvasGroup);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] TradeFeedback created: centered below top bar");
+        #endif
+
+        return tradeFeedback;
+    }
+
+    /// <summary>
+    /// Generates the key legend panel at the bottom-left showing trading keybindings.
+    /// B=Buy  S=Sell  D=Short  F=Cover
+    /// </summary>
+    public static void ExecuteKeyLegend()
+    {
+        var legendParent = new GameObject("KeyLegend");
+
+        var canvasGo = new GameObject("KeyLegendCanvas");
+        canvasGo.transform.SetParent(legendParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 16; // Just above sidebar
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        // No GraphicRaycaster — legend should not block input
+
+        // Legend panel — bottom-left, above item inventory bar
+        var panelGo = CreatePanel("LegendPanel", canvasGo.transform);
+        var panelRect = panelGo.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0f, 0f);
+        panelRect.anchorMax = new Vector2(0f, 0f);
+        panelRect.pivot = new Vector2(0f, 0f);
+        panelRect.anchoredPosition = new Vector2(8f, 82f); // Above inventory bar + news ticker
+        panelRect.sizeDelta = new Vector2(SidebarWidth - 16f, 22f);
+        panelGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.7f);
+
+        var legendTextGo = CreateLabel("LegendText", panelGo.transform,
+            "B Buy  S Sell  D Short  F Cover  Q Qty", LabelColor, 10);
+        legendTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] KeyLegend created: bottom-left trading keybindings");
+        #endif
+    }
+
+    /// <summary>
+    /// Generates the quantity selector panel above the round timer.
+    /// Horizontal button strip [1x] [5x] [10x] [MAX] with quantity display.
+    /// </summary>
+    public static QuantitySelector ExecuteQuantitySelector()
+    {
+        var selectorParent = new GameObject("QuantitySelector");
+
+        var canvasGo = new GameObject("QuantitySelectorCanvas");
+        canvasGo.transform.SetParent(selectorParent.transform);
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 24; // Between feedback (22) and timer (25)
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Container — centered above round timer
+        var containerGo = CreatePanel("SelectorContainer", canvasGo.transform);
+        var containerRect = containerGo.GetComponent<RectTransform>();
+        containerRect.anchorMin = new Vector2(0.5f, 0f);
+        containerRect.anchorMax = new Vector2(0.5f, 0f);
+        containerRect.pivot = new Vector2(0.5f, 0f);
+        containerRect.anchoredPosition = new Vector2(0f, 70f);
+        containerRect.sizeDelta = new Vector2(340f, 32f);
+        containerGo.GetComponent<Image>().color = BarBackgroundColor;
+
+        var hlg = containerGo.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 4f;
+        hlg.padding = new RectOffset(6, 6, 3, 3);
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.childForceExpandWidth = false;
+        hlg.childForceExpandHeight = true;
+
+        // Create 4 preset buttons
+        var buttonBackgrounds = new Image[4];
+        var buttonTexts = new Text[4];
+        for (int i = 0; i < 4; i++)
+        {
+            var btnGo = CreatePanel($"QtyBtn_{i}", containerGo.transform);
+            var btnLayout = btnGo.AddComponent<LayoutElement>();
+            btnLayout.preferredWidth = i == 3 ? 54f : 42f; // MAX button slightly wider
+            btnLayout.preferredHeight = 26f;
+            buttonBackgrounds[i] = btnGo.GetComponent<Image>();
+            buttonBackgrounds[i].color = QuantitySelector.InactiveButtonColor;
+
+            var labelGo = CreateLabel($"QtyBtnLabel_{i}", btnGo.transform,
+                QuantitySelector.PresetLabels[i], new Color(0.6f, 0.6f, 0.7f, 1f), 13);
+            labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+            labelGo.GetComponent<Text>().raycastTarget = false;
+            buttonTexts[i] = labelGo.GetComponent<Text>();
+
+            btnGo.AddComponent<Button>();
+        }
+
+        // Quantity display text
+        var qtyTextGo = CreateLabel("QtyDisplay", containerGo.transform,
+            "Qty: 10", Color.white, 15);
+        qtyTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        qtyTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var qtyTextLayout = qtyTextGo.AddComponent<LayoutElement>();
+        qtyTextLayout.preferredWidth = 120f;
+
+        // Initialize QuantitySelector MonoBehaviour
+        var quantitySelector = selectorParent.AddComponent<QuantitySelector>();
+        quantitySelector.Initialize(qtyTextGo.GetComponent<Text>(), buttonBackgrounds, buttonTexts);
+
+        // Wire button click handlers
+        for (int i = 0; i < 4; i++)
+        {
+            int presetIndex = i;
+            buttonBackgrounds[i].GetComponent<Button>().onClick.AddListener(
+                () => quantitySelector.SelectPreset((QuantitySelector.Preset)presetIndex));
+        }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] QuantitySelector created: bottom-center quantity preset buttons");
+        #endif
+
+        return quantitySelector;
+    }
+
+    /// <summary>
     /// Generates the Item Inventory bottom bar panel.
     /// Three sections: Tool slots (Q/E/R) | Intel badges | Perk list.
     /// Displays items from RunContext.ActiveItems during trading rounds.

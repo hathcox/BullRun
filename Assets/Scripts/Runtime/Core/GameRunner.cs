@@ -19,6 +19,7 @@ public class GameRunner : MonoBehaviour
     private TradeExecutor _tradeExecutor;
     private EventScheduler _eventScheduler;
     private StockSidebarData _sidebarData;
+    private QuantitySelector _quantitySelector;
     private bool _firstFrameSkipped;
 
     private void Awake()
@@ -62,6 +63,14 @@ public class GameRunner : MonoBehaviour
 
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);
+
+        // Create trade feedback overlay and key legend (FIX-2: short selling UI)
+        UISetup.ExecuteTradeFeedback();
+        UISetup.ExecuteKeyLegend();
+
+        // Create quantity selector panel (FIX-3: trade quantity selection)
+        _quantitySelector = UISetup.ExecuteQuantitySelector();
+        _quantitySelector.SetDataSources(_ctx.Portfolio, GetSelectedStockId, GetStockPrice);
 
         // Create overlay UIs that subscribe to state transition events
         UISetup.ExecuteRoundResultsUI();
@@ -117,9 +126,9 @@ public class GameRunner : MonoBehaviour
     }
 
     /// <summary>
-    /// Basic keyboard trading during TradingState.
-    /// B = Buy 10 shares of selected stock
-    /// S = Sell 10 shares of selected stock
+    /// Keyboard trading during TradingState.
+    /// Q = Cycle quantity preset, B = Buy, S = Sell, D = Short, F = Cover of selected stock.
+    /// Quantity determined by QuantitySelector (1x, 5x, 10x, MAX).
     /// </summary>
     private void HandleTradingInput()
     {
@@ -128,32 +137,127 @@ public class GameRunner : MonoBehaviour
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
 
+        // Q cycles quantity preset — works without stock selection
+        if (keyboard.qKey.wasPressedThisFrame)
+        {
+            _quantitySelector.CyclePreset();
+            return;
+        }
+
         int selectedStockId = _sidebarData != null ? GetSelectedStockId() : -1;
         if (selectedStockId < 0) return;
 
         float currentPrice = GetStockPrice(selectedStockId);
         if (currentPrice <= 0f) return;
 
+        // Only compute string conversions when a trade key is actually pressed (avoid per-frame allocation)
+        bool anyTradeKey = keyboard.bKey.wasPressedThisFrame || keyboard.sKey.wasPressedThisFrame ||
+            keyboard.dKey.wasPressedThisFrame || keyboard.fKey.wasPressedThisFrame;
+        if (!anyTradeKey) return;
+
         string stockIdStr = selectedStockId.ToString();
+        string ticker = GetSelectedTicker();
 
         if (keyboard.bKey.wasPressedThisFrame)
         {
-            bool success = _tradeExecutor.ExecuteBuy(stockIdStr, 10, currentPrice, _ctx.Portfolio);
+            int qty = _quantitySelector.GetCurrentQuantity(true, false, stockIdStr, currentPrice, _ctx.Portfolio);
+            if (qty <= 0)
+            {
+                EventBus.Publish(new TradeFeedbackEvent
+                {
+                    Message = "Insufficient cash", IsSuccess = false, IsBuy = true, IsShort = false
+                });
+                return;
+            }
+            bool success = _tradeExecutor.ExecuteBuy(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = success ? $"BOUGHT {ticker} x{qty}" : "Insufficient cash",
+                IsSuccess = success, IsBuy = true, IsShort = false
+            });
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (success)
-                Debug.Log($"[Trade] BUY 10 shares @ ${currentPrice:F2} (Stock {selectedStockId})");
+                Debug.Log($"[Trade] BUY {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
             else
-                Debug.Log($"[Trade] BUY rejected — insufficient cash");
+                Debug.Log($"[Trade] BUY rejected \u2014 insufficient cash");
             #endif
         }
         else if (keyboard.sKey.wasPressedThisFrame)
         {
-            bool success = _tradeExecutor.ExecuteSell(stockIdStr, 10, currentPrice, _ctx.Portfolio);
+            int qty = _quantitySelector.GetCurrentQuantity(false, false, stockIdStr, currentPrice, _ctx.Portfolio);
+            if (qty <= 0)
+            {
+                EventBus.Publish(new TradeFeedbackEvent
+                {
+                    Message = "No position to sell", IsSuccess = false, IsBuy = false, IsShort = false
+                });
+                return;
+            }
+            bool success = _tradeExecutor.ExecuteSell(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = success ? $"SOLD {ticker} x{qty}" : "No position to sell",
+                IsSuccess = success, IsBuy = false, IsShort = false
+            });
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (success)
-                Debug.Log($"[Trade] SELL 10 shares @ ${currentPrice:F2} (Stock {selectedStockId})");
+                Debug.Log($"[Trade] SELL {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
             else
-                Debug.Log($"[Trade] SELL rejected — no position to sell");
+                Debug.Log($"[Trade] SELL rejected \u2014 no position to sell");
+            #endif
+        }
+        else if (keyboard.dKey.wasPressedThisFrame)
+        {
+            int qty = _quantitySelector.GetCurrentQuantity(false, true, stockIdStr, currentPrice, _ctx.Portfolio);
+            if (qty <= 0)
+            {
+                string reason = TradeFeedback.GetShortRejectionReason(_ctx.Portfolio, stockIdStr);
+                EventBus.Publish(new TradeFeedbackEvent
+                {
+                    Message = reason, IsSuccess = false, IsBuy = false, IsShort = true
+                });
+                return;
+            }
+            bool success = _tradeExecutor.ExecuteShort(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+            string message = success
+                ? $"SHORTED {ticker} x{qty}"
+                : TradeFeedback.GetShortRejectionReason(_ctx.Portfolio, stockIdStr);
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = message, IsSuccess = success, IsBuy = false, IsShort = true
+            });
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (success)
+                Debug.Log($"[Trade] SHORT {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
+            else
+                Debug.Log($"[Trade] SHORT rejected (Stock {selectedStockId}): {message}");
+            #endif
+        }
+        else if (keyboard.fKey.wasPressedThisFrame)
+        {
+            int qty = _quantitySelector.GetCurrentQuantity(true, true, stockIdStr, currentPrice, _ctx.Portfolio);
+            if (qty <= 0)
+            {
+                string reason = TradeFeedback.GetCoverRejectionReason(_ctx.Portfolio, stockIdStr);
+                EventBus.Publish(new TradeFeedbackEvent
+                {
+                    Message = reason, IsSuccess = false, IsBuy = true, IsShort = true
+                });
+                return;
+            }
+            bool success = _tradeExecutor.ExecuteCover(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+            string message = success
+                ? $"COVERED {ticker} x{qty}"
+                : TradeFeedback.GetCoverRejectionReason(_ctx.Portfolio, stockIdStr);
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = message, IsSuccess = success, IsBuy = true, IsShort = true
+            });
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (success)
+                Debug.Log($"[Trade] COVER {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})");
+            else
+                Debug.Log($"[Trade] COVER rejected (Stock {selectedStockId}): {message}");
             #endif
         }
     }
@@ -162,6 +266,12 @@ public class GameRunner : MonoBehaviour
     {
         if (_sidebarData == null || _sidebarData.SelectedIndex < 0) return -1;
         return _sidebarData.GetEntry(_sidebarData.SelectedIndex).StockId;
+    }
+
+    private string GetSelectedTicker()
+    {
+        if (_sidebarData == null || _sidebarData.SelectedIndex < 0) return "???";
+        return _sidebarData.GetEntry(_sidebarData.SelectedIndex).TickerSymbol;
     }
 
     private float GetStockPrice(int stockId)

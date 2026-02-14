@@ -206,6 +206,18 @@ public struct ShopClosedEvent
 }
 
 /// <summary>
+/// Fired by GameRunner after every trade attempt (success or failure).
+/// TradeFeedback subscribes to display brief visual feedback text.
+/// </summary>
+public struct TradeFeedbackEvent
+{
+    public string Message;
+    public bool IsSuccess;
+    public bool IsBuy;
+    public bool IsShort;
+}
+
+/// <summary>
 /// Fired when a run ends, either by margin call or completing all rounds.
 /// Contains full run statistics including victory status.
 /// Audio system (Epic 11) subscribes for victory music.
