@@ -31,6 +31,15 @@ public class PositionPanelData
                 position.IsLong
             ));
         }
+        foreach (var position in portfolio.GetAllShortPositions())
+        {
+            _entries.Add(new PositionDisplayEntry(
+                position.StockId,
+                position.Shares,
+                position.AverageBuyPrice,
+                position.IsLong
+            ));
+        }
     }
 
     /// <summary>

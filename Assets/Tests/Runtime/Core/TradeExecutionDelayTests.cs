@@ -48,12 +48,12 @@ namespace BullRun.Tests.Core
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
-            bool success = executor.ExecuteBuy("0", 5, 10f, portfolio);
+            bool success = executor.ExecuteBuy("0", 1, 5f, portfolio);
 
             Assert.IsTrue(success, "Trade should execute immediately");
             Assert.AreEqual(1, portfolio.PositionCount,
                 "Position should exist immediately after trade");
-            Assert.AreEqual(GameConfig.StartingCapital - (5 * 10f), portfolio.Cash, 0.01f,
+            Assert.AreEqual(GameConfig.StartingCapital - (1 * 5f), portfolio.Cash, 0.01f,
                 "Cash should be deducted immediately");
         }
 
@@ -65,10 +65,10 @@ namespace BullRun.Tests.Core
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
-            executor.ExecuteBuy("0", 10, 15f, portfolio);
+            executor.ExecuteBuy("0", 1, 5f, portfolio);
             var pos = portfolio.GetPosition("0");
 
-            Assert.AreEqual(15f, pos.AverageBuyPrice, 0.01f,
+            Assert.AreEqual(5f, pos.AverageBuyPrice, 0.01f,
                 "Trade should execute at the exact price provided (instant, no slippage)");
         }
 
@@ -167,13 +167,13 @@ namespace BullRun.Tests.Core
         {
             // AC 4, 5: Timer text updates each frame showing remaining time
             float timer = GameConfig.PostTradeCooldown;
-            float dt = 1f / 60f;
+            float dt = 0.1f; // Large enough step to change F1 display
 
             string firstDisplay = $"{timer:F1}s";
             timer -= dt;
             string secondDisplay = $"{timer:F1}s";
 
-            // After one frame, timer should have decreased
+            // After the step, timer display should have decreased
             Assert.AreNotEqual(firstDisplay, secondDisplay,
                 "Timer display should change between frames (decreasing)");
             Assert.That(timer, Is.LessThan(GameConfig.PostTradeCooldown),
@@ -223,11 +223,11 @@ namespace BullRun.Tests.Core
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
-            bool bought = executor.ExecuteBuy("0", 5, 10f, portfolio);
+            bool bought = executor.ExecuteBuy("0", 1, 5f, portfolio);
             Assert.IsTrue(bought, "Setup: should be able to buy shares");
 
             // LiquidateAllPositions works directly on Portfolio — no GameRunner involvement
-            float pnl = portfolio.LiquidateAllPositions(stockId => 12f);
+            float pnl = portfolio.LiquidateAllPositions(stockId => 7f);
             Assert.AreEqual(0, portfolio.PositionCount,
                 "Auto-liquidation should clear all positions regardless of cooldown state");
         }
@@ -239,10 +239,10 @@ namespace BullRun.Tests.Core
             var executor = new TradeExecutor();
             executor.IsTradeEnabled = true;
 
-            bool shorted = executor.ExecuteShort("0", 5, 10f, portfolio);
+            bool shorted = executor.ExecuteShort("0", 1, 5f, portfolio);
             Assert.IsTrue(shorted, "Setup: should be able to short shares");
 
-            float pnl = portfolio.LiquidateAllPositions(stockId => 8f);
+            float pnl = portfolio.LiquidateAllPositions(stockId => 4f);
             Assert.AreEqual(0, portfolio.ShortPositionCount,
                 "Auto-liquidation should clear short positions regardless of cooldown state");
         }

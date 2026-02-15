@@ -103,8 +103,8 @@ namespace BullRun.Tests.Core
         public void GetCurrentCash_ReflectsPortfolioChanges()
         {
             var ctx = RunContext.StartNewRun();
-            ctx.Portfolio.OpenPosition("ACME", 10, 25.00f);
-            Assert.AreEqual(GameConfig.StartingCapital - 250f, ctx.GetCurrentCash(), 0.001f);
+            ctx.Portfolio.OpenPosition("ACME", 1, 5.00f);
+            Assert.AreEqual(GameConfig.StartingCapital - 5f, ctx.GetCurrentCash(), 0.001f);
         }
         [Test]
         public void StartNewRun_PublishesRunStartedEvent()
@@ -157,20 +157,20 @@ namespace BullRun.Tests.Core
         [Test]
         public void PrepareForNextRound_MultipleRounds_CashCompounds()
         {
-            var ctx = RunContext.StartNewRun(); // cash: 1000
+            var ctx = RunContext.StartNewRun(); // cash: $10
             // Round 1: earn profit
-            ctx.Portfolio.OpenPosition("ACME", 10, 25.00f); // cash: 750
-            ctx.Portfolio.LiquidateAllPositions(id => 30.00f); // cash: 1050
+            ctx.Portfolio.OpenPosition("ACME", 1, 5.00f); // cash: $5
+            ctx.Portfolio.LiquidateAllPositions(id => 8.00f); // cash: $13
             ctx.PrepareForNextRound();
             Assert.AreEqual(2, ctx.CurrentRound);
-            Assert.AreEqual(1050f, ctx.GetCurrentCash(), 0.001f);
+            Assert.AreEqual(13f, ctx.GetCurrentCash(), 0.001f);
 
             // Round 2: earn more
-            ctx.Portfolio.OpenPosition("ACME", 10, 30.00f); // cash: 750
-            ctx.Portfolio.LiquidateAllPositions(id => 40.00f); // cash: 1150
+            ctx.Portfolio.OpenPosition("ACME", 1, 6.00f); // cash: $7
+            ctx.Portfolio.LiquidateAllPositions(id => 9.00f); // cash: $16
             ctx.PrepareForNextRound();
             Assert.AreEqual(3, ctx.CurrentRound);
-            Assert.AreEqual(1150f, ctx.GetCurrentCash(), 0.001f);
+            Assert.AreEqual(16f, ctx.GetCurrentCash(), 0.001f);
         }
 
         // --- AdvanceRound Tests (Story 4.5 Task 2) ---
@@ -597,19 +597,19 @@ namespace BullRun.Tests.Core
             // calculates totalProfit = finalCash - StartingCapital correctly
             var ctx = RunContext.StartNewRun();
 
-            // Jump to Round 7 with $8000 debug cash
-            float debugCash = GameConfig.DebugStartingCash[6]; // $8000
+            // Jump to Round 7 with debug cash (FIX-14: now $400)
+            float debugCash = GameConfig.DebugStartingCash[6]; // $400
             ctx.CurrentAct = RunContext.GetActForRound(7);
             ctx.CurrentRound = 7;
             ctx.Portfolio = new Portfolio(debugCash);
             ctx.StartingCapital = debugCash;
 
-            // Simulate losing $500 during trading
-            ctx.Portfolio.OpenPosition("TEST", 10, 50f); // -$500
-            ctx.Portfolio.ClosePosition("TEST", 10, 0f); // cash now $7500
+            // Simulate losing $200 during trading
+            ctx.Portfolio.OpenPosition("TEST", 10, 20f); // -$200
+            ctx.Portfolio.ClosePosition("TEST", 10, 0f); // cash now $200
 
             float totalProfit = ctx.Portfolio.Cash - ctx.StartingCapital;
-            Assert.AreEqual(-500f, totalProfit, 1f,
+            Assert.AreEqual(-200f, totalProfit, 1f,
                 "Total profit after debug jump should reflect actual trading result, not inflated by debug cash");
         }
 

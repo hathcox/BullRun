@@ -53,7 +53,7 @@ public class MarketCloseState : IGameState
         }
 
         // Liquidate all positions at current prices
-        int positionCount = ctx.Portfolio.PositionCount;
+        int positionCount = ctx.Portfolio.PositionCount + ctx.Portfolio.ShortPositionCount;
         _roundProfit = ctx.Portfolio.LiquidateAllPositions(stockId =>
         {
             if (_priceGenerator != null && int.TryParse(stockId, out int parsedId))

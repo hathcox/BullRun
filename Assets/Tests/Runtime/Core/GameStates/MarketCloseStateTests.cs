@@ -189,21 +189,24 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void AdvanceTime_AfterPauseDuration_TransitionsThroughMarginCallState()
         {
-            // With RoundProfit = 0 (below $50 target), MarginCallState chains
-            // through to RunSummaryState (margin call failure path)
+            // FIX-14: With $10 economy, cash ($10) < target ($20) → margin call failure
+            var ctx = new RunContext(1, 1, new Portfolio(10f));
+            ctx.Portfolio.StartRound(ctx.Portfolio.Cash);
+            var sm = new GameStateMachine(ctx);
+
             MarketCloseState.NextConfig = new MarketCloseStateConfig
             {
-                StateMachine = _sm,
+                StateMachine = sm,
                 PriceGenerator = _priceGenerator,
                 TradeExecutor = _tradeExecutor
             };
-            _sm.TransitionTo<MarketCloseState>();
-            var closeState = (MarketCloseState)_sm.CurrentState;
+            sm.TransitionTo<MarketCloseState>();
+            var closeState = (MarketCloseState)sm.CurrentState;
 
-            closeState.AdvanceTime(_ctx, MarketCloseState.PauseDuration + 1f);
+            closeState.AdvanceTime(ctx, MarketCloseState.PauseDuration + 1f);
 
             // MarginCallState fires immediately and routes to RunSummaryState
-            Assert.IsInstanceOf<RunSummaryState>(_sm.CurrentState);
+            Assert.IsInstanceOf<RunSummaryState>(sm.CurrentState);
         }
 
         // --- AdvanceTime tests ---
