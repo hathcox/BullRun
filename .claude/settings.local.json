@@ -4,7 +4,8 @@
       "Bash(if not exist \"E:\\\\BullRun\\\\Assets\\\\Tests\\\\Runtime\\\\Events\" mkdir \"E:\\\\BullRun\\\\Assets\\\\Tests\\\\Runtime\\\\Events\")",
       "Bash(ls:*)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ]
   }
 }
