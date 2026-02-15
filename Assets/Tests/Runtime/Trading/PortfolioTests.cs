@@ -132,22 +132,20 @@ namespace BullRun.Tests.Trading
         public void GetTotalValue_WithShortPosition_UsesMarginPlusUnrealizedPnL()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin = 250, cash = 750
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash = 1000
             // Short at 50, current price 40 => unrealizedPnL = (50-40)*10 = +100
-            // Short value = marginHeld(250) + unrealizedPnL(100) = 350
             float total = portfolio.GetTotalValue(id => 40.00f);
-            Assert.AreEqual(1100f, total, 0.001f); // 750 + 350
+            Assert.AreEqual(1100f, total, 0.001f); // 1000 + 100
         }
 
         [Test]
         public void GetTotalValue_WithShortAtLoss_ShortValueCanBeNegative()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin = 250, cash = 750
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash = 1000
             // Short at 50, current price 80 => unrealizedPnL = (50-80)*10 = -300
-            // Short value = marginHeld(250) + unrealizedPnL(-300) = -50
             float total = portfolio.GetTotalValue(id => 80.00f);
-            Assert.AreEqual(700f, total, 0.001f); // 750 + (-50)
+            Assert.AreEqual(700f, total, 0.001f); // 1000 + (-300)
         }
 
         [Test]
@@ -155,11 +153,11 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(2000f);
             portfolio.OpenPosition("AAA", 10, 20.00f); // cost 200, cash = 1800
-            portfolio.OpenShort("BBB", 5, 40.00f); // margin = 100, cash = 1700
+            portfolio.OpenShort("BBB", 5, 40.00f); // no margin, cash = 1800
             // AAA long value = 10*25 = 250
-            // BBB short: unrealizedPnL = (40-30)*5 = +50, value = 100 + 50 = 150
+            // BBB short: unrealizedPnL = (40-30)*5 = +50
             float total = portfolio.GetTotalValue(id => id == "AAA" ? 25.00f : 30.00f);
-            Assert.AreEqual(2100f, total, 0.001f); // 1700 + 250 + 150
+            Assert.AreEqual(2100f, total, 0.001f); // 1800 + 250 + 50
         }
 
         // --- GetTotalUnrealizedPnL Tests (Story 2.4 Task 1) ---
@@ -294,10 +292,10 @@ namespace BullRun.Tests.Trading
         public void OpenPosition_WhenShortExists_AllowsSimultaneous()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 875
-            var pos = portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 625
+            portfolio.OpenShort("ACME", 5, 50.00f); // no margin, cash 1000
+            var pos = portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 750
             Assert.IsNotNull(pos);
-            Assert.AreEqual(625f, portfolio.Cash, 0.001f);
+            Assert.AreEqual(750f, portfolio.Cash, 0.001f);
             Assert.IsTrue(portfolio.HasPosition("ACME"));
             Assert.IsTrue(portfolio.HasShortPosition("ACME"));
         }
@@ -307,9 +305,9 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(1000f);
             portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 750
-            var pos = portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 625
+            var pos = portfolio.OpenShort("ACME", 5, 50.00f); // no margin, cash 750
             Assert.IsNotNull(pos);
-            Assert.AreEqual(625f, portfolio.Cash, 0.001f);
+            Assert.AreEqual(750f, portfolio.Cash, 0.001f);
             Assert.IsTrue(portfolio.HasPosition("ACME"));
             Assert.IsTrue(portfolio.HasShortPosition("ACME"));
         }
@@ -318,10 +316,10 @@ namespace BullRun.Tests.Trading
         public void OpenShort_DuplicateShort_ReturnsNull()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 875
+            portfolio.OpenShort("ACME", 5, 50.00f); // no margin, cash 1000
             var pos = portfolio.OpenShort("ACME", 5, 50.00f); // duplicate rejected
             Assert.IsNull(pos);
-            Assert.AreEqual(875f, portfolio.Cash, 0.001f);
+            Assert.AreEqual(1000f, portfolio.Cash, 0.001f);
         }
 
         [Test]
@@ -336,11 +334,11 @@ namespace BullRun.Tests.Trading
         // --- OpenShort Tests (Story 2.3) ---
 
         [Test]
-        public void OpenShort_DeductsMarginFromCash()
+        public void OpenShort_DoesNotDeductCash()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin = 10*50*0.5 = 250
-            Assert.AreEqual(750f, portfolio.Cash, 0.001f);
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin required
+            Assert.AreEqual(1000f, portfolio.Cash, 0.001f);
         }
 
         [Test]
@@ -355,52 +353,52 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void OpenShort_SetsMarginHeld()
+        public void OpenShort_MarginHeldIsZero()
         {
             var portfolio = new Portfolio(1000f);
             var pos = portfolio.OpenShort("ACME", 10, 50.00f);
-            Assert.AreEqual(250.00f, pos.MarginHeld, 0.001f);
+            Assert.AreEqual(0f, pos.MarginHeld, 0.001f);
         }
 
         [Test]
-        public void OpenShort_InsufficientCash_ReturnsNull()
+        public void OpenShort_AlwaysSucceeds_RegardlessOfCash()
         {
             var portfolio = new Portfolio(100f);
-            var pos = portfolio.OpenShort("ACME", 10, 50.00f); // margin = 250, have 100
-            Assert.IsNull(pos);
+            var pos = portfolio.OpenShort("ACME", 10, 50.00f); // no capital required
+            Assert.IsNotNull(pos);
             Assert.AreEqual(100f, portfolio.Cash, 0.001f);
         }
 
         // --- CoverShort Tests (Story 2.3) ---
 
         [Test]
-        public void CoverShort_PriceDown_ReturnsMarginPlusProfit()
+        public void CoverShort_PriceDown_ReturnsProfit()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
             float pnl = portfolio.CoverShort("ACME", 10, 30.00f); // pnl = (50-30)*10 = +200
             Assert.AreEqual(200.00f, pnl, 0.001f);
-            Assert.AreEqual(1200f, portfolio.Cash, 0.001f); // 750 + 250 + 200
+            Assert.AreEqual(1200f, portfolio.Cash, 0.001f); // 1000 + 200
         }
 
         [Test]
-        public void CoverShort_PriceUp_ReturnsMarginMinusLoss()
+        public void CoverShort_PriceUp_DeductsLoss()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
             float pnl = portfolio.CoverShort("ACME", 10, 60.00f); // pnl = (50-60)*10 = -100
             Assert.AreEqual(-100.00f, pnl, 0.001f);
-            Assert.AreEqual(900f, portfolio.Cash, 0.001f); // 750 + 250 - 100
+            Assert.AreEqual(900f, portfolio.Cash, 0.001f); // 1000 - 100
         }
 
         [Test]
-        public void CoverShort_LossExceedsMargin_CashFloorsAtZeroReturn()
+        public void CoverShort_LargerLoss_DeductsFullLossFromCash()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
-            float pnl = portfolio.CoverShort("ACME", 10, 100.00f); // pnl = (50-100)*10 = -500, margin+pnl = 250-500 = -250 -> 0
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
+            float pnl = portfolio.CoverShort("ACME", 10, 100.00f); // pnl = (50-100)*10 = -500
             Assert.AreEqual(-500.00f, pnl, 0.001f);
-            Assert.AreEqual(750f, portfolio.Cash, 0.001f); // 750 + 0 (margin eaten)
+            Assert.AreEqual(500f, portfolio.Cash, 0.001f); // 1000 - 500
         }
 
         [Test]
@@ -416,7 +414,7 @@ namespace BullRun.Tests.Trading
         public void CoverShort_PartialCover_ReducesShares()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin
             portfolio.CoverShort("ACME", 5, 30.00f); // cover half
             var pos = portfolio.GetShortPosition("ACME");
             Assert.IsNotNull(pos);
@@ -425,13 +423,13 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void CoverShort_PartialCover_ReturnsProportionalMargin()
+        public void CoverShort_PartialCover_AppliesPartialPnL()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
-            portfolio.CoverShort("ACME", 5, 30.00f); // margin portion: 125, pnl: (50-30)*5 = 100
-            // cash = 750 + 125 + 100 = 975
-            Assert.AreEqual(975f, portfolio.Cash, 0.001f);
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
+            portfolio.CoverShort("ACME", 5, 30.00f); // pnl: (50-30)*5 = 100
+            // cash = 1000 + 100 = 1100
+            Assert.AreEqual(1100f, portfolio.Cash, 0.001f);
         }
 
         [Test]
@@ -686,8 +684,8 @@ namespace BullRun.Tests.Trading
         public void Cash_FlooredAtZero_AfterLiquidation_ShortLossExceedsMargin()
         {
             var portfolio = new Portfolio(300f);
-            portfolio.OpenShort("ACME", 10, 30.00f); // margin = 150, cash = 150
-            // price goes to 100: pnl = (30-100)*10 = -700, margin+pnl = 150-700 = -550 -> cashReturn 0
+            portfolio.OpenShort("ACME", 10, 30.00f); // no margin, cash = 300
+            // price goes to 100: pnl = (30-100)*10 = -700, cash = 300 - 700 -> clamped to 0
             float pnl = portfolio.LiquidateAllPositions(id => 100.00f);
             Assert.GreaterOrEqual(portfolio.Cash, 0f);
         }
@@ -724,23 +722,23 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void LiquidateAllPositions_SingleShortAtProfit_ReturnsMarginPlusPnL()
+        public void LiquidateAllPositions_SingleShortAtProfit_AddsPnLToCash()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
             float pnl = portfolio.LiquidateAllPositions(id => 40.00f);
             Assert.AreEqual(100.00f, pnl, 0.001f); // (50-40)*10
-            Assert.AreEqual(1100f, portfolio.Cash, 0.001f); // 750 + 250 + 100
+            Assert.AreEqual(1100f, portfolio.Cash, 0.001f); // 1000 + 100
         }
 
         [Test]
-        public void LiquidateAllPositions_SingleShortAtLoss_ReturnsMarginMinusLoss()
+        public void LiquidateAllPositions_SingleShortAtLoss_DeductsLossFromCash()
         {
             var portfolio = new Portfolio(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
             float pnl = portfolio.LiquidateAllPositions(id => 60.00f);
             Assert.AreEqual(-100.00f, pnl, 0.001f); // (50-60)*10
-            Assert.AreEqual(900f, portfolio.Cash, 0.001f); // 750 + 250 - 100
+            Assert.AreEqual(900f, portfolio.Cash, 0.001f); // 1000 - 100
         }
 
         [Test]
@@ -759,12 +757,12 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(2000f);
             portfolio.OpenPosition("AAA", 10, 20.00f); // cash: 1800
-            portfolio.OpenShort("BBB", 5, 40.00f);     // margin: 100, cash: 1700
+            portfolio.OpenShort("BBB", 5, 40.00f);     // no margin, cash: 1800
             // AAA: pnl = (25-20)*10 = +50, proceeds = 250
-            // BBB: pnl = (40-25)*5 = +75, return = 100 + 75 = 175
+            // BBB: pnl = (40-25)*5 = +75
             float pnl = portfolio.LiquidateAllPositions(id => 25.00f);
             Assert.AreEqual(125.00f, pnl, 0.001f); // 50 + 75
-            Assert.AreEqual(2125f, portfolio.Cash, 0.001f); // 1700 + 250 + 175
+            Assert.AreEqual(2125f, portfolio.Cash, 0.001f); // 1800 + 250 + 75
         }
 
         // --- Round Profit Tracking Tests (Story 2.4 Task 2) ---
@@ -805,8 +803,8 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(1000f);
             portfolio.StartRound(1000f);
-            portfolio.OpenShort("ACME", 10, 50.00f); // margin: 250, cash: 750
-            // Short value = 250 + (50-40)*10 = 350, total = 750 + 350 = 1100
+            portfolio.OpenShort("ACME", 10, 50.00f); // no margin, cash: 1000
+            // Short unrealized PnL = (50-40)*10 = +100, total = 1000 + 100 = 1100
             float profit = portfolio.GetRoundProfit(id => 40.00f);
             Assert.AreEqual(100f, profit, 0.001f); // 1100 - 1000
         }

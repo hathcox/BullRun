@@ -1314,8 +1314,7 @@ public static class UISetup
 
     /// <summary>
     /// Generates the trade panel at bottom-center of screen.
-    /// FIX-13: Starts with no preset buttons (x1 only). Buttons added dynamically via AddPresetButton
-    /// when tiers are unlocked through Reputation shop.
+    /// FIX-15: Always x1 quantity, no preset buttons.
     /// Layout: quantity display row on top, SELL (red) button left, BUY (green) button right.
     /// BUY/SELL buttons publish TradeButtonPressedEvent for GameRunner to handle.
     /// </summary>
@@ -1351,7 +1350,7 @@ public static class UISetup
         mainLayout.childForceExpandWidth = true;
         mainLayout.childForceExpandHeight = false;
 
-        // === Row 1: Quantity display + preset buttons (FIX-13: starts empty, buttons added on unlock) ===
+        // === Row 1: Quantity display (FIX-15: always x1, no preset buttons) ===
         var presetRow = new GameObject("PresetRow");
         presetRow.transform.SetParent(containerGo.transform, false);
         presetRow.AddComponent<RectTransform>();
@@ -1363,10 +1362,7 @@ public static class UISetup
         presetHlg.childForceExpandWidth = true;
         presetHlg.childForceExpandHeight = true;
 
-        // FIX-13: No preset buttons created at setup — only the quantity display
-        // Preset buttons are added dynamically when tiers are unlocked via AddPresetButton
-
-        // Quantity display text (shows "Qty: 1" at start)
+        // Quantity display text (shows "Qty: 1")
         var qtyTextGo = CreateLabel("QtyDisplay", presetRow.transform,
             $"Qty: {GameConfig.DefaultTradeQuantity}", Color.white, 14);
         qtyTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
@@ -1408,7 +1404,7 @@ public static class UISetup
         buyLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
         buyLabel.GetComponent<Text>().raycastTarget = false;
 
-        // Initialize QuantitySelector MonoBehaviour (FIX-13: no preset buttons at start)
+        // Initialize QuantitySelector MonoBehaviour (FIX-15: always x1, no preset buttons)
         var quantitySelector = panelParent.AddComponent<QuantitySelector>();
         quantitySelector.Initialize(qtyTextGo.GetComponent<Text>());
         quantitySelector.BuyButtonImage = buyBtnGo.GetComponent<Image>();
@@ -1427,15 +1423,6 @@ public static class UISetup
         cooldownTimerGo.SetActive(false);
         quantitySelector.CooldownTimerText = cooldownTimerGo.GetComponent<Text>();
 
-        // FIX-13: Wire OnTierUnlocked callback to dynamically add preset buttons
-        // Capture presetRow transform for dynamic button creation
-        var presetRowTransform = presetRow.transform;
-        var qtyDisplayTransform = qtyTextGo.transform; // Move qty display to end after buttons
-        quantitySelector.OnTierUnlocked = (tierIndex) =>
-        {
-            AddPresetButton(quantitySelector, presetRowTransform, qtyDisplayTransform, tierIndex);
-        };
-
         // Wire BUY/SELL buttons to publish TradeButtonPressedEvent
         buyButton.onClick.AddListener(() =>
             EventBus.Publish(new TradeButtonPressedEvent { IsBuy = true }));
@@ -1443,50 +1430,10 @@ public static class UISetup
             EventBus.Publish(new TradeButtonPressedEvent { IsBuy = false }));
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] TradePanel created: bottom-center with BUY/SELL buttons, x1 default (FIX-13)");
+        Debug.Log("[Setup] TradePanel created: bottom-center with BUY/SELL buttons, x1 default (FIX-15)");
         #endif
 
         return quantitySelector;
-    }
-
-    /// <summary>
-    /// FIX-13: Dynamically adds a preset button to the quantity row when a tier is unlocked.
-    /// Buttons appear left-to-right as tiers are unlocked: [x5] then [x5][x10] etc.
-    /// Quantity display is moved to stay at the end of the row.
-    /// </summary>
-    public static void AddPresetButton(QuantitySelector quantitySelector, Transform presetRow, Transform qtyDisplay, int tierIndex)
-    {
-        if (tierIndex < 1 || tierIndex >= GameConfig.QuantityTiers.Length) return;
-
-        int tierValue = GameConfig.QuantityTiers[tierIndex].Value;
-        string label = $"x{tierValue}";
-
-        var btnGo = CreatePanel($"QtyBtn_{tierIndex}", presetRow);
-        var btnLayout = btnGo.AddComponent<LayoutElement>();
-        btnLayout.preferredWidth = 60f;
-        btnLayout.preferredHeight = 26f;
-        var btnBackground = btnGo.GetComponent<Image>();
-        btnBackground.color = QuantitySelector.InactiveButtonColor;
-
-        var labelGo = CreateLabel($"QtyBtnLabel_{tierIndex}", btnGo.transform,
-            label, new Color(0.6f, 0.6f, 0.7f, 1f), 14);
-        labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        labelGo.GetComponent<Text>().raycastTarget = false;
-        var btnText = labelGo.GetComponent<Text>();
-
-        var button = btnGo.AddComponent<Button>();
-        int capturedTier = tierIndex;
-        button.onClick.AddListener(() => quantitySelector.SelectPresetByTier(capturedTier));
-
-        // Register button with QuantitySelector for highlight tracking
-        quantitySelector.RegisterPresetButton(btnBackground, btnText);
-
-        // Move quantity display text to remain at the end of the row
-        qtyDisplay.SetAsLastSibling();
-
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[Setup] Preset button added: {label} (tier {tierIndex})");
-        #endif
     }
 
     /// <summary>

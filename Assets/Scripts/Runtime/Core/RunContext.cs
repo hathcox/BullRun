@@ -50,12 +50,6 @@ public class RunContext
     public int ReputationEarned { get; internal set; }
 
     /// <summary>
-    /// FIX-13: Highest unlocked quantity tier index (0 = x1 only, 4 = all unlocked).
-    /// Persists for the run. Used by ShopState to determine next available upgrade.
-    /// </summary>
-    public int UnlockedQuantityTier { get; internal set; }
-
-    /// <summary>
     /// The stock tier for the current act. Convenience for GetTierForAct(CurrentAct).
     /// </summary>
     public StockTier CurrentTier => GetTierForAct(CurrentAct);
@@ -203,7 +197,6 @@ public class RunContext
         BestRoundProfit = 0f;
         TotalRunProfit = 0f;
         ReputationEarned = 0;
-        UnlockedQuantityTier = 0;
         EventBus.Publish(new RunStartedEvent { StartingCapital = GameConfig.StartingCapital });
     }
 }

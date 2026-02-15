@@ -12,19 +12,8 @@ public static class GameConfig
     // Short selling: margin collateral as percentage of position value
     public static readonly float ShortMarginRequirement = 0.5f;
 
-    // Default trade quantity (1 share — unlockable tiers via Reputation shop, FIX-13)
+    // Default trade quantity (always 1 share per click, unlimited holdings — FIX-15)
     public static readonly int DefaultTradeQuantity = 1;
-
-    // Quantity tier definitions: value + Reputation cost. Tier 0 (x1) is always unlocked.
-    // Tiers must be unlocked sequentially via shop purchases. (FIX-13)
-    public static readonly QuantityTier[] QuantityTiers = new QuantityTier[]
-    {
-        new QuantityTier(1, 0),    // Tier 0: x1 — always available
-        new QuantityTier(5, 10),   // Tier 1: x5
-        new QuantityTier(10, 20),  // Tier 2: x10
-        new QuantityTier(15, 35),  // Tier 3: x15
-        new QuantityTier(25, 50),  // Tier 4: x25
-    };
 
     // Short selling lifecycle timing constants (FIX-11)
     public static readonly float ShortRoundStartLockout = 5.0f;
@@ -126,18 +115,3 @@ public class ActConfig
     }
 }
 
-/// <summary>
-/// Defines a quantity tier: the trade quantity value and its Reputation unlock cost.
-/// Tier 0 (x1, cost 0) is always available. Higher tiers unlocked sequentially in the shop. (FIX-13)
-/// </summary>
-public struct QuantityTier
-{
-    public readonly int Value;
-    public readonly int RepCost;
-
-    public QuantityTier(int value, int repCost)
-    {
-        Value = value;
-        RepCost = repCost;
-    }
-}

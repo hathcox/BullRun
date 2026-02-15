@@ -91,7 +91,7 @@ public class TradeFeedback : MonoBehaviour
     {
         if (portfolio.HasShortPosition(stockId))
             return "Already shorting this stock";
-        return "Insufficient margin";
+        return "Short rejected";
     }
 
     /// <summary>

@@ -16,8 +16,8 @@ namespace BullRun.Tests.PriceEngine
         public void GetTierConfig_Penny_HasCorrectPriceRange()
         {
             var config = StockTierData.GetTierConfig(StockTier.Penny);
-            Assert.AreEqual(0.50f, config.MinPrice, 0.01f);
-            Assert.AreEqual(5f, config.MaxPrice, 0.01f);
+            Assert.AreEqual(5.00f, config.MinPrice, 0.01f);
+            Assert.AreEqual(8f, config.MaxPrice, 0.01f);
         }
 
         [Test]
@@ -40,7 +40,7 @@ namespace BullRun.Tests.PriceEngine
         public void GetTierConfig_BlueChip_HasCorrectPriceRange()
         {
             var config = StockTierData.GetTierConfig(StockTier.BlueChip);
-            Assert.AreEqual(500f, config.MinPrice, 0.01f);
+            Assert.AreEqual(150f, config.MinPrice, 0.01f);
             Assert.AreEqual(5000f, config.MaxPrice, 0.01f);
         }
 
@@ -185,7 +185,29 @@ namespace BullRun.Tests.PriceEngine
         public void GetTierConfig_Penny_HasExpectedReversionSpeed()
         {
             var config = StockTierData.GetTierConfig(StockTier.Penny);
-            Assert.AreEqual(0.30f, config.MeanReversionSpeed, 0.001f);
+            Assert.AreEqual(0.20f, config.MeanReversionSpeed, 0.001f);
+        }
+
+        [Test]
+        public void GetTierConfig_Penny_HasExpectedVolatility()
+        {
+            var config = StockTierData.GetTierConfig(StockTier.Penny);
+            Assert.AreEqual(0.25f, config.BaseVolatility, 0.001f);
+        }
+
+        [Test]
+        public void GetTierConfig_Penny_HasExpectedTrendStrength()
+        {
+            var config = StockTierData.GetTierConfig(StockTier.Penny);
+            Assert.AreEqual(0.008f, config.MinTrendStrength, 0.001f);
+            Assert.AreEqual(0.025f, config.MaxTrendStrength, 0.001f);
+        }
+
+        [Test]
+        public void GetTierConfig_Penny_HasExpectedNoiseAmplitude()
+        {
+            var config = StockTierData.GetTierConfig(StockTier.Penny);
+            Assert.AreEqual(0.15f, config.NoiseAmplitude, 0.001f);
         }
 
         [Test]

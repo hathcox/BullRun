@@ -108,7 +108,7 @@ public class TradeExecutor
 
     /// <summary>
     /// Executes a short sell order. Returns true on success, false if rejected.
-    /// Silently rejects if insufficient cash for margin requirement.
+    /// No capital required — rejects only for duplicate shorts or trading disabled.
     /// </summary>
     public bool ExecuteShort(string stockId, int shares, float currentPrice, Portfolio portfolio)
     {

@@ -128,8 +128,8 @@ public class Portfolio
     }
 
     /// <summary>
-    /// Opens a short position. Deducts margin collateral from cash.
-    /// Returns the position, or null if insufficient cash for margin.
+    /// Opens a short position. No capital required — P&L settled on cover.
+    /// Returns the position, or null if a short already exists for this stock.
     /// </summary>
     public Position OpenShort(string stockId, int shares, float price)
     {
@@ -142,27 +142,18 @@ public class Portfolio
             return null;
         }
 
-        float margin = shares * price * GameConfig.ShortMarginRequirement;
-        if (!CanAfford(margin))
-        {
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Trading] Short rejected: insufficient cash for margin ${margin:F2} on {shares}x {stockId}");
-            #endif
-            return null;
-        }
-
-        Cash -= margin;
-        var position = new Position(stockId, shares, price, margin);
+        // No capital required to short — P&L settled on cover
+        var position = new Position(stockId, shares, price, 0f);
         _shortPositions[stockId] = position;
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[Trading] SHORT opened: {shares}x {stockId} at ${price:F2} (margin held: ${margin:F2})");
+        Debug.Log($"[Trading] SHORT opened: {shares}x {stockId} at ${price:F2}");
         #endif
         return position;
     }
 
     /// <summary>
-    /// Covers (closes) a short position. Returns margin + P&L to cash.
-    /// If loss exceeds margin, cash floors at the margin return minus loss (can't go negative from this).
+    /// Covers (closes) a short position. Applies P&L directly to cash.
+    /// If loss exceeds available cash, cash floors at zero.
     /// Returns realized P&L. Returns 0 if no short position or insufficient shares.
     /// </summary>
     public float CoverShort(string stockId, int shares, float currentPrice)
@@ -184,28 +175,23 @@ public class Portfolio
         }
 
         float pnl = position.CalculateRealizedPnL(currentPrice, shares);
-        float marginPortion = (shares == position.Shares)
-            ? position.MarginHeld
-            : position.MarginHeld * ((float)shares / position.Shares);
 
-        float cashReturn = marginPortion + pnl;
-        if (cashReturn < 0f)
-            cashReturn = 0f; // margin eaten, but cash can't go negative from cover
-
-        Cash += cashReturn;
+        // No margin — apply P&L directly to cash
+        Cash += pnl;
+        if (Cash < 0f)
+            Cash = 0f;
 
         if (shares == position.Shares)
         {
             _shortPositions.Remove(stockId);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Trading] SHORT covered: {stockId} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2}, margin returned: ${marginPortion:F2})");
+            Debug.Log($"[Trading] SHORT covered: {stockId} (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
             #endif
         }
         else
         {
             int remainingShares = position.Shares - shares;
-            float remainingMargin = position.MarginHeld - marginPortion;
-            _shortPositions[stockId] = new Position(stockId, remainingShares, position.AverageBuyPrice, remainingMargin);
+            _shortPositions[stockId] = new Position(stockId, remainingShares, position.AverageBuyPrice, 0f);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[Trading] SHORT partially covered: {stockId} now {remainingShares} shares (P&L: {(pnl >= 0 ? "+" : "")}${pnl:F2})");
             #endif
@@ -332,10 +318,9 @@ public class Portfolio
             float price = getCurrentPrice(kvp.Key);
             float pnl = pos.UnrealizedPnL(price);
             totalPnL += pnl;
-            float cashReturn = pos.MarginHeld + pnl;
-            if (cashReturn < 0f)
-                cashReturn = 0f;
-            Cash += cashReturn;
+            Cash += pnl;
+            if (Cash < 0f)
+                Cash = 0f;
         }
         _shortPositions.Clear();
 

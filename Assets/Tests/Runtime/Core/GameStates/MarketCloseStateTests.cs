@@ -158,7 +158,7 @@ namespace BullRun.Tests.Core.GameStates
         [Test]
         public void Enter_WithShortPosition_LiquidatesAndReportsProfit()
         {
-            // Short 10 shares at $50 → margin $250, cash = $750
+            // Short 10 shares at $50 → no margin, cash unchanged
             _ctx.Portfolio.OpenShort("0", 10, 50f);
 
             _priceGenerator.InitializeRound(1, 1);

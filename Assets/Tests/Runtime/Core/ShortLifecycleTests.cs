@@ -159,8 +159,7 @@ namespace BullRun.Tests.Core
             _executor.ExecuteShort("ACME", 1, 50.00f, _portfolio);
             float cashAfterShort = _portfolio.Cash;
             _executor.ExecuteCover("ACME", 1, 40.00f, _portfolio);
-            // P&L = (50-40)*1 = +10
-            // Cash return = margin(25) + pnl(10) = 35
+            // P&L = (50-40)*1 = +10, added directly to cash
             Assert.Greater(_portfolio.Cash, cashAfterShort);
             Assert.IsFalse(_portfolio.HasShortPosition("ACME"));
         }
@@ -171,10 +170,8 @@ namespace BullRun.Tests.Core
             _executor.ExecuteShort("ACME", 1, 50.00f, _portfolio);
             float cashAfterShort = _portfolio.Cash;
             _executor.ExecuteCover("ACME", 1, 60.00f, _portfolio);
-            // P&L = (50-60)*1 = -10
-            // Cash return = margin(25) + pnl(-10) = 15
-            // Still positive return (margin absorbs loss), but less than margin
-            Assert.IsTrue(_portfolio.Cash > cashAfterShort - 1f); // got some cash back
+            // P&L = (50-60)*1 = -10, deducted from cash
+            Assert.Less(_portfolio.Cash, cashAfterShort);
             Assert.IsFalse(_portfolio.HasShortPosition("ACME"));
         }
 
@@ -231,10 +228,10 @@ namespace BullRun.Tests.Core
         }
 
         [Test]
-        public void TradeFeedback_ShortRejection_InsufficientMargin()
+        public void TradeFeedback_ShortRejection_NoExistingShort()
         {
             string reason = TradeFeedback.GetShortRejectionReason(_portfolio, "ACME");
-            Assert.AreEqual("Insufficient margin", reason);
+            Assert.AreEqual("Short rejected", reason);
         }
 
         [Test]

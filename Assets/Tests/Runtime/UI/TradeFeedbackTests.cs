@@ -74,11 +74,11 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void GetShortRejectionReason_NoPosition_ReturnsMarginMessage()
+        public void GetShortRejectionReason_NoPosition_ReturnsRejectedMessage()
         {
             var portfolio = new Portfolio(100f);
             string reason = TradeFeedback.GetShortRejectionReason(portfolio, "ACME");
-            Assert.AreEqual("Insufficient margin", reason);
+            Assert.AreEqual("Short rejected", reason);
         }
 
         // --- GetCoverRejectionReason ---

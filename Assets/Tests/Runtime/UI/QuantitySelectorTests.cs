@@ -62,17 +62,17 @@ namespace BullRun.Tests.UI
         // --- CalculateMaxShort ---
 
         [Test]
-        public void CalculateMaxShort_StandardCase_AccountsForMarginRequirement()
+        public void CalculateMaxShort_AlwaysReturnsBaseShares()
         {
-            // $1000 / ($25 * 0.5) = 1000 / 12.5 = 80 shares
-            Assert.AreEqual(80, QuantitySelector.CalculateMaxShort(1000f, 25f));
+            // No capital required — always returns ShortBaseShares (1)
+            Assert.AreEqual(GameConfig.ShortBaseShares, QuantitySelector.CalculateMaxShort(1000f, 25f));
         }
 
         [Test]
-        public void CalculateMaxShort_NonEvenDivision_FloorsResult()
+        public void CalculateMaxShort_DifferentPrice_StillReturnsBaseShares()
         {
-            // $1000 / ($30 * 0.5) = 1000 / 15 = 66.67 -> 66
-            Assert.AreEqual(66, QuantitySelector.CalculateMaxShort(1000f, 30f));
+            // No capital required — always returns ShortBaseShares (1)
+            Assert.AreEqual(GameConfig.ShortBaseShares, QuantitySelector.CalculateMaxShort(1000f, 30f));
         }
 
         [Test]
@@ -82,9 +82,10 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void CalculateMaxShort_ZeroCash_ReturnsZero()
+        public void CalculateMaxShort_ZeroCash_StillReturnsBaseShares()
         {
-            Assert.AreEqual(0, QuantitySelector.CalculateMaxShort(0f, 25f));
+            // No capital required — cash is irrelevant
+            Assert.AreEqual(GameConfig.ShortBaseShares, QuantitySelector.CalculateMaxShort(0f, 25f));
         }
 
         // --- CalculateMaxSell ---
@@ -159,9 +160,9 @@ namespace BullRun.Tests.UI
         [Test]
         public void CalculateMax_ShortNotBuy_DelegatesToMaxShort()
         {
-            // isBuy=false, isShort=true -> CalculateMaxShort: $1000 / ($25 * 0.5) = 80
+            // isBuy=false, isShort=true -> CalculateMaxShort: ShortBaseShares (1)
             var portfolio = new Portfolio(1000f);
-            Assert.AreEqual(80, QuantitySelector.CalculateMax(false, true, 1000f, 25f, portfolio, "ACME"));
+            Assert.AreEqual(GameConfig.ShortBaseShares, QuantitySelector.CalculateMax(false, true, 1000f, 25f, portfolio, "ACME"));
         }
 
         [Test]
@@ -251,7 +252,7 @@ namespace BullRun.Tests.UI
             var position = portfolio.GetPosition("ACME");
             Assert.IsNull(position);
             int max = QuantitySelector.CalculateMax(false, true, 1000f, 25f, portfolio, "ACME");
-            Assert.AreEqual(80, max);
+            Assert.AreEqual(GameConfig.ShortBaseShares, max);
         }
 
         [Test]
@@ -263,7 +264,7 @@ namespace BullRun.Tests.UI
             Assert.IsNotNull(position);
             Assert.IsTrue(position.IsShort);
             int max = QuantitySelector.CalculateMax(false, true, portfolio.Cash, 20f, portfolio, "ACME");
-            Assert.AreEqual(95, max);
+            Assert.AreEqual(GameConfig.ShortBaseShares, max);
         }
 
         // --- TradeButtonPressedEvent ---
@@ -315,26 +316,6 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void GetCurrentQuantity_X5Unlocked_Selected_Returns5()
-        {
-            var go = new GameObject("TestQS");
-            try
-            {
-                var qs = go.AddComponent<QuantitySelector>();
-                qs.Initialize(null);
-                qs.UnlockTier(1);
-                qs.SelectPresetByTier(1); // x5
-                var portfolio = new Portfolio(1000f);
-                int qty = qs.GetCurrentQuantity(true, false, "ACME", 25f, portfolio);
-                Assert.AreEqual(5, qty);
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
-        }
-
-        [Test]
         public void GetCurrentQuantity_DefaultX1_BuyPartialFill_Returns0()
         {
             var go = new GameObject("TestQS");
@@ -345,30 +326,6 @@ namespace BullRun.Tests.UI
                 var portfolio = new Portfolio(0f);
                 int qty = qs.GetCurrentQuantity(true, false, "ACME", 25f, portfolio);
                 Assert.AreEqual(0, qty); // Can't afford even 1 share
-            }
-            finally
-            {
-                Object.DestroyImmediate(go);
-            }
-        }
-
-        [Test]
-        public void GetCurrentQuantity_X25Unlocked_SellPartialFill_Returns5()
-        {
-            var go = new GameObject("TestQS");
-            try
-            {
-                var qs = go.AddComponent<QuantitySelector>();
-                qs.Initialize(null);
-                qs.UnlockTier(1);
-                qs.UnlockTier(2);
-                qs.UnlockTier(3);
-                qs.UnlockTier(4);
-                qs.SelectPresetByTier(4); // x25
-                var portfolio = new Portfolio(1000f);
-                portfolio.OpenPosition("ACME", 5, 25f);
-                int qty = qs.GetCurrentQuantity(false, false, "ACME", 25f, portfolio);
-                Assert.AreEqual(5, qty); // Only 5 shares held, preset is 25, clamped to 5
             }
             finally
             {
@@ -407,12 +364,12 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void PartialFill_ShortPreset5_OnlyAfford3_Returns3()
+        public void PartialFill_Short_AlwaysBaseShares()
         {
-            // $45 cash / ($30 * 0.5 margin) = 45 / 15 = 3
+            // No capital required — always ShortBaseShares (1)
             int max = QuantitySelector.CalculateMaxShort(45f, 30f);
             int qty = Mathf.Min(5, max);
-            Assert.AreEqual(3, qty);
+            Assert.AreEqual(GameConfig.ShortBaseShares, qty);
         }
 
         [Test]

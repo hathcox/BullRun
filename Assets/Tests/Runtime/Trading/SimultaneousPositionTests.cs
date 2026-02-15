@@ -28,7 +28,7 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(2000f);
             portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 1750
-            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 1625
+            portfolio.OpenShort("ACME", 5, 50.00f); // no margin, cash 1750
             Assert.IsTrue(portfolio.HasPosition("ACME"));
             Assert.IsTrue(portfolio.HasShortPosition("ACME"));
             Assert.AreEqual(1, portfolio.PositionCount);
@@ -39,8 +39,8 @@ namespace BullRun.Tests.Trading
         public void ShortThenLong_BothExist()
         {
             var portfolio = new Portfolio(2000f);
-            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 1875
-            portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 1625
+            portfolio.OpenShort("ACME", 5, 50.00f); // no margin, cash 2000
+            portfolio.OpenPosition("ACME", 10, 25.00f); // cost 250, cash 1750
             Assert.IsTrue(portfolio.HasPosition("ACME"));
             Assert.IsTrue(portfolio.HasShortPosition("ACME"));
         }
@@ -100,11 +100,11 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(2000f);
             portfolio.OpenPosition("ACME", 10, 20.00f); // cost 200, cash 1800
-            portfolio.OpenShort("ACME", 5, 40.00f); // margin 100, cash 1700
+            portfolio.OpenShort("ACME", 5, 40.00f); // no margin, cash 1800
             // Long value: 10 * 30 = 300
-            // Short value: margin(100) + unrealizedPnL((40-30)*5 = +50) = 150
+            // Short unrealizedPnL: (40-30)*5 = +50
             float total = portfolio.GetTotalValue(id => 30.00f);
-            Assert.AreEqual(2150f, total, 0.001f); // 1700 + 300 + 150
+            Assert.AreEqual(2150f, total, 0.001f); // 1800 + 300 + 50
         }
 
         [Test]
@@ -137,7 +137,7 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(2000f);
             portfolio.OpenPosition("ACME", 10, 20.00f); // cost 200, cash 1800
-            portfolio.OpenShort("ACME", 5, 40.00f); // margin 100, cash 1700
+            portfolio.OpenShort("ACME", 5, 40.00f); // no margin, cash 1800
             // Long pnl: (30-20)*10 = +100
             // Short pnl: (40-30)*5 = +50
             float pnl = portfolio.LiquidateAllPositions(id => 30.00f);
@@ -150,10 +150,10 @@ namespace BullRun.Tests.Trading
         public void DuplicateShort_SameStock_Rejected()
         {
             var portfolio = new Portfolio(2000f);
-            portfolio.OpenShort("ACME", 5, 50.00f); // margin 125, cash 1875
+            portfolio.OpenShort("ACME", 5, 50.00f); // no margin, cash 2000
             var pos = portfolio.OpenShort("ACME", 3, 40.00f); // duplicate rejected
             Assert.IsNull(pos);
-            Assert.AreEqual(1875f, portfolio.Cash, 0.001f);
+            Assert.AreEqual(2000f, portfolio.Cash, 0.001f);
             Assert.AreEqual(1, portfolio.ShortPositionCount);
         }
 
@@ -232,7 +232,7 @@ namespace BullRun.Tests.Trading
         {
             var portfolio = new Portfolio(2000f);
             var executor = new TradeExecutor();
-            executor.ExecuteShort("ACME", 5, 50.00f, portfolio); // margin 125, cash 1875
+            executor.ExecuteShort("ACME", 5, 50.00f, portfolio); // no margin, cash 2000
             bool buyResult = executor.ExecuteBuy("ACME", 10, 25.00f, portfolio); // buy long
             Assert.IsTrue(buyResult);
             // Both positions should exist — buy did NOT cover the short

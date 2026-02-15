@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEngine;
 
 namespace BullRun.Tests.Core
 {
@@ -74,14 +75,14 @@ namespace BullRun.Tests.Core
             }
         }
 
-        // === AC 7: Penny stock prices affordable at $10 (at least one stock < $5) ===
+        // === AC 7: Penny stock prices affordable at $10 ===
 
         [Test]
         public void PennyStockMinPrice_IsAffordableAt10()
         {
             var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
-            Assert.LessOrEqual(pennyConfig.MinPrice, 5f,
-                "Penny stock min price must be <= $5 to be affordable with $10 starting capital");
+            Assert.LessOrEqual(pennyConfig.MinPrice, GameConfig.StartingCapital,
+                "Penny stock min price must be <= $10 to be affordable with starting capital");
         }
 
         [Test]
@@ -90,6 +91,65 @@ namespace BullRun.Tests.Core
             var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
             Assert.LessOrEqual(pennyConfig.MinPrice, GameConfig.StartingCapital,
                 "Player must be able to afford at least 1 penny stock share with starting capital");
+        }
+
+        [Test]
+        public void PennyStockMaxPrice_StillAffordableAt10()
+        {
+            var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
+            Assert.LessOrEqual(pennyConfig.MaxPrice, GameConfig.StartingCapital,
+                "Penny stock max price must be <= starting capital so player can always buy 1 share");
+        }
+
+        [Test]
+        public void PennyTier_MidpointPrice_AffordableShares_AtLeast1()
+        {
+            var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
+            float midPrice = (pennyConfig.MinPrice + pennyConfig.MaxPrice) / 2f;
+            int affordableShares = Mathf.FloorToInt(GameConfig.StartingCapital / midPrice);
+            Assert.GreaterOrEqual(affordableShares, 1,
+                $"At midpoint price ${midPrice:F2}, player must afford at least 1 share with ${GameConfig.StartingCapital}");
+        }
+
+        [Test]
+        public void PennyTier_TheoreticalMaxMove_ExceedsRound1ProfitNeeded()
+        {
+            var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
+            float midPrice = (pennyConfig.MinPrice + pennyConfig.MaxPrice) / 2f;
+            int affordableShares = Mathf.FloorToInt(GameConfig.StartingCapital / midPrice);
+            // Exponential growth: price compounds as dp/dt = strength * price
+            float maxPriceMove = midPrice * (Mathf.Exp(pennyConfig.MaxTrendStrength * GameConfig.RoundDurationSeconds) - 1f);
+            float maxProfit = maxPriceMove * affordableShares;
+            float profitNeeded = MarginCallTargets.GetTarget(1) - GameConfig.StartingCapital;
+            Assert.Greater(maxProfit, profitNeeded,
+                $"Max theoretical profit ${maxProfit:F2} must exceed needed profit ${profitNeeded:F2}");
+        }
+
+        [Test]
+        public void PennyTier_TradeCyclesInRound_SufficientForTarget()
+        {
+            float tradingTime = GameConfig.RoundDurationSeconds;
+            float cooldown = GameConfig.PostTradeCooldown;
+            float secondsPerCycle = 2f * cooldown; // buy + sell each have a cooldown
+            float cycles = tradingTime / secondsPerCycle;
+            Assert.GreaterOrEqual(cycles, 3f,
+                $"Must have at least 3 trade cycles in round ({cycles:F1} available)");
+        }
+
+        [Test]
+        public void PennyTier_ReasonablePlayerProfit_CanReachTarget()
+        {
+            // Model: player catches a good trend and holds for most of the round.
+            // 50% of max theoretical profit is achievable by a decent player.
+            var pennyConfig = StockTierData.GetTierConfig(StockTier.Penny);
+            float midPrice = (pennyConfig.MinPrice + pennyConfig.MaxPrice) / 2f;
+            int affordableShares = Mathf.FloorToInt(GameConfig.StartingCapital / midPrice);
+            float maxPriceMove = midPrice * (Mathf.Exp(pennyConfig.MaxTrendStrength * GameConfig.RoundDurationSeconds) - 1f);
+            float maxProfit = maxPriceMove * affordableShares;
+            float reasonableProfit = maxProfit * 0.5f;
+            float profitNeeded = MarginCallTargets.GetTarget(1) - GameConfig.StartingCapital;
+            Assert.GreaterOrEqual(reasonableProfit, profitNeeded,
+                $"Reasonable profit (50% of max) ${reasonableProfit:F2} must reach needed ${profitNeeded:F2}");
         }
 
         // === AC 8: Targets use centralized MarginCallTargets (no hardcoded old values) ===

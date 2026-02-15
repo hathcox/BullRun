@@ -197,9 +197,9 @@ namespace BullRun.Tests.Trading
         [Test]
         public void ExecuteBuy_WhenShortExists_AllowsSimultaneous()
         {
-            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // margin 250, cash 750
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // no margin, cash 1000
             _eventReceived = false;
-            bool result = _executor.ExecuteBuy("ACME", 5, 25.00f, _portfolio); // cost 125, cash 625
+            bool result = _executor.ExecuteBuy("ACME", 5, 25.00f, _portfolio); // cost 125, cash 875
             Assert.IsTrue(result);
             Assert.IsTrue(_eventReceived);
             Assert.IsNotNull(_portfolio.GetPosition("ACME"));
@@ -211,7 +211,7 @@ namespace BullRun.Tests.Trading
         {
             _executor.ExecuteBuy("ACME", 10, 25.00f, _portfolio); // cost 250, cash 750
             _eventReceived = false;
-            bool result = _executor.ExecuteShort("ACME", 5, 50.00f, _portfolio); // margin 125, cash 625
+            bool result = _executor.ExecuteShort("ACME", 5, 50.00f, _portfolio); // no margin, cash 750
             Assert.IsTrue(result);
             Assert.IsTrue(_eventReceived);
             Assert.IsNotNull(_portfolio.GetPosition("ACME"));
@@ -221,10 +221,10 @@ namespace BullRun.Tests.Trading
         // --- ExecuteShort Tests (Story 2.3) ---
 
         [Test]
-        public void ExecuteShort_Success_DeductsMargin()
+        public void ExecuteShort_Success_DoesNotDeductCash()
         {
-            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // margin = 250
-            Assert.AreEqual(750f, _portfolio.Cash, 0.001f);
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // no margin
+            Assert.AreEqual(1000f, _portfolio.Cash, 0.001f);
         }
 
         [Test]
@@ -248,11 +248,11 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void ExecuteShort_InsufficientCash_Rejected()
+        public void ExecuteShort_AlwaysSucceeds_RegardlessOfCash()
         {
             _portfolio = new Portfolio(100f);
             bool result = _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio);
-            Assert.IsFalse(result);
+            Assert.IsTrue(result);
             Assert.AreEqual(100f, _portfolio.Cash, 0.001f);
         }
 
@@ -266,12 +266,12 @@ namespace BullRun.Tests.Trading
         // --- ExecuteCover Tests (Story 2.3) ---
 
         [Test]
-        public void ExecuteCover_Success_ReturnsMarginAndProfit()
+        public void ExecuteCover_Success_ReturnsProfit()
         {
-            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // margin: 250, cash: 750
+            _executor.ExecuteShort("ACME", 10, 50.00f, _portfolio); // no margin, cash: 1000
             _eventReceived = false;
             _executor.ExecuteCover("ACME", 10, 30.00f, _portfolio); // pnl: +200
-            Assert.AreEqual(1200f, _portfolio.Cash, 0.001f); // 750 + 250 + 200
+            Assert.AreEqual(1200f, _portfolio.Cash, 0.001f); // 1000 + 200
         }
 
         [Test]
