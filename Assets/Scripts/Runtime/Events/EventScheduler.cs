@@ -14,7 +14,7 @@ public class EventScheduler
     private float[] _scheduledFireTimes;
     private bool[] _firedSlots;
     private int _eventCount;
-    private bool _rareEventScheduledThisRound;
+    private int _rareEventsFiredThisRound;
 
     public int ScheduledEventCount => _eventCount;
     public EventEffects EventEffects => _eventEffects;
@@ -41,7 +41,7 @@ public class EventScheduler
     /// </summary>
     public void InitializeRound(int round, int act, StockTier tier, IReadOnlyList<StockInstance> activeStocks, float roundDuration)
     {
-        _rareEventScheduledThisRound = false;
+        _rareEventsFiredThisRound = 0;
         // Determine event count based on act (early vs late)
         bool isLateRound = (act >= 3);
         int minEvents = isLateRound ? EventSchedulerConfig.MinEventsLateRounds : EventSchedulerConfig.MinEventsEarlyRounds;
@@ -117,9 +117,9 @@ public class EventScheduler
     {
         var allAvailable = EventDefinitions.GetEventsForTier(tier);
 
-        // Filter out rare events if one already fired this round
+        // Filter out rare events if max rare events already fired this round
         List<MarketEventConfig> available;
-        if (_rareEventScheduledThisRound)
+        if (_rareEventsFiredThisRound >= EventSchedulerConfig.MaxRareEventsPerRound)
         {
             available = new List<MarketEventConfig>();
             for (int i = 0; i < allAvailable.Count; i++)
@@ -154,7 +154,7 @@ public class EventScheduler
             {
                 // Track rare event scheduling
                 if (available[i].Rarity <= 0.2f)
-                    _rareEventScheduledThisRound = true;
+                    _rareEventsFiredThisRound++;
                 return available[i];
             }
         }
@@ -162,7 +162,7 @@ public class EventScheduler
         // Fallback (should never reach here)
         var fallback = available[available.Count - 1];
         if (fallback.Rarity <= 0.2f)
-            _rareEventScheduledThisRound = true;
+            _rareEventsFiredThisRound++;
         return fallback;
     }
 

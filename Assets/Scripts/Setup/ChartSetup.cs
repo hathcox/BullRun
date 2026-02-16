@@ -78,6 +78,17 @@ public static class ChartSetup
         breakEvenLR.alignment = LineAlignment.TransformZ;
         breakEvenGo.SetActive(false);
 
+        // Create short position line (pink, thin horizontal — shows short entry price)
+        var shortPositionGo = CreateLineRendererObject("ShortPositionLine", chartParent.transform);
+        var shortPositionLR = shortPositionGo.GetComponent<LineRenderer>();
+        shortPositionLR.startColor = new Color(1f, 0.41f, 0.71f, 0.9f); // Hot pink
+        shortPositionLR.endColor = new Color(1f, 0.41f, 0.71f, 0.9f);
+        shortPositionLR.startWidth = 0.015f;
+        shortPositionLR.endWidth = 0.015f;
+        shortPositionLR.sortingOrder = 2;
+        shortPositionLR.alignment = LineAlignment.TransformZ;
+        shortPositionGo.SetActive(false);
+
         // Create price gridlines (FIX-8: horizontal reference lines at each axis label)
         var gridlinesParent = new GameObject("PriceGridlines");
         gridlinesParent.transform.SetParent(chartParent.transform);
@@ -102,7 +113,7 @@ public static class ChartSetup
         markerPoolGo.transform.SetParent(chartParent.transform);
 
         // Wire trade visuals to ChartLineView
-        chartLineView.SetTradeVisuals(breakEvenLR, markerPoolGo.transform);
+        chartLineView.SetTradeVisuals(breakEvenLR, shortPositionLR, markerPoolGo.transform);
 
         // Create chart UI Canvas — returns ChartUI for event wiring
         var chartUI = CreateChartUI(chartParent, chartRenderer, chartBounds);

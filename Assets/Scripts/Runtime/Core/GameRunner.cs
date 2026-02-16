@@ -222,13 +222,23 @@ public class GameRunner : MonoBehaviour
     /// </summary>
     private void OnRoundStartedForShort(RoundStartedEvent evt)
     {
-        _shortState = ShortState.RoundLockout;
-        _shortTimer = GameConfig.ShortRoundStartLockout;
         _shortEntryPrice = 0f;
         _shortShares = 0;
         _shortStockId = null;
         if (_shortPnlPanel != null)
             _shortPnlPanel.SetActive(false);
+
+        // Skip lockout entirely if duration is 0
+        if (GameConfig.ShortRoundStartLockout <= 0f)
+        {
+            _shortState = ShortState.Ready;
+            _shortTimer = 0f;
+        }
+        else
+        {
+            _shortState = ShortState.RoundLockout;
+            _shortTimer = GameConfig.ShortRoundStartLockout;
+        }
     }
 
     /// <summary>
@@ -348,6 +358,13 @@ public class GameRunner : MonoBehaviour
 
         bool success = _tradeExecutor.ExecuteCover(_shortStockId, _shortShares, currentPrice, _ctx.Portfolio);
         float pnl = (_shortEntryPrice - currentPrice) * _shortShares;
+
+        // Award reputation for profitable short trades
+        if (success && pnl > 0f)
+        {
+            _ctx.Reputation.Add(GameConfig.RepPerProfitableTrade);
+            _ctx.ReputationEarned += GameConfig.RepPerProfitableTrade;
+        }
 
         string pnlStr = pnl >= 0 ? $"+${pnl:F2}" : $"-${Mathf.Abs(pnl):F2}";
         string prefix = isAutoClose ? "AUTO-CLOSED" : "CASHED OUT";
@@ -666,7 +683,17 @@ public class GameRunner : MonoBehaviour
             });
             return false;
         }
+
+        // Check entry price before sell to determine profitability
+        var position = _ctx.Portfolio.GetPosition(stockIdStr);
+        float entryPrice = position != null ? position.AverageBuyPrice : 0f;
+
         bool success = _tradeExecutor.ExecuteSell(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+        if (success && currentPrice > entryPrice)
+        {
+            _ctx.Reputation.Add(GameConfig.RepPerProfitableTrade);
+            _ctx.ReputationEarned += GameConfig.RepPerProfitableTrade;
+        }
         EventBus.Publish(new TradeFeedbackEvent
         {
             Message = success ? $"SOLD {ticker} x{qty}" : "No position to sell",

@@ -126,11 +126,14 @@ public class TradingState : IGameState
         // Update static accessors for UI reads
         ActiveTimeRemaining = _timeRemaining;
 
+        // Skip all price/event processing during initial price freeze
+        bool frozen = TimeElapsed < GameConfig.PriceFreezeSeconds;
+
         // Update event scheduler BEFORE price updates so newly fired events affect prices this frame
-        if (_eventScheduler != null && _priceGenerator != null)
+        if (!frozen && _eventScheduler != null && _priceGenerator != null)
         {
             _eventScheduler.Update(
-                TimeElapsed,
+                TimeElapsed - GameConfig.PriceFreezeSeconds,
                 deltaTime,
                 _priceGenerator.ActiveStocks,
                 ctx.CurrentTier);
@@ -141,7 +144,22 @@ public class TradingState : IGameState
         {
             for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
             {
-                _priceGenerator.UpdatePrice(_priceGenerator.ActiveStocks[i], deltaTime);
+                var stock = _priceGenerator.ActiveStocks[i];
+                if (frozen)
+                {
+                    // Publish price event at current (unchanged) price so chart draws flat line
+                    EventBus.Publish(new PriceUpdatedEvent
+                    {
+                        StockId = stock.StockId,
+                        NewPrice = stock.CurrentPrice,
+                        PreviousPrice = stock.CurrentPrice,
+                        DeltaTime = deltaTime
+                    });
+                }
+                else
+                {
+                    _priceGenerator.UpdatePrice(stock, deltaTime);
+                }
             }
         }
     }

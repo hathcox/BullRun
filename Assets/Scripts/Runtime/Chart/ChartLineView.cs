@@ -19,8 +19,9 @@ public class ChartLineView : MonoBehaviour
     // Price gridlines (FIX-8)
     private LineRenderer[] _gridlines;
 
-    // Break-even line and trade markers
+    // Break-even line, short position line, and trade markers
     private LineRenderer _breakEvenLine;
+    private LineRenderer _shortPositionLine;
     private Transform _markerPool;
     private readonly List<GameObject> _markerObjects = new List<GameObject>();
     private Sprite _circleSprite;
@@ -73,9 +74,10 @@ public class ChartLineView : MonoBehaviour
         _gridlines = gridlines;
     }
 
-    public void SetTradeVisuals(LineRenderer breakEvenLine, Transform markerPool)
+    public void SetTradeVisuals(LineRenderer breakEvenLine, LineRenderer shortPositionLine, Transform markerPool)
     {
         _breakEvenLine = breakEvenLine;
+        _shortPositionLine = shortPositionLine;
         _markerPool = markerPool;
 
         // Create procedural circle sprite for markers
@@ -116,17 +118,21 @@ public class ChartLineView : MonoBehaviour
             HideGridlines();
             UpdateTradeMarkers(0f, 1f, _chartBottom, _chartTop);
             UpdateBreakEvenLine(0f, 1f, _chartBottom, _chartTop);
+            UpdateShortPositionLine(0f, 1f, _chartBottom, _chartTop);
             return;
         }
 
         // Use live min/max from actual points (not all-time extremes)
         _chartRenderer.GetLivePriceRange(out float minPrice, out float maxPrice);
         float priceRange = maxPrice - minPrice;
-        if (priceRange < 0.01f)
+        // Minimum range: 5% of current price (avoids axis snap when flat line transitions to movement)
+        float center = (minPrice + maxPrice) * 0.5f;
+        float minRange = center * 0.05f;
+        if (minRange < 0.01f) minRange = 0.01f;
+        if (priceRange < minRange)
         {
-            float center = (minPrice + maxPrice) * 0.5f;
-            minPrice = center - 0.5f;
-            priceRange = 1f;
+            minPrice = center - minRange * 0.5f;
+            priceRange = minRange;
         }
 
         // 10% Y-axis padding so line never touches chart edges
@@ -163,9 +169,10 @@ public class ChartLineView : MonoBehaviour
             _indicator.gameObject.SetActive(true);
         }
 
-        // Update trade markers and break-even line
+        // Update trade markers, break-even line, and short position line
         UpdateTradeMarkers(minPrice, priceRange, paddedBottom, paddedTop);
         UpdateBreakEvenLine(minPrice, priceRange, paddedBottom, paddedTop);
+        UpdateShortPositionLine(minPrice, priceRange, paddedBottom, paddedTop);
     }
 
     private void UpdateGridlines(float paddedBottom, float paddedTop)
@@ -276,6 +283,27 @@ public class ChartLineView : MonoBehaviour
         {
             _breakEvenLine.gameObject.SetActive(false);
             _breakEvenLine.positionCount = 0;
+        }
+    }
+
+    private void UpdateShortPositionLine(float minPrice, float priceRange, float paddedBottom, float paddedTop)
+    {
+        if (_shortPositionLine == null || _chartRenderer == null) return;
+
+        if (_chartRenderer.HasShortPosition && priceRange > 0f)
+        {
+            _shortPositionLine.gameObject.SetActive(true);
+            float y = Mathf.Lerp(paddedBottom, paddedTop,
+                (_chartRenderer.ShortEntryPrice - minPrice) / priceRange);
+
+            _shortPositionLine.positionCount = 2;
+            _shortPositionLine.SetPosition(0, new Vector3(_chartLeft, y, 0f));
+            _shortPositionLine.SetPosition(1, new Vector3(_chartRight, y, 0f));
+        }
+        else
+        {
+            _shortPositionLine.gameObject.SetActive(false);
+            _shortPositionLine.positionCount = 0;
         }
     }
 }

@@ -6,7 +6,9 @@
       "Bash(git commit:*)",
       "Bash(git add:*)",
       "Bash(git push:*)",
-      "Bash(git -C /Users/iggykrajci/Code/BullRun rev-parse HEAD)"
+      "Bash(git -C /Users/iggykrajci/Code/BullRun rev-parse HEAD)",
+      "Bash(grep:*)",
+      "Bash(wc -l:*)"
     ]
   }
 }

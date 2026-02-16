@@ -33,6 +33,8 @@ public class ChartRenderer
     private float _averageBuyPrice;
     private int _totalSharesBought;
     private bool _hasOpenPosition;
+    private float _shortEntryPrice;
+    private bool _hasShortPosition;
     private int _activeStockId = -1;
     private float _roundDuration;
     private float _elapsedTime;
@@ -72,6 +74,8 @@ public class ChartRenderer
     public List<TradeMarker> TradeMarkers => _tradeMarkers;
     public float AverageBuyPrice => _averageBuyPrice;
     public bool HasOpenPosition => _hasOpenPosition;
+    public float ShortEntryPrice => _shortEntryPrice;
+    public bool HasShortPosition => _hasShortPosition;
 
     public ChartRenderer()
     {
@@ -102,6 +106,8 @@ public class ChartRenderer
         _averageBuyPrice = 0f;
         _totalSharesBought = 0;
         _hasOpenPosition = false;
+        _shortEntryPrice = 0f;
+        _hasShortPosition = false;
     }
 
     public void ProcessTrade(TradeExecutedEvent evt)
@@ -140,6 +146,18 @@ public class ChartRenderer
                 _averageBuyPrice = 0f;
                 _hasOpenPosition = false;
             }
+        }
+        else if (!evt.IsBuy && evt.IsShort)
+        {
+            // Short opened — record entry price
+            _shortEntryPrice = evt.Price;
+            _hasShortPosition = true;
+        }
+        else if (evt.IsBuy && evt.IsShort)
+        {
+            // Short covered — clear short position
+            _shortEntryPrice = 0f;
+            _hasShortPosition = false;
         }
     }
 

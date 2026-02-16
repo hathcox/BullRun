@@ -16,15 +16,15 @@ public static class GameConfig
     public static readonly int DefaultTradeQuantity = 1;
 
     // Short selling lifecycle timing constants (FIX-11)
-    public static readonly float ShortRoundStartLockout = 5.0f;
-    public static readonly float ShortForcedHoldDuration = 8.0f;
-    public static readonly float ShortCashOutWindow = 10.0f;
-    public static readonly float ShortCashOutFlashThreshold = 4.0f;
-    public static readonly float ShortPostCloseCooldown = 10.0f;
+    public static readonly float ShortRoundStartLockout = 0f;
+    public static readonly float ShortForcedHoldDuration = 3.0f;
+    public static readonly float ShortCashOutWindow = 5.0f;
+    public static readonly float ShortCashOutFlashThreshold = 2.0f;
+    public static readonly float ShortPostCloseCooldown = 3.0f;
     public static readonly int ShortBaseShares = 1;
 
     // Post-trade cooldown: locks out all trading for this duration after a successful trade (seconds)
-    public static readonly float PostTradeCooldown = 3.0f;
+    public static readonly float PostTradeCooldown = 1.0f;
 
     // Button dim alpha during trade cooldown (0 = invisible, 1 = fully opaque)
     public static readonly float CooldownDimAlpha = 0.35f;
@@ -45,8 +45,14 @@ public static class GameConfig
     // Consolation Rep per round completed before margin call failure
     public static readonly int RepConsolationPerRound = 2;
 
+    // Reputation earned per profitable trade (successful long sell or short cover with positive P&L)
+    public static readonly int RepPerProfitableTrade = 1;
+
+    // Seconds at round start where price holds flat (no movement)
+    public static readonly float PriceFreezeSeconds = 1.0f;
+
     // Market Open preview duration before trading begins
-    public static readonly float MarketOpenDurationSeconds = 7f;
+    public static readonly float MarketOpenDurationSeconds = 3f;
 
     // Run structure: 4 acts, 2 rounds per act, 8 rounds total
     public static readonly int TotalRounds = 8;
