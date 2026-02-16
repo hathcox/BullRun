@@ -61,6 +61,20 @@ public class PriceGenerator
             }
 
             stock.SegmentSlope = baseSlope + trendBias + reversionBias;
+
+            // Minimum movement guarantee: prevent visual flat lines by ensuring slope
+            // has a small minimum magnitude (0.2% of price per second — subtle enough
+            // to not distort noise/reversion, but enough to prevent chart flatness)
+            float minSlope = stock.CurrentPrice * 0.002f;
+            if (stock.SegmentSlope > -minSlope && stock.SegmentSlope < minSlope)
+            {
+                if (stock.SegmentSlope > 0f)
+                    stock.SegmentSlope = minSlope;
+                else if (stock.SegmentSlope < 0f)
+                    stock.SegmentSlope = -minSlope;
+                else
+                    stock.SegmentSlope = ((float)_random.NextDouble() < 0.5f) ? minSlope : -minSlope;
+            }
         }
 
         stock.SegmentTimeRemaining -= deltaTime;
@@ -81,11 +95,28 @@ public class PriceGenerator
             }
         }
 
-        // Clamp to tier price range
-        if (stock.CurrentPrice < stock.TierConfig.MinPrice)
-            stock.CurrentPrice = stock.TierConfig.MinPrice;
-        if (stock.CurrentPrice > stock.TierConfig.MaxPrice * 2f)
-            stock.CurrentPrice = stock.TierConfig.MaxPrice * 2f;
+        // Hard floor — stocks can never go to zero or negative.
+        // Reverse slope direction to bounce off the floor and prevent sticking.
+        if (stock.CurrentPrice < 0.01f)
+        {
+            stock.CurrentPrice = 0.01f;
+            if (stock.SegmentSlope < 0f)
+                stock.SegmentSlope = -stock.SegmentSlope;
+        }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Diagnostic: detect truly flat price movement (delta < 0.001% of price)
+        float priceDelta = System.Math.Abs(stock.CurrentPrice - previousPrice);
+        float flatThreshold = stock.CurrentPrice * 0.00001f;
+        if (priceDelta < flatThreshold)
+        {
+            Debug.LogWarning($"[PriceEngine] FLAT DETECTED {stock.TickerSymbol}: " +
+                $"price=${stock.CurrentPrice:F4}, delta=${priceDelta:F6}, " +
+                $"slope={stock.SegmentSlope:F6}, segTimeLeft={stock.SegmentTimeRemaining:F3}, " +
+                $"trend/s={stock.TrendPerSecond:F4}, trendLine=${stock.TrendLinePrice:F4}, " +
+                $"hasEvent={hasActiveEvent}, dt={deltaTime:F4}");
+        }
+        #endif
 
         EventBus.Publish(new PriceUpdatedEvent
         {

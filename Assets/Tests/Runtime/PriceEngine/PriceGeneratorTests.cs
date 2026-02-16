@@ -146,30 +146,92 @@ namespace BullRun.Tests.PriceEngine
         [Test]
         public void UpdatePrice_NeverGoesNegative()
         {
-            // Low starting price penny stock with bear trend — should clamp at MinPrice
+            // Low starting price penny stock with bear trend — should hit hard floor at $0.01
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", StockTier.Penny, 0.15f, TrendDirection.Bear, 0.20f);
 
             for (int i = 0; i < 600; i++)
             {
                 _generator.UpdatePrice(stock, 0.016f);
-                Assert.GreaterOrEqual(stock.CurrentPrice, stock.TierConfig.MinPrice,
-                    $"Price went below tier minimum at frame {i}");
+                Assert.GreaterOrEqual(stock.CurrentPrice, 0.01f,
+                    $"Price went below hard floor at frame {i}");
             }
         }
 
         [Test]
-        public void UpdatePrice_ClampsToTierMinPrice()
+        public void UpdatePrice_ClampsToHardFloor()
         {
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", StockTier.Penny, 0.12f, TrendDirection.Bear, 0.20f);
 
-            // Heavy bear trend on near-minimum price
+            // Heavy bear trend on low price — should never go below $0.01
             for (int i = 0; i < 300; i++)
                 _generator.UpdatePrice(stock, 0.016f);
 
-            Assert.GreaterOrEqual(stock.CurrentPrice, 0.10f,
-                "Price should be clamped to Penny tier MinPrice ($0.10)");
+            Assert.GreaterOrEqual(stock.CurrentPrice, 0.01f,
+                "Price should be clamped to hard floor ($0.01)");
+        }
+
+        [Test]
+        public void UpdatePrice_NeverProducesFlatLines()
+        {
+            // BlueChip neutral trend — lowest noise (0.025) + strongest reversion (0.50)
+            // makes this the tier most likely to produce flat behavior without min slope
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.BlueChip, 2500f, TrendDirection.Neutral, 0f);
+
+            int flatFrameStreak = 0;
+            int maxFlatStreak = 0;
+            float lastPrice = stock.CurrentPrice;
+
+            for (int i = 0; i < 600; i++)
+            {
+                _generator.UpdatePrice(stock, 0.016f);
+                if (System.Math.Abs(stock.CurrentPrice - lastPrice) < 0.001f)
+                {
+                    flatFrameStreak++;
+                    if (flatFrameStreak > maxFlatStreak)
+                        maxFlatStreak = flatFrameStreak;
+                }
+                else
+                {
+                    flatFrameStreak = 0;
+                }
+                lastPrice = stock.CurrentPrice;
+            }
+
+            // Allow up to 2 consecutive flat frames (floating point edge cases)
+            // but never extended flat lines
+            Assert.Less(maxFlatStreak, 3,
+                $"Price should never stay flat for more than 2 consecutive frames (worst streak: {maxFlatStreak})");
+        }
+
+        [Test]
+        public void UpdatePrice_PriceCanExceedTierMaxPrice()
+        {
+            // Bull trend on penny stock should be able to go well past $8 MaxPrice
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 7.50f, TrendDirection.Bull, 0.10f);
+
+            for (int i = 0; i < 600; i++)
+                _generator.UpdatePrice(stock, 0.016f);
+
+            Assert.Greater(stock.CurrentPrice, 8f,
+                "Price should be free to exceed tier MaxPrice — no upper clamping");
+        }
+
+        [Test]
+        public void UpdatePrice_PriceCanGoBelowTierMinPrice()
+        {
+            // Bear trend should be able to push price below the tier's MinPrice
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 55f, TrendDirection.Bear, 0.10f);
+
+            for (int i = 0; i < 600; i++)
+                _generator.UpdatePrice(stock, 0.016f);
+
+            Assert.Less(stock.CurrentPrice, 50f,
+                "Price should be free to go below tier MinPrice — only hard floor at $0.01");
         }
 
         // --- InitializeRound Tests ---
