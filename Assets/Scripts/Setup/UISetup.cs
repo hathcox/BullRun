@@ -31,11 +31,9 @@ public static class UISetup
     public static void Execute()
     {
         ExecuteMarketOpenUI();
-        // FIX-5: Sidebar removed — single stock per round, no selection needed
-        ExecuteRoundTimer();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] UISetup: All UI hierarchies created (MarketOpenUI, RoundTimer)");
+        Debug.Log("[Setup] UISetup: All UI hierarchies created (MarketOpenUI)");
         #endif
     }
 
@@ -108,6 +106,20 @@ public static class UISetup
         var repLabel = CreateLabel("RepLabel", repSection.transform, "REP", LabelColor, 12);
         var repValue = CreateLabel("RepValue", repSection.transform, "\u2605 0",
             ShopUI.ReputationColor, 20);
+
+        // Section 6: Round Timer — countdown + progress bar in top bar
+        var timerSection = CreateHUDSection("TimerSection", topBar.transform);
+        var timerLabel = CreateLabel("TimerLabel", timerSection.transform, "TIME", LabelColor, 12);
+        var timerValue = CreateLabel("TimerValue", timerSection.transform, "1:00",
+            new Color(0f, 1f, 0.533f, 1f), 20);
+        timerValue.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var timerProgress = CreateProgressBar("TimerProgress", timerSection.transform);
+        timerProgress.fillAmount = 1f;
+        timerProgress.color = new Color(0f, 1f, 0.533f, 1f);
+
+        // Initialize RoundTimerUI on the HUD parent
+        var roundTimerUI = hudParent.AddComponent<RoundTimerUI>();
+        roundTimerUI.Initialize(timerValue.GetComponent<Text>(), timerProgress, timerSection);
 
         // Initialize TradingHUD MonoBehaviour
         var tradingHUD = hudParent.AddComponent<TradingHUD>();
@@ -294,9 +306,8 @@ public static class UISetup
     }
 
     /// <summary>
-    /// Generates the compact position overlay on the bottom-left of the chart area.
+    /// Generates the compact position overlay centered above the trade panel.
     /// Shows direction (LONG/SHORT/FLAT), share count, avg price, and real-time P&L.
-    /// Replaces the old ExecutePositionsPanel() right sidebar (FIX-7).
     /// </summary>
     public static PositionOverlay ExecutePositionOverlay(Portfolio portfolio)
     {
@@ -307,47 +318,52 @@ public static class UISetup
         canvasGo.transform.SetParent(overlayParent.transform);
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 11; // Just above ChartCanvas (10)
+        canvas.sortingOrder = 24; // Same level as trade panel — visually stacked together
 
         var scaler = canvasGo.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         // No GraphicRaycaster — overlay should not block input
 
-        // Overlay container — bottom-left of chart area
+        // Overlay container — centered above trade panel buttons
         var containerGo = CreatePanel("OverlayContainer", canvasGo.transform);
         var containerRect = containerGo.GetComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0f, 0f);
-        containerRect.anchorMax = new Vector2(0f, 0f);
-        containerRect.pivot = new Vector2(0f, 0f);
-        containerRect.anchoredPosition = new Vector2(20f, 100f); // Above inventory bar + news ticker
-        containerRect.sizeDelta = new Vector2(200f, 80f);
+        containerRect.anchorMin = new Vector2(0.5f, 0f);
+        containerRect.anchorMax = new Vector2(0.5f, 0f);
+        containerRect.pivot = new Vector2(0.5f, 0f);
+        containerRect.anchoredPosition = new Vector2(0f, 144f); // Above trade panel (82 + 60 + 2)
+        containerRect.sizeDelta = new Vector2(420f, 85f);
         containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.6f); // Semi-transparent dark
 
         // Vertical layout for rows
         var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 2f;
         vlg.padding = new RectOffset(10, 10, 6, 6);
-        vlg.childAlignment = TextAnchor.UpperLeft;
+        vlg.childAlignment = TextAnchor.MiddleCenter;
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
+
+        // Section header
+        var headerGo = CreateLabel("LongHeader", containerGo.transform, "LONG POSITION",
+            LabelColor, 10);
+        headerGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
         // Row 1: Direction — "15x LONG" or "FLAT"
         var directionGo = CreateLabel("DirectionText", containerGo.transform, "FLAT",
             new Color(0.5f, 0.5f, 0.55f, 1f), 16);
         directionGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        directionGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        directionGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
         // Row 2: Avg price — "Avg: $2.45"
         var avgPriceGo = CreateLabel("AvgPriceText", containerGo.transform, "Avg: $0.00",
             LabelColor, 13);
-        avgPriceGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        avgPriceGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
         // Row 3: P&L — "P&L: +$3.75"
         var pnlGo = CreateLabel("PnLText", containerGo.transform, "P&L: +$0.00",
             Color.white, 14);
         pnlGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        pnlGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        pnlGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
         // Initialize PositionOverlay MonoBehaviour
         var positionOverlay = overlayParent.AddComponent<PositionOverlay>();
@@ -361,7 +377,7 @@ public static class UISetup
         );
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] PositionOverlay created: bottom-left chart overlay");
+        Debug.Log("[Setup] PositionOverlay created: centered above trade panel");
         #endif
 
         return positionOverlay;
@@ -461,68 +477,6 @@ public static class UISetup
         return marketOpenUI;
     }
 
-    /// <summary>
-    /// Generates the Round Timer UI positioned near the top bar.
-    /// Shows countdown text and progress bar with urgency color transitions.
-    /// </summary>
-    public static RoundTimerUI ExecuteRoundTimer()
-    {
-        var timerParent = new GameObject("RoundTimer");
-
-        // Create Canvas
-        var canvasGo = new GameObject("RoundTimerCanvas");
-        canvasGo.transform.SetParent(timerParent.transform);
-        var canvas = canvasGo.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 25; // Above HUD
-
-        var scaler = canvasGo.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        canvasGo.AddComponent<GraphicRaycaster>();
-
-        // Timer container — centered at bottom
-        var containerGo = new GameObject("TimerContainer");
-        containerGo.transform.SetParent(canvasGo.transform, false);
-        var containerRect = containerGo.AddComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0.5f, 0f);
-        containerRect.anchorMax = new Vector2(0.5f, 0f);
-        containerRect.pivot = new Vector2(0.5f, 0f);
-        containerRect.anchoredPosition = new Vector2(0f, 16f);
-        containerRect.sizeDelta = new Vector2(160f, 50f);
-
-        // Background panel
-        var bgImage = containerGo.AddComponent<Image>();
-        bgImage.color = new Color(0.05f, 0.07f, 0.18f, 0.85f);
-
-        // Vertical layout
-        var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 2f;
-        vlg.padding = new RectOffset(8, 8, 4, 4);
-        vlg.childAlignment = TextAnchor.MiddleCenter;
-        vlg.childForceExpandWidth = true;
-        vlg.childForceExpandHeight = false;
-
-        // Timer text — "0:45" format
-        var timerTextGo = CreateLabel("TimerText", containerGo.transform, "1:00",
-            new Color(0f, 1f, 0.533f, 1f), 24);
-        timerTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-
-        // Progress bar
-        var progressFill = CreateProgressBar("TimerProgress", containerGo.transform);
-        progressFill.fillAmount = 1f;
-        progressFill.color = new Color(0f, 1f, 0.533f, 1f);
-
-        // Initialize RoundTimerUI MonoBehaviour
-        var roundTimerUI = timerParent.AddComponent<RoundTimerUI>();
-        roundTimerUI.Initialize(timerTextGo.GetComponent<Text>(), progressFill, containerGo);
-
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] RoundTimerUI created: centered below top bar");
-        #endif
-
-        return roundTimerUI;
-    }
 
     /// <summary>
     /// Generates the Run Summary overlay. Shows "MARGIN CALL" or "BULL RUN COMPLETE!" header,
@@ -1340,42 +1294,22 @@ public static class UISetup
         containerRect.anchorMax = new Vector2(0.5f, 0f);
         containerRect.pivot = new Vector2(0.5f, 0f);
         containerRect.anchoredPosition = new Vector2(0f, 82f); // Above inventory bar + news ticker
-        containerRect.sizeDelta = new Vector2(420f, 110f);
+        containerRect.sizeDelta = new Vector2(420f, 60f); // Buttons only, no qty row
         containerGo.GetComponent<Image>().color = BarBackgroundColor;
 
         var mainLayout = containerGo.AddComponent<VerticalLayoutGroup>();
         mainLayout.spacing = 6f;
-        mainLayout.padding = new RectOffset(12, 12, 8, 8);
+        mainLayout.padding = new RectOffset(12, 12, 6, 6);
         mainLayout.childAlignment = TextAnchor.MiddleCenter;
         mainLayout.childForceExpandWidth = true;
         mainLayout.childForceExpandHeight = false;
 
-        // === Row 1: Quantity display (FIX-15: always x1, no preset buttons) ===
-        var presetRow = new GameObject("PresetRow");
-        presetRow.transform.SetParent(containerGo.transform, false);
-        presetRow.AddComponent<RectTransform>();
-        var presetRowLayout = presetRow.AddComponent<LayoutElement>();
-        presetRowLayout.preferredHeight = 30f;
-        var presetHlg = presetRow.AddComponent<HorizontalLayoutGroup>();
-        presetHlg.spacing = 6f;
-        presetHlg.childAlignment = TextAnchor.MiddleCenter;
-        presetHlg.childForceExpandWidth = true;
-        presetHlg.childForceExpandHeight = true;
-
-        // Quantity display text (shows "Qty: 1")
-        var qtyTextGo = CreateLabel("QtyDisplay", presetRow.transform,
-            $"Qty: {GameConfig.DefaultTradeQuantity}", Color.white, 14);
-        qtyTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        qtyTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-        var qtyTextLayout = qtyTextGo.AddComponent<LayoutElement>();
-        qtyTextLayout.preferredWidth = 80f;
-
-        // === Row 2: SELL and BUY buttons ===
+        // === BUY and SELL buttons (qty row removed) ===
         var buttonRow = new GameObject("ButtonRow");
         buttonRow.transform.SetParent(containerGo.transform, false);
         buttonRow.AddComponent<RectTransform>();
         var buttonRowLayout = buttonRow.AddComponent<LayoutElement>();
-        buttonRowLayout.preferredHeight = 52f;
+        buttonRowLayout.preferredHeight = 48f;
         var buttonHlg = buttonRow.AddComponent<HorizontalLayoutGroup>();
         buttonHlg.spacing = 20f;
         buttonHlg.childAlignment = TextAnchor.MiddleCenter;
@@ -1404,24 +1338,108 @@ public static class UISetup
         buyLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
         buyLabel.GetComponent<Text>().raycastTarget = false;
 
-        // Initialize QuantitySelector MonoBehaviour (FIX-15: always x1, no preset buttons)
-        var quantitySelector = panelParent.AddComponent<QuantitySelector>();
-        quantitySelector.Initialize(qtyTextGo.GetComponent<Text>());
-        quantitySelector.BuyButtonImage = buyBtnGo.GetComponent<Image>();
-        quantitySelector.SellButtonImage = sellBtnGo.GetComponent<Image>();
+        // === Cooldown overlay — grey panel covering buy/sell buttons ===
+        // Parented to canvas (not container) to avoid VerticalLayoutGroup interference
+        var cooldownOverlayGo = CreatePanel("CooldownOverlay", canvasGo.transform);
+        var overlayRect = cooldownOverlayGo.GetComponent<RectTransform>();
+        // Match the container's position and size exactly
+        overlayRect.anchorMin = new Vector2(0.5f, 0f);
+        overlayRect.anchorMax = new Vector2(0.5f, 0f);
+        overlayRect.pivot = new Vector2(0.5f, 0f);
+        overlayRect.anchoredPosition = new Vector2(0f, 82f);
+        overlayRect.sizeDelta = new Vector2(420f, 60f);
+        cooldownOverlayGo.GetComponent<Image>().color = new Color(0.2f, 0.2f, 0.2f, 0.75f);
 
-        // FIX-10 v2: Countdown timer text positioned just above the trade panel container
-        var cooldownTimerGo = CreateLabel("CooldownTimer", canvasGo.transform, "",
-            new Color(1f, 0.85f, 0.2f, 1f), 18);
+        var cooldownTimerGo = CreateLabel("CooldownTimer", cooldownOverlayGo.transform, "",
+            new Color(1f, 0.85f, 0.2f, 1f), 22);
         cooldownTimerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        var cooldownTimerRect = cooldownTimerGo.GetComponent<RectTransform>();
-        cooldownTimerRect.anchorMin = new Vector2(0.5f, 0f);
-        cooldownTimerRect.anchorMax = new Vector2(0.5f, 0f);
-        cooldownTimerRect.pivot = new Vector2(0.5f, 0f);
-        cooldownTimerRect.anchoredPosition = new Vector2(0f, 194f); // Just above container (82 + 110 + 2)
-        cooldownTimerRect.sizeDelta = new Vector2(100f, 30f);
-        cooldownTimerGo.SetActive(false);
+        cooldownTimerGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        cooldownTimerGo.GetComponent<Text>().raycastTarget = false;
+        var cdTimerRect = cooldownTimerGo.GetComponent<RectTransform>();
+        cdTimerRect.anchorMin = Vector2.zero;
+        cdTimerRect.anchorMax = Vector2.one;
+        cdTimerRect.offsetMin = Vector2.zero;
+        cdTimerRect.offsetMax = Vector2.zero;
+
+        cooldownOverlayGo.SetActive(false);
+
+        // === SHORT section — full-width button + inline P&L panel below buy/sell ===
+        var shortPink = new Color(1f, 0.2f, 0.6f, 1f);
+
+        // Short container positioned below the buy/sell container
+        var shortContainerGo = CreatePanel("ShortContainer", canvasGo.transform);
+        var shortContainerRect = shortContainerGo.GetComponent<RectTransform>();
+        shortContainerRect.anchorMin = new Vector2(0.5f, 0f);
+        shortContainerRect.anchorMax = new Vector2(0.5f, 0f);
+        shortContainerRect.pivot = new Vector2(0.5f, 1f);
+        shortContainerRect.anchoredPosition = new Vector2(0f, 80f); // Just below buy/sell (82 - 2)
+        shortContainerRect.sizeDelta = new Vector2(420f, 40f); // Grows when P&L visible
+        shortContainerGo.GetComponent<Image>().color = new Color(0.08f, 0.05f, 0.15f, 0.85f);
+
+        var shortVlg = shortContainerGo.AddComponent<VerticalLayoutGroup>();
+        shortVlg.spacing = 4f;
+        shortVlg.padding = new RectOffset(12, 12, 4, 4);
+        shortVlg.childAlignment = TextAnchor.MiddleCenter;
+        shortVlg.childForceExpandWidth = true;
+        shortVlg.childForceExpandHeight = false;
+        var shortContainerFitter = shortContainerGo.AddComponent<ContentSizeFitter>();
+        shortContainerFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // SHORT button — full width
+        var shortBtnGo = CreatePanel("ShortButton", shortContainerGo.transform);
+        shortBtnGo.GetComponent<Image>().color = shortPink;
+        var shortBtnLayout = shortBtnGo.AddComponent<LayoutElement>();
+        shortBtnLayout.preferredHeight = 32f;
+        var shortButton = shortBtnGo.AddComponent<Button>();
+        var shortBtnLabel = CreateLabel("ShortButtonText", shortBtnGo.transform, "SHORT", Color.white, 16);
+        shortBtnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        shortBtnLabel.GetComponent<Text>().raycastTarget = false;
+
+        // Wire SHORT button click
+        shortButton.onClick.AddListener(() =>
+        {
+            var runner = Object.FindObjectOfType<GameRunner>();
+            if (runner != null) runner.HandleShortInput();
+        });
+
+        // Short P&L info section — hidden until short is active
+        var shortPnlGo = new GameObject("ShortPnlPanel");
+        shortPnlGo.transform.SetParent(shortContainerGo.transform, false);
+        shortPnlGo.AddComponent<RectTransform>();
+
+        var shortPnlVlg = shortPnlGo.AddComponent<VerticalLayoutGroup>();
+        shortPnlVlg.spacing = 1f;
+        shortPnlVlg.childAlignment = TextAnchor.MiddleCenter;
+        shortPnlVlg.childForceExpandWidth = true;
+        shortPnlVlg.childForceExpandHeight = false;
+
+        var shortEntryGo = CreateLabel("ShortEntryText", shortPnlGo.transform, "Entry: $0.00",
+            LabelColor, 12);
+        shortEntryGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+
+        // P&L row — entry + value side by side
+        var shortValueGo = CreateLabel("ShortPnlValue", shortPnlGo.transform, "P&L: +$0.00",
+            Color.white, 14);
+        shortValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        shortValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+
+        var shortCountdownGo = CreateLabel("ShortCountdown", shortPnlGo.transform, "",
+            new Color(1f, 0.85f, 0.2f, 1f), 12);
+        shortCountdownGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+
+        shortPnlGo.SetActive(false); // Hidden until short is active
+
+        // Initialize QuantitySelector MonoBehaviour
+        var quantitySelector = panelParent.AddComponent<QuantitySelector>();
+        quantitySelector.Initialize();
         quantitySelector.CooldownTimerText = cooldownTimerGo.GetComponent<Text>();
+        quantitySelector.CooldownOverlay = cooldownOverlayGo;
+        quantitySelector.ShortButtonImage = shortBtnGo.GetComponent<Image>();
+        quantitySelector.ShortButtonText = shortBtnLabel.GetComponent<Text>();
+        quantitySelector.ShortPnlPanel = shortPnlGo;
+        quantitySelector.ShortPnlEntryText = shortEntryGo.GetComponent<Text>();
+        quantitySelector.ShortPnlValueText = shortValueGo.GetComponent<Text>();
+        quantitySelector.ShortPnlCountdownText = shortCountdownGo.GetComponent<Text>();
 
         // Wire BUY/SELL buttons to publish TradeButtonPressedEvent
         buyButton.onClick.AddListener(() =>
@@ -1430,96 +1448,10 @@ public static class UISetup
             EventBus.Publish(new TradeButtonPressedEvent { IsBuy = false }));
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] TradePanel created: bottom-center with BUY/SELL buttons, x1 default (FIX-15)");
+        Debug.Log("[Setup] TradePanel created: BUY/SELL + SHORT integrated");
         #endif
 
         return quantitySelector;
-    }
-
-    /// <summary>
-    /// FIX-11: Generates the SHORT button and Short P&L panel.
-    /// SHORT button is visually distinct (hot pink/purple), positioned below the trade panel.
-    /// Short P&L panel shows entry price, current P&L, and auto-close countdown.
-    /// Button click routes to GameRunner.HandleShortInput().
-    /// </summary>
-    public static void ExecuteShortButton(out Image shortButtonImage, out Text shortButtonText,
-        out GameObject shortPnlPanel, out Text shortPnlEntryText, out Text shortPnlValueText, out Text shortPnlCountdownText)
-    {
-        var shortPink = new Color(1f, 0.2f, 0.6f, 1f); // Hot pink
-
-        var canvasGo = new GameObject("ShortButtonCanvas");
-        var canvas = canvasGo.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 24; // Same level as trade panel
-        var scaler = canvasGo.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        canvasGo.AddComponent<GraphicRaycaster>();
-
-        // SHORT button — positioned to the right of the trade panel
-        var btnGo = CreatePanel("ShortButton", canvasGo.transform);
-        var btnRect = btnGo.GetComponent<RectTransform>();
-        btnRect.anchorMin = new Vector2(0.5f, 0f);
-        btnRect.anchorMax = new Vector2(0.5f, 0f);
-        btnRect.pivot = new Vector2(0.5f, 0f);
-        btnRect.anchoredPosition = new Vector2(260f, 100f); // Right of trade panel
-        btnRect.sizeDelta = new Vector2(120f, 48f);
-        shortButtonImage = btnGo.GetComponent<Image>();
-        shortButtonImage.color = shortPink;
-
-        var button = btnGo.AddComponent<Button>();
-
-        var labelGo = CreateLabel("ShortButtonText", btnGo.transform, "SHORT", Color.white, 18);
-        labelGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        labelGo.GetComponent<Text>().raycastTarget = false;
-        shortButtonText = labelGo.GetComponent<Text>();
-
-        // Wire button click to GameRunner.HandleShortInput via FindObjectOfType
-        button.onClick.AddListener(() =>
-        {
-            var runner = Object.FindObjectOfType<GameRunner>();
-            if (runner != null) runner.HandleShortInput();
-        });
-
-        // Short P&L panel — positioned above the SHORT button
-        var pnlPanelGo = CreatePanel("ShortPnlPanel", canvasGo.transform);
-        var pnlRect = pnlPanelGo.GetComponent<RectTransform>();
-        pnlRect.anchorMin = new Vector2(0.5f, 0f);
-        pnlRect.anchorMax = new Vector2(0.5f, 0f);
-        pnlRect.pivot = new Vector2(0.5f, 0f);
-        pnlRect.anchoredPosition = new Vector2(260f, 152f); // Above SHORT button
-        pnlRect.sizeDelta = new Vector2(160f, 60f);
-        pnlPanelGo.GetComponent<Image>().color = new Color(0.1f, 0.05f, 0.15f, 0.85f);
-        shortPnlPanel = pnlPanelGo;
-
-        var pnlLayout = pnlPanelGo.AddComponent<VerticalLayoutGroup>();
-        pnlLayout.spacing = 1f;
-        pnlLayout.padding = new RectOffset(8, 8, 4, 4);
-        pnlLayout.childAlignment = TextAnchor.MiddleCenter;
-        pnlLayout.childForceExpandWidth = true;
-        pnlLayout.childForceExpandHeight = false;
-
-        var entryGo = CreateLabel("ShortEntryText", pnlPanelGo.transform, "Entry: $0.00",
-            LabelColor, 12);
-        entryGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-        shortPnlEntryText = entryGo.GetComponent<Text>();
-
-        var valueGo = CreateLabel("ShortPnlValue", pnlPanelGo.transform, "P&L: +$0.00",
-            Color.white, 14);
-        valueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        valueGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-        shortPnlValueText = valueGo.GetComponent<Text>();
-
-        var countdownGo = CreateLabel("ShortCountdown", pnlPanelGo.transform, "",
-            new Color(1f, 0.85f, 0.2f, 1f), 11);
-        countdownGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-        shortPnlCountdownText = countdownGo.GetComponent<Text>();
-
-        canvasGo.SetActive(false); // Hidden until TradingState activates
-
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] ShortButton + ShortPnlPanel created: right of trade panel");
-        #endif
     }
 
     /// <summary>

@@ -12,25 +12,27 @@ public class QuantitySelector : MonoBehaviour
     public static readonly Color InactiveButtonColor = new Color(0.12f, 0.14f, 0.25f, 0.8f);
 
     private int _selectedQuantity;
-    private Text _quantityDisplayText;
 
     /// <summary>Current selected quantity value.</summary>
     public int SelectedQuantity => _selectedQuantity;
 
-    /// <summary>BUY button Image reference for cooldown visual feedback.</summary>
-    public Image BuyButtonImage { get; set; }
-
-    /// <summary>SELL button Image reference for cooldown visual feedback.</summary>
-    public Image SellButtonImage { get; set; }
-
-    /// <summary>Countdown timer Text displayed above buttons during post-trade cooldown.</summary>
+    /// <summary>Countdown timer Text displayed inside cooldown overlay.</summary>
     public Text CooldownTimerText { get; set; }
 
-    public void Initialize(Text quantityDisplayText)
+    /// <summary>Grey overlay GameObject that covers buttons during post-trade cooldown.</summary>
+    public GameObject CooldownOverlay { get; set; }
+
+    // Short UI references (integrated into trade panel)
+    public Image ShortButtonImage { get; set; }
+    public Text ShortButtonText { get; set; }
+    public GameObject ShortPnlPanel { get; set; }
+    public Text ShortPnlEntryText { get; set; }
+    public Text ShortPnlValueText { get; set; }
+    public Text ShortPnlCountdownText { get; set; }
+
+    public void Initialize()
     {
-        _quantityDisplayText = quantityDisplayText;
         _selectedQuantity = GameConfig.DefaultTradeQuantity; // x1
-        UpdateQuantityDisplay();
         EventBus.Subscribe<RoundStartedEvent>(OnRoundStarted);
     }
 
@@ -48,13 +50,6 @@ public class QuantitySelector : MonoBehaviour
     public void ResetToDefault()
     {
         _selectedQuantity = GameConfig.DefaultTradeQuantity; // x1
-        UpdateQuantityDisplay();
-    }
-
-    private void UpdateQuantityDisplay()
-    {
-        if (_quantityDisplayText == null) return;
-        _quantityDisplayText.text = $"Qty: {_selectedQuantity}";
     }
 
     // --- Static calculation methods (testable without MonoBehaviour) ---

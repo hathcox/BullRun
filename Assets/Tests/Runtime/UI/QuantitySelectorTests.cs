@@ -304,7 +304,7 @@ namespace BullRun.Tests.UI
             try
             {
                 var qs = go.AddComponent<QuantitySelector>();
-                qs.Initialize(null);
+                qs.Initialize();
                 var portfolio = new Portfolio(1000f);
                 int qty = qs.GetCurrentQuantity(true, false, "ACME", 25f, portfolio);
                 Assert.AreEqual(1, qty); // FIX-13: Default is now x1
@@ -322,7 +322,7 @@ namespace BullRun.Tests.UI
             try
             {
                 var qs = go.AddComponent<QuantitySelector>();
-                qs.Initialize(null);
+                qs.Initialize();
                 var portfolio = new Portfolio(0f);
                 int qty = qs.GetCurrentQuantity(true, false, "ACME", 25f, portfolio);
                 Assert.AreEqual(0, qty); // Can't afford even 1 share

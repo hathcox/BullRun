@@ -29,8 +29,6 @@ public class GameRunner : MonoBehaviour
     // Post-trade cooldown (FIX-10 v2): instant trade, then lock out both buttons
     private float _postTradeCooldownTimer;
     private bool _isPostTradeCooldownActive;
-    private Color _buyButtonOriginalColor;
-    private Color _sellButtonOriginalColor;
 
     // FIX-11: Short state machine fields
     private ShortState _shortState = ShortState.RoundLockout;
@@ -39,7 +37,7 @@ public class GameRunner : MonoBehaviour
     private int _shortShares;
     private string _shortStockId;
 
-    // FIX-11: Short UI references (set by UISetup.ExecuteShortButton)
+    // Short UI references (integrated into trade panel via QuantitySelector)
     private Image _shortButtonImage;
     private Text _shortButtonText;
     private GameObject _shortPnlPanel;
@@ -47,7 +45,6 @@ public class GameRunner : MonoBehaviour
     private Text _shortPnlValueText;
     private Text _shortPnlCountdownText;
     private Color _shortButtonOriginalColor;
-    private bool _shortButtonVisible;
     private float _shortFlashTimer;
 
     private void Awake()
@@ -86,7 +83,6 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteMarketOpenUI();
         // FIX-7: Compact position overlay replaces old right-side PositionPanel
         _positionOverlay = UISetup.ExecutePositionOverlay(_ctx.Portfolio);
-        UISetup.ExecuteRoundTimer();
 
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);
@@ -98,19 +94,15 @@ public class GameRunner : MonoBehaviour
         _quantitySelector = UISetup.ExecuteTradePanel();
         _quantitySelector.gameObject.SetActive(false); // Hidden until TradingState activates
 
-        // Store original button colors for post-trade cooldown visual reset (FIX-10 v2)
-        if (_quantitySelector.BuyButtonImage != null)
-            _buyButtonOriginalColor = _quantitySelector.BuyButtonImage.color;
-        if (_quantitySelector.SellButtonImage != null)
-            _sellButtonOriginalColor = _quantitySelector.SellButtonImage.color;
-
-        // FIX-11: Create SHORT button and Short P&L panel
-        UISetup.ExecuteShortButton(out _shortButtonImage, out _shortButtonText,
-            out _shortPnlPanel, out _shortPnlEntryText, out _shortPnlValueText, out _shortPnlCountdownText);
+        // Short UI references are now integrated into the trade panel
+        _shortButtonImage = _quantitySelector.ShortButtonImage;
+        _shortButtonText = _quantitySelector.ShortButtonText;
+        _shortPnlPanel = _quantitySelector.ShortPnlPanel;
+        _shortPnlEntryText = _quantitySelector.ShortPnlEntryText;
+        _shortPnlValueText = _quantitySelector.ShortPnlValueText;
+        _shortPnlCountdownText = _quantitySelector.ShortPnlCountdownText;
         if (_shortButtonImage != null)
             _shortButtonOriginalColor = _shortButtonImage.color;
-        if (_shortPnlPanel != null)
-            _shortPnlPanel.SetActive(false);
 
         // Subscribe to trade button clicks from UI
         EventBus.Subscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
@@ -172,13 +164,11 @@ public class GameRunner : MonoBehaviour
 
         _stateMachine.Update();
 
-        // Show/hide trade panel and short button based on trading state
+        // Show/hide trade panel (includes short section) based on trading state
         if (TradingState.IsActive != _tradePanelVisible)
         {
             _tradePanelVisible = TradingState.IsActive;
             _quantitySelector.gameObject.SetActive(_tradePanelVisible);
-            if (_shortButtonImage != null)
-                _shortButtonImage.transform.parent.gameObject.SetActive(_tradePanelVisible);
         }
 
         // FIX-10 v2: Tick post-trade cooldown timer and update countdown display
@@ -189,8 +179,7 @@ public class GameRunner : MonoBehaviour
             {
                 _postTradeCooldownTimer = 0f;
                 _isPostTradeCooldownActive = false;
-                RestoreButtonVisuals();
-                HideCooldownTimer();
+                HideCooldownOverlay();
             }
             else
             {
@@ -563,8 +552,7 @@ public class GameRunner : MonoBehaviour
         {
             _isPostTradeCooldownActive = false;
             _postTradeCooldownTimer = 0f;
-            RestoreButtonVisuals();
-            HideCooldownTimer();
+            HideCooldownOverlay();
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log("[GameRunner] Trading phase ended — cancelled post-trade cooldown");
@@ -583,51 +571,26 @@ public class GameRunner : MonoBehaviour
     {
         _isPostTradeCooldownActive = true;
         _postTradeCooldownTimer = GameConfig.PostTradeCooldown;
-        DimBothButtons();
-        ShowCooldownTimer();
+        ShowCooldownOverlay();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[GameRunner] Post-trade cooldown started: {GameConfig.PostTradeCooldown}s");
         #endif
     }
 
-    private void DimBothButtons()
+    private void ShowCooldownOverlay()
     {
-        if (_quantitySelector.BuyButtonImage != null)
+        if (_quantitySelector.CooldownOverlay != null)
         {
-            Color dimmed = _buyButtonOriginalColor;
-            dimmed.a = GameConfig.CooldownDimAlpha;
-            _quantitySelector.BuyButtonImage.color = dimmed;
-        }
-        if (_quantitySelector.SellButtonImage != null)
-        {
-            Color dimmed = _sellButtonOriginalColor;
-            dimmed.a = GameConfig.CooldownDimAlpha;
-            _quantitySelector.SellButtonImage.color = dimmed;
-        }
-    }
-
-    private void RestoreButtonVisuals()
-    {
-        if (_quantitySelector.BuyButtonImage != null)
-            _quantitySelector.BuyButtonImage.color = _buyButtonOriginalColor;
-        if (_quantitySelector.SellButtonImage != null)
-            _quantitySelector.SellButtonImage.color = _sellButtonOriginalColor;
-    }
-
-    private void ShowCooldownTimer()
-    {
-        if (_quantitySelector.CooldownTimerText != null)
-        {
-            _quantitySelector.CooldownTimerText.gameObject.SetActive(true);
+            _quantitySelector.CooldownOverlay.SetActive(true);
             UpdateCooldownTimerDisplay();
         }
     }
 
-    private void HideCooldownTimer()
+    private void HideCooldownOverlay()
     {
-        if (_quantitySelector.CooldownTimerText != null)
-            _quantitySelector.CooldownTimerText.gameObject.SetActive(false);
+        if (_quantitySelector.CooldownOverlay != null)
+            _quantitySelector.CooldownOverlay.SetActive(false);
     }
 
     private void UpdateCooldownTimerDisplay()
