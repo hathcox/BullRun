@@ -114,6 +114,8 @@ public struct MarketOpenEvent
     public string[] TierNames;
     public float ProfitTarget;
     public string Headline;
+    /// <summary>Story 13.6: Bond Rep earned at round start (0 if no bonds).</summary>
+    public int BondRepEarned;
 }
 
 /// <summary>
@@ -295,4 +297,37 @@ public struct RunEndedEvent
     public int ItemsCollected;
     public float PeakCash;
     public float BestRoundProfit;
+}
+
+/// <summary>
+/// Fired when the player purchases a bond (Story 13.6, AC 15).
+/// Bonds cost Cash (not Reputation).
+/// </summary>
+public struct BondPurchasedEvent
+{
+    public int Round;
+    public float PricePaid;
+    public int TotalBondsOwned;
+    public float RemainingCash;
+}
+
+/// <summary>
+/// Fired when the player sells a bond (Story 13.6, AC 15).
+/// Sell price = purchase price × BondSellMultiplier (LIFO).
+/// </summary>
+public struct BondSoldEvent
+{
+    public float SellPrice;
+    public int TotalBondsOwned;
+    public float CashAfterSale;
+}
+
+/// <summary>
+/// Fired at round start when bonds pay out Reputation (Story 13.6, AC 14, 15).
+/// </summary>
+public struct BondRepPaidEvent
+{
+    public int BondsOwned;
+    public int RepEarned;
+    public int TotalReputation;
 }

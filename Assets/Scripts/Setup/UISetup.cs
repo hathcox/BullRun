@@ -458,6 +458,12 @@ public static class UISetup
         var countdownGo = CreateLabel("Countdown", centerPanel.transform, "Trading begins in 7...",
             LabelColor, 14);
 
+        // Bond Rep payout text (Story 13.6, AC 14) — hidden by default
+        var bondRepGo = CreateLabel("BondRepText", centerPanel.transform, "",
+            new Color(1f, 0.7f, 0f, 1f), 16);
+        bondRepGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        bondRepGo.SetActive(false);
+
         // Initialize MarketOpenUI MonoBehaviour
         var marketOpenUI = overlayParent.AddComponent<MarketOpenUI>();
         marketOpenUI.Initialize(
@@ -467,7 +473,8 @@ public static class UISetup
             headlineGo.GetComponent<Text>(),
             targetGo.GetComponent<Text>(),
             countdownGo.GetComponent<Text>(),
-            canvasGroup
+            canvasGroup,
+            bondRepGo.GetComponent<Text>()
         );
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD

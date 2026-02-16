@@ -50,6 +50,14 @@ public class MarketOpenState : IGameState
             _priceGenerator.InitializeRound(ctx.CurrentAct, ctx.CurrentRound);
         }
 
+        // Bond Rep payout at round start (Story 13.6, AC 6, 7, 14)
+        int bondRepEarned = 0;
+        if (ctx.Bonds != null && ctx.BondsOwned > 0)
+        {
+            bondRepEarned = ctx.Bonds.GetRepPerRound();
+            ctx.Bonds.PayoutRep(ctx.Reputation);
+        }
+
         ActiveTimeRemaining = _timeRemaining;
         IsActive = true;
 
@@ -89,7 +97,8 @@ public class MarketOpenState : IGameState
             StartingPrices = startingPrices,
             TierNames = tierNames,
             ProfitTarget = MarginCallTargets.GetTarget(ctx.CurrentRound),
-            Headline = headline
+            Headline = headline,
+            BondRepEarned = bondRepEarned
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD

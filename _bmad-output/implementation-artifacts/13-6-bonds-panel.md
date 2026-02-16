@@ -1,6 +1,6 @@
 # Story 13.6: Bonds Panel (Reputation Investment)
 
-Status: ready for dev
+Status: done
 
 ## Story
 
@@ -28,62 +28,62 @@ so that I have a long-term investment strategy alongside my immediate trading.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create BondManager (AC: 3, 4, 5, 6, 7, 9, 10)
-  - [ ] Plain C# class (not MonoBehaviour)
-  - [ ] `BondsOwned: int` — total bonds held
-  - [ ] `BondPurchaseHistory: List<BondRecord>` — tracks round purchased and price paid per bond
-  - [ ] `BondRecord` struct: `RoundPurchased`, `PricePaid`
-  - [ ] `GetCurrentPrice(int currentRound)` — lookup from `BondPricePerRound[]`
-  - [ ] `CanPurchase(int currentRound, float currentCash)` — not Round 8, can afford
-  - [ ] `Purchase(int currentRound, Portfolio portfolio)` — deduct cash, add bond record
-  - [ ] `GetSellPrice()` — average of all bond purchase prices × `BondSellMultiplier` (or sell most recent for half its price)
-  - [ ] `Sell(Portfolio portfolio)` — remove 1 bond (LIFO: most recent), return cash
-  - [ ] `GetRepPerRound()` — returns `BondsOwned * BondRepPerRoundPerBond`
-  - [ ] `PayoutRep(ReputationManager rep)` — add Rep payout at round start
-  - [ ] File: `Scripts/Runtime/Shop/BondManager.cs` (NEW)
-- [ ] Task 2: Bond panel UI (AC: 1, 2, 8, 11, 13)
-  - [ ] Populate bottom-right panel (created in 13.2)
-  - [ ] Bond card: shows current round's bond price, "BUY BOND" button
-  - [ ] Info display: "Bonds Owned: X", "Earning: +Y Rep/round"
-  - [ ] Sell button (visible when bonds > 0): "SELL BOND ($Z)"
-  - [ ] Disable buy button if can't afford or Round 8
-  - [ ] Round 8: panel shows "NO BONDS AVAILABLE" or bonds owned info only
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs` — bond panel population
-- [ ] Task 3: Purchase flow (AC: 3, 15)
-  - [ ] Buy button: validate round + cash → deduct cash via Portfolio → add bond → fire `BondPurchasedEvent`
-  - [ ] Update UI immediately: bonds owned count, Rep projection, cash display
-  - [ ] File: `Scripts/Runtime/Shop/ShopTransaction.cs` — bond purchase path
-- [ ] Task 4: Sell flow (AC: 9, 10, 11, 12, 15)
-  - [ ] Sell button: show confirmation prompt ("Sell 1 bond for $X?")
-  - [ ] On confirm: remove 1 bond (LIFO), add cash to Portfolio, fire `BondSoldEvent`
-  - [ ] Update UI: bonds owned, Rep projection, cash display, sell button visibility
-  - [ ] Hide sell button when bonds reach 0
-  - [ ] File: `Scripts/Runtime/Shop/ShopTransaction.cs`, `Scripts/Runtime/UI/ShopUI.cs`
-- [ ] Task 5: Round-start Rep payout (AC: 6, 7, 14)
-  - [ ] In `MarketOpenState.Enter()`: check BondManager, call `PayoutRep()` if bonds > 0
-  - [ ] Display "+X Rep from Bonds" text during market open phase (brief overlay or integrated into market open info)
-  - [ ] Rep added to ReputationManager before trading begins
-  - [ ] File: `Scripts/Runtime/Core/GameStates/MarketOpenState.cs`
-- [ ] Task 6: Wire to RunContext (AC: 6, 7)
-  - [ ] BondManager state stored in RunContext (bonds owned, purchase history)
-  - [ ] Survives round transitions
-  - [ ] File: `Scripts/Runtime/Core/RunContext.cs`
-- [ ] Task 7: GameConfig constants (AC: 4, 9)
-  - [ ] `BondPricePerRound = new int[] { 3, 5, 8, 12, 17, 23, 30, 0 }` (index 7 = Round 8 = 0/unavailable)
-  - [ ] `BondSellMultiplier = 0.5f`
-  - [ ] `BondRepPerRoundPerBond = 1`
-  - [ ] File: `Scripts/Setup/Data/GameConfig.cs`
-- [ ] Task 8: GameEvents (AC: 15)
-  - [ ] `BondPurchasedEvent`: Round, PricePaid, TotalBondsOwned, RemainingCash
-  - [ ] `BondSoldEvent`: SellPrice, TotalBondsOwned, CashAfterSale
-  - [ ] `BondRepPaidEvent`: BondsOwned, RepEarned, TotalReputation
-  - [ ] File: `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 9: Write tests (All AC)
-  - [ ] BondManager: purchase deducts cash, price escalation correct, sell returns half, Rep payout math
-  - [ ] Round 8 blocking: cannot purchase on final round
-  - [ ] Cumulative Rep: buy R1 + R2, verify R3 payout = +2 Rep
-  - [ ] Sell LIFO: selling removes most recent bond
-  - [ ] Files: `Tests/Runtime/Shop/BondManagerTests.cs`
+- [x] Task 1: Create BondManager (AC: 3, 4, 5, 6, 7, 9, 10)
+  - [x] Plain C# class (not MonoBehaviour)
+  - [x] `BondsOwned: int` — total bonds held
+  - [x] `BondPurchaseHistory: List<BondRecord>` — tracks round purchased and price paid per bond
+  - [x] `BondRecord` struct: `RoundPurchased`, `PricePaid`
+  - [x] `GetCurrentPrice(int currentRound)` — lookup from `BondPricePerRound[]`
+  - [x] `CanPurchase(int currentRound, float currentCash)` — not Round 8, can afford
+  - [x] `Purchase(int currentRound, Portfolio portfolio)` — deduct cash, add bond record
+  - [x] `GetSellPrice()` — average of all bond purchase prices × `BondSellMultiplier` (or sell most recent for half its price)
+  - [x] `Sell(Portfolio portfolio)` — remove 1 bond (LIFO: most recent), return cash
+  - [x] `GetRepPerRound()` — returns `BondsOwned * BondRepPerRoundPerBond`
+  - [x] `PayoutRep(ReputationManager rep)` — add Rep payout at round start
+  - [x] File: `Scripts/Runtime/Shop/BondManager.cs` (NEW)
+- [x] Task 2: Bond panel UI (AC: 1, 2, 8, 11, 13)
+  - [x] Populate bottom-right panel (created in 13.2)
+  - [x] Bond card: shows current round's bond price, "BUY BOND" button
+  - [x] Info display: "Bonds Owned: X", "Earning: +Y Rep/round"
+  - [x] Sell button (visible when bonds > 0): "SELL BOND ($Z)"
+  - [x] Disable buy button if can't afford or Round 8
+  - [x] Round 8: panel shows "NO BONDS AVAILABLE" or bonds owned info only
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs` — bond panel population
+- [x] Task 3: Purchase flow (AC: 3, 15)
+  - [x] Buy button: validate round + cash → deduct cash via Portfolio → add bond → fire `BondPurchasedEvent`
+  - [x] Update UI immediately: bonds owned count, Rep projection, cash display
+  - [x] File: `Scripts/Runtime/Shop/ShopTransaction.cs` — bond purchase path
+- [x] Task 4: Sell flow (AC: 9, 10, 11, 12, 15)
+  - [x] Sell button: show confirmation prompt ("Sell 1 bond for $X?")
+  - [x] On confirm: remove 1 bond (LIFO), add cash to Portfolio, fire `BondSoldEvent`
+  - [x] Update UI: bonds owned, Rep projection, cash display, sell button visibility
+  - [x] Hide sell button when bonds reach 0
+  - [x] File: `Scripts/Runtime/Shop/ShopTransaction.cs`, `Scripts/Runtime/UI/ShopUI.cs`
+- [x] Task 5: Round-start Rep payout (AC: 6, 7, 14)
+  - [x] In `MarketOpenState.Enter()`: check BondManager, call `PayoutRep()` if bonds > 0
+  - [x] Display "+X Rep from Bonds" text during market open phase (brief overlay or integrated into market open info)
+  - [x] Rep added to ReputationManager before trading begins
+  - [x] File: `Scripts/Runtime/Core/GameStates/MarketOpenState.cs`
+- [x] Task 6: Wire to RunContext (AC: 6, 7)
+  - [x] BondManager state stored in RunContext (bonds owned, purchase history)
+  - [x] Survives round transitions
+  - [x] File: `Scripts/Runtime/Core/RunContext.cs`
+- [x] Task 7: GameConfig constants (AC: 4, 9)
+  - [x] `BondPricePerRound = new int[] { 3, 5, 8, 12, 17, 23, 30, 0 }` (index 7 = Round 8 = 0/unavailable)
+  - [x] `BondSellMultiplier = 0.5f`
+  - [x] `BondRepPerRoundPerBond = 1`
+  - [x] File: `Scripts/Setup/Data/GameConfig.cs`
+- [x] Task 8: GameEvents (AC: 15)
+  - [x] `BondPurchasedEvent`: Round, PricePaid, TotalBondsOwned, RemainingCash
+  - [x] `BondSoldEvent`: SellPrice, TotalBondsOwned, CashAfterSale
+  - [x] `BondRepPaidEvent`: BondsOwned, RepEarned, TotalReputation
+  - [x] File: `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 9: Write tests (All AC)
+  - [x] BondManager: purchase deducts cash, price escalation correct, sell returns half, Rep payout math
+  - [x] Round 8 blocking: cannot purchase on final round
+  - [x] Cumulative Rep: buy R1 + R2, verify R3 payout = +2 Rep
+  - [x] Sell LIFO: selling removes most recent bond
+  - [x] Files: `Tests/Runtime/Shop/BondManagerTests.cs`
 
 ## Dev Notes
 
@@ -123,8 +123,43 @@ Before implementing, the dev agent MUST read:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Completion Notes List
+
+- Created `BondManager` as a plain C# class wrapping RunContext bond state, with `Purchase`, `Sell` (LIFO), `GetCurrentPrice`, `CanPurchase`, `GetSellPrice`, `GetRepPerRound`, and `PayoutRep` methods.
+- Added bond constants to `GameConfig`: `BondPricePerRound`, `BondSellMultiplier`, `BondRepPerRoundPerBond`.
+- Added three new events to `GameEvents.cs`: `BondPurchasedEvent`, `BondSoldEvent`, `BondRepPaidEvent`.
+- Wired `BondManager` as a property on `RunContext`, created in constructor and reset in `ResetForNewRun`.
+- Updated `ShopTransaction.PurchaseBond` to fire `BondPurchasedEvent` and `SellBond` to use LIFO sell with auto-calculated sell price and fire `BondSoldEvent`.
+- Added bond panel UI to `ShopUI.cs` with `ShowBonds`/`RefreshBondPanel` methods: buy button, info display, sell button with confirmation overlay.
+- Wired bond purchase/sell into `ShopState` with `OnBondPurchaseRequested`/`OnBondSellRequested` handlers, updated `BondAvailable` flag and `BondsPurchased` tracking.
+- Added bond Rep payout in `MarketOpenState.Enter()` before trading begins.
+- Created comprehensive `BondManagerTests.cs` with 23 tests covering: price escalation, purchase/sell mechanics, LIFO sell order, Round 8 blocking, cumulative Rep payout, event firing, and ShopTransaction integration.
+- Updated existing `StoreDataModelTests` for new `SellBond` LIFO signature and `StoreLayoutTests` for `BondAvailable` flag.
+- Full test suite: 1404 passed, 0 failed, 1 skipped (pre-existing skip).
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][MEDIUM] AC 2 ambiguity: "Displays 1 bond available for purchase each shop visit" — current implementation allows unlimited bond purchases per visit at the same price. Clarify with design whether this is intentional or should be limited to 1 per visit. [ShopState.cs:OnBondPurchaseRequested]
 
 ### Change Log
 
+- 2026-02-16: Implemented Story 13.6 — Bonds Panel (Reputation Investment). Full bond purchase/sell/payout system with UI and 23 new tests.
+- 2026-02-16: Code review fixes — H1: Fixed ShopClosedEvent.BondsPurchased always 0 in CloseShop. H2: Added "+X Rep from Bonds" display to MarketOpenUI (AC 14). M1/M2: Deduplicated bond purchase/sell logic by delegating ShopTransaction to BondManager. Updated tests for round-based pricing.
+
 ### File List
+
+- Assets/Scripts/Runtime/Shop/BondManager.cs (NEW)
+- Assets/Scripts/Setup/Data/GameConfig.cs (MODIFIED)
+- Assets/Scripts/Runtime/Core/GameEvents.cs (MODIFIED)
+- Assets/Scripts/Runtime/Core/RunContext.cs (MODIFIED)
+- Assets/Scripts/Runtime/Shop/ShopTransaction.cs (MODIFIED)
+- Assets/Scripts/Runtime/UI/ShopUI.cs (MODIFIED)
+- Assets/Scripts/Runtime/Core/GameStates/MarketOpenState.cs (MODIFIED)
+- Assets/Scripts/Runtime/Core/GameStates/ShopState.cs (MODIFIED)
+- Assets/Scripts/Runtime/UI/MarketOpenUI.cs (MODIFIED)
+- Assets/Scripts/Setup/UISetup.cs (MODIFIED)
+- Assets/Tests/Runtime/Shop/BondManagerTests.cs (NEW)
+- Assets/Tests/Runtime/Shop/StoreDataModelTests.cs (MODIFIED)
+- Assets/Tests/Runtime/Shop/StoreLayoutTests.cs (MODIFIED)

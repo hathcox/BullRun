@@ -196,15 +196,16 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(0, _ctx.RevealedTips.Count);
         }
 
-        // === PurchaseBond ===
+        // === PurchaseBond (delegates to BondManager.Purchase using round-based pricing) ===
 
         [Test]
         public void PurchaseBond_DeductsCashAndIncrementsBonds()
         {
-            var result = _transaction.PurchaseBond(_ctx, 200f);
+            // Round 1 bond costs $3
+            var result = _transaction.PurchaseBond(_ctx, 3f);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(800f, _ctx.Portfolio.Cash, 0.01f);
+            Assert.AreEqual(997f, _ctx.Portfolio.Cash, 0.01f);
             Assert.AreEqual(1, _ctx.BondsOwned);
             Assert.AreEqual(1, _ctx.BondPurchaseHistory.Count);
         }
@@ -212,7 +213,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PurchaseBond_DoesNotTouchReputation()
         {
-            _transaction.PurchaseBond(_ctx, 200f);
+            _transaction.PurchaseBond(_ctx, 3f);
             Assert.AreEqual(1000, _ctx.Reputation.Current);
         }
 
@@ -220,31 +221,36 @@ namespace BullRun.Tests.Shop
         public void PurchaseBond_RecordsPurchaseHistory()
         {
             _ctx.CurrentRound = 3;
-            _transaction.PurchaseBond(_ctx, 150f);
+            // Round 3 bond costs $8
+            _transaction.PurchaseBond(_ctx, 8f);
 
             Assert.AreEqual(1, _ctx.BondPurchaseHistory.Count);
             Assert.AreEqual(3, _ctx.BondPurchaseHistory[0].RoundPurchased);
-            Assert.AreEqual(150f, _ctx.BondPurchaseHistory[0].PricePaid, 0.01f);
+            Assert.AreEqual(8f, _ctx.BondPurchaseHistory[0].PricePaid, 0.01f);
         }
 
         [Test]
         public void PurchaseBond_RejectsInsufficientCash()
         {
-            var result = _transaction.PurchaseBond(_ctx, 5000f);
+            // Create context with very low cash so Round 1 $3 bond is unaffordable
+            var poorCtx = new RunContext(1, 1, new Portfolio(2f));
+            poorCtx.Portfolio.StartRound(poorCtx.Portfolio.Cash);
+            var result = _transaction.PurchaseBond(poorCtx, 3f);
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
-            Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);
-            Assert.AreEqual(0, _ctx.BondsOwned);
+            Assert.AreEqual(2f, poorCtx.Portfolio.Cash, 0.01f);
+            Assert.AreEqual(0, poorCtx.BondsOwned);
         }
 
         [Test]
         public void PurchaseBond_MultiplePurchases()
         {
-            _transaction.PurchaseBond(_ctx, 100f);
-            _transaction.PurchaseBond(_ctx, 200f);
-            _transaction.PurchaseBond(_ctx, 150f);
+            // All at Round 1, price is $3 each
+            _transaction.PurchaseBond(_ctx, 3f);
+            _transaction.PurchaseBond(_ctx, 3f);
+            _transaction.PurchaseBond(_ctx, 3f);
 
             Assert.AreEqual(3, _ctx.BondsOwned);
-            Assert.AreEqual(550f, _ctx.Portfolio.Cash, 0.01f);
+            Assert.AreEqual(991f, _ctx.Portfolio.Cash, 0.01f);
             Assert.AreEqual(3, _ctx.BondPurchaseHistory.Count);
         }
 
@@ -253,27 +259,34 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellBond_AddsCashAndDecrementsBonds()
         {
-            _ctx.BondsOwned = 2;
-            var result = _transaction.SellBond(_ctx, 250f);
+            // Purchase two bonds at Round 1 ($3 each)
+            _transaction.PurchaseBond(_ctx, 3f);
+            _transaction.PurchaseBond(_ctx, 3f);
+            Assert.AreEqual(2, _ctx.BondsOwned);
+            float cashBeforeSell = _ctx.Portfolio.Cash;
+
+            var result = _transaction.SellBond(_ctx);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(1250f, _ctx.Portfolio.Cash, 0.01f);
+            // Sell price = 3 * 0.5 = 1.5
+            Assert.AreEqual(cashBeforeSell + 1.5f, _ctx.Portfolio.Cash, 0.01f);
             Assert.AreEqual(1, _ctx.BondsOwned);
         }
 
         [Test]
         public void SellBond_DoesNotTouchReputation()
         {
-            _ctx.BondsOwned = 1;
-            _transaction.SellBond(_ctx, 250f);
-            Assert.AreEqual(1000, _ctx.Reputation.Current);
+            _transaction.PurchaseBond(_ctx, 3f);
+            int repBefore = _ctx.Reputation.Current;
+            _transaction.SellBond(_ctx);
+            Assert.AreEqual(repBefore, _ctx.Reputation.Current);
         }
 
         [Test]
         public void SellBond_RejectsWhenNoBondsOwned()
         {
             Assert.AreEqual(0, _ctx.BondsOwned);
-            var result = _transaction.SellBond(_ctx, 250f);
+            var result = _transaction.SellBond(_ctx);
             Assert.AreEqual(ShopPurchaseResult.Error, result);
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);
         }
@@ -300,15 +313,17 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(1, _ctx.RevealedTips.Count);
             Assert.AreEqual(700, _ctx.Reputation.Current);
 
-            // Bond buy: validate cash → deduct cash → increment bonds
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseBond(_ctx, 100f));
+            // Bond buy: validate cash → deduct cash → increment bonds (Round 1 = $3)
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseBond(_ctx, 3f));
             Assert.AreEqual(1, _ctx.BondsOwned);
-            Assert.AreEqual(900f, _ctx.Portfolio.Cash, 0.01f);
+            Assert.AreEqual(997f, _ctx.Portfolio.Cash, 0.01f);
 
-            // Bond sell: validate bonds → add cash → decrement bonds
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.SellBond(_ctx, 120f));
+            // Bond sell: validate bonds → LIFO sell → add cash → decrement bonds
+            // Sell price = 3 * 0.5 = 1.5
+            float cashBeforeSell = _ctx.Portfolio.Cash;
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.SellBond(_ctx));
             Assert.AreEqual(0, _ctx.BondsOwned);
-            Assert.AreEqual(1020f, _ctx.Portfolio.Cash, 0.01f);
+            Assert.AreEqual(cashBeforeSell + 1.5f, _ctx.Portfolio.Cash, 0.01f);
         }
 
         // === State persistence across shop visits ===

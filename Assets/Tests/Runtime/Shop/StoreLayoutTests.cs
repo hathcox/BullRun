@@ -64,10 +64,10 @@ namespace BullRun.Tests.Shop
             Assert.IsTrue(fired, "ShopOpenedEvent should fire on store open");
             Assert.AreEqual(_ctx.CurrentRound, received.RoundNumber);
             Assert.AreEqual(_ctx.Reputation.Current, received.CurrentReputation);
-            // Expansions (13.4) and Tips (13.5) are now generated; Bonds (13.6) still placeholder
+            // Expansions (13.4), Tips (13.5), and Bonds (13.6) are now available
             Assert.IsTrue(received.ExpansionsAvailable);
             Assert.IsTrue(received.TipsAvailable);
-            Assert.IsFalse(received.BondAvailable);
+            Assert.IsTrue(received.BondAvailable);
         }
 
         [Test]

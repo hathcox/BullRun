@@ -246,76 +246,21 @@ public class ShopTransaction
     }
 
     /// <summary>
-    /// Purchases a bond. Deducts Cash (not Reputation) and increments BondsOwned.
-    /// Records purchase in BondPurchaseHistory.
+    /// Purchases a bond. Delegates to BondManager.Purchase for atomic buy logic.
+    /// Deducts Cash (not Reputation). Fires BondPurchasedEvent (Story 13.6, AC 3, 15).
     /// </summary>
     public ShopPurchaseResult PurchaseBond(RunContext ctx, float price)
     {
-        try
-        {
-            if (!ctx.Portfolio.CanAfford(price))
-            {
-                #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[ShopTransaction] Bond rejected: insufficient cash ${ctx.Portfolio.Cash:F2} for ${price:F2}");
-                #endif
-                return ShopPurchaseResult.InsufficientFunds;
-            }
-
-            if (!ctx.Portfolio.DeductCash(price))
-            {
-                return ShopPurchaseResult.InsufficientFunds;
-            }
-            ctx.BondsOwned++;
-            ctx.BondPurchaseHistory.Add(new BondRecord(ctx.CurrentRound, price));
-
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[ShopTransaction] Bond purchased for ${price:F2} (bonds owned: {ctx.BondsOwned})");
-            #endif
-
-            return ShopPurchaseResult.Success;
-        }
-        catch (System.Exception ex)
-        {
-            ctx?.Portfolio.AddCash(price);
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.LogWarning($"[ShopTransaction] Bond purchase failed: {ex.Message}");
-            #endif
-            return ShopPurchaseResult.Error;
-        }
+        return ctx.Bonds.Purchase(ctx.CurrentRound, ctx.Portfolio);
     }
 
     /// <summary>
-    /// Sells a bond. Adds Cash to portfolio and decrements BondsOwned.
+    /// Sells the most recent bond (LIFO). Delegates to BondManager.Sell for atomic sell logic.
+    /// Adds sell price to portfolio cash. Fires BondSoldEvent (Story 13.6, AC 9, 10, 15).
     /// </summary>
-    public ShopPurchaseResult SellBond(RunContext ctx, float sellPrice)
+    public ShopPurchaseResult SellBond(RunContext ctx)
     {
-        try
-        {
-            if (ctx.BondsOwned <= 0)
-            {
-                #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log("[ShopTransaction] Bond sell rejected: no bonds owned");
-                #endif
-                return ShopPurchaseResult.Error;
-            }
-
-            ctx.BondsOwned--;
-            ctx.Portfolio.AddCash(sellPrice);
-
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[ShopTransaction] Bond sold for ${sellPrice:F2} (bonds remaining: {ctx.BondsOwned})");
-            #endif
-
-            return ShopPurchaseResult.Success;
-        }
-        catch (System.Exception ex)
-        {
-            ctx.BondsOwned++;
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.LogWarning($"[ShopTransaction] Bond sell failed: {ex.Message}");
-            #endif
-            return ShopPurchaseResult.Error;
-        }
+        return ctx.Bonds.Sell(ctx.Portfolio);
     }
 }
 

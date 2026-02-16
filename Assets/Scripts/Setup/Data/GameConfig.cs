@@ -68,6 +68,15 @@ public static class GameConfig
     // Store: number of expansion cards shown per shop visit (Epic 13, Story 13.4)
     public static readonly int ExpansionsPerShopVisit = 3;
 
+    // Store: bond prices per round (Story 13.6, AC 4). Index 0 = Round 1, index 7 = Round 8 (unavailable).
+    public static readonly int[] BondPricePerRound = new int[] { 3, 5, 8, 12, 17, 23, 30, 0 };
+
+    // Store: bond sell multiplier — sell price = purchase price × this (Story 13.6, AC 9)
+    public static readonly float BondSellMultiplier = 0.5f;
+
+    // Store: Rep earned per round per bond owned (Story 13.6, AC 6)
+    public static readonly int BondRepPerRoundPerBond = 1;
+
     // FIX-14: Reputation earning constants
     // Base Rep awarded per round completion (0-indexed: index 0 = Round 1)
     public static readonly int[] RepBaseAwardPerRound = new int[]

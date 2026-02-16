@@ -34,6 +34,9 @@ public class ShopState : IGameState
     private bool[] _tipPurchased;
     private int _tipsPurchasedCount;
 
+    // Bonds panel state (Story 13.6)
+    private int _bondsPurchasedCount;
+
     public static ShopStateConfig NextConfig;
 
     /// <summary>
@@ -78,6 +81,7 @@ public class ShopState : IGameState
         _tipOffering = _tipGenerator.GenerateTips(ctx.InsiderTipSlots, nextRound, nextAct, _random);
         _tipPurchased = new bool[_tipOffering.Length];
         _tipsPurchasedCount = 0;
+        _bondsPurchasedCount = 0;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[ShopState] Generated relics: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
@@ -95,6 +99,11 @@ public class ShopState : IGameState
 
             // Populate insider tips panel (Story 13.5)
             ShopUIInstance.ShowTips(ctx, _tipOffering, (cardIndex) => OnTipPurchaseRequested(ctx, cardIndex));
+
+            // Populate bonds panel (Story 13.6)
+            ShopUIInstance.ShowBonds(ctx,
+                () => OnBondPurchaseRequested(ctx),
+                () => OnBondSellRequested(ctx));
         }
 
         // Publish shop opened event — only include non-null items
@@ -121,7 +130,7 @@ public class ShopState : IGameState
             CurrentReputation = ctx.Reputation.Current,
             ExpansionsAvailable = _expansionOffering.Length > 0,
             TipsAvailable = _tipOffering != null && _tipOffering.Length > 0,
-            BondAvailable = false        // Placeholder — Story 13.6
+            BondAvailable = ctx.CurrentRound < GameConfig.TotalRounds
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -148,7 +157,7 @@ public class ShopState : IGameState
                 RelicsPurchased = _purchasedItemIds?.Count ?? 0,
                 ExpansionsPurchased = _expansionsPurchasedCount,
                 TipsPurchased = _tipsPurchasedCount,
-                BondsPurchased = 0
+                BondsPurchased = _bondsPurchasedCount
             });
         }
 
@@ -304,6 +313,48 @@ public class ShopState : IGameState
     }
 
     /// <summary>
+    /// Called when player clicks the BUY BOND button (Story 13.6, AC 3).
+    /// Delegates to ShopTransaction.PurchaseBond for atomic purchase.
+    /// </summary>
+    private void OnBondPurchaseRequested(RunContext ctx)
+    {
+        if (!_shopActive) return;
+
+        int price = BondManager.GetCurrentPrice(ctx.CurrentRound);
+        if (price <= 0) return;
+
+        var result = _shopTransaction.PurchaseBond(ctx, price);
+        if (result == ShopPurchaseResult.Success)
+        {
+            _bondsPurchasedCount++;
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshBondPanel(ctx);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player confirms bond sell (Story 13.6, AC 9, 10, 12).
+    /// Delegates to ShopTransaction.SellBond for LIFO sell.
+    /// </summary>
+    private void OnBondSellRequested(RunContext ctx)
+    {
+        if (!_shopActive) return;
+        if (ctx.BondsOwned <= 0) return;
+
+        var result = _shopTransaction.SellBond(ctx);
+        if (result == ShopPurchaseResult.Success)
+        {
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshBondPanel(ctx);
+            }
+        }
+    }
+
+    /// <summary>
     /// Closes the shop (player clicked Continue button).
     /// Publishes ShopClosedEvent, advances round, and transitions to next state.
     /// </summary>
@@ -321,7 +372,7 @@ public class ShopState : IGameState
             RelicsPurchased = _purchasedItemIds.Count,
             ExpansionsPurchased = _expansionsPurchasedCount,
             TipsPurchased = _tipsPurchasedCount,
-            BondsPurchased = 0
+            BondsPurchased = _bondsPurchasedCount
         });
 
         // Advance to next round

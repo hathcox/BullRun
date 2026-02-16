@@ -89,6 +89,21 @@ public class ShopUI : MonoBehaviour
     public static readonly Color TipCardFaceDownColor = new Color(0.12f, 0.08f, 0.18f, 0.9f);
     public static readonly Color TipCardRevealedColor = new Color(0.08f, 0.16f, 0.12f, 0.9f);
 
+    // Bond panel colors (green/cash theme — Story 13.6)
+    public static readonly Color BondCardColor = new Color(0.08f, 0.16f, 0.10f, 0.9f);
+
+    // Bond panel state (Story 13.6)
+    private Text _bondPriceText;
+    private Text _bondInfoText;
+    private Text _bondSellText;
+    private Button _bondBuyButton;
+    private Text _bondBuyButtonText;
+    private Button _bondSellButton;
+    private Text _bondSellButtonText;
+    private GameObject _bondConfirmOverlay;
+    private System.Action _onBondPurchase;
+    private System.Action _onBondSell;
+
     public struct ExpansionCardView
     {
         public GameObject Root;
@@ -671,6 +686,290 @@ public class ShopUI : MonoBehaviour
             case InsiderTipType.OpeningPrice: return "OPENING PRICE";
             default: return "UNKNOWN";
         }
+    }
+
+    /// <summary>
+    /// Populates the bonds panel (Story 13.6, AC 1, 2, 8, 11, 13).
+    /// Shows bond price, buy button, bonds owned info, sell button.
+    /// </summary>
+    public void ShowBonds(RunContext ctx, System.Action onPurchase, System.Action onSell)
+    {
+        _ctx = ctx;
+        _onBondPurchase = onPurchase;
+        _onBondSell = onSell;
+
+        ClearBondPanel();
+
+        if (_bondsPanel == null) return;
+
+        // Remove placeholder label if present
+        var contentLabel = _bondsPanel.transform.Find("BondsPanelContent");
+        if (contentLabel != null) contentLabel.gameObject.SetActive(false);
+
+        // Bond card container
+        var cardGo = new GameObject("BondCard");
+        cardGo.transform.SetParent(_bondsPanel.transform, false);
+        var cardBg = cardGo.AddComponent<Image>();
+        cardBg.color = BondCardColor;
+        var cardLayout = cardGo.AddComponent<LayoutElement>();
+        cardLayout.flexibleWidth = 1f;
+        cardLayout.flexibleHeight = 1f;
+
+        var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 4f;
+        vlg.padding = new RectOffset(10, 10, 8, 8);
+        vlg.childAlignment = TextAnchor.UpperCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Title
+        var titleGo = CreateTextChild(cardGo.transform, "Title", "BONDS", 14, FontStyle.Bold, CashColor, 20f);
+
+        // Price display
+        var priceGo = CreateTextChild(cardGo.transform, "Price", "", 12, FontStyle.Normal, CashColor, 18f);
+        _bondPriceText = priceGo.GetComponent<Text>();
+
+        // Info display: bonds owned + earning
+        var infoGo = CreateTextChild(cardGo.transform, "Info", "", 11, FontStyle.Normal, new Color(0.8f, 0.8f, 0.8f, 1f), 32f);
+        _bondInfoText = infoGo.GetComponent<Text>();
+
+        // Buy button
+        var buyBtnGo = new GameObject("BuyBondButton");
+        buyBtnGo.transform.SetParent(cardGo.transform, false);
+        var buyBtnImg = buyBtnGo.AddComponent<Image>();
+        buyBtnImg.color = new Color(0.1f, 0.3f, 0.1f, 1f);
+        _bondBuyButton = buyBtnGo.AddComponent<Button>();
+        var buyBtnLayout = buyBtnGo.AddComponent<LayoutElement>();
+        buyBtnLayout.preferredHeight = 24f;
+
+        var buyBtnTextGo = new GameObject("ButtonText");
+        buyBtnTextGo.transform.SetParent(buyBtnGo.transform, false);
+        var buyBtnRect = buyBtnTextGo.AddComponent<RectTransform>();
+        buyBtnRect.anchorMin = Vector2.zero;
+        buyBtnRect.anchorMax = Vector2.one;
+        buyBtnRect.offsetMin = Vector2.zero;
+        buyBtnRect.offsetMax = Vector2.zero;
+        _bondBuyButtonText = buyBtnTextGo.AddComponent<Text>();
+        _bondBuyButtonText.text = "BUY BOND";
+        _bondBuyButtonText.fontSize = 12;
+        _bondBuyButtonText.fontStyle = FontStyle.Bold;
+        _bondBuyButtonText.color = Color.white;
+        _bondBuyButtonText.alignment = TextAnchor.MiddleCenter;
+        _bondBuyButtonText.raycastTarget = false;
+        _bondBuyButton.onClick.AddListener(() => _onBondPurchase?.Invoke());
+
+        // Sell button
+        var sellGo = CreateTextChild(cardGo.transform, "SellPrice", "", 10, FontStyle.Normal, new Color(0.7f, 0.7f, 0.7f, 1f), 16f);
+        _bondSellText = sellGo.GetComponent<Text>();
+
+        var sellBtnGo = new GameObject("SellBondButton");
+        sellBtnGo.transform.SetParent(cardGo.transform, false);
+        var sellBtnImg = sellBtnGo.AddComponent<Image>();
+        sellBtnImg.color = new Color(0.3f, 0.15f, 0.1f, 1f);
+        _bondSellButton = sellBtnGo.AddComponent<Button>();
+        var sellBtnLayout = sellBtnGo.AddComponent<LayoutElement>();
+        sellBtnLayout.preferredHeight = 22f;
+
+        var sellBtnTextGo = new GameObject("ButtonText");
+        sellBtnTextGo.transform.SetParent(sellBtnGo.transform, false);
+        var sellBtnRect = sellBtnTextGo.AddComponent<RectTransform>();
+        sellBtnRect.anchorMin = Vector2.zero;
+        sellBtnRect.anchorMax = Vector2.one;
+        sellBtnRect.offsetMin = Vector2.zero;
+        sellBtnRect.offsetMax = Vector2.zero;
+        _bondSellButtonText = sellBtnTextGo.AddComponent<Text>();
+        _bondSellButtonText.text = "SELL BOND";
+        _bondSellButtonText.fontSize = 11;
+        _bondSellButtonText.fontStyle = FontStyle.Bold;
+        _bondSellButtonText.color = Color.white;
+        _bondSellButtonText.alignment = TextAnchor.MiddleCenter;
+        _bondSellButtonText.raycastTarget = false;
+
+        // Sell uses confirmation (AC 12)
+        _bondSellButton.onClick.AddListener(() => ShowBondSellConfirmation(ctx));
+
+        // Confirmation overlay (initially hidden)
+        _bondConfirmOverlay = CreateBondConfirmOverlay(cardGo.transform);
+        _bondConfirmOverlay.SetActive(false);
+
+        RefreshBondPanel(ctx);
+    }
+
+    /// <summary>
+    /// Refreshes the bond panel state: price, affordability, sell visibility (AC 2, 8, 11, 13).
+    /// </summary>
+    public void RefreshBondPanel(RunContext ctx)
+    {
+        _ctx = ctx;
+        UpdateCurrencyDisplays();
+
+        if (_bondPriceText == null) return;
+
+        int price = BondManager.GetCurrentPrice(ctx.CurrentRound);
+        bool isRound8 = ctx.CurrentRound >= GameConfig.TotalRounds;
+
+        // Price and buy button
+        if (isRound8)
+        {
+            _bondPriceText.text = "NO BONDS AVAILABLE";
+            _bondBuyButton.interactable = false;
+            _bondBuyButtonText.text = "ROUND 8";
+        }
+        else
+        {
+            _bondPriceText.text = $"Bond Price: ${price}";
+            bool canAfford = ctx.Portfolio.CanAfford(price);
+            _bondBuyButton.interactable = canAfford;
+            _bondBuyButtonText.text = canAfford ? $"BUY BOND (${price})" : "CAN'T AFFORD";
+        }
+
+        // Info display
+        int repPerRound = ctx.BondsOwned * GameConfig.BondRepPerRoundPerBond;
+        _bondInfoText.text = $"Bonds Owned: {ctx.BondsOwned}\nEarning: +{repPerRound} Rep/round";
+
+        // Sell button visibility (AC 11)
+        bool hasBonds = ctx.BondsOwned > 0;
+        _bondSellButton.gameObject.SetActive(hasBonds);
+        _bondSellText.gameObject.SetActive(hasBonds);
+
+        if (hasBonds && ctx.BondPurchaseHistory.Count > 0)
+        {
+            var lastBond = ctx.BondPurchaseHistory[ctx.BondPurchaseHistory.Count - 1];
+            float sellPrice = lastBond.PricePaid * GameConfig.BondSellMultiplier;
+            _bondSellButtonText.text = $"SELL BOND (${sellPrice:F0})";
+            _bondSellText.text = $"Sell: ${sellPrice:F0} (half price)";
+        }
+
+        // Refresh other panels' affordability since cash changed
+        RefreshRelicAffordability();
+        RefreshExpansionAffordability();
+        RefreshTipAffordability();
+        UpdateRerollDisplay();
+    }
+
+    /// <summary>
+    /// Shows the bond sell confirmation overlay (AC 12).
+    /// </summary>
+    private void ShowBondSellConfirmation(RunContext ctx)
+    {
+        if (_bondConfirmOverlay == null) return;
+
+        if (ctx.BondsOwned <= 0 || ctx.BondPurchaseHistory.Count == 0) return;
+
+        var lastBond = ctx.BondPurchaseHistory[ctx.BondPurchaseHistory.Count - 1];
+        float sellPrice = lastBond.PricePaid * GameConfig.BondSellMultiplier;
+
+        var confirmText = _bondConfirmOverlay.transform.Find("ConfirmText")?.GetComponent<Text>();
+        if (confirmText != null)
+        {
+            confirmText.text = $"Sell 1 bond for ${sellPrice:F0}?";
+        }
+
+        _bondConfirmOverlay.SetActive(true);
+    }
+
+    private GameObject CreateBondConfirmOverlay(Transform parent)
+    {
+        var overlayGo = new GameObject("BondConfirmOverlay");
+        overlayGo.transform.SetParent(parent, false);
+        var overlayRect = overlayGo.AddComponent<RectTransform>();
+        overlayRect.anchorMin = Vector2.zero;
+        overlayRect.anchorMax = Vector2.one;
+        overlayRect.offsetMin = Vector2.zero;
+        overlayRect.offsetMax = Vector2.zero;
+        var overlayImg = overlayGo.AddComponent<Image>();
+        overlayImg.color = new Color(0.05f, 0.05f, 0.1f, 0.92f);
+
+        var vlg = overlayGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 6f;
+        vlg.padding = new RectOffset(10, 10, 16, 10);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        CreateTextChild(overlayGo.transform, "ConfirmText", "Sell 1 bond for $X?", 12, FontStyle.Bold, Color.white, 24f);
+
+        // Yes button
+        var yesBtnGo = new GameObject("YesButton");
+        yesBtnGo.transform.SetParent(overlayGo.transform, false);
+        var yesBtnImg = yesBtnGo.AddComponent<Image>();
+        yesBtnImg.color = new Color(0.3f, 0.15f, 0.1f, 1f);
+        var yesBtn = yesBtnGo.AddComponent<Button>();
+        var yesBtnLayout = yesBtnGo.AddComponent<LayoutElement>();
+        yesBtnLayout.preferredHeight = 22f;
+
+        var yesBtnTextGo = CreateTextChild(yesBtnGo.transform, "ButtonText", "YES, SELL", 11, FontStyle.Bold, Color.white, 0f);
+        var yesBtnTextRect = yesBtnTextGo.GetComponent<RectTransform>();
+        yesBtnTextRect.anchorMin = Vector2.zero;
+        yesBtnTextRect.anchorMax = Vector2.one;
+        yesBtnTextRect.offsetMin = Vector2.zero;
+        yesBtnTextRect.offsetMax = Vector2.zero;
+
+        yesBtn.onClick.AddListener(() =>
+        {
+            _bondConfirmOverlay.SetActive(false);
+            _onBondSell?.Invoke();
+        });
+
+        // No button
+        var noBtnGo = new GameObject("NoButton");
+        noBtnGo.transform.SetParent(overlayGo.transform, false);
+        var noBtnImg = noBtnGo.AddComponent<Image>();
+        noBtnImg.color = new Color(0.15f, 0.15f, 0.2f, 1f);
+        var noBtn = noBtnGo.AddComponent<Button>();
+        var noBtnLayout = noBtnGo.AddComponent<LayoutElement>();
+        noBtnLayout.preferredHeight = 22f;
+
+        var noBtnTextGo = CreateTextChild(noBtnGo.transform, "ButtonText", "CANCEL", 11, FontStyle.Bold, Color.white, 0f);
+        var noBtnTextRect = noBtnTextGo.GetComponent<RectTransform>();
+        noBtnTextRect.anchorMin = Vector2.zero;
+        noBtnTextRect.anchorMax = Vector2.one;
+        noBtnTextRect.offsetMin = Vector2.zero;
+        noBtnTextRect.offsetMax = Vector2.zero;
+
+        noBtn.onClick.AddListener(() =>
+        {
+            _bondConfirmOverlay.SetActive(false);
+        });
+
+        return overlayGo;
+    }
+
+    private GameObject CreateTextChild(Transform parent, string name, string text, int fontSize, FontStyle style, Color color, float preferredHeight)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        var t = go.AddComponent<Text>();
+        t.text = text;
+        t.fontSize = fontSize;
+        t.fontStyle = style;
+        t.color = color;
+        t.alignment = TextAnchor.MiddleCenter;
+        t.raycastTarget = false;
+        if (preferredHeight > 0f)
+        {
+            var layout = go.AddComponent<LayoutElement>();
+            layout.preferredHeight = preferredHeight;
+        }
+        return go;
+    }
+
+    private void ClearBondPanel()
+    {
+        if (_bondsPanel == null) return;
+
+        var bondCard = _bondsPanel.transform.Find("BondCard");
+        if (bondCard != null)
+            Destroy(bondCard.gameObject);
+
+        _bondPriceText = null;
+        _bondInfoText = null;
+        _bondSellText = null;
+        _bondBuyButton = null;
+        _bondBuyButtonText = null;
+        _bondSellButton = null;
+        _bondSellButtonText = null;
+        _bondConfirmOverlay = null;
     }
 
     private void ClearExpansionCards()
