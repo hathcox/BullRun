@@ -40,8 +40,8 @@ public class PriceGenerator
         // Step 2: Segment-based choppy noise (Story 1.2)
         if (stock.SegmentTimeRemaining <= 0f)
         {
-            // Pick new segment
-            stock.SegmentDuration = RandomRange(0.3f, 1.5f);
+            // Pick new segment (short max duration for responsiveness)
+            stock.SegmentDuration = RandomRange(0.3f, 0.8f);
             stock.SegmentTimeRemaining = stock.SegmentDuration;
 
             // Random slope: scaled by noise amplitude and current price
@@ -62,18 +62,18 @@ public class PriceGenerator
 
             stock.SegmentSlope = baseSlope + trendBias + reversionBias;
 
-            // Minimum movement guarantee: prevent visual flat lines by ensuring slope
-            // has a small minimum magnitude (0.2% of price per second — subtle enough
-            // to not distort noise/reversion, but enough to prevent chart flatness)
-            float minSlope = stock.CurrentPrice * 0.002f;
-            if (stock.SegmentSlope > -minSlope && stock.SegmentSlope < minSlope)
+            // Minimum NET movement guarantee: check slope + trend combined,
+            // not just slope alone. Prevents the common case where a large negative
+            // slope nearly cancels the positive trend, producing near-zero net movement.
+            float netMovement = stock.SegmentSlope + stock.TrendPerSecond;
+            float minNet = stock.CurrentPrice * 0.005f;
+            if (netMovement > -minNet && netMovement < minNet)
             {
-                if (stock.SegmentSlope > 0f)
-                    stock.SegmentSlope = minSlope;
-                else if (stock.SegmentSlope < 0f)
-                    stock.SegmentSlope = -minSlope;
-                else
-                    stock.SegmentSlope = ((float)_random.NextDouble() < 0.5f) ? minSlope : -minSlope;
+                // Nudge slope so the net movement reaches the minimum threshold
+                float targetNet = (netMovement >= 0f) ? minNet : -minNet;
+                if (netMovement == 0f)
+                    targetNet = ((float)_random.NextDouble() < 0.5f) ? minNet : -minNet;
+                stock.SegmentSlope += targetNet - netMovement;
             }
         }
 
@@ -96,12 +96,17 @@ public class PriceGenerator
         }
 
         // Hard floor — stocks can never go to zero or negative.
-        // Reverse slope direction to bounce off the floor and prevent sticking.
+        // Bounce slope must be strong enough to overcome negative trend,
+        // otherwise the stock pins to the floor creating a permanent flatline.
         if (stock.CurrentPrice < 0.01f)
         {
             stock.CurrentPrice = 0.01f;
-            if (stock.SegmentSlope < 0f)
-                stock.SegmentSlope = -stock.SegmentSlope;
+            // Minimum bounce slope: overcome the trend + add strong visible upward movement.
+            // Uses 2x the trend magnitude so the stock visibly rebounds off the floor
+            // rather than hovering at $0.01 with imperceptible drift.
+            float minBounceSlope = System.Math.Abs(stock.TrendPerSecond) * 2f + stock.CurrentPrice * 0.01f;
+            if (stock.SegmentSlope < minBounceSlope)
+                stock.SegmentSlope = minBounceSlope;
         }
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD

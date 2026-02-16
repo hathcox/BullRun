@@ -133,6 +133,15 @@ public class EventEffects
         if (force <= 0f)
             return stock.CurrentPrice;
 
+        // During hold phase (force at 1.0), the Lerp returns the exact same
+        // target price every frame, creating a perfect flatline. Drift the target
+        // price itself with a fraction of the stock's noise slope so movement
+        // accumulates frame-over-frame and the chart stays alive.
+        if (force >= 0.99f)
+        {
+            _eventTargetPrices[key] += stock.SegmentSlope * deltaTime * 0.3f;
+        }
+
         float startPrice = _eventStartPrices[key];
         float targetPrice = _eventTargetPrices[key];
 
