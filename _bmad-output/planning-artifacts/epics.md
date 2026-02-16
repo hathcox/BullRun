@@ -1038,3 +1038,122 @@ As a developer, I want comprehensive QA testing and a release build, so that the
 - Edge case testing (zero cash, max items, all events)
 - Build for Steam submission
 - No critical or major bugs remaining
+
+---
+
+## Epic 13: Store Phase Rework — Balatro-Style Shop
+
+**Description:** Complete overhaul of the Draft Shop (Epic 7) into a multi-panel Balatro-inspired store with four distinct sections: Relics (items), Trading Deck Expansions (vouchers), Insider Tips (hidden intel), and Bonds (reputation investment). Replaces the current 3-card shop with a rich, strategic between-rounds experience.
+**Phase:** Post-FIX Sprint, replaces/supersedes Epic 7 shop UI and flow
+**Depends On:** FIX-12 (Reputation currency), FIX-14 (Economy rebalance)
+
+### Story 13.1: Store Layout & Navigation Shell
+
+As a player, I want the between-rounds store to have a clear multi-panel layout with distinct sections for Relics, Expansions, Insider Tips, and Bonds, so that I can quickly understand my options and make strategic purchases.
+
+**Acceptance Criteria:**
+- Store UI replaces the current `ShopUI.cs` single-panel layout
+- Top section: Relic cards (3 slots) with reroll button and "Next Round" button on the left
+- Bottom-left panel: Trading Deck Expansions (vouchers)
+- Bottom-center panel: Insider Tips
+- Bottom-right panel: Bonds
+- Current Reputation balance displayed prominently (amber/gold star icon)
+- Current cash balance also visible
+- Panel borders and labels match a dark, card-game aesthetic
+- Store remains untimed (player clicks "Next Round" to proceed)
+- `ShopOpenedEvent` and `ShopClosedEvent` still fire with updated payload
+- Keyboard navigation between panels (arrow keys or tab)
+
+### Story 13.2: Relics Panel — Item Offering, Purchase & Reroll
+
+As a player, I want the top section of the store to show 3 randomly selected relics that I can purchase with Reputation, and a reroll button to refresh the selection, so that I have meaningful choices and agency in my build.
+
+**Acceptance Criteria:**
+- 3 relic cards displayed in the top section, drawn randomly from the item pool
+- Uniform random selection (no rarity system)
+- Owned items excluded from the offering (no duplicates)
+- Each card shows: name, description, cost (Reputation)
+- Purchase button per card — deducts Reputation, adds item to inventory
+- Reroll button costs Reputation, escalates per use per visit, resets each visit
+- Item limit: maximum 5 relics (expandable via Trading Deck Expansion)
+- Relic definitions are OUT OF SCOPE — designed in a future epic
+
+### Story 13.3: Trading Deck Expansions Panel (Vouchers)
+
+As a player, I want a bottom-left panel offering permanent one-time upgrades that expand my trading capabilities, so that I can invest Reputation into unlocking powerful new mechanics across the run.
+
+**Acceptance Criteria:**
+- 6 expansions: Multi-Stock Trading, Leverage Trading, Expanded Inventory, Dual Short, Intel Expansion, Extended Trading
+- Each expansion purchasable once per run, persists for remainder of run
+- 2-3 available per shop visit from unowned pool
+- Purchase deducts Reputation
+
+### Story 13.4: Insider Tips Panel (Hidden Intel)
+
+As a player, I want a bottom-center panel where I can purchase mystery intel cards that reveal hidden information about the next round, so that I can gain an information edge — but I won't know exactly what I'm getting until I buy it.
+
+**Acceptance Criteria:**
+- 2 tip slots by default (expandable to 3 via Intel Expansion)
+- Tips displayed as face-down mystery cards until purchased
+- 8 tip types: Price Forecast, Price Floor, Price Ceiling, Trend Direction, Event Forecast, Event Count, Volatility Warning, Opening Price
+- Values calculated from next round data with ±10% fuzz
+- One-time purchase per slot per visit
+
+### Story 13.5: Bonds Panel (Reputation Investment)
+
+As a player, I want a bonds section where I can invest cash now to earn recurring Reputation in future rounds, so that I have a long-term investment strategy alongside my immediate trading.
+
+**Acceptance Criteria:**
+- Bond purchase uses CASH (not Reputation)
+- Bond price increases every round ($3, $5, $8, $12, $17, $23, $30)
+- Each bond generates +1 Rep at the START of each subsequent round (cumulative)
+- Sell bonds for half original purchase price
+- Cannot purchase on Round 8
+
+### Story 13.6: Store Data Model & State Management
+
+As a developer, I want a clean data model that tracks all store state within RunContext, so that store state persists correctly across rounds.
+
+**Acceptance Criteria:**
+- RunContext extended with: OwnedRelics, OwnedExpansions, BondsOwned, BondPurchaseHistory, CurrentShopRerollCount, InsiderTipSlots, RevealedTips
+- ShopState orchestrates all four panels
+- All purchases atomic (validate → deduct → apply → fire event)
+- Old ActiveItems migrated to OwnedRelics
+
+### Story 13.7: Expansion Effects Integration
+
+As a player, I want purchased Trading Deck Expansions to actually modify gameplay mechanics, so that my store investments have tangible impact during trading rounds.
+
+**Acceptance Criteria:**
+- Multi-Stock: spawns 2 stocks per round
+- Leverage: 2x P&L multiplier on long trades
+- Expanded Inventory: +2 relic slots
+- Dual Short: 2 concurrent short positions
+- Intel Expansion: 2 → 3 insider tip slots
+- Extended Trading: +15s round timer
+- Expansions do NOT stack with themselves
+
+### Story 13.8: Store Visual Polish & Card Animations
+
+As a player, I want store cards to have satisfying visual presentation with hover effects, purchase animations, and mystery card flips, so that the store feels premium and engaging.
+
+**Acceptance Criteria:**
+- Relic cards: hover glow, unified border style (no rarity colors)
+- Purchase animation: card slides up and fades
+- Reroll animation: cards flip/shuffle
+- Insider Tip cards: face-down with "?", flip animation on purchase
+- Bond card: subtle pulsing glow
+- Expansion cards: "OWNED" watermark when purchased
+- Programmatic uGUI, no prefabs
+
+### Story 13.9: Cleanup & Migration from Old Shop
+
+As a developer, I want to cleanly remove the old 3-card draft shop and migrate relevant logic to the new store system, so that there is no dead code.
+
+**Acceptance Criteria:**
+- Old ShopUI single-panel layout removed
+- ItemCategory and ItemRarity enums removed
+- All 30 existing item definitions removed (redesigned in future epic)
+- Rarity-weighted selection replaced with uniform random
+- Old Trade Volume upgrade migrated to Trading Deck Expansions
+- All existing shop tests updated or replaced
