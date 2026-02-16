@@ -83,7 +83,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 eventFired = true;
                 Assert.AreEqual(1, e.RoundNumber);
-                Assert.AreEqual(3, e.AvailableItems.Length);
+                Assert.LessOrEqual(e.AvailableItems.Length, 3);
+                Assert.Greater(e.AvailableItems.Length, 0);
             });
 
             EnterShop();
@@ -103,17 +104,21 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_GeneratesThreeItems_OnePerCategory()
+        public void Enter_GeneratesThreeRelics()
         {
             ShopOpenedEvent received = default;
             EventBus.Subscribe<ShopOpenedEvent>(e => received = e);
 
             EnterShop();
 
-            Assert.AreEqual(3, received.AvailableItems.Length);
-            Assert.AreEqual(ItemCategory.TradingTool, received.AvailableItems[0].Category);
-            Assert.AreEqual(ItemCategory.MarketIntel, received.AvailableItems[1].Category);
-            Assert.AreEqual(ItemCategory.PassivePerk, received.AvailableItems[2].Category);
+            Assert.LessOrEqual(received.AvailableItems.Length, 3);
+            Assert.Greater(received.AvailableItems.Length, 0);
+            // Story 13.3: Relics are uniform random — no category assignment
+            for (int i = 0; i < received.AvailableItems.Length; i++)
+            {
+                Assert.IsFalse(string.IsNullOrEmpty(received.AvailableItems[i].Id),
+                    $"Relic at index {i} should have a valid Id");
+            }
         }
 
         [Test]

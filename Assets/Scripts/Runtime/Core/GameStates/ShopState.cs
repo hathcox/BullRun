@@ -3,9 +3,10 @@ using UnityEngine;
 
 /// <summary>
 /// Shop state orchestrating all four panels: relics, expansions, tips, bonds.
-/// Handles purchases, then advances to next round when player clicks Continue.
+/// Handles purchases and rerolls, then advances to next round when player clicks Continue.
 /// Transitions to MarketOpenState (or TierTransitionState if act changes,
 /// or RunSummaryState if run complete).
+/// Story 13.3: Uses RelicDef + uniform random selection + reroll mechanism.
 /// </summary>
 public class ShopState : IGameState
 {
@@ -15,10 +16,12 @@ public class ShopState : IGameState
     private EventScheduler _eventScheduler;
 
     private bool _shopActive;
-    private ShopItemDef?[] _nullableOffering;
+    private RelicDef?[] _relicOffering;
     private bool[] _purchased;
     private List<string> _purchasedItemIds;
     private ShopTransaction _shopTransaction;
+    private System.Random _random;
+    private int _randomSeedOverride = -1;
 
     public static ShopStateConfig NextConfig;
 
@@ -35,45 +38,51 @@ public class ShopState : IGameState
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
             _eventScheduler = NextConfig.EventScheduler;
+            _randomSeedOverride = NextConfig.RandomSeed;
             NextConfig = null;
         }
 
-        // Reset per-visit store state
+        // Reset per-visit store state (AC 9: reroll cost resets each shop visit)
         ctx.CurrentShopRerollCount = 0;
         ctx.RevealedTips.Clear();
 
-        // Generate relic offering with weighted rarity, unlock filtering, and duplicate prevention
-        var random = new System.Random();
-        _nullableOffering = ShopGenerator.GenerateOffering(ctx.OwnedRelics, ShopItemDefinitions.DefaultUnlockedItems, random);
+        // Generate relic offering with uniform random selection (AC 1, 2, 3)
+        _random = _randomSeedOverride >= 0 ? new System.Random(_randomSeedOverride) : new System.Random();
+        _relicOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, _random);
 
-        // TODO (Story 13.2+): Generate expansion offerings via ExpansionManager
-        // TODO (Story 13.5): Generate insider tips via InsiderTipGenerator
-        // TODO (Story 13.6): Calculate bond price via BondManager
-
-        _purchased = new bool[_nullableOffering.Length];
+        _purchased = new bool[_relicOffering.Length];
         _purchasedItemIds = new List<string>();
         _shopTransaction = new ShopTransaction();
         _shopActive = true;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Generated items: {ItemLabel(0)}, {ItemLabel(1)}, {ItemLabel(2)}");
+        Debug.Log($"[ShopState] Generated relics: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
         #endif
 
-        // Show store UI with purchase and close callbacks
+        // Show store UI with purchase, close, and reroll callbacks
         if (ShopUIInstance != null)
         {
-            ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
+            ShopUIInstance.ShowRelics(ctx, _relicOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
+            ShopUIInstance.SetOnRerollCallback(() => OnRerollRequested(ctx));
         }
 
         // Publish shop opened event — only include non-null items
         int availableCount = 0;
-        for (int i = 0; i < _nullableOffering.Length; i++)
-            if (_nullableOffering[i].HasValue) availableCount++;
+        for (int i = 0; i < _relicOffering.Length; i++)
+            if (_relicOffering[i].HasValue) availableCount++;
+
+        // Convert RelicDefs to ShopItemDefs for the event (backwards compat)
         var availableItems = new ShopItemDef[availableCount];
         int availIdx = 0;
-        for (int i = 0; i < _nullableOffering.Length; i++)
-            if (_nullableOffering[i].HasValue) availableItems[availIdx++] = _nullableOffering[i].Value;
+        for (int i = 0; i < _relicOffering.Length; i++)
+        {
+            if (_relicOffering[i].HasValue)
+            {
+                var r = _relicOffering[i].Value;
+                availableItems[availIdx++] = new ShopItemDef(r.Id, r.Name, r.Description, r.Cost, ItemRarity.Common, ItemCategory.TradingTool);
+            }
+        }
 
         EventBus.Publish(new ShopOpenedEvent
         {
@@ -124,30 +133,31 @@ public class ShopState : IGameState
     }
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
-    private string ItemLabel(int index)
+    private string RelicLabel(int index)
     {
-        if (index < 0 || index >= _nullableOffering.Length) return "none";
-        return _nullableOffering[index].HasValue ? _nullableOffering[index].Value.Name : "none";
+        if (index < 0 || index >= _relicOffering.Length) return "none";
+        return _relicOffering[index].HasValue ? _relicOffering[index].Value.Name : "none";
     }
     #endif
 
     /// <summary>
     /// Called when player clicks a buy button. Delegates to ShopTransaction for atomic purchase.
+    /// Uses RelicDef purchase flow (AC 5, 11, 12, 15).
     /// </summary>
     public void OnPurchaseRequested(RunContext ctx, int cardIndex)
     {
         if (!_shopActive) return;
-        if (cardIndex < 0 || cardIndex >= _nullableOffering.Length) return;
+        if (cardIndex < 0 || cardIndex >= _relicOffering.Length) return;
         if (_purchased[cardIndex]) return;
-        if (!_nullableOffering[cardIndex].HasValue) return;
+        if (!_relicOffering[cardIndex].HasValue) return;
 
-        var item = _nullableOffering[cardIndex].Value;
-        var result = _shopTransaction.TryPurchase(ctx, item);
+        var relic = _relicOffering[cardIndex].Value;
+        var result = _shopTransaction.PurchaseRelic(ctx, relic);
 
         if (result == ShopPurchaseResult.Success)
         {
             _purchased[cardIndex] = true;
-            _purchasedItemIds.Add(item.Id);
+            _purchasedItemIds.Add(relic.Id);
 
             // Update UI: mark purchased and refresh affordability
             if (ShopUIInstance != null)
@@ -155,6 +165,50 @@ public class ShopState : IGameState
                 ShopUIInstance.RefreshAfterPurchase(cardIndex);
             }
         }
+    }
+
+    /// <summary>
+    /// Called when player clicks the reroll button (AC 7, 8, 9, 10).
+    /// Deducts Rep, regenerates unsold relic slots with new random items.
+    /// </summary>
+    private void OnRerollRequested(RunContext ctx)
+    {
+        if (!_shopActive) return;
+
+        if (!_shopTransaction.TryReroll(ctx))
+        {
+            return; // Insufficient funds
+        }
+
+        // Regenerate offering — only unsold slots get new items (AC 10)
+        // Exclude currently displayed unsold relics so reroll yields fresh items
+        var currentUnsoldIds = new List<string>();
+        for (int i = 0; i < _relicOffering.Length; i++)
+        {
+            if (!_purchased[i] && _relicOffering[i].HasValue)
+                currentUnsoldIds.Add(_relicOffering[i].Value.Id);
+        }
+        var newOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, currentUnsoldIds, _random);
+
+        // Preserve sold slots
+        for (int i = 0; i < _relicOffering.Length && i < newOffering.Length; i++)
+        {
+            if (_purchased[i])
+            {
+                newOffering[i] = _relicOffering[i]; // Keep sold item reference
+            }
+        }
+
+        _relicOffering = newOffering;
+
+        if (ShopUIInstance != null)
+        {
+            ShopUIInstance.RefreshRelicOffering(newOffering);
+        }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ShopState] Reroll #{ctx.CurrentShopRerollCount}: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
+        #endif
     }
 
     /// <summary>
@@ -244,4 +298,8 @@ public class ShopStateConfig
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
     public EventScheduler EventScheduler;
+    /// <summary>
+    /// Optional random seed for deterministic relic generation. -1 = time-based (default).
+    /// </summary>
+    public int RandomSeed = -1;
 }

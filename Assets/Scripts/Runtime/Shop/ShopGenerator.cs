@@ -2,17 +2,79 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Generates shop offerings by selecting one item per category using rarity-weighted random selection.
-/// Supports unlock filtering (Epic 9 preparation) and duplicate prevention (owned items excluded).
+/// Generates shop relic offerings using uniform random selection.
+/// Story 13.3: No rarity weighting — all relics equally likely.
 /// Pure C# class — no MonoBehaviour dependency for testability.
 /// Stateless — all data passed via parameters, no cached state between calls.
 /// </summary>
 public static class ShopGenerator
 {
     /// <summary>
-    /// Generates a shop offering of 3 items — one per category.
-    /// Uses rarity-weighted random selection with unlock filtering and duplicate prevention.
-    /// Returns nullable items — a null entry means that category's pool is exhausted.
+    /// Generates a relic offering of 3 items via uniform random selection.
+    /// Excludes owned relics. Returns null entries for exhausted slots.
+    /// </summary>
+    public static RelicDef?[] GenerateRelicOffering(List<string> ownedRelicIds, System.Random random)
+    {
+        return GenerateRelicOffering(ownedRelicIds, null, random);
+    }
+
+    /// <summary>
+    /// Generates a relic offering excluding both owned relics and additional IDs
+    /// (e.g., currently displayed unsold relics during a reroll).
+    /// </summary>
+    public static RelicDef?[] GenerateRelicOffering(List<string> ownedRelicIds, List<string> additionalExcludeIds, System.Random random)
+    {
+        var pool = BuildAvailablePool(ownedRelicIds, additionalExcludeIds);
+
+        var result = new RelicDef?[3];
+        for (int i = 0; i < 3; i++)
+        {
+            if (pool.Count == 0)
+            {
+                result[i] = null;
+                continue;
+            }
+            int idx = random.Next(pool.Count);
+            result[i] = pool[idx];
+            pool.RemoveAt(idx);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Builds the available pool by filtering out owned relics from RelicPool.
+    /// </summary>
+    public static List<RelicDef> BuildAvailablePool(List<string> ownedRelicIds)
+    {
+        return BuildAvailablePool(ownedRelicIds, null);
+    }
+
+    /// <summary>
+    /// Builds the available pool by filtering out owned and additionally excluded relics.
+    /// </summary>
+    public static List<RelicDef> BuildAvailablePool(List<string> ownedRelicIds, List<string> additionalExcludeIds)
+    {
+        var excludeSet = new HashSet<string>(ownedRelicIds);
+        if (additionalExcludeIds != null)
+        {
+            for (int i = 0; i < additionalExcludeIds.Count; i++)
+                excludeSet.Add(additionalExcludeIds[i]);
+        }
+        var pool = new List<RelicDef>();
+        var relicPool = ShopItemDefinitions.RelicPool;
+        for (int i = 0; i < relicPool.Length; i++)
+        {
+            if (!excludeSet.Contains(relicPool[i].Id))
+                pool.Add(relicPool[i]);
+        }
+        return pool;
+    }
+
+    /// <summary>
+    /// Legacy offering generator — kept for backwards compatibility with tests.
+    /// Generates one item per category using rarity-weighted selection.
+    /// Will be removed in Story 13.9 cleanup.
     /// </summary>
     public static ShopItemDef?[] GenerateOffering(List<string> ownedItemIds, HashSet<string> unlockedPool, System.Random random)
     {
@@ -25,13 +87,11 @@ public static class ShopGenerator
     }
 
     /// <summary>
-    /// Selects a single item from the given category using rarity-weighted random selection.
-    /// Filters by unlock pool, excludes owned items, then does weighted rarity selection.
-    /// Returns null if no eligible items remain for the category.
+    /// Legacy item selector — rarity-weighted, category-filtered.
+    /// Will be removed in Story 13.9 cleanup.
     /// </summary>
     public static ShopItemDef? SelectItem(ItemCategory category, List<string> ownedItemIds, HashSet<string> unlockedPool, System.Random random)
     {
-        // 1. Filter items: category match, unlocked, not owned
         var ownedSet = new HashSet<string>(ownedItemIds);
         var eligible = new List<ShopItemDef>();
         var allItems = ShopItemDefinitions.AllItems;
@@ -49,7 +109,6 @@ public static class ShopGenerator
             return null;
         }
 
-        // 2. Group by rarity
         var grouped = new Dictionary<ItemRarity, List<ShopItemDef>>();
         for (int i = 0; i < eligible.Count; i++)
         {
@@ -59,33 +118,26 @@ public static class ShopGenerator
             grouped[rarity].Add(eligible[i]);
         }
 
-        // 3. Weighted random select a rarity tier
         ItemRarity selectedRarity = SelectWeightedRarity(grouped, random);
-
-        // 4. Random select one item from that rarity tier
         var pool = grouped[selectedRarity];
         return pool[random.Next(pool.Count)];
     }
 
     /// <summary>
-    /// Selects a rarity tier using weighted random selection.
-    /// Only considers rarities that have items in groupedItems.
-    /// Weights are normalized to only include present rarities.
+    /// Legacy rarity selector — weighted random.
+    /// Will be removed in Story 13.9 cleanup.
     /// </summary>
     public static ItemRarity SelectWeightedRarity(Dictionary<ItemRarity, List<ShopItemDef>> groupedItems, System.Random random)
     {
-        // Collect and sort keys to guarantee stable iteration order across .NET versions
         var keys = new List<ItemRarity>(groupedItems.Count);
         foreach (var kvp in groupedItems)
             keys.Add(kvp.Key);
         keys.Sort();
 
-        // Build cumulative weight from sorted rarities
         float totalWeight = 0f;
         for (int i = 0; i < keys.Count; i++)
             totalWeight += ShopItemDefinitions.GetWeightForRarity(keys[i]);
 
-        // Roll and walk cumulative weights in sorted order
         float roll = (float)(random.NextDouble() * totalWeight);
         float cumulative = 0f;
         for (int i = 0; i < keys.Count; i++)
@@ -95,7 +147,6 @@ public static class ShopGenerator
                 return keys[i];
         }
 
-        // Edge case: floating point — return last rarity
         return keys[keys.Count - 1];
     }
 }

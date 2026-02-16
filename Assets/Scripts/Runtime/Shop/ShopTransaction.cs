@@ -9,68 +9,96 @@ using UnityEngine;
 public class ShopTransaction
 {
     /// <summary>
-    /// Purchases a relic (shop item). Validates Reputation affordability and duplicate ownership,
-    /// then atomically deducts Reputation and adds item to RunContext.OwnedRelics.
+    /// Purchases a relic using RelicDef (Story 13.3 — no rarity/category).
+    /// Validates Reputation affordability, duplicate ownership, and capacity.
+    /// Checks ExpansionManager for Expanded Inventory to determine actual max slots (AC 13).
     /// Publishes ShopItemPurchasedEvent on success. Portfolio.Cash is NOT affected.
     /// </summary>
-    public ShopPurchaseResult PurchaseRelic(RunContext ctx, ShopItemDef item)
+    public ShopPurchaseResult PurchaseRelic(RunContext ctx, RelicDef relic)
     {
+        bool repDeducted = false;
+        bool relicAdded = false;
         try
         {
-            if (ctx.OwnedRelics.Contains(item.Id))
+            if (ctx.OwnedRelics.Contains(relic.Id))
             {
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[ShopTransaction] Relic rejected: {item.Name} already owned");
+                Debug.Log($"[ShopTransaction] Relic rejected: {relic.Name} already owned");
                 #endif
                 return ShopPurchaseResult.AlreadyOwned;
             }
 
-            if (ctx.OwnedRelics.Count >= GameConfig.MaxRelicSlots)
+            int maxSlots = GetEffectiveMaxRelicSlots(ctx);
+            if (ctx.OwnedRelics.Count >= maxSlots)
             {
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[ShopTransaction] Relic rejected: max relic slots ({GameConfig.MaxRelicSlots}) reached");
+                Debug.Log($"[ShopTransaction] Relic rejected: max relic slots ({maxSlots}) reached");
                 #endif
                 return ShopPurchaseResult.SlotsFull;
             }
 
-            if (!ctx.Reputation.CanAfford(item.Cost))
+            if (!ctx.Reputation.CanAfford(relic.Cost))
             {
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[ShopTransaction] Relic rejected: insufficient Rep {ctx.Reputation.Current} for {item.Name} ({item.Cost} Rep)");
+                Debug.Log($"[ShopTransaction] Relic rejected: insufficient Rep {ctx.Reputation.Current} for {relic.Name} ({relic.Cost} Rep)");
                 #endif
                 return ShopPurchaseResult.InsufficientFunds;
             }
 
-            if (!ctx.Reputation.Spend(item.Cost))
+            if (!ctx.Reputation.Spend(relic.Cost))
             {
                 return ShopPurchaseResult.InsufficientFunds;
             }
+            repDeducted = true;
 
-            ctx.OwnedRelics.Add(item.Id);
+            ctx.OwnedRelics.Add(relic.Id);
+            relicAdded = true;
 
             EventBus.Publish(new ShopItemPurchasedEvent
             {
-                ItemId = item.Id,
-                ItemName = item.Name,
-                Cost = item.Cost,
+                ItemId = relic.Id,
+                ItemName = relic.Name,
+                Cost = relic.Cost,
                 RemainingReputation = ctx.Reputation.Current
             });
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[ShopTransaction] Relic purchased: {item.Name} for {item.Cost} Rep (remaining: {ctx.Reputation.Current} Rep)");
+            Debug.Log($"[ShopTransaction] Relic purchased: {relic.Name} for {relic.Cost} Rep (remaining: {ctx.Reputation.Current} Rep)");
             #endif
 
             return ShopPurchaseResult.Success;
         }
         catch (System.Exception ex)
         {
-            ctx?.Reputation.Add(item.Cost);
-            ctx?.OwnedRelics.Remove(item.Id);
+            if (repDeducted) ctx?.Reputation.Add(relic.Cost);
+            if (relicAdded) ctx?.OwnedRelics.Remove(relic.Id);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.LogWarning($"[ShopTransaction] Relic purchase failed for {item.Name}: {ex.Message}");
+            Debug.LogWarning($"[ShopTransaction] Relic purchase failed for {relic.Name}: {ex.Message}");
             #endif
             return ShopPurchaseResult.Error;
         }
+    }
+
+    /// <summary>
+    /// Returns the effective max relic slots, accounting for Expanded Inventory expansion (AC 13).
+    /// Checks OwnedExpansions for "expanded_inventory" to grant bonus slots.
+    /// </summary>
+    public static int GetEffectiveMaxRelicSlots(RunContext ctx)
+    {
+        int maxSlots = GameConfig.MaxRelicSlots;
+        if (ctx.OwnedExpansions.Contains("expanded_inventory"))
+        {
+            maxSlots += 2;
+        }
+        return maxSlots;
+    }
+
+    /// <summary>
+    /// Legacy overload accepting ShopItemDef. Converts to RelicDef and delegates.
+    /// </summary>
+    public ShopPurchaseResult PurchaseRelic(RunContext ctx, ShopItemDef item)
+    {
+        return PurchaseRelic(ctx, new RelicDef(item.Id, item.Name, item.Description, item.Cost));
     }
 
     /// <summary>
@@ -79,6 +107,40 @@ public class ShopTransaction
     public ShopPurchaseResult TryPurchase(RunContext ctx, ShopItemDef item)
     {
         return PurchaseRelic(ctx, item);
+    }
+
+    /// <summary>
+    /// Processes a reroll: deducts cost, increments reroll count (AC 7, 8, 9).
+    /// Cost = RerollBaseCost + (RerollCostIncrement * currentRerollCount).
+    /// Returns true if reroll succeeded, false if insufficient funds.
+    /// </summary>
+    public bool TryReroll(RunContext ctx)
+    {
+        int cost = GetRerollCost(ctx.CurrentShopRerollCount);
+        if (!ctx.Reputation.CanAfford(cost))
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[ShopTransaction] Reroll rejected: insufficient Rep {ctx.Reputation.Current} for reroll cost {cost}");
+            #endif
+            return false;
+        }
+
+        ctx.Reputation.Spend(cost);
+        ctx.CurrentShopRerollCount++;
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ShopTransaction] Reroll #{ctx.CurrentShopRerollCount}: cost {cost} Rep (remaining: {ctx.Reputation.Current} Rep)");
+        #endif
+
+        return true;
+    }
+
+    /// <summary>
+    /// Calculates reroll cost: RerollBaseCost + (RerollCostIncrement * rerollCount).
+    /// </summary>
+    public static int GetRerollCost(int currentRerollCount)
+    {
+        return GameConfig.RerollBaseCost + (GameConfig.RerollCostIncrement * currentRerollCount);
     }
 
     /// <summary>

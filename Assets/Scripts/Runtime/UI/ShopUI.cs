@@ -11,7 +11,7 @@ using UnityEngine.UI;
 /// </summary>
 public class ShopUI : MonoBehaviour
 {
-    // Rarity colors per project spec
+    // Rarity colors — retained for UISetup and legacy compat (13.9 cleanup)
     public static readonly Color CommonColor = new Color(0.7f, 0.7f, 0.7f, 1f);
     public static readonly Color UncommonColor = new Color(0.2f, 0.8f, 0.2f, 1f);
     public static readonly Color RareColor = new Color(0.3f, 0.5f, 1f, 1f);
@@ -32,6 +32,12 @@ public class ShopUI : MonoBehaviour
 
     // Focus indicator color
     public static readonly Color FocusColor = new Color(0.3f, 0.5f, 1f, 0.6f);
+
+    // Sold card color
+    public static readonly Color SoldCardColor = new Color(0.1f, 0.15f, 0.1f, 0.7f);
+
+    // Sold out card color
+    public static readonly Color SoldOutCardColor = new Color(0.15f, 0.15f, 0.15f, 0.5f);
 
     private GameObject _root;
     private Text _repText;
@@ -57,11 +63,13 @@ public class ShopUI : MonoBehaviour
     private Image[] _panelFocusIndicators;
     private int _focusedPanelIndex = -1;
 
-    // State
-    private ShopItemDef?[] _items;
+    // State — now uses RelicDef
+    private RelicDef?[] _relicOffering;
+    private bool[] _soldFlags;
     private RunContext _ctx;
     private System.Action<int> _onPurchase;
     private System.Action _onClose;
+    private System.Action _onReroll;
 
     public struct RelicSlotView
     {
@@ -147,31 +155,63 @@ public class ShopUI : MonoBehaviour
         }
     }
 
+    public void SetOnRerollCallback(System.Action callback)
+    {
+        _onReroll = callback;
+        if (_rerollButton != null)
+        {
+            _rerollButton.onClick.RemoveAllListeners();
+            _rerollButton.onClick.AddListener(() => _onReroll?.Invoke());
+        }
+    }
+
     /// <summary>
-    /// Shows the store with the given relic items. Called by ShopState.Enter.
+    /// Shows the store with the given relic offering. Called by ShopState.Enter.
     /// </summary>
-    public void Show(RunContext ctx, ShopItemDef?[] items, System.Action<int> onPurchase)
+    public void ShowRelics(RunContext ctx, RelicDef?[] relicOffering, System.Action<int> onPurchase)
     {
         _ctx = ctx;
-        _items = items;
+        _relicOffering = relicOffering;
         _onPurchase = onPurchase;
+        _soldFlags = new bool[relicOffering.Length];
         _root.SetActive(true);
         _focusedPanelIndex = -1;
 
         _headerText.text = $"STORE \u2014 ROUND {ctx.CurrentRound}";
         UpdateCurrencyDisplays();
+        UpdateRerollDisplay();
 
-        for (int i = 0; i < _relicSlots.Length && i < items.Length; i++)
+        for (int i = 0; i < _relicSlots.Length && i < relicOffering.Length; i++)
         {
-            if (items[i].HasValue)
+            if (relicOffering[i].HasValue)
             {
-                SetupRelicSlot(i, items[i].Value);
+                SetupRelicSlot(i, relicOffering[i].Value);
             }
             else
             {
-                SetupEmptyRelicSlot(i);
+                SetupSoldOutRelicSlot(i);
             }
         }
+
+        RefreshRelicCapacity();
+    }
+
+    /// <summary>
+    /// Legacy Show method for backwards compatibility with ShopItemDef.
+    /// Converts to RelicDef and delegates.
+    /// </summary>
+    public void Show(RunContext ctx, ShopItemDef?[] items, System.Action<int> onPurchase)
+    {
+        var relics = new RelicDef?[items.Length];
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (items[i].HasValue)
+            {
+                var item = items[i].Value;
+                relics[i] = new RelicDef(item.Id, item.Name, item.Description, item.Cost);
+            }
+        }
+        ShowRelics(ctx, relics, onPurchase);
     }
 
     public void Hide()
@@ -180,17 +220,51 @@ public class ShopUI : MonoBehaviour
             _root.SetActive(false);
     }
 
+    /// <summary>
+    /// Refreshes the relic slots with a new offering after reroll (AC 10).
+    /// Only regenerates unsold slots.
+    /// </summary>
+    public void RefreshRelicOffering(RelicDef?[] newOffering)
+    {
+        _relicOffering = newOffering;
+
+        for (int i = 0; i < _relicSlots.Length && i < newOffering.Length; i++)
+        {
+            if (_soldFlags[i])
+            {
+                // Keep sold state — don't regenerate sold slots
+                continue;
+            }
+
+            if (newOffering[i].HasValue)
+            {
+                SetupRelicSlot(i, newOffering[i].Value);
+            }
+            else
+            {
+                SetupSoldOutRelicSlot(i);
+            }
+        }
+
+        UpdateRerollDisplay();
+        RefreshRelicCapacity();
+        RefreshRelicAffordability();
+    }
+
     public void RefreshAfterPurchase(int cardIndex)
     {
         UpdateCurrencyDisplays();
 
         if (cardIndex >= 0 && cardIndex < _relicSlots.Length)
         {
+            _soldFlags[cardIndex] = true;
             _relicSlots[cardIndex].PurchaseButton.interactable = false;
-            _relicSlots[cardIndex].ButtonText.text = "PURCHASED";
-            _relicSlots[cardIndex].CardBackground.color = new Color(0.1f, 0.15f, 0.1f, 0.7f);
+            _relicSlots[cardIndex].ButtonText.text = "SOLD";
+            _relicSlots[cardIndex].CardBackground.color = SoldCardColor;
         }
 
+        UpdateRerollDisplay();
+        RefreshRelicCapacity();
         RefreshRelicAffordability();
     }
 
@@ -206,7 +280,6 @@ public class ShopUI : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Tab))
         {
-            // Cycle to next panel
             int next = (_focusedPanelIndex + 1) % _focusablePanels.Length;
             SetFocusedPanel(next);
         }
@@ -228,7 +301,6 @@ public class ShopUI : MonoBehaviour
 
     private void SetFocusedPanel(int index)
     {
-        // Clear previous focus
         if (_focusedPanelIndex >= 0 && _focusedPanelIndex < _panelFocusIndicators.Length)
         {
             _panelFocusIndicators[_focusedPanelIndex].gameObject.SetActive(false);
@@ -236,20 +308,15 @@ public class ShopUI : MonoBehaviour
 
         _focusedPanelIndex = index;
 
-        // Show new focus
         if (_focusedPanelIndex >= 0 && _focusedPanelIndex < _panelFocusIndicators.Length)
         {
             _panelFocusIndicators[_focusedPanelIndex].gameObject.SetActive(true);
         }
     }
 
-    /// <summary>
-    /// Returns the currently focused panel index (-1 if none).
-    /// Used by tests and potential future keyboard interaction.
-    /// </summary>
     public int FocusedPanelIndex => _focusedPanelIndex;
 
-    private void SetupEmptyRelicSlot(int index)
+    private void SetupSoldOutRelicSlot(int index)
     {
         var slot = _relicSlots[index];
         slot.CategoryLabel.text = "RELIC";
@@ -260,34 +327,35 @@ public class ShopUI : MonoBehaviour
         slot.RarityBadge.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
         slot.PurchaseButton.interactable = false;
         slot.ButtonText.text = "SOLD OUT";
-        slot.CardBackground.color = new Color(0.15f, 0.15f, 0.15f, 0.5f);
+        slot.CardBackground.color = SoldOutCardColor;
         slot.PurchaseButton.onClick.RemoveAllListeners();
     }
 
-    private void SetupRelicSlot(int index, ShopItemDef item)
+    private void SetupRelicSlot(int index, RelicDef relic)
     {
         var slot = _relicSlots[index];
 
-        string categoryName = item.Category switch
-        {
-            ItemCategory.TradingTool => "TRADING TOOL",
-            ItemCategory.MarketIntel => "MARKET INTEL",
-            ItemCategory.PassivePerk => "PASSIVE PERK",
-            _ => "RELIC"
-        };
-        slot.CategoryLabel.text = categoryName;
-        slot.NameText.text = item.Name;
-        slot.DescriptionText.text = item.Description;
-        slot.CostText.text = $"\u2605 {item.Cost}";
+        slot.CategoryLabel.text = "RELIC";
+        slot.NameText.text = relic.Name;
+        slot.DescriptionText.text = relic.Description;
+        slot.CostText.text = $"\u2605 {relic.Cost}";
 
-        Color rarityColor = GetRarityColor(item.Rarity);
-        slot.RarityText.text = item.Rarity.ToString().ToUpper();
-        slot.RarityText.color = rarityColor;
-        slot.RarityBadge.color = rarityColor;
+        // No rarity — hide rarity display
+        slot.RarityText.text = "";
+        slot.RarityBadge.color = ReputationColor;
 
-        bool canAfford = _ctx.Reputation.CanAfford(item.Cost);
-        slot.PurchaseButton.interactable = canAfford;
-        slot.ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+        bool canAfford = _ctx.Reputation.CanAfford(relic.Cost);
+        bool atCapacity = IsAtRelicCapacity();
+        bool canBuy = canAfford && !atCapacity;
+
+        slot.PurchaseButton.interactable = canBuy;
+        if (atCapacity)
+            slot.ButtonText.text = "FULL";
+        else if (!canAfford)
+            slot.ButtonText.text = "CAN'T AFFORD";
+        else
+            slot.ButtonText.text = "BUY";
+
         slot.CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
 
         slot.PurchaseButton.onClick.RemoveAllListeners();
@@ -295,19 +363,72 @@ public class ShopUI : MonoBehaviour
         slot.PurchaseButton.onClick.AddListener(() => _onPurchase?.Invoke(capturedIndex));
     }
 
+    /// <summary>
+    /// Checks if player is at relic capacity (AC 11, 12, 13).
+    /// </summary>
+    private bool IsAtRelicCapacity()
+    {
+        if (_ctx == null) return false;
+        return _ctx.OwnedRelics.Count >= ShopTransaction.GetEffectiveMaxRelicSlots(_ctx);
+    }
+
+    /// <summary>
+    /// Refreshes all non-sold relic slots for capacity check (AC 12).
+    /// If at capacity, all purchase buttons disabled with "FULL".
+    /// </summary>
+    private void RefreshRelicCapacity()
+    {
+        if (_relicOffering == null) return;
+        bool atCapacity = IsAtRelicCapacity();
+
+        for (int i = 0; i < _relicSlots.Length && i < _relicOffering.Length; i++)
+        {
+            if (!_relicOffering[i].HasValue) continue;
+            if (_soldFlags != null && i < _soldFlags.Length && _soldFlags[i]) continue;
+
+            if (atCapacity)
+            {
+                _relicSlots[i].PurchaseButton.interactable = false;
+                _relicSlots[i].ButtonText.text = "FULL";
+            }
+        }
+    }
+
     private void RefreshRelicAffordability()
     {
-        if (_items == null) return;
-        for (int i = 0; i < _relicSlots.Length && i < _items.Length; i++)
-        {
-            if (!_items[i].HasValue) continue;
-            if (!_relicSlots[i].PurchaseButton.interactable) continue;
+        if (_relicOffering == null) return;
+        bool atCapacity = IsAtRelicCapacity();
 
-            bool canAfford = _ctx.Reputation.CanAfford(_items[i].Value.Cost);
-            _relicSlots[i].PurchaseButton.interactable = canAfford;
-            _relicSlots[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-            _relicSlots[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        for (int i = 0; i < _relicSlots.Length && i < _relicOffering.Length; i++)
+        {
+            if (!_relicOffering[i].HasValue) continue;
+            if (_soldFlags != null && i < _soldFlags.Length && _soldFlags[i]) continue;
+
+            if (atCapacity)
+            {
+                _relicSlots[i].PurchaseButton.interactable = false;
+                _relicSlots[i].ButtonText.text = "FULL";
+            }
+            else
+            {
+                bool canAfford = _ctx.Reputation.CanAfford(_relicOffering[i].Value.Cost);
+                _relicSlots[i].PurchaseButton.interactable = canAfford;
+                _relicSlots[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+                _relicSlots[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+            }
         }
+    }
+
+    /// <summary>
+    /// Updates the reroll button cost display and interactability (AC 7, 8).
+    /// </summary>
+    private void UpdateRerollDisplay()
+    {
+        if (_rerollButton == null || _rerollCostText == null || _ctx == null) return;
+
+        int cost = ShopTransaction.GetRerollCost(_ctx.CurrentShopRerollCount);
+        _rerollCostText.text = $"\u2605 {cost}";
+        _rerollButton.interactable = _ctx.Reputation.CanAfford(cost);
     }
 
     private void UpdateCurrencyDisplays()
@@ -322,6 +443,9 @@ public class ShopUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Returns rarity color — retained for UISetup and legacy compat (13.9 cleanup).
+    /// </summary>
     public static Color GetRarityColor(ItemRarity rarity)
     {
         return rarity switch

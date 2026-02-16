@@ -1,8 +1,29 @@
 using System.Collections.Generic;
 
 /// <summary>
-/// All shop item definitions from GDD Section 4.
-/// Static data class — no ScriptableObjects per project rules.
+/// Relic definition — no rarity, no category. Cost alone determines value.
+/// Used by the relics panel (Story 13.3+). Replaces ShopItemDef for relic selection.
+/// </summary>
+public struct RelicDef
+{
+    public string Id;
+    public string Name;
+    public string Description;
+    public int Cost;
+
+    public RelicDef(string id, string name, string description, int cost)
+    {
+        Id = id;
+        Name = name;
+        Description = description;
+        Cost = cost;
+    }
+}
+
+/// <summary>
+/// Legacy item definition. Retained for backwards compatibility with ItemInventoryPanel,
+/// ItemLookup, and other systems still referencing category/rarity.
+/// Will be removed in Story 13.9 cleanup.
 /// </summary>
 public struct ShopItemDef
 {
@@ -40,12 +61,51 @@ public struct RarityWeight
 }
 
 /// <summary>
-/// Complete item pool for the draft shop. 30 items total: 10 per category.
-/// Rarity weights for selection probability:
-///   Common ~50%, Uncommon ~30%, Rare ~15%, Legendary ~5%
+/// All relic and shop item definitions.
+/// RelicPool: Placeholder relics for 13.3 infrastructure (uniform random, no rarity).
+/// AllItems: Legacy 30-item pool retained for backwards compatibility (13.9 cleanup).
 /// </summary>
 public static class ShopItemDefinitions
 {
+    /// <summary>
+    /// Placeholder relic pool for development/testing (Story 13.3 AC 17).
+    /// 8 test relics with varying costs. Will be replaced entirely in a future item design epic.
+    /// </summary>
+    public static readonly RelicDef[] RelicPool = new RelicDef[]
+    {
+        new RelicDef("relic_stop_loss", "Stop-Loss Order",
+            "Auto-sell a stock if it drops below a set threshold", 100),
+        new RelicDef("relic_speed_trader", "Speed Trader",
+            "Reduce trade execution delay by 50%", 150),
+        new RelicDef("relic_insider_tip", "Insider Tip",
+            "Preview one market event next round", 200),
+        new RelicDef("relic_portfolio_hedge", "Portfolio Hedge",
+            "Reduce losses on all positions by 25% for one round", 250),
+        new RelicDef("relic_compound_interest", "Compound Interest",
+            "All profits earn an additional 15% bonus at round end", 300),
+        new RelicDef("relic_dark_pool", "Dark Pool Access",
+            "Execute one trade per round at guaranteed mid-price", 350),
+        new RelicDef("relic_golden_parachute", "Golden Parachute",
+            "Survive one Margin Call (consumed on use)", 400),
+        new RelicDef("relic_master_universe", "Master of the Universe",
+            "All shop items cost 25% less for the rest of the run", 500),
+    };
+
+    /// <summary>
+    /// Returns a RelicDef by ID, or null if not found.
+    /// </summary>
+    public static RelicDef? GetRelicById(string id)
+    {
+        for (int i = 0; i < RelicPool.Length; i++)
+        {
+            if (RelicPool[i].Id == id)
+                return RelicPool[i];
+        }
+        return null;
+    }
+
+    // === Legacy definitions below — retained for backwards compat (Story 13.9 cleanup) ===
+
     public static readonly RarityWeight[] RarityWeights = new RarityWeight[]
     {
         new RarityWeight(ItemRarity.Common, 50f),
@@ -192,9 +252,6 @@ public static class ShopItemDefinitions
         return result;
     }
 
-    /// <summary>
-    /// Returns all items for the given category.
-    /// </summary>
     public static ShopItemDef[] GetItemsByCategory(ItemCategory category)
     {
         int count = 0;

@@ -32,8 +32,14 @@ public static class GameConfig
     // Reputation: shop currency (FIX-12). Earning logic below (FIX-14).
     public static readonly int StartingReputation = 0;
 
-    // Store: max relic slots per run (Epic 13, AC 1)
+    // Store: max relic slots per run (Epic 13, AC 11)
     public static readonly int MaxRelicSlots = 5;
+
+    // Store: reroll base cost in Reputation (Epic 13, AC 7)
+    public static readonly int RerollBaseCost = 5;
+
+    // Store: reroll cost increment per use within a shop visit (Epic 13, AC 8)
+    public static readonly int RerollCostIncrement = 2;
 
     // Store: default insider tip slots per shop visit (Epic 13)
     public static readonly int DefaultInsiderTipSlots = 2;
