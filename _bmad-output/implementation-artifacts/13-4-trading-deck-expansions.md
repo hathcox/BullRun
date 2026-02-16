@@ -1,6 +1,6 @@
 # Story 13.4: Trading Deck Expansions Panel (Vouchers)
 
-Status: ready for dev
+Status: done
 
 ## Story
 
@@ -32,49 +32,49 @@ so that I can invest Reputation into unlocking powerful new mechanics across the
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create ExpansionDefinitions data (AC: 6)
-  - [ ] Define `ExpansionDef` struct: `Id`, `Name`, `Description`, `Cost`
-  - [ ] Define all 6 expansions as `public static readonly` data
-  - [ ] File: `Scripts/Setup/Data/ExpansionDefinitions.cs` (NEW)
-- [ ] Task 2: Create ExpansionManager (AC: 3, 4)
-  - [ ] Plain C# class (not MonoBehaviour) for testability
-  - [ ] `OwnedExpansions: List<string>` — tracks purchased expansion IDs
-  - [ ] `IsOwned(string expansionId)` — check if expansion purchased
-  - [ ] `Purchase(string expansionId)` — add to owned list
-  - [ ] `GetAvailableForShop(int count)` — return N random unowned expansions for this shop visit
-  - [ ] File: `Scripts/Runtime/Shop/ExpansionManager.cs` (NEW)
-- [ ] Task 3: Expansion panel UI rendering (AC: 1, 2, 7)
-  - [ ] Populate bottom-left panel (created in 13.2) with 2-3 expansion cards
-  - [ ] Each card: expansion name, description, cost with Rep icon, purchase button
-  - [ ] "OWNED" watermark/state for purchased expansions still visible
-  - [ ] Disable purchase button if insufficient Rep
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs` — expansion panel population
-- [ ] Task 4: Purchase flow (AC: 3, 5, 8)
-  - [ ] Purchase button click: validate affordability + not owned → deduct Rep → mark owned → fire event
-  - [ ] Card transitions to "OWNED" state after purchase
-  - [ ] `ExpansionPurchasedEvent` with expansion ID and remaining Rep
-  - [ ] File: `Scripts/Runtime/Shop/ShopTransaction.cs` — expansion purchase path
-- [ ] Task 5: Wire to RunContext (AC: 4)
-  - [ ] `RunContext.OwnedExpansions: List<string>` (set up in 13.1)
-  - [ ] ExpansionManager reads/writes through RunContext
-  - [ ] Expansions survive round transitions
-  - [ ] File: `Scripts/Runtime/Core/RunContext.cs`
-- [ ] Task 6: GameConfig constants (AC: 6)
-  - [ ] `ExpansionCostMultiStock = 80`
-  - [ ] `ExpansionCostLeverage = 60`
-  - [ ] `ExpansionCostExpandedInventory = 50`
-  - [ ] `ExpansionCostDualShort = 70`
-  - [ ] `ExpansionCostIntelExpansion = 40`
-  - [ ] `ExpansionCostExtendedTrading = 55`
-  - [ ] File: `Scripts/Setup/Data/GameConfig.cs`
-- [ ] Task 7: GameEvents update (AC: 8)
-  - [ ] Define `ExpansionPurchasedEvent`: ExpansionId, ExpansionName, Cost, RemainingReputation
-  - [ ] File: `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 8: Write tests (All AC)
-  - [ ] ExpansionManager: purchase marks owned, can't double-buy, available pool shrinks
-  - [ ] GetAvailableForShop: returns correct count, excludes owned
-  - [ ] Purchase flow: Rep deducted, event fired, persists across rounds
-  - [ ] Files: `Tests/Runtime/Shop/ExpansionManagerTests.cs`
+- [x] Task 1: Create ExpansionDefinitions data (AC: 6)
+  - [x] Define `ExpansionDef` struct: `Id`, `Name`, `Description`, `Cost`
+  - [x] Define all 6 expansions as `public static readonly` data
+  - [x] File: `Scripts/Setup/Data/ExpansionDefinitions.cs` (NEW)
+- [x] Task 2: Create ExpansionManager (AC: 3, 4)
+  - [x] Plain C# class (not MonoBehaviour) for testability
+  - [x] `OwnedExpansions: List<string>` — tracks purchased expansion IDs
+  - [x] `IsOwned(string expansionId)` — check if expansion purchased
+  - [x] `Purchase(string expansionId)` — add to owned list
+  - [x] `GetAvailableForShop(int count)` — return N random unowned expansions for this shop visit
+  - [x] File: `Scripts/Runtime/Shop/ExpansionManager.cs` (NEW)
+- [x] Task 3: Expansion panel UI rendering (AC: 1, 2, 7)
+  - [x] Populate bottom-left panel (created in 13.2) with 2-3 expansion cards
+  - [x] Each card: expansion name, description, cost with Rep icon, purchase button
+  - [x] "OWNED" watermark/state for purchased expansions still visible
+  - [x] Disable purchase button if insufficient Rep
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs` — expansion panel population
+- [x] Task 4: Purchase flow (AC: 3, 5, 8)
+  - [x] Purchase button click: validate affordability + not owned → deduct Rep → mark owned → fire event
+  - [x] Card transitions to "OWNED" state after purchase
+  - [x] `ExpansionPurchasedEvent` with expansion ID and remaining Rep
+  - [x] File: `Scripts/Runtime/Shop/ShopTransaction.cs` — expansion purchase path (pre-existed from 13.1, no modification needed)
+- [x] Task 5: Wire to RunContext (AC: 4)
+  - [x] `RunContext.OwnedExpansions: List<string>` (set up in 13.1)
+  - [x] ExpansionManager reads/writes through RunContext
+  - [x] Expansions survive round transitions
+  - [x] File: `Scripts/Runtime/Core/RunContext.cs`
+- [x] Task 6: GameConfig constants (AC: 6)
+  - [x] `ExpansionCostMultiStock = 80`
+  - [x] `ExpansionCostLeverage = 60`
+  - [x] `ExpansionCostExpandedInventory = 50`
+  - [x] `ExpansionCostDualShort = 70`
+  - [x] `ExpansionCostIntelExpansion = 40`
+  - [x] `ExpansionCostExtendedTrading = 55`
+  - [x] File: `Scripts/Setup/Data/GameConfig.cs`
+- [x] Task 7: GameEvents update (AC: 8)
+  - [x] Define `ExpansionPurchasedEvent`: ExpansionId, ExpansionName, Cost, RemainingReputation
+  - [x] File: `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 8: Write tests (All AC)
+  - [x] ExpansionManager: purchase marks owned, can't double-buy, available pool shrinks
+  - [x] GetAvailableForShop: returns correct count, excludes owned
+  - [x] Purchase flow: Rep deducted, event fired, persists across rounds
+  - [x] Files: `Tests/Runtime/Shop/ExpansionManagerTests.cs`
 
 ## Dev Notes
 
@@ -102,8 +102,31 @@ Before implementing, the dev agent MUST read:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Completion Notes List
+
+- Created `ExpansionDef` struct and `ExpansionDefinitions` static class with all 6 expansion types, costs sourced from GameConfig
+- Created `ExpansionManager` as plain C# class (not MonoBehaviour) wrapping RunContext.OwnedExpansions with IsOwned, Purchase, and GetAvailableForShop (Fisher-Yates shuffle for random selection)
+- Added expansion card UI rendering to ShopUI: dynamically creates cards inside the existing expansions panel with name, description, cost (Rep icon), and purchase button; shows "OWNED" state after purchase; disables button when insufficient Rep
+- Wired expansion purchase flow in ShopState: generates expansion offering via ExpansionManager, handles purchase via ShopTransaction.PurchaseExpansion (already existed from 13.1), fires ShopExpansionPurchasedEvent
+- Added 7 GameConfig constants for expansion costs + ExpansionsPerShopVisit
+- Task 7 (GameEvents): ShopExpansionPurchasedEvent already existed from Story 13.1 with matching fields (ExpansionId, DisplayName, Cost, RemainingReputation) — no changes needed
+- Task 5 (RunContext): OwnedExpansions already existed from Story 13.1 — ExpansionManager delegates to it
+- Updated ShopState to track expansion purchase count in ShopClosedEvent and set ExpansionsAvailable flag in ShopOpenedEvent
+- Wrote 17 tests covering: ExpansionDefinitions data integrity, IsOwned, Purchase idempotency, GetAvailableForShop count/exclusion/exhaustion, purchase flow integration via ShopTransaction, and round persistence
+- Unity batch mode compilation verified: 0 errors, 0 new warnings
 
 ### Change Log
 
+- 2026-02-16: Implemented Story 13.4 — Trading Deck Expansions panel with data model, manager, UI, purchase flow, and tests
+- 2026-02-16: Code review fixes — (H1) Fixed CloseShop ShopClosedEvent.ExpansionsPurchased using _expansionsPurchasedCount instead of hardcoded 0; (M1/M4) Removed dead ExpansionManager.Purchase() — ShopTransaction.PurchaseExpansion is the single purchase path; (M2) Fixed ShowExpansions to store _ctx for RefreshExpansionAffordability; Updated tests to match
+
 ### File List
+
+- Assets/Scripts/Setup/Data/ExpansionDefinitions.cs (NEW)
+- Assets/Scripts/Setup/Data/GameConfig.cs (MODIFIED)
+- Assets/Scripts/Runtime/Shop/ExpansionManager.cs (NEW)
+- Assets/Scripts/Runtime/UI/ShopUI.cs (MODIFIED)
+- Assets/Scripts/Runtime/Core/GameStates/ShopState.cs (MODIFIED)
+- Assets/Tests/Runtime/Shop/ExpansionManagerTests.cs (NEW)

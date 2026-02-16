@@ -44,6 +44,30 @@ public static class GameConfig
     // Store: default insider tip slots per shop visit (Epic 13)
     public static readonly int DefaultInsiderTipSlots = 2;
 
+    // Store: insider tip fuzz percentage (Story 13.5, AC 11)
+    public static readonly float InsiderTipFuzzPercent = 0.10f;
+
+    // Store: insider tip costs in Reputation (Story 13.5)
+    public static readonly int TipCostPriceForecast = 15;
+    public static readonly int TipCostPriceFloor = 20;
+    public static readonly int TipCostPriceCeiling = 20;
+    public static readonly int TipCostTrendDirection = 15;
+    public static readonly int TipCostEventForecast = 25;
+    public static readonly int TipCostEventCount = 10;
+    public static readonly int TipCostVolatilityWarning = 15;
+    public static readonly int TipCostOpeningPrice = 20;
+
+    // Store: expansion costs in Reputation (Epic 13, Story 13.4)
+    public static readonly int ExpansionCostMultiStock = 80;
+    public static readonly int ExpansionCostLeverage = 60;
+    public static readonly int ExpansionCostExpandedInventory = 50;
+    public static readonly int ExpansionCostDualShort = 70;
+    public static readonly int ExpansionCostIntelExpansion = 40;
+    public static readonly int ExpansionCostExtendedTrading = 55;
+
+    // Store: number of expansion cards shown per shop visit (Epic 13, Story 13.4)
+    public static readonly int ExpansionsPerShopVisit = 3;
+
     // FIX-14: Reputation earning constants
     // Base Rep awarded per round completion (0-indexed: index 0 = Round 1)
     public static readonly int[] RepBaseAwardPerRound = new int[]

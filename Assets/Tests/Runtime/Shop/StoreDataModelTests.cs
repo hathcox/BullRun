@@ -44,8 +44,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void RevealedTip_Constructor_SetsFields()
         {
-            var tip = new RevealedTip(InsiderTipType.PriceDirection, "Stock X going up");
-            Assert.AreEqual(InsiderTipType.PriceDirection, tip.Type);
+            var tip = new RevealedTip(InsiderTipType.PriceForecast, "Stock X going up");
+            Assert.AreEqual(InsiderTipType.PriceForecast, tip.Type);
             Assert.AreEqual("Stock X going up", tip.RevealedText);
         }
 
@@ -165,13 +165,13 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PurchaseTip_DeductsReputationAndAddsTip()
         {
-            var tip = new RevealedTip(InsiderTipType.EventWarning, "Crash incoming");
+            var tip = new RevealedTip(InsiderTipType.EventForecast, "Crash incoming");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(900, _ctx.Reputation.Current);
             Assert.AreEqual(1, _ctx.RevealedTips.Count);
-            Assert.AreEqual(InsiderTipType.EventWarning, _ctx.RevealedTips[0].Type);
+            Assert.AreEqual(InsiderTipType.EventForecast, _ctx.RevealedTips[0].Type);
             Assert.AreEqual("Crash incoming", _ctx.RevealedTips[0].RevealedText);
         }
 
@@ -179,7 +179,7 @@ namespace BullRun.Tests.Shop
         public void PurchaseTip_DoesNotTouchCash()
         {
             float cashBefore = _ctx.Portfolio.Cash;
-            var tip = new RevealedTip(InsiderTipType.PriceDirection, "Going up");
+            var tip = new RevealedTip(InsiderTipType.PriceForecast, "Going up");
             _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(cashBefore, _ctx.Portfolio.Cash, 0.01f);
         }
@@ -189,7 +189,7 @@ namespace BullRun.Tests.Shop
         {
             _ctx.Reputation.Reset();
             _ctx.Reputation.Add(30);
-            var tip = new RevealedTip(InsiderTipType.SectorTrend, "Tech rising");
+            var tip = new RevealedTip(InsiderTipType.VolatilityWarning, "Tech rising");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
             Assert.AreEqual(30, _ctx.Reputation.Current);
@@ -295,7 +295,7 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(800, _ctx.Reputation.Current);
 
             // Tip: validate → deduct rep → add to list
-            var tip = new RevealedTip(InsiderTipType.PriceDirection, "Up");
+            var tip = new RevealedTip(InsiderTipType.PriceForecast, "Up");
             Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseTip(_ctx, tip, 100));
             Assert.AreEqual(1, _ctx.RevealedTips.Count);
             Assert.AreEqual(700, _ctx.Reputation.Current);
@@ -325,8 +325,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void RevealedTips_ClearedEachShopVisit()
         {
-            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceDirection, "Up"));
-            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.EventWarning, "Crash"));
+            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, "Up"));
+            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.EventForecast, "Crash"));
             Assert.AreEqual(2, _ctx.RevealedTips.Count);
 
             // Simulate what ShopState.Enter() does
@@ -405,9 +405,9 @@ namespace BullRun.Tests.Shop
         public void PurchaseTip_RejectsWhenAllSlotsUsed()
         {
             for (int i = 0; i < _ctx.InsiderTipSlots; i++)
-                _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceDirection, $"tip-{i}"));
+                _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, $"tip-{i}"));
 
-            var tip = new RevealedTip(InsiderTipType.SectorTrend, "Overflow");
+            var tip = new RevealedTip(InsiderTipType.VolatilityWarning, "Overflow");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
             Assert.AreEqual(1000, _ctx.Reputation.Current);
@@ -417,9 +417,9 @@ namespace BullRun.Tests.Shop
         public void PurchaseTip_AllowsUpToInsiderTipSlots()
         {
             for (int i = 0; i < _ctx.InsiderTipSlots - 1; i++)
-                _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceDirection, $"tip-{i}"));
+                _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, $"tip-{i}"));
 
-            var tip = new RevealedTip(InsiderTipType.EventWarning, "Last slot");
+            var tip = new RevealedTip(InsiderTipType.EventForecast, "Last slot");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(_ctx.InsiderTipSlots, _ctx.RevealedTips.Count);

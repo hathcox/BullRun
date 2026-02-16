@@ -63,6 +63,10 @@ public class ShopUI : MonoBehaviour
     private Image[] _panelFocusIndicators;
     private int _focusedPanelIndex = -1;
 
+    // Expansion card color (teal accent)
+    public static readonly Color ExpansionCardColor = new Color(0.08f, 0.14f, 0.18f, 0.9f);
+    public static readonly Color OwnedOverlayColor = new Color(0.1f, 0.2f, 0.1f, 0.85f);
+
     // State — now uses RelicDef
     private RelicDef?[] _relicOffering;
     private bool[] _soldFlags;
@@ -70,6 +74,43 @@ public class ShopUI : MonoBehaviour
     private System.Action<int> _onPurchase;
     private System.Action _onClose;
     private System.Action _onReroll;
+
+    // Expansion panel state (Story 13.4)
+    private ExpansionCardView[] _expansionCards;
+    private ExpansionDef[] _expansionOffering;
+    private System.Action<int> _onExpansionPurchase;
+
+    // Insider tips panel state (Story 13.5)
+    private TipCardView[] _tipCards;
+    private InsiderTipGenerator.TipOffering[] _tipOffering;
+    private System.Action<int> _onTipPurchase;
+
+    // Tip card colors (dark purple/mystery theme)
+    public static readonly Color TipCardFaceDownColor = new Color(0.12f, 0.08f, 0.18f, 0.9f);
+    public static readonly Color TipCardRevealedColor = new Color(0.08f, 0.16f, 0.12f, 0.9f);
+
+    public struct ExpansionCardView
+    {
+        public GameObject Root;
+        public Text NameText;
+        public Text DescriptionText;
+        public Text CostText;
+        public Button PurchaseButton;
+        public Text ButtonText;
+        public Image CardBackground;
+    }
+
+    public class TipCardView
+    {
+        public GameObject Root;
+        public Text NameText;
+        public Text DescriptionText;
+        public Text CostText;
+        public Button PurchaseButton;
+        public Text ButtonText;
+        public Image CardBackground;
+        public bool IsRevealed;
+    }
 
     public struct RelicSlotView
     {
@@ -266,6 +307,383 @@ public class ShopUI : MonoBehaviour
         UpdateRerollDisplay();
         RefreshRelicCapacity();
         RefreshRelicAffordability();
+    }
+
+    /// <summary>
+    /// Populates the expansions panel with available expansion cards (Story 13.4, AC 1, 2, 7).
+    /// Called by ShopState after generating the expansion offering.
+    /// </summary>
+    public void ShowExpansions(RunContext ctx, ExpansionDef[] offering, System.Action<int> onPurchase)
+    {
+        _ctx = ctx;
+        _expansionOffering = offering;
+        _onExpansionPurchase = onPurchase;
+
+        // Clear existing expansion card objects
+        ClearExpansionCards();
+
+        if (_expansionsPanel == null || offering == null || offering.Length == 0) return;
+
+        // Remove placeholder "Coming soon..." label if present
+        var contentLabel = _expansionsPanel.transform.Find("ExpansionsPanelContent");
+        if (contentLabel != null) contentLabel.gameObject.SetActive(false);
+
+        _expansionCards = new ExpansionCardView[offering.Length];
+        for (int i = 0; i < offering.Length; i++)
+        {
+            _expansionCards[i] = CreateExpansionCard(i, offering[i], _expansionsPanel.transform);
+            bool isOwned = ctx.OwnedExpansions.Contains(offering[i].Id);
+            if (isOwned)
+            {
+                SetExpansionCardOwned(i);
+            }
+            else
+            {
+                bool canAfford = ctx.Reputation.CanAfford(offering[i].Cost);
+                _expansionCards[i].PurchaseButton.interactable = canAfford;
+                _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+                _expansionCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Refreshes expansion card after a purchase. Marks the card as OWNED
+    /// and updates affordability on remaining cards.
+    /// </summary>
+    public void RefreshExpansionAfterPurchase(int cardIndex)
+    {
+        UpdateCurrencyDisplays();
+
+        if (cardIndex >= 0 && _expansionCards != null && cardIndex < _expansionCards.Length)
+        {
+            SetExpansionCardOwned(cardIndex);
+        }
+
+        RefreshExpansionAffordability();
+        RefreshRelicAffordability();
+        UpdateRerollDisplay();
+    }
+
+    private void SetExpansionCardOwned(int index)
+    {
+        if (_expansionCards == null || index < 0 || index >= _expansionCards.Length) return;
+        _expansionCards[index].PurchaseButton.interactable = false;
+        _expansionCards[index].ButtonText.text = "OWNED";
+        _expansionCards[index].CardBackground.color = OwnedOverlayColor;
+    }
+
+    private void RefreshExpansionAffordability()
+    {
+        if (_expansionOffering == null || _expansionCards == null || _ctx == null) return;
+
+        for (int i = 0; i < _expansionCards.Length && i < _expansionOffering.Length; i++)
+        {
+            if (_ctx.OwnedExpansions.Contains(_expansionOffering[i].Id)) continue;
+
+            bool canAfford = _ctx.Reputation.CanAfford(_expansionOffering[i].Cost);
+            _expansionCards[i].PurchaseButton.interactable = canAfford;
+            _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+            _expansionCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        }
+    }
+
+    private ExpansionCardView CreateExpansionCard(int index, ExpansionDef expansion, Transform parent)
+    {
+        var view = new ExpansionCardView();
+
+        var cardGo = new GameObject($"ExpansionCard_{index}");
+        cardGo.transform.SetParent(parent, false);
+        var cardRect = cardGo.AddComponent<RectTransform>();
+        view.CardBackground = cardGo.AddComponent<Image>();
+        view.CardBackground.color = ExpansionCardColor;
+        view.Root = cardGo;
+
+        var cardLayout = cardGo.AddComponent<LayoutElement>();
+        cardLayout.flexibleWidth = 1f;
+        cardLayout.preferredHeight = 80f;
+
+        var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 2f;
+        vlg.padding = new RectOffset(8, 8, 4, 4);
+        vlg.childAlignment = TextAnchor.UpperCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Name
+        var nameGo = new GameObject("Name");
+        nameGo.transform.SetParent(cardGo.transform, false);
+        view.NameText = nameGo.AddComponent<Text>();
+        view.NameText.text = expansion.Name;
+        view.NameText.fontSize = 13;
+        view.NameText.fontStyle = FontStyle.Bold;
+        view.NameText.color = Color.white;
+        view.NameText.alignment = TextAnchor.MiddleCenter;
+        view.NameText.raycastTarget = false;
+        var nameLayout = nameGo.AddComponent<LayoutElement>();
+        nameLayout.preferredHeight = 18f;
+
+        // Description
+        var descGo = new GameObject("Description");
+        descGo.transform.SetParent(cardGo.transform, false);
+        view.DescriptionText = descGo.AddComponent<Text>();
+        view.DescriptionText.text = expansion.Description;
+        view.DescriptionText.fontSize = 10;
+        view.DescriptionText.color = new Color(0.7f, 0.7f, 0.8f, 1f);
+        view.DescriptionText.alignment = TextAnchor.MiddleCenter;
+        view.DescriptionText.raycastTarget = false;
+        var descLayout = descGo.AddComponent<LayoutElement>();
+        descLayout.preferredHeight = 16f;
+
+        // Cost
+        var costGo = new GameObject("Cost");
+        costGo.transform.SetParent(cardGo.transform, false);
+        view.CostText = costGo.AddComponent<Text>();
+        view.CostText.text = $"\u2605 {expansion.Cost}";
+        view.CostText.fontSize = 12;
+        view.CostText.color = ReputationColor;
+        view.CostText.alignment = TextAnchor.MiddleCenter;
+        view.CostText.raycastTarget = false;
+        var costLayout = costGo.AddComponent<LayoutElement>();
+        costLayout.preferredHeight = 16f;
+
+        // Purchase button
+        var btnGo = new GameObject("BuyButton");
+        btnGo.transform.SetParent(cardGo.transform, false);
+        var btnImg = btnGo.AddComponent<Image>();
+        btnImg.color = new Color(0.15f, 0.3f, 0.15f, 1f);
+        view.PurchaseButton = btnGo.AddComponent<Button>();
+        var btnLayout = btnGo.AddComponent<LayoutElement>();
+        btnLayout.preferredHeight = 20f;
+
+        var btnTextGo = new GameObject("ButtonText");
+        btnTextGo.transform.SetParent(btnGo.transform, false);
+        var btnRect = btnTextGo.AddComponent<RectTransform>();
+        btnRect.anchorMin = Vector2.zero;
+        btnRect.anchorMax = Vector2.one;
+        btnRect.offsetMin = Vector2.zero;
+        btnRect.offsetMax = Vector2.zero;
+        view.ButtonText = btnTextGo.AddComponent<Text>();
+        view.ButtonText.text = "BUY";
+        view.ButtonText.fontSize = 11;
+        view.ButtonText.fontStyle = FontStyle.Bold;
+        view.ButtonText.color = Color.white;
+        view.ButtonText.alignment = TextAnchor.MiddleCenter;
+        view.ButtonText.raycastTarget = false;
+
+        int capturedIndex = index;
+        view.PurchaseButton.onClick.AddListener(() => _onExpansionPurchase?.Invoke(capturedIndex));
+
+        return view;
+    }
+
+    /// <summary>
+    /// Populates the insider tips panel with mystery cards (Story 13.5, AC 2, 3).
+    /// Cards start face-down showing "?" and cost. After purchase they reveal the tip text.
+    /// </summary>
+    public void ShowTips(RunContext ctx, InsiderTipGenerator.TipOffering[] offering, System.Action<int> onPurchase)
+    {
+        _ctx = ctx;
+        _tipOffering = offering;
+        _onTipPurchase = onPurchase;
+
+        ClearTipCards();
+
+        if (_tipsPanel == null || offering == null || offering.Length == 0) return;
+
+        // Remove placeholder label if present
+        var contentLabel = _tipsPanel.transform.Find("TipsPanelContent");
+        if (contentLabel != null) contentLabel.gameObject.SetActive(false);
+
+        _tipCards = new TipCardView[offering.Length];
+        for (int i = 0; i < offering.Length; i++)
+        {
+            _tipCards[i] = CreateTipCard(i, offering[i], _tipsPanel.transform);
+            bool canAfford = ctx.Reputation.CanAfford(offering[i].Definition.Cost);
+            _tipCards[i].PurchaseButton.interactable = canAfford;
+            _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+            _tipCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        }
+    }
+
+    /// <summary>
+    /// Refreshes tip card after purchase — reveals the tip text (Story 13.5, AC 4, 5).
+    /// </summary>
+    public void RefreshTipAfterPurchase(int cardIndex)
+    {
+        UpdateCurrencyDisplays();
+
+        if (cardIndex >= 0 && _tipCards != null && cardIndex < _tipCards.Length)
+        {
+            // Reveal the tip card
+            _tipCards[cardIndex].IsRevealed = true;
+            _tipCards[cardIndex].PurchaseButton.interactable = false;
+            _tipCards[cardIndex].ButtonText.text = "REVEALED";
+
+            // Show tip type name and revealed text
+            if (_tipOffering != null && cardIndex < _tipOffering.Length)
+            {
+                var offering = _tipOffering[cardIndex];
+                _tipCards[cardIndex].NameText.text = FormatTipTypeName(offering.Definition.Type);
+                _tipCards[cardIndex].DescriptionText.text = offering.RevealedText;
+                _tipCards[cardIndex].DescriptionText.color = new Color(0.9f, 0.95f, 0.8f, 1f);
+            }
+
+            _tipCards[cardIndex].CardBackground.color = TipCardRevealedColor;
+        }
+
+        RefreshTipAffordability();
+        RefreshExpansionAffordability();
+        RefreshRelicAffordability();
+        UpdateRerollDisplay();
+    }
+
+    private void RefreshTipAffordability()
+    {
+        if (_tipOffering == null || _tipCards == null || _ctx == null) return;
+
+        for (int i = 0; i < _tipCards.Length && i < _tipOffering.Length; i++)
+        {
+            if (_tipCards[i].IsRevealed) continue;
+
+            bool canAfford = _ctx.Reputation.CanAfford(_tipOffering[i].Definition.Cost);
+            _tipCards[i].PurchaseButton.interactable = canAfford;
+            _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+            _tipCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        }
+    }
+
+    private TipCardView CreateTipCard(int index, InsiderTipGenerator.TipOffering offering, Transform parent)
+    {
+        var view = new TipCardView();
+        view.IsRevealed = false;
+
+        var cardGo = new GameObject($"TipCard_{index}");
+        cardGo.transform.SetParent(parent, false);
+        var cardRect = cardGo.AddComponent<RectTransform>();
+        view.CardBackground = cardGo.AddComponent<Image>();
+        view.CardBackground.color = TipCardFaceDownColor;
+        view.Root = cardGo;
+
+        var cardLayout = cardGo.AddComponent<LayoutElement>();
+        cardLayout.flexibleWidth = 1f;
+        cardLayout.preferredHeight = 80f;
+
+        var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 2f;
+        vlg.padding = new RectOffset(8, 8, 4, 4);
+        vlg.childAlignment = TextAnchor.UpperCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Name — face-down shows "INSIDER TIP"
+        var nameGo = new GameObject("Name");
+        nameGo.transform.SetParent(cardGo.transform, false);
+        view.NameText = nameGo.AddComponent<Text>();
+        view.NameText.text = "INSIDER TIP";
+        view.NameText.fontSize = 13;
+        view.NameText.fontStyle = FontStyle.Bold;
+        view.NameText.color = new Color(0.7f, 0.5f, 0.9f, 1f);
+        view.NameText.alignment = TextAnchor.MiddleCenter;
+        view.NameText.raycastTarget = false;
+        var nameLayout = nameGo.AddComponent<LayoutElement>();
+        nameLayout.preferredHeight = 18f;
+
+        // Description — face-down shows "?"
+        var descGo = new GameObject("Description");
+        descGo.transform.SetParent(cardGo.transform, false);
+        view.DescriptionText = descGo.AddComponent<Text>();
+        view.DescriptionText.text = "?";
+        view.DescriptionText.fontSize = 16;
+        view.DescriptionText.fontStyle = FontStyle.Bold;
+        view.DescriptionText.color = new Color(0.5f, 0.4f, 0.7f, 0.8f);
+        view.DescriptionText.alignment = TextAnchor.MiddleCenter;
+        view.DescriptionText.raycastTarget = false;
+        var descLayout = descGo.AddComponent<LayoutElement>();
+        descLayout.preferredHeight = 20f;
+
+        // Cost
+        var costGo = new GameObject("Cost");
+        costGo.transform.SetParent(cardGo.transform, false);
+        view.CostText = costGo.AddComponent<Text>();
+        view.CostText.text = $"\u2605 {offering.Definition.Cost}";
+        view.CostText.fontSize = 12;
+        view.CostText.color = ReputationColor;
+        view.CostText.alignment = TextAnchor.MiddleCenter;
+        view.CostText.raycastTarget = false;
+        var costLayout = costGo.AddComponent<LayoutElement>();
+        costLayout.preferredHeight = 16f;
+
+        // Purchase button
+        var btnGo = new GameObject("BuyButton");
+        btnGo.transform.SetParent(cardGo.transform, false);
+        var btnImg = btnGo.AddComponent<Image>();
+        btnImg.color = new Color(0.2f, 0.15f, 0.3f, 1f);
+        view.PurchaseButton = btnGo.AddComponent<Button>();
+        var btnLayout = btnGo.AddComponent<LayoutElement>();
+        btnLayout.preferredHeight = 20f;
+
+        var btnTextGo = new GameObject("ButtonText");
+        btnTextGo.transform.SetParent(btnGo.transform, false);
+        var btnRect = btnTextGo.AddComponent<RectTransform>();
+        btnRect.anchorMin = Vector2.zero;
+        btnRect.anchorMax = Vector2.one;
+        btnRect.offsetMin = Vector2.zero;
+        btnRect.offsetMax = Vector2.zero;
+        view.ButtonText = btnTextGo.AddComponent<Text>();
+        view.ButtonText.text = "BUY";
+        view.ButtonText.fontSize = 11;
+        view.ButtonText.fontStyle = FontStyle.Bold;
+        view.ButtonText.color = Color.white;
+        view.ButtonText.alignment = TextAnchor.MiddleCenter;
+        view.ButtonText.raycastTarget = false;
+
+        int capturedIndex = index;
+        view.PurchaseButton.onClick.AddListener(() => _onTipPurchase?.Invoke(capturedIndex));
+
+        return view;
+    }
+
+    private void ClearTipCards()
+    {
+        if (_tipCards != null)
+        {
+            for (int i = 0; i < _tipCards.Length; i++)
+            {
+                if (_tipCards[i].Root != null)
+                    Destroy(_tipCards[i].Root);
+            }
+            _tipCards = null;
+        }
+    }
+
+    private static string FormatTipTypeName(InsiderTipType type)
+    {
+        switch (type)
+        {
+            case InsiderTipType.PriceForecast: return "PRICE FORECAST";
+            case InsiderTipType.PriceFloor: return "PRICE FLOOR";
+            case InsiderTipType.PriceCeiling: return "PRICE CEILING";
+            case InsiderTipType.TrendDirection: return "TREND DIRECTION";
+            case InsiderTipType.EventForecast: return "EVENT FORECAST";
+            case InsiderTipType.EventCount: return "EVENT COUNT";
+            case InsiderTipType.VolatilityWarning: return "VOLATILITY WARNING";
+            case InsiderTipType.OpeningPrice: return "OPENING PRICE";
+            default: return "UNKNOWN";
+        }
+    }
+
+    private void ClearExpansionCards()
+    {
+        if (_expansionCards != null)
+        {
+            for (int i = 0; i < _expansionCards.Length; i++)
+            {
+                if (_expansionCards[i].Root != null)
+                    Destroy(_expansionCards[i].Root);
+            }
+            _expansionCards = null;
+        }
     }
 
     private void Update()

@@ -211,7 +211,7 @@ namespace BullRun.Tests.Core
         {
             var ctx = new RunContext(1, 1, new Portfolio(1000f));
             ctx.Portfolio.SubscribeToPriceUpdates();
-            ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceDirection, "Up"));
+            ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, "Up"));
             ctx.ResetForNewRun();
             Assert.AreEqual(0, ctx.RevealedTips.Count);
         }

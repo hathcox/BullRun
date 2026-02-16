@@ -64,9 +64,9 @@ namespace BullRun.Tests.Shop
             Assert.IsTrue(fired, "ShopOpenedEvent should fire on store open");
             Assert.AreEqual(_ctx.CurrentRound, received.RoundNumber);
             Assert.AreEqual(_ctx.Reputation.Current, received.CurrentReputation);
-            // Placeholder sections not yet available (13.3-13.6)
-            Assert.IsFalse(received.ExpansionsAvailable);
-            Assert.IsFalse(received.TipsAvailable);
+            // Expansions (13.4) and Tips (13.5) are now generated; Bonds (13.6) still placeholder
+            Assert.IsTrue(received.ExpansionsAvailable);
+            Assert.IsTrue(received.TipsAvailable);
             Assert.IsFalse(received.BondAvailable);
         }
 

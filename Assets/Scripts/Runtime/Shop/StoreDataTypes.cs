@@ -35,11 +35,16 @@ public struct RevealedTip
 }
 
 /// <summary>
-/// Types of insider tips that can be revealed in the shop.
+/// Types of insider tips that can be revealed in the shop (Story 13.5).
 /// </summary>
 public enum InsiderTipType
 {
-    PriceDirection,
-    EventWarning,
-    SectorTrend
+    PriceForecast,
+    PriceFloor,
+    PriceCeiling,
+    TrendDirection,
+    EventForecast,
+    EventCount,
+    VolatilityWarning,
+    OpeningPrice
 }

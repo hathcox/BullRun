@@ -231,6 +231,17 @@ public struct ShopExpansionPurchasedEvent
 }
 
 /// <summary>
+/// Fired when the player purchases an insider tip from the shop (Story 13.5, AC 9).
+/// </summary>
+public struct InsiderTipPurchasedEvent
+{
+    public InsiderTipType TipType;
+    public string RevealedText;
+    public int Cost;
+    public int RemainingReputation;
+}
+
+/// <summary>
 /// Fired when the store closes (player clicked Next Round).
 /// FIX-12: Remaining balance is in Reputation, not cash.
 /// 13.2: Added per-section purchase counts for analytics.

@@ -23,6 +23,17 @@ public class ShopState : IGameState
     private System.Random _random;
     private int _randomSeedOverride = -1;
 
+    // Expansion panel state (Story 13.4)
+    private ExpansionManager _expansionManager;
+    private ExpansionDef[] _expansionOffering;
+    private int _expansionsPurchasedCount;
+
+    // Insider tips panel state (Story 13.5)
+    private InsiderTipGenerator _tipGenerator;
+    private InsiderTipGenerator.TipOffering[] _tipOffering;
+    private bool[] _tipPurchased;
+    private int _tipsPurchasedCount;
+
     public static ShopStateConfig NextConfig;
 
     /// <summary>
@@ -54,6 +65,19 @@ public class ShopState : IGameState
         _purchasedItemIds = new List<string>();
         _shopTransaction = new ShopTransaction();
         _shopActive = true;
+        _expansionsPurchasedCount = 0;
+
+        // Generate expansion offering (Story 13.4)
+        _expansionManager = new ExpansionManager(ctx);
+        _expansionOffering = _expansionManager.GetAvailableForShop(GameConfig.ExpansionsPerShopVisit, _random);
+
+        // Generate insider tip offering (Story 13.5)
+        _tipGenerator = new InsiderTipGenerator();
+        int nextRound = ctx.CurrentRound + 1;
+        int nextAct = RunContext.GetActForRound(nextRound);
+        _tipOffering = _tipGenerator.GenerateTips(ctx.InsiderTipSlots, nextRound, nextAct, _random);
+        _tipPurchased = new bool[_tipOffering.Length];
+        _tipsPurchasedCount = 0;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[ShopState] Generated relics: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
@@ -65,6 +89,12 @@ public class ShopState : IGameState
             ShopUIInstance.ShowRelics(ctx, _relicOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
             ShopUIInstance.SetOnRerollCallback(() => OnRerollRequested(ctx));
+
+            // Populate expansion panel (Story 13.4)
+            ShopUIInstance.ShowExpansions(ctx, _expansionOffering, (cardIndex) => OnExpansionPurchaseRequested(ctx, cardIndex));
+
+            // Populate insider tips panel (Story 13.5)
+            ShopUIInstance.ShowTips(ctx, _tipOffering, (cardIndex) => OnTipPurchaseRequested(ctx, cardIndex));
         }
 
         // Publish shop opened event — only include non-null items
@@ -89,8 +119,8 @@ public class ShopState : IGameState
             RoundNumber = ctx.CurrentRound,
             AvailableItems = availableItems,
             CurrentReputation = ctx.Reputation.Current,
-            ExpansionsAvailable = false, // Placeholder — Stories 13.4+
-            TipsAvailable = false,       // Placeholder — Story 13.5
+            ExpansionsAvailable = _expansionOffering.Length > 0,
+            TipsAvailable = _tipOffering != null && _tipOffering.Length > 0,
             BondAvailable = false        // Placeholder — Story 13.6
         });
 
@@ -116,8 +146,8 @@ public class ShopState : IGameState
                 ReputationRemaining = ctx.Reputation.Current,
                 RoundNumber = ctx.CurrentRound,
                 RelicsPurchased = _purchasedItemIds?.Count ?? 0,
-                ExpansionsPurchased = 0,
-                TipsPurchased = 0,
+                ExpansionsPurchased = _expansionsPurchasedCount,
+                TipsPurchased = _tipsPurchasedCount,
                 BondsPurchased = 0
             });
         }
@@ -212,6 +242,68 @@ public class ShopState : IGameState
     }
 
     /// <summary>
+    /// Called when player clicks an expansion buy button (Story 13.4, AC 3, 5, 8).
+    /// Delegates to ShopTransaction.PurchaseExpansion for atomic purchase.
+    /// </summary>
+    private void OnExpansionPurchaseRequested(RunContext ctx, int cardIndex)
+    {
+        if (!_shopActive) return;
+        if (_expansionOffering == null) return;
+        if (cardIndex < 0 || cardIndex >= _expansionOffering.Length) return;
+
+        var expansion = _expansionOffering[cardIndex];
+        if (ctx.OwnedExpansions.Contains(expansion.Id)) return;
+
+        var result = _shopTransaction.PurchaseExpansion(ctx, expansion.Id, expansion.Name, expansion.Cost);
+
+        if (result == ShopPurchaseResult.Success)
+        {
+            _expansionsPurchasedCount++;
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshExpansionAfterPurchase(cardIndex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player clicks a tip buy button (Story 13.5, AC 6, 8, 9).
+    /// Delegates to ShopTransaction.PurchaseTip for atomic purchase.
+    /// Fires InsiderTipPurchasedEvent on success.
+    /// </summary>
+    private void OnTipPurchaseRequested(RunContext ctx, int cardIndex)
+    {
+        if (!_shopActive) return;
+        if (_tipOffering == null) return;
+        if (cardIndex < 0 || cardIndex >= _tipOffering.Length) return;
+        if (_tipPurchased[cardIndex]) return;
+
+        var offering = _tipOffering[cardIndex];
+        var tip = new RevealedTip(offering.Definition.Type, offering.RevealedText);
+        var result = _shopTransaction.PurchaseTip(ctx, tip, offering.Definition.Cost);
+
+        if (result == ShopPurchaseResult.Success)
+        {
+            _tipPurchased[cardIndex] = true;
+            _tipsPurchasedCount++;
+
+            EventBus.Publish(new InsiderTipPurchasedEvent
+            {
+                TipType = offering.Definition.Type,
+                RevealedText = offering.RevealedText,
+                Cost = offering.Definition.Cost,
+                RemainingReputation = ctx.Reputation.Current
+            });
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshTipAfterPurchase(cardIndex);
+            }
+        }
+    }
+
+    /// <summary>
     /// Closes the shop (player clicked Continue button).
     /// Publishes ShopClosedEvent, advances round, and transitions to next state.
     /// </summary>
@@ -227,8 +319,8 @@ public class ShopState : IGameState
             ReputationRemaining = ctx.Reputation.Current,
             RoundNumber = ctx.CurrentRound,
             RelicsPurchased = _purchasedItemIds.Count,
-            ExpansionsPurchased = 0,
-            TipsPurchased = 0,
+            ExpansionsPurchased = _expansionsPurchasedCount,
+            TipsPurchased = _tipsPurchasedCount,
             BondsPurchased = 0
         });
 
