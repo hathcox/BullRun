@@ -58,7 +58,7 @@ public static class GameConfig
     public static readonly int TipCostOpeningPrice = 20;
 
     // Store: expansion costs in Reputation (Epic 13, Story 13.4)
-    public static readonly int ExpansionCostMultiStock = 80;
+    // FIX-15: ExpansionCostMultiStock removed — Multi-Stock expansion permanently removed
     public static readonly int ExpansionCostLeverage = 60;
     public static readonly int ExpansionCostExpandedInventory = 50;
     public static readonly int ExpansionCostDualShort = 70;

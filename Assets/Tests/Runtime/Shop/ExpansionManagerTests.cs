@@ -29,9 +29,10 @@ namespace BullRun.Tests.Shop
         // === ExpansionDefinitions data ===
 
         [Test]
-        public void ExpansionDefinitions_HasSixExpansions()
+        public void ExpansionDefinitions_HasFiveExpansions()
         {
-            Assert.AreEqual(6, ExpansionDefinitions.All.Length);
+            // FIX-15: Multi-Stock removed, 5 expansions remain
+            Assert.AreEqual(5, ExpansionDefinitions.All.Length);
         }
 
         [Test]
@@ -48,11 +49,11 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ExpansionDefinitions_CostsMatchGameConfig()
         {
+            // FIX-15: Multi-Stock removed, 5 expansions remain
             var byId = new System.Collections.Generic.Dictionary<string, int>();
             for (int i = 0; i < ExpansionDefinitions.All.Length; i++)
                 byId[ExpansionDefinitions.All[i].Id] = ExpansionDefinitions.All[i].Cost;
 
-            Assert.AreEqual(GameConfig.ExpansionCostMultiStock, byId["multi_stock_trading"]);
             Assert.AreEqual(GameConfig.ExpansionCostLeverage, byId["leverage_trading"]);
             Assert.AreEqual(GameConfig.ExpansionCostExpandedInventory, byId["expanded_inventory"]);
             Assert.AreEqual(GameConfig.ExpansionCostDualShort, byId["dual_short"]);
@@ -79,15 +80,15 @@ namespace BullRun.Tests.Shop
         [Test]
         public void IsOwned_ReturnsFalseWhenNotOwned()
         {
-            Assert.IsFalse(_manager.IsOwned("multi_stock_trading"));
+            Assert.IsFalse(_manager.IsOwned("leverage_trading"));
         }
 
         [Test]
         public void IsOwned_ReturnsTrueAfterPurchase()
         {
-            _transaction.PurchaseExpansion(_ctx, "multi_stock_trading", "Multi-Stock Trading",
-                GameConfig.ExpansionCostMultiStock);
-            Assert.IsTrue(_manager.IsOwned("multi_stock_trading"));
+            _transaction.PurchaseExpansion(_ctx, "leverage_trading", "Leverage Trading",
+                GameConfig.ExpansionCostLeverage);
+            Assert.IsTrue(_manager.IsOwned("leverage_trading"));
         }
 
         // === Purchase via ShopTransaction ===
@@ -95,7 +96,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PurchaseExpansion_AddsToOwnedExpansions()
         {
-            var expansion = ExpansionDefinitions.All[1]; // leverage_trading
+            var expansion = ExpansionDefinitions.All[0]; // leverage_trading (FIX-15: index shifted)
             _transaction.PurchaseExpansion(_ctx, expansion.Id, expansion.Name, expansion.Cost);
             Assert.AreEqual(1, _ctx.OwnedExpansions.Count);
             Assert.IsTrue(_ctx.OwnedExpansions.Contains("leverage_trading"));
@@ -104,7 +105,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PurchaseExpansion_DoesNotDuplicate()
         {
-            var expansion = ExpansionDefinitions.All[1]; // leverage_trading
+            var expansion = ExpansionDefinitions.All[0]; // leverage_trading (FIX-15: index shifted)
             _transaction.PurchaseExpansion(_ctx, expansion.Id, expansion.Name, expansion.Cost);
             _transaction.PurchaseExpansion(_ctx, expansion.Id, expansion.Name, expansion.Cost);
             Assert.AreEqual(1, _ctx.OwnedExpansions.Count);
@@ -122,24 +123,24 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GetAvailableForShop_ExcludesOwnedExpansions()
         {
-            _ctx.OwnedExpansions.Add("multi_stock_trading");
+            // FIX-15: Multi-Stock removed, use remaining expansions
             _ctx.OwnedExpansions.Add("leverage_trading");
+            _ctx.OwnedExpansions.Add("expanded_inventory");
 
             var available = _manager.GetAvailableForShop(3, new System.Random(42));
             Assert.AreEqual(3, available.Length);
 
             for (int i = 0; i < available.Length; i++)
             {
-                Assert.AreNotEqual("multi_stock_trading", available[i].Id);
                 Assert.AreNotEqual("leverage_trading", available[i].Id);
+                Assert.AreNotEqual("expanded_inventory", available[i].Id);
             }
         }
 
         [Test]
         public void GetAvailableForShop_ReturnsFewerWhenPoolExhausted()
         {
-            // Own 5 of 6 expansions
-            _ctx.OwnedExpansions.Add("multi_stock_trading");
+            // FIX-15: Own 4 of 5 expansions
             _ctx.OwnedExpansions.Add("leverage_trading");
             _ctx.OwnedExpansions.Add("expanded_inventory");
             _ctx.OwnedExpansions.Add("dual_short");
@@ -166,7 +167,7 @@ namespace BullRun.Tests.Shop
             var a = _manager.GetAvailableForShop(3, new System.Random(1));
             var b = _manager.GetAvailableForShop(3, new System.Random(999));
 
-            // With only 6 expansions and 3 picks, different seeds should sometimes yield different orderings
+            // FIX-15: With 5 expansions and 3 picks, different seeds should sometimes yield different orderings
             // At minimum, both should be valid (3 items, no duplicates)
             Assert.AreEqual(3, a.Length);
             Assert.AreEqual(3, b.Length);
@@ -221,22 +222,22 @@ namespace BullRun.Tests.Shop
         [Test]
         public void OwnedExpansions_PersistAcrossRoundTransitions()
         {
-            _ctx.OwnedExpansions.Add("multi_stock_trading");
             _ctx.OwnedExpansions.Add("leverage_trading");
+            _ctx.OwnedExpansions.Add("dual_short");
 
             // Simulate round transition
             _ctx.CurrentShopRerollCount = 0;
             _ctx.RevealedTips.Clear();
 
             Assert.AreEqual(2, _ctx.OwnedExpansions.Count);
-            Assert.IsTrue(_ctx.OwnedExpansions.Contains("multi_stock_trading"));
             Assert.IsTrue(_ctx.OwnedExpansions.Contains("leverage_trading"));
+            Assert.IsTrue(_ctx.OwnedExpansions.Contains("dual_short"));
         }
 
         [Test]
         public void GetAvailableForShop_PoolShrinksAsExpansionsPurchased()
         {
-            // Start: 6 available
+            // FIX-15: Start with 5 available (Multi-Stock removed)
             var first = _manager.GetAvailableForShop(3, new System.Random(42));
             Assert.AreEqual(3, first.Length);
 
@@ -244,9 +245,9 @@ namespace BullRun.Tests.Shop
             for (int i = 0; i < first.Length; i++)
                 _ctx.OwnedExpansions.Add(first[i].Id);
 
-            // Now only 3 remain
+            // Now only 2 remain
             var second = _manager.GetAvailableForShop(3, new System.Random(42));
-            Assert.AreEqual(3, second.Length);
+            Assert.AreEqual(2, second.Length);
 
             // None of the second batch should overlap with first
             for (int i = 0; i < second.Length; i++)

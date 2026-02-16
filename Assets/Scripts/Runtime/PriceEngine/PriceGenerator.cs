@@ -134,9 +134,10 @@ public class PriceGenerator
 
     /// <summary>
     /// Creates stock instances for a new round by selecting from named stock pools.
+    /// FIX-15: Always spawns exactly the count specified by tier config (1 stock per round).
     /// For Mid-Value and Blue Chip tiers, stocks in the same sector share a trend direction.
     /// </summary>
-    public void InitializeRound(int act, int round, int stockCountOverride = -1)
+    public void InitializeRound(int act, int round)
     {
         _activeStocks.Clear();
 
@@ -145,7 +146,7 @@ public class PriceGenerator
         // Only create stocks for this act's tier (not all tiers)
         StockTier tier = RunContext.GetTierForAct(act);
         {
-            var selections = SelectStocksForRound(tier, stockCountOverride);
+            var selections = SelectStocksForRound(tier);
             var config = StockTierData.GetTierConfig(tier);
 
             // For Mid/Blue tiers, pre-compute sector trend directions
@@ -199,12 +200,13 @@ public class PriceGenerator
 
     /// <summary>
     /// Selects a random subset of stocks from a tier's pool for a round.
+    /// FIX-15: Count always driven by tier config (1 stock per round).
     /// </summary>
-    public List<StockDefinition> SelectStocksForRound(StockTier tier, int countOverride = -1)
+    public List<StockDefinition> SelectStocksForRound(StockTier tier)
     {
         var pool = StockPoolData.GetPool(tier);
         var config = StockTierData.GetTierConfig(tier);
-        int count = countOverride > 0 ? countOverride : _random.Next(config.MinStocksPerRound, config.MaxStocksPerRound + 1);
+        int count = _random.Next(config.MinStocksPerRound, config.MaxStocksPerRound + 1);
 
         // Clamp to pool size
         if (count > pool.Length)

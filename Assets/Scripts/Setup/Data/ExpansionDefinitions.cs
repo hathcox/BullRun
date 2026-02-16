@@ -34,9 +34,7 @@ public static class ExpansionDefinitions
 
     public static readonly ExpansionDef[] All = new ExpansionDef[]
     {
-        new ExpansionDef(MultiStockTrading, "Multi-Stock Trading",
-            "Trade 2 stocks simultaneously per round",
-            GameConfig.ExpansionCostMultiStock),
+        // FIX-15: Multi-Stock Trading expansion removed — single stock per round is permanent
         new ExpansionDef(LeverageTrading, "Leverage Trading",
             "Trade with 2x leverage (double gains/losses)",
             GameConfig.ExpansionCostLeverage),
@@ -44,7 +42,7 @@ public static class ExpansionDefinitions
             "+2 relic slots (5 \u2192 7 max)",
             GameConfig.ExpansionCostExpandedInventory),
         new ExpansionDef(DualShort, "Dual Short",
-            "Short a second stock simultaneously",
+            "Open a second short position simultaneously",
             GameConfig.ExpansionCostDualShort),
         new ExpansionDef(IntelExpansion, "Intel Expansion",
             "+1 Insider Tip slot per shop visit (2 \u2192 3)",

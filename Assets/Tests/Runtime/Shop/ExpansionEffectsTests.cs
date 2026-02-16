@@ -23,53 +23,24 @@ namespace BullRun.Tests.Shop
             EventBus.Clear();
         }
 
-        // === Multi-Stock Trading (AC 1) ===
+        // === FIX-15: Single Stock Per Round (permanent) ===
 
         [Test]
-        public void MultiStock_PriceGeneratorSpawns2Stocks_WhenExpansionOwned()
+        public void SingleStock_PriceGeneratorSpawns1Stock()
         {
             var pg = new PriceGenerator();
-            pg.InitializeRound(1, 1, 2);
-            Assert.AreEqual(2, pg.ActiveStocks.Count);
+            pg.InitializeRound(1, 1);
+            Assert.AreEqual(1, pg.ActiveStocks.Count,
+                "FIX-15: Should always spawn exactly 1 stock per round");
         }
 
         [Test]
-        public void MultiStock_OverrideOf1_SpawnsSingleStock()
+        public void SingleStock_SelectStocksForRound_Returns1Stock()
         {
             var pg = new PriceGenerator();
-            pg.InitializeRound(1, 1, 1); // explicit override to 1
-            Assert.AreEqual(1, pg.ActiveStocks.Count);
-        }
-
-        [Test]
-        public void MultiStock_SelectStocksForRound_RespectsCountOverride()
-        {
-            var pg = new PriceGenerator();
-            var stocks = pg.SelectStocksForRound(StockTier.Penny, 2);
-            Assert.AreEqual(2, stocks.Count);
-        }
-
-        [Test]
-        public void MultiStock_SelectStocksForRound_DefaultUsesConfig()
-        {
-            var pg = new PriceGenerator();
-            var config = StockTierData.GetTierConfig(StockTier.Penny);
             var stocks = pg.SelectStocksForRound(StockTier.Penny);
-            // Default count comes from tier config range
-            Assert.GreaterOrEqual(stocks.Count, config.MinStocksPerRound);
-            Assert.LessOrEqual(stocks.Count, config.MaxStocksPerRound);
-        }
-
-        [Test]
-        public void MultiStock_StocksAreDistinct()
-        {
-            var pg = new PriceGenerator();
-            pg.InitializeRound(1, 1, 2);
-            Assert.AreEqual(2, pg.ActiveStocks.Count);
-            Assert.AreNotEqual(pg.ActiveStocks[0].StockId, pg.ActiveStocks[1].StockId,
-                "Multi-stock should produce distinct stock IDs");
-            Assert.AreNotEqual(pg.ActiveStocks[0].TickerSymbol, pg.ActiveStocks[1].TickerSymbol,
-                "Multi-stock should produce distinct tickers");
+            Assert.AreEqual(1, stocks.Count,
+                "FIX-15: SelectStocksForRound should return exactly 1 stock");
         }
 
         // === Leverage Trading (AC 2) ===
@@ -314,56 +285,35 @@ namespace BullRun.Tests.Shop
         [Test]
         public void HasExpansion_StaticMethod_Works()
         {
-            _ctx.OwnedExpansions.Add(ExpansionDefinitions.MultiStockTrading);
-            Assert.IsTrue(ExpansionManager.HasExpansion(_ctx, ExpansionDefinitions.MultiStockTrading));
+            _ctx.OwnedExpansions.Add(ExpansionDefinitions.DualShort);
+            Assert.IsTrue(ExpansionManager.HasExpansion(_ctx, ExpansionDefinitions.DualShort));
             Assert.IsFalse(ExpansionManager.HasExpansion(_ctx, ExpansionDefinitions.LeverageTrading));
         }
 
-        // === Event system with multi-stock (AC 1) ===
-
-        [Test]
-        public void EventScheduler_FiresOnMultipleStocks()
-        {
-            var effects = new EventEffects();
-            var scheduler = new EventScheduler(effects, new System.Random(42));
-
-            // Create 2 stock instances
-            var stocks = new List<StockInstance>();
-            var stock1 = new StockInstance();
-            stock1.Initialize(0, "AAA", StockTier.Penny, 5f, TrendDirection.Bull, 0.01f, StockSector.None);
-            var stock2 = new StockInstance();
-            stock2.Initialize(1, "BBB", StockTier.Penny, 6f, TrendDirection.Bear, 0.01f, StockSector.None);
-            stocks.Add(stock1);
-            stocks.Add(stock2);
-
-            effects.SetActiveStocks(stocks);
-
-            // Fire events — with 2 stocks, random targeting should work
-            var config = new MarketEventConfig(MarketEventType.EarningsBeat,
-                0.1f, 0.3f, 5f, new[] { StockTier.Penny }, 0.8f);
-
-            // Fire multiple events to test random targeting
-            for (int i = 0; i < 10; i++)
-            {
-                scheduler.FireEvent(config, stocks);
-            }
-
-            // Should not throw — validates multi-stock event compatibility
-            Assert.Pass();
-        }
-
-        // === Expansion ID constants (review fix) ===
+        // === Expansion ID constants (review fix, FIX-15: Multi-Stock removed) ===
 
         [Test]
         public void ExpansionDefinitions_AllIdsMatchConstants()
         {
-            // Verify the constants match the actual definitions to catch drift
-            Assert.AreEqual(ExpansionDefinitions.MultiStockTrading, ExpansionDefinitions.All[0].Id);
-            Assert.AreEqual(ExpansionDefinitions.LeverageTrading, ExpansionDefinitions.All[1].Id);
-            Assert.AreEqual(ExpansionDefinitions.ExpandedInventory, ExpansionDefinitions.All[2].Id);
-            Assert.AreEqual(ExpansionDefinitions.DualShort, ExpansionDefinitions.All[3].Id);
-            Assert.AreEqual(ExpansionDefinitions.IntelExpansion, ExpansionDefinitions.All[4].Id);
-            Assert.AreEqual(ExpansionDefinitions.ExtendedTrading, ExpansionDefinitions.All[5].Id);
+            // FIX-15: Multi-Stock removed — 5 expansions total
+            Assert.AreEqual(5, ExpansionDefinitions.All.Length,
+                "FIX-15: Should have exactly 5 expansions (Multi-Stock removed)");
+            Assert.AreEqual(ExpansionDefinitions.LeverageTrading, ExpansionDefinitions.All[0].Id);
+            Assert.AreEqual(ExpansionDefinitions.ExpandedInventory, ExpansionDefinitions.All[1].Id);
+            Assert.AreEqual(ExpansionDefinitions.DualShort, ExpansionDefinitions.All[2].Id);
+            Assert.AreEqual(ExpansionDefinitions.IntelExpansion, ExpansionDefinitions.All[3].Id);
+            Assert.AreEqual(ExpansionDefinitions.ExtendedTrading, ExpansionDefinitions.All[4].Id);
+        }
+
+        [Test]
+        public void ExpansionDefinitions_MultiStockNotInAll()
+        {
+            // FIX-15: Verify Multi-Stock is permanently gone from All array
+            for (int i = 0; i < ExpansionDefinitions.All.Length; i++)
+            {
+                Assert.AreNotEqual(ExpansionDefinitions.MultiStockTrading, ExpansionDefinitions.All[i].Id,
+                    "FIX-15: Multi-Stock Trading should not be in ExpansionDefinitions.All");
+            }
         }
     }
 }

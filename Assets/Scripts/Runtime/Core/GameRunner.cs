@@ -23,9 +23,6 @@ public class GameRunner : MonoBehaviour
     private EventScheduler _eventScheduler;
     private QuantitySelector _quantitySelector;
     private PositionOverlay _positionOverlay;
-    private StockSidebar _stockSidebar;
-    private int _selectedStockIndex;
-    private bool _multiStockActive;
     private bool _firstFrameSkipped;
     private bool _tradePanelVisible;
 
@@ -105,9 +102,7 @@ public class GameRunner : MonoBehaviour
         UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
 
-        // Create stock sidebar (hidden by default, shown when Multi-Stock expansion is active)
-        _stockSidebar = UISetup.ExecuteSidebar(4);
-        _stockSidebar.gameObject.SetActive(false);
+        // FIX-15: Stock sidebar removed — single stock per round is permanent
         // FIX-7: Compact position overlay replaces old right-side PositionPanel
         _positionOverlay = UISetup.ExecutePositionOverlay(_ctx.Portfolio);
 
@@ -152,11 +147,7 @@ public class GameRunner : MonoBehaviour
         EventBus.Subscribe<RoundStartedEvent>(OnRoundStartedForShort);
 
         // FIX-7: Wire position overlay to track the active stock
-        // Story 13.7: Also initializes multi-stock sidebar when expansion is active
         EventBus.Subscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
-
-        // Story 13.7: Track selected stock for multi-stock trading
-        EventBus.Subscribe<StockSelectedEvent>(OnStockSelected);
 
         // Create event display systems (subscribe to MarketEventFiredEvent)
         UISetup.ExecuteNewsBanner();
@@ -245,12 +236,11 @@ public class GameRunner : MonoBehaviour
         EventBus.Unsubscribe<TradingPhaseEndedEvent>(OnTradingPhaseEnded);
         EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStartedForShort);
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
-        EventBus.Unsubscribe<StockSelectedEvent>(OnStockSelected);
     }
 
     /// <summary>
     /// FIX-7: Sets the position overlay's active stock when the market opens.
-    /// Story 13.7: Initializes multi-stock sidebar when expansion is active.
+    /// FIX-15: Multi-stock sidebar removed — single stock per round is permanent.
     /// </summary>
     private void OnMarketOpenForOverlay(MarketOpenEvent evt)
     {
@@ -267,38 +257,6 @@ public class GameRunner : MonoBehaviour
         _dualShortActive = _ctx.OwnedExpansions.Contains(ExpansionDefinitions.DualShort);
         if (_quantitySelector.Short2Container != null)
             _quantitySelector.Short2Container.SetActive(_dualShortActive);
-
-        // Story 13.7: Multi-Stock sidebar initialization
-        _multiStockActive = _priceGenerator.ActiveStocks.Count > 1;
-        if (_multiStockActive && _stockSidebar != null)
-        {
-            _stockSidebar.gameObject.SetActive(true);
-            _stockSidebar.Data.InitializeForRound(
-                new System.Collections.Generic.List<StockInstance>(_priceGenerator.ActiveStocks));
-            _selectedStockIndex = 0;
-        }
-        else if (_stockSidebar != null)
-        {
-            _stockSidebar.gameObject.SetActive(false);
-            _selectedStockIndex = 0;
-        }
-    }
-
-    /// <summary>
-    /// Story 13.7: Updates selected stock index when player selects a stock via sidebar.
-    /// </summary>
-    private void OnStockSelected(StockSelectedEvent evt)
-    {
-        for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
-        {
-            if (_priceGenerator.ActiveStocks[i].StockId == evt.StockId)
-            {
-                _selectedStockIndex = i;
-                if (_positionOverlay != null)
-                    _positionOverlay.SetActiveStock(evt.StockId);
-                break;
-            }
-        }
     }
 
     // ========================
@@ -1007,20 +965,29 @@ public class GameRunner : MonoBehaviour
     // Utility
     // ========================
 
+    /// <summary>
+    /// FIX-15: Always returns the single active stock's ID.
+    /// </summary>
     private int GetSelectedStockId()
     {
         if (_priceGenerator.ActiveStocks.Count == 0) return -1;
-        int idx = _selectedStockIndex < _priceGenerator.ActiveStocks.Count ? _selectedStockIndex : 0;
-        return _priceGenerator.ActiveStocks[idx].StockId;
+        return _priceGenerator.ActiveStocks[0].StockId;
     }
 
+    /// <summary>
+    /// FIX-15: Always returns the single active stock's ticker.
+    /// </summary>
     private string GetSelectedTicker()
     {
         if (_priceGenerator.ActiveStocks.Count == 0) return "???";
-        int idx = _selectedStockIndex < _priceGenerator.ActiveStocks.Count ? _selectedStockIndex : 0;
-        return _priceGenerator.ActiveStocks[idx].TickerSymbol;
+        return _priceGenerator.ActiveStocks[0].TickerSymbol;
     }
 
+    /// <summary>
+    /// Returns the current price for a given stock ID.
+    /// FIX-15: With single stock, this is always ActiveStocks[0] but we keep the
+    /// ID-based lookup for Dual Short which tracks stockId per short position.
+    /// </summary>
     private float GetStockPrice(int stockId)
     {
         if (_priceGenerator.ActiveStocks.Count == 0) return 0f;

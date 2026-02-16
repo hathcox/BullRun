@@ -249,7 +249,7 @@ namespace BullRun.Tests.Events
         // --- Task 3: Event firing with stock targeting ---
 
         [Test]
-        public void FireEvent_MarketCrash_TargetsAnActiveStock()
+        public void FireEvent_MarketCrash_TargetsFirstActiveStock()
         {
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
@@ -258,15 +258,13 @@ namespace BullRun.Tests.Events
 
             Assert.IsNotNull(received.AffectedStockIds, "MarketCrash should target an active stock");
             Assert.AreEqual(1, received.AffectedStockIds.Length);
-            // Story 13.7: With multi-stock, events randomly target any active stock
-            Assert.IsTrue(
-                received.AffectedStockIds[0] == _activeStocks[0].StockId ||
-                received.AffectedStockIds[0] == _activeStocks[1].StockId,
-                "Should target one of the active stocks");
+            // FIX-15: Always targets activeStocks[0]
+            Assert.AreEqual(_activeStocks[0].StockId, received.AffectedStockIds[0],
+                "FIX-15: Should always target the first active stock");
         }
 
         [Test]
-        public void FireEvent_BullRunEvent_TargetsAnActiveStock()
+        public void FireEvent_BullRunEvent_TargetsFirstActiveStock()
         {
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
@@ -275,15 +273,13 @@ namespace BullRun.Tests.Events
 
             Assert.IsNotNull(received.AffectedStockIds, "BullRun should target an active stock");
             Assert.AreEqual(1, received.AffectedStockIds.Length);
-            // Story 13.7: With multi-stock, events randomly target any active stock
-            Assert.IsTrue(
-                received.AffectedStockIds[0] == _activeStocks[0].StockId ||
-                received.AffectedStockIds[0] == _activeStocks[1].StockId,
-                "Should target one of the active stocks");
+            // FIX-15: Always targets activeStocks[0]
+            Assert.AreEqual(_activeStocks[0].StockId, received.AffectedStockIds[0],
+                "FIX-15: Should always target the first active stock");
         }
 
         [Test]
-        public void FireEvent_StockSpecificEvent_TargetsAnActiveStock()
+        public void FireEvent_StockSpecificEvent_TargetsFirstActiveStock()
         {
             MarketEventFiredEvent received = default;
             EventBus.Subscribe<MarketEventFiredEvent>(e => received = e);
@@ -292,12 +288,9 @@ namespace BullRun.Tests.Events
 
             Assert.IsNotNull(received.AffectedStockIds, "EarningsBeat should target a specific stock");
             Assert.AreEqual(1, received.AffectedStockIds.Length);
-
-            // Story 13.7: With multi-stock, events randomly target any active stock
-            Assert.IsTrue(
-                received.AffectedStockIds[0] == _activeStocks[0].StockId ||
-                received.AffectedStockIds[0] == _activeStocks[1].StockId,
-                "Should target one of the active stocks");
+            // FIX-15: Always targets activeStocks[0]
+            Assert.AreEqual(_activeStocks[0].StockId, received.AffectedStockIds[0],
+                "FIX-15: Should always target the first active stock");
         }
 
         [Test]

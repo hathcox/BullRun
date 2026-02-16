@@ -168,16 +168,15 @@ public class EventScheduler
 
     /// <summary>
     /// Creates a MarketEvent instance and fires it via EventEffects.StartEvent().
-    /// Targets a randomly selected active stock (Story 13.7: multi-stock support).
+    /// FIX-15: Always targets activeStocks[0] — single stock per round is permanent.
     /// </summary>
     public void FireEvent(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
     {
         if (activeStocks.Count == 0)
             return;
 
-        // Target a random active stock (supports 1 or 2+ stocks)
-        int targetIndex = activeStocks.Count == 1 ? 0 : _random.Next(activeStocks.Count);
-        int targetStockId = activeStocks[targetIndex].StockId;
+        // FIX-15: Always target the single active stock
+        int targetStockId = activeStocks[0].StockId;
 
         // Roll price effect between min and max
         float priceEffect = RandomRange(config.MinPriceEffect, config.MaxPriceEffect);
@@ -243,8 +242,8 @@ public class EventScheduler
     }
 
     /// <summary>
-    /// Fires a sector rotation effect. With 1 stock: random direction.
-    /// With 2+ stocks: opposite effects on different stocks (Story 13.7).
+    /// Fires a sector rotation effect on the single active stock with random direction.
+    /// FIX-15: Multi-stock branch removed — single stock per round is permanent.
     /// </summary>
     private void FireSectorRotation(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
     {
@@ -253,30 +252,15 @@ public class EventScheduler
 
         float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect);
 
-        if (activeStocks.Count == 1)
-        {
-            // Single stock: random direction
-            bool isPositive = _random.NextDouble() >= 0.5;
-            float effect = isPositive ? rotationPercent : -rotationPercent;
-            var evt = new MarketEvent(config.EventType, activeStocks[0].StockId, effect, config.Duration);
-            _eventEffects.StartEvent(evt);
+        // Single stock: random direction
+        bool isPositive = _random.NextDouble() >= 0.5;
+        float effect = isPositive ? rotationPercent : -rotationPercent;
+        var evt = new MarketEvent(config.EventType, activeStocks[0].StockId, effect, config.Duration);
+        _eventEffects.StartEvent(evt);
 
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Events] SectorRotation fired on {activeStocks[0].TickerSymbol}: {effect:+0.0%;-0.0%} over {config.Duration}s");
-            #endif
-        }
-        else
-        {
-            // Multi-stock: first stock positive, second stock negative (rotation between them)
-            var evtUp = new MarketEvent(config.EventType, activeStocks[0].StockId, rotationPercent, config.Duration);
-            var evtDown = new MarketEvent(config.EventType, activeStocks[1].StockId, -rotationPercent, config.Duration);
-            _eventEffects.StartEvent(evtUp);
-            _eventEffects.StartEvent(evtDown);
-
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Events] SectorRotation: {activeStocks[0].TickerSymbol} +{rotationPercent:P0}, {activeStocks[1].TickerSymbol} -{rotationPercent:P0} over {config.Duration}s");
-            #endif
-        }
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[Events] SectorRotation fired on {activeStocks[0].TickerSymbol}: {effect:+0.0%;-0.0%} over {config.Duration}s");
+        #endif
     }
 
     /// <summary>
