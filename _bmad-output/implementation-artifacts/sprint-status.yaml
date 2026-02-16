@@ -56,3 +56,6 @@ development_status:
   13-8-store-visual-polish: done
   13-9-cleanup-migration: done
   epic-13-retrospective: optional
+
+  # === FIX Sprint (Continued) ===
+  FIX-16-ui-position-and-notifications: done

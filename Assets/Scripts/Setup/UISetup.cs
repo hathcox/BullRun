@@ -306,8 +306,9 @@ public static class UISetup
     }
 
     /// <summary>
-    /// Generates the compact position overlay centered above the trade panel.
+    /// Generates the compact position overlay at bottom-left of screen.
     /// Shows direction (LONG/SHORT/FLAT), share count, avg price, and real-time P&L.
+    /// FIX-16: Moved from bottom-center to bottom-left for persistent visibility.
     /// </summary>
     public static PositionOverlay ExecutePositionOverlay(Portfolio portfolio)
     {
@@ -325,15 +326,15 @@ public static class UISetup
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         // No GraphicRaycaster — overlay should not block input
 
-        // Overlay container — centered above trade panel buttons
+        // Overlay container — bottom-left, above trade panel area (FIX-16)
         var containerGo = CreatePanel("OverlayContainer", canvasGo.transform);
         var containerRect = containerGo.GetComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0.5f, 0f);
-        containerRect.anchorMax = new Vector2(0.5f, 0f);
-        containerRect.pivot = new Vector2(0.5f, 0f);
-        containerRect.anchoredPosition = new Vector2(0f, 144f); // Above trade panel (82 + 60 + 2)
-        containerRect.sizeDelta = new Vector2(420f, 85f);
-        containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.6f); // Semi-transparent dark
+        containerRect.anchorMin = new Vector2(0f, 0f);
+        containerRect.anchorMax = new Vector2(0f, 0f);
+        containerRect.pivot = new Vector2(0f, 0f);
+        containerRect.anchoredPosition = new Vector2(12f, 144f); // Left margin 12px, same height above trade panel
+        containerRect.sizeDelta = new Vector2(280f, 112f);
+        containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.75f); // Higher opacity for contrast (FIX-16)
 
         // Vertical layout for rows
         var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
@@ -348,20 +349,20 @@ public static class UISetup
             LabelColor, 10);
         headerGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
-        // Row 1: Direction — "15x LONG" or "FLAT"
+        // Row 1: Direction — "15x LONG" or "FLAT" (FIX-16: 20pt for readability)
         var directionGo = CreateLabel("DirectionText", containerGo.transform, "FLAT",
-            new Color(0.5f, 0.5f, 0.55f, 1f), 16);
+            new Color(0.5f, 0.5f, 0.55f, 1f), 20);
         directionGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         directionGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
-        // Row 2: Avg price — "Avg: $2.45"
+        // Row 2: Avg price — "Avg: $2.45" (FIX-16: 15pt)
         var avgPriceGo = CreateLabel("AvgPriceText", containerGo.transform, "Avg: $0.00",
-            LabelColor, 13);
+            LabelColor, 15);
         avgPriceGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
-        // Row 3: P&L — "P&L: +$3.75"
+        // Row 3: P&L — "P&L: +$3.75" (FIX-16: 18pt bold)
         var pnlGo = CreateLabel("PnLText", containerGo.transform, "P&L: +$0.00",
-            Color.white, 14);
+            Color.white, 18);
         pnlGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         pnlGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
 
@@ -377,7 +378,7 @@ public static class UISetup
         );
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] PositionOverlay created: centered above trade panel");
+        Debug.Log("[Setup] PositionOverlay created: bottom-left (FIX-16)");
         #endif
 
         return positionOverlay;
@@ -1243,8 +1244,9 @@ public static class UISetup
     }
 
     /// <summary>
-    /// Generates the trade feedback overlay positioned below the top bar.
+    /// Generates the trade feedback overlay at center screen.
     /// Shows brief text like "SHORTED ACME x10" that fades out after 1.5s.
+    /// FIX-16: Moved from top bar to center screen for visibility during fast trading.
     /// </summary>
     public static TradeFeedback ExecuteTradeFeedback()
     {
@@ -1254,35 +1256,35 @@ public static class UISetup
         canvasGo.transform.SetParent(feedbackParent.transform);
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 23; // Above HUD and NewsTicker (22)
+        canvas.sortingOrder = 23; // Above HUD and NewsTicker (22), below EventPopup (50)
+        // No GraphicRaycaster — feedback should not block input
 
         var scaler = canvasGo.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
-        // No GraphicRaycaster — feedback should not block input
 
-        // Feedback container — centered below top bar, with dark background for readability
+        // Feedback container — lower-center screen, above trade panel gaze path (FIX-16)
         var containerGo = CreatePanel("FeedbackContainer", canvasGo.transform);
         var containerRect = containerGo.GetComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0.5f, 1f);
-        containerRect.anchorMax = new Vector2(0.5f, 1f);
-        containerRect.pivot = new Vector2(0.5f, 1f);
-        containerRect.anchoredPosition = new Vector2(0f, -(TopBarHeight + 8f));
-        containerRect.sizeDelta = new Vector2(300f, 30f);
-        containerGo.GetComponent<Image>().color = BarBackgroundColor;
+        containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        containerRect.pivot = new Vector2(0.5f, 0.5f);
+        containerRect.anchoredPosition = new Vector2(0f, -120f);
+        containerRect.sizeDelta = new Vector2(420f, 50f);
+        containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.85f);
         containerGo.GetComponent<Image>().raycastTarget = false;
 
         var canvasGroup = containerGo.AddComponent<CanvasGroup>();
 
         var feedbackTextGo = CreateLabel("FeedbackText", containerGo.transform, "",
-            Color.white, 18);
+            Color.white, 24);
         feedbackTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         var tradeFeedback = feedbackParent.AddComponent<TradeFeedback>();
         tradeFeedback.Initialize(feedbackTextGo.GetComponent<Text>(), canvasGroup);
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] TradeFeedback created: centered below top bar");
+        Debug.Log("[Setup] TradeFeedback created: center screen (FIX-16)");
         #endif
 
         return tradeFeedback;
