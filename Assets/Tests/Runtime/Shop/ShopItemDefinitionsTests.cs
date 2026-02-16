@@ -61,18 +61,20 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void GetRelicById_ValidId_ReturnsCorrectRelic()
+        public void ItemLookup_GetRelicById_ValidId_ReturnsCorrectRelic()
         {
-            var relic = ShopItemDefinitions.GetRelicById("relic_stop_loss");
+            ItemLookup.ClearCache();
+            var relic = ItemLookup.GetRelicById("relic_stop_loss");
             Assert.IsTrue(relic.HasValue);
             Assert.AreEqual("relic_stop_loss", relic.Value.Id);
             Assert.AreEqual("Stop-Loss Order", relic.Value.Name);
         }
 
         [Test]
-        public void GetRelicById_UnknownId_ReturnsNull()
+        public void ItemLookup_GetRelicById_UnknownId_ReturnsNull()
         {
-            var relic = ShopItemDefinitions.GetRelicById("nonexistent_relic");
+            ItemLookup.ClearCache();
+            var relic = ItemLookup.GetRelicById("nonexistent_relic");
             Assert.IsFalse(relic.HasValue);
         }
 

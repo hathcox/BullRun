@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 /// <summary>
 /// Relic definition — no rarity, no category. Cost alone determines value.
 /// Used by the relics panel (Story 13.3+). Replaces ShopItemDef for relic selection.
@@ -22,6 +20,8 @@ public struct RelicDef
 
 /// <summary>
 /// All relic definitions.
+/// NOTE: Class retains the "ShopItemDefinitions" name to avoid Unity .meta file disruption.
+/// Conceptually this is "RelicDefinitions" — rename when next refactoring this file.
 /// RelicPool: Placeholder relics for 13.3 infrastructure (uniform random, no rarity).
 /// Story 13.9: All legacy types (ShopItemDef, ItemRarity, ItemCategory, RarityWeight)
 /// and the 30-item AllItems pool have been removed. Relic items will be completely
@@ -53,16 +53,4 @@ public static class ShopItemDefinitions
             "All shop items cost 25% less for the rest of the run", 500),
     };
 
-    /// <summary>
-    /// Returns a RelicDef by ID, or null if not found.
-    /// </summary>
-    public static RelicDef? GetRelicById(string id)
-    {
-        for (int i = 0; i < RelicPool.Length; i++)
-        {
-            if (RelicPool[i].Id == id)
-                return RelicPool[i];
-        }
-        return null;
-    }
 }

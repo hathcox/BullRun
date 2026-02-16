@@ -314,7 +314,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GetRelicById_ReturnsCorrectRelic()
         {
-            var relic = ShopItemDefinitions.GetRelicById("relic_stop_loss");
+            ItemLookup.ClearCache();
+            var relic = ItemLookup.GetRelicById("relic_stop_loss");
             Assert.IsTrue(relic.HasValue);
             Assert.AreEqual("relic_stop_loss", relic.Value.Id);
             Assert.AreEqual("Stop-Loss Order", relic.Value.Name);
@@ -323,7 +324,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GetRelicById_ReturnsNullForUnknownId()
         {
-            var relic = ShopItemDefinitions.GetRelicById("nonexistent_relic");
+            ItemLookup.ClearCache();
+            var relic = ItemLookup.GetRelicById("nonexistent_relic");
             Assert.IsFalse(relic.HasValue);
         }
     }

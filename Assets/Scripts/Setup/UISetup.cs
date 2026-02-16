@@ -1082,27 +1082,14 @@ public static class UISetup
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
-        // Category label
-        var categoryGo = CreateLabel($"Category_{index}", cardGo.transform, "RELIC",
-            new Color(0.6f, 0.6f, 0.7f, 1f), 11);
-        view.CategoryLabel = categoryGo.GetComponent<Text>();
-        view.CategoryLabel.raycastTarget = false;
-
-        // Rarity badge (small colored bar) — unified color (Story 13.8, AC 1)
-        var badgeGo = CreatePanel($"RarityBadge_{index}", cardGo.transform);
-        var badgeRect = badgeGo.GetComponent<RectTransform>();
-        badgeRect.sizeDelta = new Vector2(80f, 4f);
-        var badgeLayoutElem = badgeGo.AddComponent<LayoutElement>();
-        badgeLayoutElem.preferredHeight = 4f;
-        view.RarityBadge = badgeGo.GetComponent<Image>();
-        view.RarityBadge.color = ShopUI.ReputationColor;
-        view.RarityBadge.raycastTarget = false;
-
-        // Rarity text — hidden for unified look (Story 13.8, AC 1)
-        var rarityGo = CreateLabel($"Rarity_{index}", cardGo.transform, "",
-            ShopUI.ReputationColor, 10);
-        view.RarityText = rarityGo.GetComponent<Text>();
-        view.RarityText.raycastTarget = false;
+        // Accent bar (amber, replaces old rarity badge — Story 13.9 cleanup)
+        var accentGo = CreatePanel($"AccentBar_{index}", cardGo.transform);
+        var accentRect = accentGo.GetComponent<RectTransform>();
+        accentRect.sizeDelta = new Vector2(80f, 4f);
+        var accentLayoutElem = accentGo.AddComponent<LayoutElement>();
+        accentLayoutElem.preferredHeight = 4f;
+        accentGo.GetComponent<Image>().color = ShopUI.ReputationColor;
+        accentGo.GetComponent<Image>().raycastTarget = false;
 
         // Item name — bold/larger font for legibility (Story 13.8, AC 7)
         var nameGo = CreateLabel($"Name_{index}", cardGo.transform, "Empty",
@@ -1615,8 +1602,8 @@ public static class UISetup
         barLayout.childForceExpandHeight = true;
 
         // Create relic slots (flat list — Story 13.9: no Tools/Intel/Perks split)
-        var relicSlotViews = new ItemInventoryPanel.RelicSlotView[ItemInventoryPanel.MaxToolSlots];
-        for (int i = 0; i < ItemInventoryPanel.MaxToolSlots; i++)
+        var relicSlotViews = new ItemInventoryPanel.RelicSlotView[ItemInventoryPanel.MaxDisplaySlots];
+        for (int i = 0; i < ItemInventoryPanel.MaxDisplaySlots; i++)
         {
             relicSlotViews[i] = CreateInventoryRelicSlot(i, bottomBar.transform);
         }
@@ -1659,7 +1646,7 @@ public static class UISetup
 
         // Hotkey label
         var hotkeyGo = CreateLabel($"Hotkey_{index}", slotGo.transform,
-            $"[{ItemInventoryPanel.ToolHotkeys[index]}]",
+            $"[{ItemInventoryPanel.RelicHotkeys[index]}]",
             TradingHUD.WarningYellow, 11);
         var hotkeyLayout = hotkeyGo.AddComponent<LayoutElement>();
         hotkeyLayout.preferredWidth = 24f;

@@ -13,8 +13,8 @@ using UnityEngine.UI;
 /// </summary>
 public class ItemInventoryPanel : MonoBehaviour
 {
-    public static readonly string[] ToolHotkeys = { "Q", "E", "R" };
-    public static readonly int MaxToolSlots = 3;
+    public static readonly string[] RelicHotkeys = { "Q", "E", "R" };
+    public static readonly int MaxDisplaySlots = 3;
 
     // Dimmed color for empty/placeholder slots
     public static readonly Color DimmedColor = new Color(0.4f, 0.4f, 0.4f, 1f);
@@ -27,7 +27,7 @@ public class ItemInventoryPanel : MonoBehaviour
     private bool _initialized;
     private bool _dirty;
 
-    // Relic slot UI references (up to MaxToolSlots displayed)
+    // Relic slot UI references (up to MaxDisplaySlots displayed)
     private RelicSlotView[] _relicSlots;
 
     private GameObject _panelRoot;
@@ -116,7 +116,7 @@ public class ItemInventoryPanel : MonoBehaviour
                 string relicId = _runContext.OwnedRelics[i];
                 RelicDef? def = ItemLookup.GetRelicById(relicId);
 
-                _relicSlots[i].HotkeyText.text = i < ToolHotkeys.Length ? FormatHotkey(ToolHotkeys[i]) : "";
+                _relicSlots[i].HotkeyText.text = i < RelicHotkeys.Length ? FormatHotkey(RelicHotkeys[i]) : "";
                 _relicSlots[i].HotkeyText.color = TradingHUD.WarningYellow;
                 _relicSlots[i].NameText.text = def.HasValue ? def.Value.Name : relicId;
                 _relicSlots[i].NameText.color = Color.white;
@@ -124,7 +124,7 @@ public class ItemInventoryPanel : MonoBehaviour
             }
             else
             {
-                _relicSlots[i].HotkeyText.text = i < ToolHotkeys.Length ? FormatHotkey(ToolHotkeys[i]) : "";
+                _relicSlots[i].HotkeyText.text = i < RelicHotkeys.Length ? FormatHotkey(RelicHotkeys[i]) : "";
                 _relicSlots[i].HotkeyText.color = DimmedColor;
                 _relicSlots[i].NameText.text = "---";
                 _relicSlots[i].NameText.color = DimmedColor;
@@ -135,12 +135,12 @@ public class ItemInventoryPanel : MonoBehaviour
 
     // --- Static utility methods for testability ---
 
-    public static string FormatToolSlot(string hotkey, string itemName)
+    public static string FormatRelicSlot(string hotkey, string itemName)
     {
         return $"[{hotkey}] {itemName}";
     }
 
-    public static string FormatEmptyToolSlot(string hotkey)
+    public static string FormatEmptyRelicSlot(string hotkey)
     {
         return $"[{hotkey}] ---";
     }

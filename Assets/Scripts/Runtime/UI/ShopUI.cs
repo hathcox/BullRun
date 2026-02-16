@@ -155,12 +155,9 @@ public class ShopUI : MonoBehaviour
     public struct RelicSlotView
     {
         public GameObject Root;
-        public Text CategoryLabel;
         public Text NameText;
         public Text DescriptionText;
         public Text CostText;
-        public Text RarityText;
-        public Image RarityBadge;
         public Button PurchaseButton;
         public Text ButtonText;
         public Image CardBackground;
@@ -1356,12 +1353,9 @@ public class ShopUI : MonoBehaviour
     private void SetupSoldOutRelicSlot(int index)
     {
         var slot = _relicSlots[index];
-        slot.CategoryLabel.text = "RELIC";
         slot.NameText.text = "EMPTY";
         slot.DescriptionText.text = "No relic available";
         slot.CostText.text = "";
-        slot.RarityText.text = "";
-        slot.RarityBadge.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
         slot.PurchaseButton.interactable = false;
         slot.ButtonText.text = "SOLD OUT";
         slot.CardBackground.color = SoldOutCardColor;
@@ -1372,14 +1366,9 @@ public class ShopUI : MonoBehaviour
     {
         var slot = _relicSlots[index];
 
-        slot.CategoryLabel.text = "RELIC";
         slot.NameText.text = relic.Name;
         slot.DescriptionText.text = relic.Description;
         slot.CostText.text = $"\u2605 {relic.Cost}";
-
-        // No rarity — hide rarity display
-        slot.RarityText.text = "";
-        slot.RarityBadge.color = ReputationColor;
 
         bool canAfford = _ctx.Reputation.CanAfford(relic.Cost);
         bool atCapacity = IsAtRelicCapacity();

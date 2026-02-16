@@ -1,6 +1,6 @@
 # Story 13.9: Cleanup & Migration from Old Shop
 
-Status: review
+Status: done
 
 ## Story
 
@@ -138,6 +138,13 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-16: Story 13.9 implemented — complete removal of old shop system (ItemRarity, ItemCategory, ShopItemDef, 30 items, rarity-weighted selection) and migration to RelicDef-based store
+- 2026-02-16: Code review fixes applied (6 issues fixed):
+  - H1: Removed vestigial `RarityText`, `RarityBadge`, `CategoryLabel` from `ShopUI.RelicSlotView` and `UISetup.CreateRelicSlot`
+  - H2: Removed duplicate `GetRelicById` from `ShopItemDefinitions` (callers route to `ItemLookup.GetRelicById`)
+  - M2: Added renaming note to `ShopItemDefinitions` class comment
+  - M3: Renamed `ToolHotkeys`→`RelicHotkeys`, `MaxToolSlots`→`MaxDisplaySlots`, `FormatToolSlot`→`FormatRelicSlot`, `FormatEmptyToolSlot`→`FormatEmptyRelicSlot` in `ItemInventoryPanel`
+  - M4: Documented struct/class inconsistency (deferred fix)
+  - Removed unused `using System.Collections.Generic` from `ShopItemDefinitions.cs`
 
 ### File List
 
@@ -153,13 +160,18 @@ Claude Opus 4.6
 
 - `Assets/Scripts/Setup/UISetup.cs` — edited (removed ToolSlotView/IntelBadgeView/PerkEntryView creation, replaced with RelicSlotView)
 
+**Other files modified:**
+- `Packages/manifest.json` — package dependency update
+- `Packages/packages-lock.json` — package lock update
+
 **Test files modified:**
-- `Assets/Tests/Runtime/Shop/ShopItemDefinitionsTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/Shop/ShopItemDefinitionsTests.cs` — complete rewrite + review fix (GetRelicById → ItemLookup)
 - `Assets/Tests/Runtime/Shop/ShopGeneratorTests.cs` — complete rewrite
 - `Assets/Tests/Runtime/Shop/ShopTransactionTests.cs` — complete rewrite
 - `Assets/Tests/Runtime/Shop/StoreDataModelTests.cs` — complete rewrite
 - `Assets/Tests/Runtime/Shop/StoreLayoutTests.cs` — edited (removed rarity test, updated event field)
 - `Assets/Tests/Runtime/Items/ItemLookupTests.cs` — complete rewrite
-- `Assets/Tests/Runtime/UI/ItemInventoryPanelTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/UI/ItemInventoryPanelTests.cs` — complete rewrite + review fix (Tool→Relic renaming)
 - `Assets/Tests/Runtime/Core/GameStates/ShopStateTests.cs` — edited (AvailableItems → AvailableRelics)
 - `Assets/Tests/Runtime/Core/ReputationManagerTests.cs` — edited (ShopItemDef → RelicDef)
+- `Assets/Tests/Runtime/Shop/RelicPurchaseTests.cs` — review fix (GetRelicById → ItemLookup)

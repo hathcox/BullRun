@@ -28,15 +28,15 @@ namespace BullRun.Tests.UI
         // --- Formatting Utilities ---
 
         [Test]
-        public void FormatToolSlot_WithItemName()
+        public void FormatRelicSlot_WithItemName()
         {
-            Assert.AreEqual("[Q] Insider Tip", ItemInventoryPanel.FormatToolSlot("Q", "Insider Tip"));
+            Assert.AreEqual("[Q] Insider Tip", ItemInventoryPanel.FormatRelicSlot("Q", "Insider Tip"));
         }
 
         [Test]
-        public void FormatEmptyToolSlot_ShowsDashes()
+        public void FormatEmptyRelicSlot_ShowsDashes()
         {
-            Assert.AreEqual("[Q] ---", ItemInventoryPanel.FormatEmptyToolSlot("Q"));
+            Assert.AreEqual("[Q] ---", ItemInventoryPanel.FormatEmptyRelicSlot("Q"));
         }
 
         [Test]
@@ -50,18 +50,18 @@ namespace BullRun.Tests.UI
         // --- Hotkey Constants ---
 
         [Test]
-        public void ToolHotkeys_AreQER()
+        public void RelicHotkeys_AreQER()
         {
-            Assert.AreEqual(3, ItemInventoryPanel.ToolHotkeys.Length);
-            Assert.AreEqual("Q", ItemInventoryPanel.ToolHotkeys[0]);
-            Assert.AreEqual("E", ItemInventoryPanel.ToolHotkeys[1]);
-            Assert.AreEqual("R", ItemInventoryPanel.ToolHotkeys[2]);
+            Assert.AreEqual(3, ItemInventoryPanel.RelicHotkeys.Length);
+            Assert.AreEqual("Q", ItemInventoryPanel.RelicHotkeys[0]);
+            Assert.AreEqual("E", ItemInventoryPanel.RelicHotkeys[1]);
+            Assert.AreEqual("R", ItemInventoryPanel.RelicHotkeys[2]);
         }
 
         [Test]
-        public void MaxToolSlots_IsThree()
+        public void MaxDisplaySlots_IsThree()
         {
-            Assert.AreEqual(3, ItemInventoryPanel.MaxToolSlots);
+            Assert.AreEqual(3, ItemInventoryPanel.MaxDisplaySlots);
         }
 
         // --- Relic Border Color ---
