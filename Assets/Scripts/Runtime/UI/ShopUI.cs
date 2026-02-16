@@ -1,4 +1,6 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -38,6 +40,25 @@ public class ShopUI : MonoBehaviour
 
     // Sold out card color
     public static readonly Color SoldOutCardColor = new Color(0.15f, 0.15f, 0.15f, 0.5f);
+
+    // Unified relic card border color (AC 1 — no rarity differentiation)
+    public static readonly Color RelicCardColor = new Color(0.08f, 0.1f, 0.22f, 0.9f);
+    public static readonly Color RelicCardHoverColor = new Color(0.14f, 0.18f, 0.38f, 1f);
+
+    // Animation timing constants
+    public const float HoverScale = 1.05f;
+    public const float HoverDuration = 0.15f;
+    public const float PurchaseAnimDuration = 0.5f;
+    public const float SoldStampDuration = 1.0f;
+    public const float RerollFlipDuration = 0.4f;
+    public const float RerollStaggerDelay = 0.08f;
+    public const float TipFlipDuration = 0.6f;
+    public const float TipFlashDuration = 0.15f;
+    public const float OwnedFadeDuration = 0.3f;
+    public const float BondPulseSpeed = 2f;
+    public const float BondPulseMinAlpha = 0.5f;
+    public const float BondPulseMaxAlpha = 1f;
+    public const float BondPulseHoverBoost = 0.3f;
 
     private GameObject _root;
     private Text _repText;
@@ -92,6 +113,14 @@ public class ShopUI : MonoBehaviour
     // Bond panel colors (green/cash theme — Story 13.6)
     public static readonly Color BondCardColor = new Color(0.08f, 0.16f, 0.10f, 0.9f);
 
+    // Hover animation state (Story 13.8)
+    private Coroutine[] _hoverCoroutines;
+
+    // Bond card pulsing state (Story 13.8)
+    private Image _bondCardBg;
+    private Outline _bondCardOutline;
+    private bool _bondHovered;
+
     // Bond panel state (Story 13.6)
     private Text _bondPriceText;
     private Text _bondInfoText;
@@ -124,6 +153,7 @@ public class ShopUI : MonoBehaviour
         public Button PurchaseButton;
         public Text ButtonText;
         public Image CardBackground;
+        public CanvasGroup Group;
         public bool IsRevealed;
     }
 
@@ -139,6 +169,7 @@ public class ShopUI : MonoBehaviour
         public Button PurchaseButton;
         public Text ButtonText;
         public Image CardBackground;
+        public CanvasGroup Group;
     }
 
     public void Initialize(
@@ -156,6 +187,25 @@ public class ShopUI : MonoBehaviour
         _relicSlots = relicSlots;
         _canvasGroup = canvasGroup;
         _root.SetActive(false);
+
+        // Set up hover EventTriggers on relic slots (Story 13.8, AC 1)
+        _hoverCoroutines = new Coroutine[relicSlots.Length];
+        for (int i = 0; i < relicSlots.Length; i++)
+        {
+            if (relicSlots[i].Root == null) continue;
+            int capturedIndex = i;
+            var trigger = relicSlots[i].Root.AddComponent<EventTrigger>();
+
+            var enterEntry = new EventTrigger.Entry();
+            enterEntry.eventID = EventTriggerType.PointerEnter;
+            enterEntry.callback.AddListener((_) => OnRelicHoverEnter(capturedIndex));
+            trigger.triggers.Add(enterEntry);
+
+            var exitEntry = new EventTrigger.Entry();
+            exitEntry.eventID = EventTriggerType.PointerExit;
+            exitEntry.callback.AddListener((_) => OnRelicHoverExit(capturedIndex));
+            trigger.triggers.Add(exitEntry);
+        }
     }
 
     public void SetBottomPanels(GameObject expansionsPanel, GameObject tipsPanel, GameObject bondsPanel)
@@ -284,27 +334,8 @@ public class ShopUI : MonoBehaviour
     {
         _relicOffering = newOffering;
 
-        for (int i = 0; i < _relicSlots.Length && i < newOffering.Length; i++)
-        {
-            if (_soldFlags[i])
-            {
-                // Keep sold state — don't regenerate sold slots
-                continue;
-            }
-
-            if (newOffering[i].HasValue)
-            {
-                SetupRelicSlot(i, newOffering[i].Value);
-            }
-            else
-            {
-                SetupSoldOutRelicSlot(i);
-            }
-        }
-
-        UpdateRerollDisplay();
-        RefreshRelicCapacity();
-        RefreshRelicAffordability();
+        // Animate the reroll with flip effect (Story 13.8, AC 3)
+        StartCoroutine(AnimateRerollFlip(newOffering));
     }
 
     public void RefreshAfterPurchase(int cardIndex)
@@ -313,10 +344,10 @@ public class ShopUI : MonoBehaviour
 
         if (cardIndex >= 0 && cardIndex < _relicSlots.Length)
         {
-            _soldFlags[cardIndex] = true;
+            // Disable purchase immediately to prevent double-buy
             _relicSlots[cardIndex].PurchaseButton.interactable = false;
-            _relicSlots[cardIndex].ButtonText.text = "SOLD";
-            _relicSlots[cardIndex].CardBackground.color = SoldCardColor;
+            // Animate the purchase (Story 13.8, AC 2)
+            StartCoroutine(AnimateCardPurchase(cardIndex));
         }
 
         UpdateRerollDisplay();
@@ -372,7 +403,7 @@ public class ShopUI : MonoBehaviour
 
         if (cardIndex >= 0 && _expansionCards != null && cardIndex < _expansionCards.Length)
         {
-            SetExpansionCardOwned(cardIndex);
+            SetExpansionCardOwned(cardIndex, animate: true);
         }
 
         RefreshExpansionAffordability();
@@ -380,12 +411,18 @@ public class ShopUI : MonoBehaviour
         UpdateRerollDisplay();
     }
 
-    private void SetExpansionCardOwned(int index)
+    private void SetExpansionCardOwned(int index, bool animate = false)
     {
         if (_expansionCards == null || index < 0 || index >= _expansionCards.Length) return;
         _expansionCards[index].PurchaseButton.interactable = false;
         _expansionCards[index].ButtonText.text = "OWNED";
         _expansionCards[index].CardBackground.color = OwnedOverlayColor;
+
+        // Animate OWNED watermark on purchase (Story 13.8, AC 6)
+        if (animate)
+        {
+            StartCoroutine(AnimateOwnedWatermark(index));
+        }
     }
 
     private void RefreshExpansionAffordability()
@@ -425,12 +462,12 @@ public class ShopUI : MonoBehaviour
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
-        // Name
+        // Name — bold/larger for legibility (Story 13.8, AC 7)
         var nameGo = new GameObject("Name");
         nameGo.transform.SetParent(cardGo.transform, false);
         view.NameText = nameGo.AddComponent<Text>();
         view.NameText.text = expansion.Name;
-        view.NameText.fontSize = 13;
+        view.NameText.fontSize = 14;
         view.NameText.fontStyle = FontStyle.Bold;
         view.NameText.color = Color.white;
         view.NameText.alignment = TextAnchor.MiddleCenter;
@@ -438,24 +475,25 @@ public class ShopUI : MonoBehaviour
         var nameLayout = nameGo.AddComponent<LayoutElement>();
         nameLayout.preferredHeight = 18f;
 
-        // Description
+        // Description — improved contrast and line spacing (Story 13.8, AC 7)
         var descGo = new GameObject("Description");
         descGo.transform.SetParent(cardGo.transform, false);
         view.DescriptionText = descGo.AddComponent<Text>();
         view.DescriptionText.text = expansion.Description;
-        view.DescriptionText.fontSize = 10;
-        view.DescriptionText.color = new Color(0.7f, 0.7f, 0.8f, 1f);
+        view.DescriptionText.fontSize = 11;
+        view.DescriptionText.color = new Color(0.8f, 0.8f, 0.85f, 1f);
         view.DescriptionText.alignment = TextAnchor.MiddleCenter;
         view.DescriptionText.raycastTarget = false;
+        view.DescriptionText.lineSpacing = 1.1f;
         var descLayout = descGo.AddComponent<LayoutElement>();
         descLayout.preferredHeight = 16f;
 
-        // Cost
+        // Cost — prominently sized (Story 13.8, AC 7)
         var costGo = new GameObject("Cost");
         costGo.transform.SetParent(cardGo.transform, false);
         view.CostText = costGo.AddComponent<Text>();
         view.CostText.text = $"\u2605 {expansion.Cost}";
-        view.CostText.fontSize = 12;
+        view.CostText.fontSize = 13;
         view.CostText.color = ReputationColor;
         view.CostText.alignment = TextAnchor.MiddleCenter;
         view.CostText.raycastTarget = false;
@@ -530,21 +568,10 @@ public class ShopUI : MonoBehaviour
 
         if (cardIndex >= 0 && _tipCards != null && cardIndex < _tipCards.Length)
         {
-            // Reveal the tip card
-            _tipCards[cardIndex].IsRevealed = true;
+            // Disable purchase immediately to prevent double-buy
             _tipCards[cardIndex].PurchaseButton.interactable = false;
-            _tipCards[cardIndex].ButtonText.text = "REVEALED";
-
-            // Show tip type name and revealed text
-            if (_tipOffering != null && cardIndex < _tipOffering.Length)
-            {
-                var offering = _tipOffering[cardIndex];
-                _tipCards[cardIndex].NameText.text = FormatTipTypeName(offering.Definition.Type);
-                _tipCards[cardIndex].DescriptionText.text = offering.RevealedText;
-                _tipCards[cardIndex].DescriptionText.color = new Color(0.9f, 0.95f, 0.8f, 1f);
-            }
-
-            _tipCards[cardIndex].CardBackground.color = TipCardRevealedColor;
+            // Animate the tip flip reveal (Story 13.8, AC 4)
+            StartCoroutine(AnimateTipFlip(cardIndex));
         }
 
         RefreshTipAffordability();
@@ -579,6 +606,7 @@ public class ShopUI : MonoBehaviour
         view.CardBackground = cardGo.AddComponent<Image>();
         view.CardBackground.color = TipCardFaceDownColor;
         view.Root = cardGo;
+        view.Group = cardGo.AddComponent<CanvasGroup>();
 
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
@@ -591,12 +619,12 @@ public class ShopUI : MonoBehaviour
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
-        // Name — face-down shows "INSIDER TIP"
+        // Name — face-down shows "INSIDER TIP" (Story 13.8, AC 4, 7)
         var nameGo = new GameObject("Name");
         nameGo.transform.SetParent(cardGo.transform, false);
         view.NameText = nameGo.AddComponent<Text>();
         view.NameText.text = "INSIDER TIP";
-        view.NameText.fontSize = 13;
+        view.NameText.fontSize = 14;
         view.NameText.fontStyle = FontStyle.Bold;
         view.NameText.color = new Color(0.7f, 0.5f, 0.9f, 1f);
         view.NameText.alignment = TextAnchor.MiddleCenter;
@@ -604,18 +632,19 @@ public class ShopUI : MonoBehaviour
         var nameLayout = nameGo.AddComponent<LayoutElement>();
         nameLayout.preferredHeight = 18f;
 
-        // Description — face-down shows "?"
+        // Description — face-down shows large "?" symbol (Story 13.8, AC 4, 7)
         var descGo = new GameObject("Description");
         descGo.transform.SetParent(cardGo.transform, false);
         view.DescriptionText = descGo.AddComponent<Text>();
         view.DescriptionText.text = "?";
-        view.DescriptionText.fontSize = 16;
+        view.DescriptionText.fontSize = 24;
         view.DescriptionText.fontStyle = FontStyle.Bold;
         view.DescriptionText.color = new Color(0.5f, 0.4f, 0.7f, 0.8f);
         view.DescriptionText.alignment = TextAnchor.MiddleCenter;
         view.DescriptionText.raycastTarget = false;
+        view.DescriptionText.lineSpacing = 1.1f;
         var descLayout = descGo.AddComponent<LayoutElement>();
-        descLayout.preferredHeight = 20f;
+        descLayout.preferredHeight = 28f;
 
         // Cost
         var costGo = new GameObject("Cost");
@@ -672,7 +701,7 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    private static string FormatTipTypeName(InsiderTipType type)
+    public static string FormatTipTypeName(InsiderTipType type)
     {
         switch (type)
         {
@@ -715,6 +744,24 @@ public class ShopUI : MonoBehaviour
         cardLayout.flexibleWidth = 1f;
         cardLayout.flexibleHeight = 1f;
 
+        // Store reference for pulsing glow (Story 13.8, AC 5)
+        _bondCardBg = cardBg;
+        _bondCardOutline = cardGo.AddComponent<Outline>();
+        _bondCardOutline.effectColor = CashColor;
+        _bondCardOutline.effectDistance = new Vector2(2f, 2f);
+
+        // Bond hover detection
+        _bondHovered = false;
+        var bondTrigger = cardGo.AddComponent<EventTrigger>();
+        var bondEnterEntry = new EventTrigger.Entry();
+        bondEnterEntry.eventID = EventTriggerType.PointerEnter;
+        bondEnterEntry.callback.AddListener((_) => _bondHovered = true);
+        bondTrigger.triggers.Add(bondEnterEntry);
+        var bondExitEntry = new EventTrigger.Entry();
+        bondExitEntry.eventID = EventTriggerType.PointerExit;
+        bondExitEntry.callback.AddListener((_) => _bondHovered = false);
+        bondTrigger.triggers.Add(bondExitEntry);
+
         var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 4f;
         vlg.padding = new RectOffset(10, 10, 8, 8);
@@ -725,8 +772,8 @@ public class ShopUI : MonoBehaviour
         // Title
         var titleGo = CreateTextChild(cardGo.transform, "Title", "BONDS", 14, FontStyle.Bold, CashColor, 20f);
 
-        // Price display
-        var priceGo = CreateTextChild(cardGo.transform, "Price", "", 12, FontStyle.Normal, CashColor, 18f);
+        // Price display — prominent with cash icon (Story 13.8, AC 5, 7)
+        var priceGo = CreateTextChild(cardGo.transform, "Price", "", 16, FontStyle.Bold, CashColor, 22f);
         _bondPriceText = priceGo.GetComponent<Text>();
 
         // Info display: bonds owned + earning
@@ -970,6 +1017,9 @@ public class ShopUI : MonoBehaviour
         _bondSellButton = null;
         _bondSellButtonText = null;
         _bondConfirmOverlay = null;
+        _bondCardBg = null;
+        _bondCardOutline = null;
+        _bondHovered = false;
     }
 
     private void ClearExpansionCards()
@@ -985,10 +1035,282 @@ public class ShopUI : MonoBehaviour
         }
     }
 
+    // === Hover Effects (Story 13.8, Task 1, AC 1) ===
+
+    private void OnRelicHoverEnter(int index)
+    {
+        if (index < 0 || index >= _relicSlots.Length) return;
+        if (_soldFlags != null && index < _soldFlags.Length && _soldFlags[index]) return;
+        if (_relicOffering == null || !_relicOffering[index].HasValue) return;
+
+        if (_hoverCoroutines[index] != null) StopCoroutine(_hoverCoroutines[index]);
+        _hoverCoroutines[index] = StartCoroutine(AnimateHover(index, true));
+    }
+
+    private void OnRelicHoverExit(int index)
+    {
+        if (index < 0 || index >= _relicSlots.Length) return;
+        if (_soldFlags != null && index < _soldFlags.Length && _soldFlags[index]) return;
+
+        if (_hoverCoroutines[index] != null) StopCoroutine(_hoverCoroutines[index]);
+        _hoverCoroutines[index] = StartCoroutine(AnimateHover(index, false));
+    }
+
+    private IEnumerator AnimateHover(int index, bool entering)
+    {
+        var slot = _relicSlots[index];
+        var rect = slot.Root.GetComponent<RectTransform>();
+
+        float startScale = rect.localScale.x;
+        float endScale = entering ? HoverScale : 1f;
+        Color startColor = slot.CardBackground.color;
+        Color endColor = entering ? RelicCardHoverColor : RelicCardColor;
+
+        for (float t = 0; t < HoverDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / HoverDuration;
+            float s = Mathf.Lerp(startScale, endScale, p);
+            rect.localScale = new Vector3(s, s, 1f);
+            slot.CardBackground.color = Color.Lerp(startColor, endColor, p);
+            yield return null;
+        }
+
+        rect.localScale = new Vector3(endScale, endScale, 1f);
+        slot.CardBackground.color = endColor;
+        _hoverCoroutines[index] = null;
+    }
+
+    // === Purchase Animation (Story 13.8, Task 2, AC 2) ===
+
+    private IEnumerator AnimateCardPurchase(int cardIndex)
+    {
+        var slot = _relicSlots[cardIndex];
+        var group = slot.Group;
+        var rect = slot.Root.GetComponent<RectTransform>();
+
+        if (group == null)
+        {
+            ApplySoldState(cardIndex);
+            yield break;
+        }
+
+        // Animate: slide up + fade out over PurchaseAnimDuration (AC 2)
+        Vector2 startPos = rect.anchoredPosition;
+        Vector2 endPos = startPos + Vector2.up * 50f;
+        for (float t = 0; t < PurchaseAnimDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / PurchaseAnimDuration;
+            group.alpha = Mathf.Lerp(1f, 0f, p);
+            rect.anchoredPosition = Vector2.Lerp(startPos, endPos, p);
+            yield return null;
+        }
+        group.alpha = 0f;
+
+        // Show SOLD stamp
+        var stampGo = new GameObject("SoldStamp");
+        stampGo.transform.SetParent(slot.Root.transform, false);
+        var stampRect = stampGo.AddComponent<RectTransform>();
+        stampRect.anchorMin = Vector2.zero;
+        stampRect.anchorMax = Vector2.one;
+        stampRect.offsetMin = Vector2.zero;
+        stampRect.offsetMax = Vector2.zero;
+        var stampText = stampGo.AddComponent<Text>();
+        stampText.text = "SOLD";
+        stampText.fontSize = 32;
+        stampText.fontStyle = FontStyle.Bold;
+        stampText.color = new Color(1f, 0.3f, 0.3f, 0.9f);
+        stampText.alignment = TextAnchor.MiddleCenter;
+        stampText.raycastTarget = false;
+
+        // Make stamp visible while card content is hidden
+        // ignoreParentGroups ensures stamp is visible despite parent CanvasGroup alpha=0
+        var stampGroup = stampGo.AddComponent<CanvasGroup>();
+        stampGroup.ignoreParentGroups = true;
+        group.alpha = 0f;
+        stampGroup.alpha = 1f;
+
+        yield return new WaitForSecondsRealtime(SoldStampDuration);
+
+        // Clean up stamp and apply sold state
+        Destroy(stampGo);
+        group.alpha = 1f;
+        rect.localScale = Vector3.one;
+        rect.anchoredPosition = startPos;
+        ApplySoldState(cardIndex);
+    }
+
+    private void ApplySoldState(int cardIndex)
+    {
+        _soldFlags[cardIndex] = true;
+        _relicSlots[cardIndex].PurchaseButton.interactable = false;
+        _relicSlots[cardIndex].ButtonText.text = "SOLD";
+        _relicSlots[cardIndex].CardBackground.color = SoldCardColor;
+    }
+
+    // === Reroll Animation (Story 13.8, Task 3, AC 3) ===
+
+    private IEnumerator AnimateRerollFlip(RelicDef?[] newOffering)
+    {
+        // Animate each non-sold card with staggered flip
+        for (int i = 0; i < _relicSlots.Length && i < newOffering.Length; i++)
+        {
+            if (_soldFlags[i]) continue;
+
+            int capturedIndex = i;
+            var capturedOffering = newOffering;
+            StartCoroutine(AnimateSingleRerollFlip(capturedIndex, capturedOffering));
+            yield return new WaitForSecondsRealtime(RerollStaggerDelay);
+        }
+
+        // Wait for all flips to complete
+        yield return new WaitForSecondsRealtime(RerollFlipDuration);
+
+        UpdateRerollDisplay();
+        RefreshRelicCapacity();
+        RefreshRelicAffordability();
+    }
+
+    private IEnumerator AnimateSingleRerollFlip(int index, RelicDef?[] newOffering)
+    {
+        var slot = _relicSlots[index];
+        var rect = slot.Root.GetComponent<RectTransform>();
+        float halfDuration = RerollFlipDuration * 0.5f;
+
+        // First half: scale X from 1 to 0 (flip away)
+        for (float t = 0; t < halfDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / halfDuration;
+            float scaleX = Mathf.Lerp(1f, 0f, p);
+            rect.localScale = new Vector3(scaleX, 1f, 1f);
+            yield return null;
+        }
+        rect.localScale = new Vector3(0f, 1f, 1f);
+
+        // Swap content at midpoint
+        if (newOffering[index].HasValue)
+            SetupRelicSlot(index, newOffering[index].Value);
+        else
+            SetupSoldOutRelicSlot(index);
+
+        // Second half: scale X from 0 to 1 (flip in)
+        for (float t = 0; t < halfDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / halfDuration;
+            float scaleX = Mathf.Lerp(0f, 1f, p);
+            rect.localScale = new Vector3(scaleX, 1f, 1f);
+            yield return null;
+        }
+        rect.localScale = Vector3.one;
+    }
+
+    // === Insider Tip Flip Animation (Story 13.8, Task 4, AC 4) ===
+
+    private IEnumerator AnimateTipFlip(int cardIndex)
+    {
+        if (_tipCards == null || cardIndex < 0 || cardIndex >= _tipCards.Length) yield break;
+
+        var card = _tipCards[cardIndex];
+        var rect = card.Root.GetComponent<RectTransform>();
+        float halfDuration = TipFlipDuration * 0.5f;
+
+        // First half: scale X from 1 to 0 (face-down flipping)
+        for (float t = 0; t < halfDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / halfDuration;
+            float scaleX = Mathf.Lerp(1f, 0f, p);
+            rect.localScale = new Vector3(scaleX, 1f, 1f);
+            yield return null;
+        }
+        rect.localScale = new Vector3(0f, 1f, 1f);
+
+        // Swap to revealed content at midpoint
+        card.IsRevealed = true;
+        card.PurchaseButton.interactable = false;
+        card.ButtonText.text = "REVEALED";
+        if (_tipOffering != null && cardIndex < _tipOffering.Length)
+        {
+            var offering = _tipOffering[cardIndex];
+            card.NameText.text = FormatTipTypeName(offering.Definition.Type);
+            card.DescriptionText.text = offering.RevealedText;
+            card.DescriptionText.fontSize = 12;
+            card.DescriptionText.fontStyle = FontStyle.Normal;
+            card.DescriptionText.color = new Color(0.9f, 0.95f, 0.8f, 1f);
+        }
+        card.CardBackground.color = TipCardRevealedColor;
+
+        // Second half: scale X from 0 to 1 (revealed flipping in)
+        for (float t = 0; t < halfDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / halfDuration;
+            float scaleX = Mathf.Lerp(0f, 1f, p);
+            rect.localScale = new Vector3(scaleX, 1f, 1f);
+            yield return null;
+        }
+        rect.localScale = Vector3.one;
+
+        // Flash effect: brief white overlay
+        if (card.Group != null)
+        {
+            var flashGo = new GameObject("TipFlash");
+            flashGo.transform.SetParent(card.Root.transform, false);
+            var flashRect = flashGo.AddComponent<RectTransform>();
+            flashRect.anchorMin = Vector2.zero;
+            flashRect.anchorMax = Vector2.one;
+            flashRect.offsetMin = Vector2.zero;
+            flashRect.offsetMax = Vector2.zero;
+            var flashImg = flashGo.AddComponent<Image>();
+            flashImg.color = new Color(1f, 1f, 1f, 0.4f);
+            flashImg.raycastTarget = false;
+
+            for (float t = 0; t < TipFlashDuration; t += Time.unscaledDeltaTime)
+            {
+                float p = t / TipFlashDuration;
+                flashImg.color = new Color(1f, 1f, 1f, Mathf.Lerp(0.4f, 0f, p));
+                yield return null;
+            }
+            Destroy(flashGo);
+        }
+    }
+
+    // === Expansion OWNED Watermark Animation (Story 13.8, Task 6, AC 6) ===
+
+    private IEnumerator AnimateOwnedWatermark(int index)
+    {
+        if (_expansionCards == null || index < 0 || index >= _expansionCards.Length) yield break;
+
+        var card = _expansionCards[index];
+
+        // Create OWNED watermark overlay
+        var watermarkGo = new GameObject("OwnedWatermark");
+        watermarkGo.transform.SetParent(card.Root.transform, false);
+        var watermarkRect = watermarkGo.AddComponent<RectTransform>();
+        watermarkRect.anchorMin = Vector2.zero;
+        watermarkRect.anchorMax = Vector2.one;
+        watermarkRect.offsetMin = Vector2.zero;
+        watermarkRect.offsetMax = Vector2.zero;
+        var watermarkText = watermarkGo.AddComponent<Text>();
+        watermarkText.text = "OWNED";
+        watermarkText.fontSize = 28;
+        watermarkText.fontStyle = FontStyle.Bold;
+        watermarkText.color = new Color(1f, 1f, 1f, 0f);
+        watermarkText.alignment = TextAnchor.MiddleCenter;
+        watermarkText.raycastTarget = false;
+
+        // Fade in over OwnedFadeDuration
+        for (float t = 0; t < OwnedFadeDuration; t += Time.unscaledDeltaTime)
+        {
+            float p = t / OwnedFadeDuration;
+            watermarkText.color = new Color(1f, 1f, 1f, Mathf.Lerp(0f, 0.4f, p));
+            yield return null;
+        }
+        watermarkText.color = new Color(1f, 1f, 1f, 0.4f);
+    }
+
     private void Update()
     {
         if (_root == null || !_root.activeSelf) return;
         HandleKeyboardNavigation();
+        UpdateBondPulse();
     }
 
     private void HandleKeyboardNavigation()
@@ -1029,6 +1351,25 @@ public class ShopUI : MonoBehaviour
         {
             _panelFocusIndicators[_focusedPanelIndex].gameObject.SetActive(true);
         }
+    }
+
+    // === Bond Pulsing Glow (Story 13.8, Task 5, AC 5) ===
+
+    private void UpdateBondPulse()
+    {
+        if (_bondCardOutline == null) return;
+
+        // Sinusoidal alpha oscillation
+        float pulse = (Mathf.Sin(Time.unscaledTime * BondPulseSpeed * Mathf.PI) + 1f) * 0.5f;
+        float alpha = Mathf.Lerp(BondPulseMinAlpha, BondPulseMaxAlpha, pulse);
+
+        // Increase intensity on hover
+        if (_bondHovered)
+            alpha = Mathf.Clamp01(alpha + BondPulseHoverBoost);
+
+        var color = _bondCardOutline.effectColor;
+        color.a = alpha;
+        _bondCardOutline.effectColor = color;
     }
 
     public int FocusedPanelIndex => _focusedPanelIndex;

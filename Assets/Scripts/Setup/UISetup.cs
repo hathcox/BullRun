@@ -1067,8 +1067,9 @@ public static class UISetup
         // Card background
         var cardGo = CreatePanel($"RelicSlot_{index}", parent);
         view.CardBackground = cardGo.GetComponent<Image>();
-        view.CardBackground.color = new Color(0.08f, 0.1f, 0.22f, 0.9f);
+        view.CardBackground.color = ShopUI.RelicCardColor;
         view.Root = cardGo;
+        view.Group = cardGo.AddComponent<CanvasGroup>();
 
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
@@ -1087,40 +1088,41 @@ public static class UISetup
         view.CategoryLabel = categoryGo.GetComponent<Text>();
         view.CategoryLabel.raycastTarget = false;
 
-        // Rarity badge (small colored bar)
+        // Rarity badge (small colored bar) — unified color (Story 13.8, AC 1)
         var badgeGo = CreatePanel($"RarityBadge_{index}", cardGo.transform);
         var badgeRect = badgeGo.GetComponent<RectTransform>();
         badgeRect.sizeDelta = new Vector2(80f, 4f);
         var badgeLayoutElem = badgeGo.AddComponent<LayoutElement>();
         badgeLayoutElem.preferredHeight = 4f;
         view.RarityBadge = badgeGo.GetComponent<Image>();
-        view.RarityBadge.color = ShopUI.CommonColor;
+        view.RarityBadge.color = ShopUI.ReputationColor;
         view.RarityBadge.raycastTarget = false;
 
-        // Rarity text
-        var rarityGo = CreateLabel($"Rarity_{index}", cardGo.transform, "COMMON",
-            ShopUI.CommonColor, 10);
+        // Rarity text — hidden for unified look (Story 13.8, AC 1)
+        var rarityGo = CreateLabel($"Rarity_{index}", cardGo.transform, "",
+            ShopUI.ReputationColor, 10);
         view.RarityText = rarityGo.GetComponent<Text>();
         view.RarityText.raycastTarget = false;
 
-        // Item name
+        // Item name — bold/larger font for legibility (Story 13.8, AC 7)
         var nameGo = CreateLabel($"Name_{index}", cardGo.transform, "Empty",
-            Color.white, 16);
+            Color.white, 18);
         nameGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         view.NameText = nameGo.GetComponent<Text>();
         view.NameText.raycastTarget = false;
 
-        // Description text
+        // Description text — adequate contrast and line spacing (Story 13.8, AC 7)
         var descGo = CreateLabel($"Desc_{index}", cardGo.transform, "",
-            new Color(0.75f, 0.75f, 0.8f, 1f), 12);
+            new Color(0.8f, 0.8f, 0.85f, 1f), 13);
         var descRect = descGo.GetComponent<RectTransform>();
         descRect.sizeDelta = new Vector2(200f, 60f);
         view.DescriptionText = descGo.GetComponent<Text>();
         view.DescriptionText.raycastTarget = false;
+        view.DescriptionText.lineSpacing = 1.1f;
 
-        // Cost
+        // Cost — prominently sized with currency icon (Story 13.8, AC 7)
         var costGo = CreateLabel($"Cost_{index}", cardGo.transform, "",
-            Color.white, 20);
+            Color.white, 22);
         costGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         view.CostText = costGo.GetComponent<Text>();
         view.CostText.raycastTarget = false;
