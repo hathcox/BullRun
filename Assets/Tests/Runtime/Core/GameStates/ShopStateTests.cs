@@ -83,8 +83,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 eventFired = true;
                 Assert.AreEqual(1, e.RoundNumber);
-                Assert.LessOrEqual(e.AvailableItems.Length, 3);
-                Assert.Greater(e.AvailableItems.Length, 0);
+                Assert.LessOrEqual(e.AvailableRelics.Length, 3);
+                Assert.Greater(e.AvailableRelics.Length, 0);
             });
 
             EnterShop();
@@ -111,12 +111,12 @@ namespace BullRun.Tests.Core.GameStates
 
             EnterShop();
 
-            Assert.LessOrEqual(received.AvailableItems.Length, 3);
-            Assert.Greater(received.AvailableItems.Length, 0);
+            Assert.LessOrEqual(received.AvailableRelics.Length, 3);
+            Assert.Greater(received.AvailableRelics.Length, 0);
             // Story 13.3: Relics are uniform random — no category assignment
-            for (int i = 0; i < received.AvailableItems.Length; i++)
+            for (int i = 0; i < received.AvailableRelics.Length; i++)
             {
-                Assert.IsFalse(string.IsNullOrEmpty(received.AvailableItems[i].Id),
+                Assert.IsFalse(string.IsNullOrEmpty(received.AvailableRelics[i].Id),
                     $"Relic at index {i} should have a valid Id");
             }
         }

@@ -94,22 +94,6 @@ public class ShopTransaction
     }
 
     /// <summary>
-    /// Legacy overload accepting ShopItemDef. Converts to RelicDef and delegates.
-    /// </summary>
-    public ShopPurchaseResult PurchaseRelic(RunContext ctx, ShopItemDef item)
-    {
-        return PurchaseRelic(ctx, new RelicDef(item.Id, item.Name, item.Description, item.Cost));
-    }
-
-    /// <summary>
-    /// Backwards-compatible entry point. Delegates to PurchaseRelic.
-    /// </summary>
-    public ShopPurchaseResult TryPurchase(RunContext ctx, ShopItemDef item)
-    {
-        return PurchaseRelic(ctx, item);
-    }
-
-    /// <summary>
     /// Processes a reroll: deducts cost, increments reroll count (AC 7, 8, 9).
     /// Cost = RerollBaseCost + (RerollCostIncrement * currentRerollCount).
     /// Returns true if reroll succeeded, false if insufficient funds.

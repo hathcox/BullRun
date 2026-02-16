@@ -110,27 +110,25 @@ public class ShopState : IGameState
                 () => OnBondSellRequested(ctx));
         }
 
-        // Publish shop opened event — only include non-null items
+        // Publish shop opened event — only include non-null relics
         int availableCount = 0;
         for (int i = 0; i < _relicOffering.Length; i++)
             if (_relicOffering[i].HasValue) availableCount++;
 
-        // Convert RelicDefs to ShopItemDefs for the event (backwards compat)
-        var availableItems = new ShopItemDef[availableCount];
+        var availableRelics = new RelicDef[availableCount];
         int availIdx = 0;
         for (int i = 0; i < _relicOffering.Length; i++)
         {
             if (_relicOffering[i].HasValue)
             {
-                var r = _relicOffering[i].Value;
-                availableItems[availIdx++] = new ShopItemDef(r.Id, r.Name, r.Description, r.Cost, ItemRarity.Common, ItemCategory.TradingTool);
+                availableRelics[availIdx++] = _relicOffering[i].Value;
             }
         }
 
         EventBus.Publish(new ShopOpenedEvent
         {
             RoundNumber = ctx.CurrentRound,
-            AvailableItems = availableItems,
+            AvailableRelics = availableRelics,
             CurrentReputation = ctx.Reputation.Current,
             ExpansionsAvailable = _expansionOffering.Length > 0,
             TipsAvailable = _tipOffering != null && _tipOffering.Length > 0,
@@ -138,7 +136,7 @@ public class ShopState : IGameState
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Enter: Store opened (Round {ctx.CurrentRound}), {availableItems.Length} relics, untimed");
+        Debug.Log($"[ShopState] Enter: Store opened (Round {ctx.CurrentRound}), {availableRelics.Length} relics, untimed");
         #endif
     }
 

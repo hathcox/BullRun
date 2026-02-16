@@ -178,10 +178,9 @@ namespace BullRun.Tests.Core
             ctx.Reputation.Add(500);
 
             var transaction = new ShopTransaction();
-            var item = new ShopItemDef("test", "Test", "desc", 200,
-                ItemRarity.Common, ItemCategory.TradingTool);
+            var relic = new RelicDef("test", "Test", "desc", 200);
 
-            var result = transaction.TryPurchase(ctx, item);
+            var result = transaction.PurchaseRelic(ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(300, ctx.Reputation.Current, "Rep should be deducted");

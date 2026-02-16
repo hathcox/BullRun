@@ -1,9 +1,9 @@
 using System.Collections.Generic;
-using UnityEngine;
 
 /// <summary>
 /// Generates shop relic offerings using uniform random selection.
 /// Story 13.3: No rarity weighting — all relics equally likely.
+/// Story 13.9: Removed all legacy rarity-weighted selection logic.
 /// Pure C# class — no MonoBehaviour dependency for testability.
 /// Stateless — all data passed via parameters, no cached state between calls.
 /// </summary>
@@ -69,84 +69,5 @@ public static class ShopGenerator
                 pool.Add(relicPool[i]);
         }
         return pool;
-    }
-
-    /// <summary>
-    /// Legacy offering generator — kept for backwards compatibility with tests.
-    /// Generates one item per category using rarity-weighted selection.
-    /// Will be removed in Story 13.9 cleanup.
-    /// </summary>
-    public static ShopItemDef?[] GenerateOffering(List<string> ownedItemIds, HashSet<string> unlockedPool, System.Random random)
-    {
-        return new ShopItemDef?[]
-        {
-            SelectItem(ItemCategory.TradingTool, ownedItemIds, unlockedPool, random),
-            SelectItem(ItemCategory.MarketIntel, ownedItemIds, unlockedPool, random),
-            SelectItem(ItemCategory.PassivePerk, ownedItemIds, unlockedPool, random),
-        };
-    }
-
-    /// <summary>
-    /// Legacy item selector — rarity-weighted, category-filtered.
-    /// Will be removed in Story 13.9 cleanup.
-    /// </summary>
-    public static ShopItemDef? SelectItem(ItemCategory category, List<string> ownedItemIds, HashSet<string> unlockedPool, System.Random random)
-    {
-        var ownedSet = new HashSet<string>(ownedItemIds);
-        var eligible = new List<ShopItemDef>();
-        var allItems = ShopItemDefinitions.AllItems;
-        for (int i = 0; i < allItems.Length; i++)
-        {
-            if (allItems[i].Category != category) continue;
-            if (!unlockedPool.Contains(allItems[i].Id)) continue;
-            if (ownedSet.Contains(allItems[i].Id)) continue;
-            eligible.Add(allItems[i]);
-        }
-
-        if (eligible.Count == 0)
-        {
-            Debug.LogWarning($"[ShopGenerator] Category {category} pool exhausted — no eligible items remaining");
-            return null;
-        }
-
-        var grouped = new Dictionary<ItemRarity, List<ShopItemDef>>();
-        for (int i = 0; i < eligible.Count; i++)
-        {
-            var rarity = eligible[i].Rarity;
-            if (!grouped.ContainsKey(rarity))
-                grouped[rarity] = new List<ShopItemDef>();
-            grouped[rarity].Add(eligible[i]);
-        }
-
-        ItemRarity selectedRarity = SelectWeightedRarity(grouped, random);
-        var pool = grouped[selectedRarity];
-        return pool[random.Next(pool.Count)];
-    }
-
-    /// <summary>
-    /// Legacy rarity selector — weighted random.
-    /// Will be removed in Story 13.9 cleanup.
-    /// </summary>
-    public static ItemRarity SelectWeightedRarity(Dictionary<ItemRarity, List<ShopItemDef>> groupedItems, System.Random random)
-    {
-        var keys = new List<ItemRarity>(groupedItems.Count);
-        foreach (var kvp in groupedItems)
-            keys.Add(kvp.Key);
-        keys.Sort();
-
-        float totalWeight = 0f;
-        for (int i = 0; i < keys.Count; i++)
-            totalWeight += ShopItemDefinitions.GetWeightForRarity(keys[i]);
-
-        float roll = (float)(random.NextDouble() * totalWeight);
-        float cumulative = 0f;
-        for (int i = 0; i < keys.Count; i++)
-        {
-            cumulative += ShopItemDefinitions.GetWeightForRarity(keys[i]);
-            if (roll < cumulative)
-                return keys[i];
-        }
-
-        return keys[keys.Count - 1];
     }
 }

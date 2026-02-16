@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -13,12 +14,6 @@ using UnityEngine.UI;
 /// </summary>
 public class ShopUI : MonoBehaviour
 {
-    // Rarity colors — retained for UISetup and legacy compat (13.9 cleanup)
-    public static readonly Color CommonColor = new Color(0.7f, 0.7f, 0.7f, 1f);
-    public static readonly Color UncommonColor = new Color(0.2f, 0.8f, 0.2f, 1f);
-    public static readonly Color RareColor = new Color(0.3f, 0.5f, 1f, 1f);
-    public static readonly Color LegendaryColor = new Color(1f, 0.84f, 0f, 1f);
-
     // Reputation display color (amber/gold)
     public static readonly Color ReputationColor = new Color(1f, 0.7f, 0f, 1f);
 
@@ -300,24 +295,6 @@ public class ShopUI : MonoBehaviour
         }
 
         RefreshRelicCapacity();
-    }
-
-    /// <summary>
-    /// Legacy Show method for backwards compatibility with ShopItemDef.
-    /// Converts to RelicDef and delegates.
-    /// </summary>
-    public void Show(RunContext ctx, ShopItemDef?[] items, System.Action<int> onPurchase)
-    {
-        var relics = new RelicDef?[items.Length];
-        for (int i = 0; i < items.Length; i++)
-        {
-            if (items[i].HasValue)
-            {
-                var item = items[i].Value;
-                relics[i] = new RelicDef(item.Id, item.Name, item.Description, item.Cost);
-            }
-        }
-        ShowRelics(ctx, relics, onPurchase);
     }
 
     public void Hide()
@@ -1316,20 +1293,22 @@ public class ShopUI : MonoBehaviour
     private void HandleKeyboardNavigation()
     {
         if (_focusablePanels == null) return;
+        var keyboard = Keyboard.current;
+        if (keyboard == null) return;
 
-        if (Input.GetKeyDown(KeyCode.Tab))
+        if (keyboard.tabKey.wasPressedThisFrame)
         {
             int next = (_focusedPanelIndex + 1) % _focusablePanels.Length;
             SetFocusedPanel(next);
         }
-        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        else if (keyboard.leftArrowKey.wasPressedThisFrame)
         {
             if (_focusedPanelIndex > 0)
                 SetFocusedPanel(_focusedPanelIndex - 1);
             else if (_focusedPanelIndex < 0)
                 SetFocusedPanel(0);
         }
-        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        else if (keyboard.rightArrowKey.wasPressedThisFrame)
         {
             if (_focusedPanelIndex < _focusablePanels.Length - 1)
                 SetFocusedPanel(_focusedPanelIndex + 1);
@@ -1501,18 +1480,4 @@ public class ShopUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Returns rarity color — retained for UISetup and legacy compat (13.9 cleanup).
-    /// </summary>
-    public static Color GetRarityColor(ItemRarity rarity)
-    {
-        return rarity switch
-        {
-            ItemRarity.Common => CommonColor,
-            ItemRarity.Uncommon => UncommonColor,
-            ItemRarity.Rare => RareColor,
-            ItemRarity.Legendary => LegendaryColor,
-            _ => CommonColor
-        };
-    }
 }

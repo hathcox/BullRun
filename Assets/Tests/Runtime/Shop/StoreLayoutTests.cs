@@ -78,9 +78,9 @@ namespace BullRun.Tests.Shop
 
             EnterShop();
 
-            Assert.IsNotNull(received.AvailableItems, "AvailableItems should not be null");
-            // ShopGenerator produces up to 3 items (one per category)
-            Assert.LessOrEqual(received.AvailableItems.Length, 3);
+            Assert.IsNotNull(received.AvailableRelics, "AvailableRelics should not be null");
+            // ShopGenerator produces up to 3 relics
+            Assert.LessOrEqual(received.AvailableRelics.Length, 3);
         }
 
         // === "Next Round" button transitions to next state (AC: 9) ===
@@ -221,15 +221,6 @@ namespace BullRun.Tests.Shop
         {
             var color = ShopUI.PanelHeaderColor;
             Assert.Greater(color.b, 0.5f);
-        }
-
-        [Test]
-        public void ShopUI_GetRarityColor_ReturnsCorrectColors()
-        {
-            Assert.AreEqual(ShopUI.CommonColor, ShopUI.GetRarityColor(ItemRarity.Common));
-            Assert.AreEqual(ShopUI.UncommonColor, ShopUI.GetRarityColor(ItemRarity.Uncommon));
-            Assert.AreEqual(ShopUI.RareColor, ShopUI.GetRarityColor(ItemRarity.Rare));
-            Assert.AreEqual(ShopUI.LegendaryColor, ShopUI.GetRarityColor(ItemRarity.Legendary));
         }
 
         // === Keyboard Navigation Tests (AC: 11) ===

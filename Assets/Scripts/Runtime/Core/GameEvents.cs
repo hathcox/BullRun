@@ -198,11 +198,12 @@ public struct ActTransitionEvent
 /// Fired when the store opens after a successful round.
 /// FIX-12: Carries Reputation balance (shop currency) instead of cash.
 /// 13.2: Added section availability flags for the multi-panel store layout.
+/// 13.9: AvailableRelics replaced legacy ShopItemDef[] AvailableItems.
 /// </summary>
 public struct ShopOpenedEvent
 {
     public int RoundNumber;
-    public ShopItemDef[] AvailableItems;
+    public RelicDef[] AvailableRelics;
     public int CurrentReputation;
     public bool ExpansionsAvailable;
     public bool TipsAvailable;

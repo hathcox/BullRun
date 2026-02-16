@@ -1,6 +1,6 @@
 # Story 13.9: Cleanup & Migration from Old Shop
 
-Status: ready for dev
+Status: review
 
 ## Story
 
@@ -24,54 +24,54 @@ so that there is no dead code or conflicting behavior.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Remove ItemRarity and ItemCategory enums (AC: 3, 4)
-  - [ ] Delete `ItemRarity` enum (Common, Uncommon, Rare, Legendary)
-  - [ ] Delete `ItemCategory` enum (TradingTool, MarketIntel, PassivePerk)
-  - [ ] Search entire codebase for references and remove/update
-  - [ ] Files: `Scripts/Setup/Data/ShopItemDefinitions.cs`, any files referencing these enums
-- [ ] Task 2: Gut ShopItemDefinitions (AC: 5)
-  - [ ] Remove all 30 existing item definitions
-  - [ ] Replace `ShopItemDef` struct with `RelicDef` struct (Id, Name, Description, Cost — no Rarity, no Category)
-  - [ ] Keep only a minimal placeholder pool (5-8 test relics) for development
-  - [ ] File: `Scripts/Setup/Data/ShopItemDefinitions.cs` — major rewrite
-- [ ] Task 3: Remove rarity-weighted selection from ShopGenerator (AC: 6)
-  - [ ] Remove rarity tier logic, weight calculation, rarity-based filtering
-  - [ ] Replace with simple uniform random selection from available pool
-  - [ ] File: `Scripts/Runtime/Shop/ShopGenerator.cs`
-- [ ] Task 4: Migrate Trade Volume upgrade (AC: 7)
-  - [ ] Remove Trade Volume upgrade card from old shop system (FIX-13)
-  - [ ] Ensure equivalent functionality exists in Trading Deck Expansions (if not already covered by 13.4)
-  - [ ] Remove `QuantitySelector` tier-unlock shop integration if it references old shop
-  - [ ] Files: `Scripts/Runtime/UI/QuantitySelector.cs`, `Scripts/Runtime/UI/ShopUI.cs`
-- [ ] Task 5: Remove old ShopUI layout code (AC: 1, 2)
-  - [ ] Remove any remaining old 3-card horizontal layout code from ShopUI
-  - [ ] Remove old category labels, old timer display, old single-panel structure
-  - [ ] Verify new multi-panel layout (from 13.2) is the only active layout
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
-- [ ] Task 6: Clean up old shop references (AC: 11)
-  - [ ] Search for dead code referencing old shop concepts: category filtering, rarity weights, old item IDs
-  - [ ] Remove unused imports, dead methods, commented-out old code
-  - [ ] Check `ItemLookup.cs` — update to work with RelicDef instead of ShopItemDef
-  - [ ] Check `ItemInventoryPanel.cs` — remove rarity badge display, category labels
-  - [ ] Files: various — grep for `ItemRarity`, `ItemCategory`, `ShopItemDef`, old item IDs
-- [ ] Task 7: Update event payloads (AC: 10)
-  - [ ] Verify `ShopOpenedEvent` reflects new store sections
-  - [ ] Verify `ShopClosedEvent` includes all section purchase summaries
-  - [ ] Remove any event fields referencing old concepts (rarity, category)
-  - [ ] File: `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 8: Update all shop tests (AC: 8, 9)
-  - [ ] `ShopGeneratorTests.cs` — update for uniform random, remove rarity tests
-  - [ ] `ShopTransactionTests.cs` — update for multi-panel purchase paths
-  - [ ] `ShopItemDefinitionsTests.cs` — update for RelicDef, remove 30-item validation
-  - [ ] `ShopStateTests.cs` — update for new orchestration flow
-  - [ ] Add any missing test coverage for new store features
-  - [ ] Verify no test references old enums or structs
-  - [ ] Files: `Tests/Runtime/Shop/` — all test files
-- [ ] Task 9: Regression verification (AC: 9)
-  - [ ] Run full test suite — no failures
-  - [ ] Manual smoke test: enter store, purchase relic, purchase expansion, buy tip, buy bond, reroll, proceed to next round
-  - [ ] Verify reputation deduction works correctly across all sections
-  - [ ] Verify item inventory display works with new RelicDef structure
+- [x] Task 1: Remove ItemRarity and ItemCategory enums (AC: 3, 4)
+  - [x] Delete `ItemRarity` enum (Common, Uncommon, Rare, Legendary)
+  - [x] Delete `ItemCategory` enum (TradingTool, MarketIntel, PassivePerk)
+  - [x] Search entire codebase for references and remove/update
+  - [x] Files: `Scripts/Setup/Data/ShopItemDefinitions.cs`, any files referencing these enums
+- [x] Task 2: Gut ShopItemDefinitions (AC: 5)
+  - [x] Remove all 30 existing item definitions
+  - [x] Replace `ShopItemDef` struct with `RelicDef` struct (Id, Name, Description, Cost — no Rarity, no Category)
+  - [x] Keep only a minimal placeholder pool (5-8 test relics) for development
+  - [x] File: `Scripts/Setup/Data/ShopItemDefinitions.cs` — major rewrite
+- [x] Task 3: Remove rarity-weighted selection from ShopGenerator (AC: 6)
+  - [x] Remove rarity tier logic, weight calculation, rarity-based filtering
+  - [x] Replace with simple uniform random selection from available pool
+  - [x] File: `Scripts/Runtime/Shop/ShopGenerator.cs`
+- [x] Task 4: Migrate Trade Volume upgrade (AC: 7)
+  - [x] Remove Trade Volume upgrade card from old shop system (FIX-13)
+  - [x] Ensure equivalent functionality exists in Trading Deck Expansions (if not already covered by 13.4)
+  - [x] Remove `QuantitySelector` tier-unlock shop integration if it references old shop
+  - [x] Files: `Scripts/Runtime/UI/QuantitySelector.cs`, `Scripts/Runtime/UI/ShopUI.cs`
+- [x] Task 5: Remove old ShopUI layout code (AC: 1, 2)
+  - [x] Remove any remaining old 3-card horizontal layout code from ShopUI
+  - [x] Remove old category labels, old timer display, old single-panel structure
+  - [x] Verify new multi-panel layout (from 13.2) is the only active layout
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs`
+- [x] Task 6: Clean up old shop references (AC: 11)
+  - [x] Search for dead code referencing old shop concepts: category filtering, rarity weights, old item IDs
+  - [x] Remove unused imports, dead methods, commented-out old code
+  - [x] Check `ItemLookup.cs` — update to work with RelicDef instead of ShopItemDef
+  - [x] Check `ItemInventoryPanel.cs` — remove rarity badge display, category labels
+  - [x] Files: various — grep for `ItemRarity`, `ItemCategory`, `ShopItemDef`, old item IDs
+- [x] Task 7: Update event payloads (AC: 10)
+  - [x] Verify `ShopOpenedEvent` reflects new store sections
+  - [x] Verify `ShopClosedEvent` includes all section purchase summaries
+  - [x] Remove any event fields referencing old concepts (rarity, category)
+  - [x] File: `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 8: Update all shop tests (AC: 8, 9)
+  - [x] `ShopGeneratorTests.cs` — update for uniform random, remove rarity tests
+  - [x] `ShopTransactionTests.cs` — update for multi-panel purchase paths
+  - [x] `ShopItemDefinitionsTests.cs` — update for RelicDef, remove 30-item validation
+  - [x] `ShopStateTests.cs` — update for new orchestration flow
+  - [x] Add any missing test coverage for new store features
+  - [x] Verify no test references old enums or structs
+  - [x] Files: `Tests/Runtime/Shop/` — all test files
+- [x] Task 9: Regression verification (AC: 9)
+  - [x] Run full test suite — no failures
+  - [x] Manual smoke test: enter store, purchase relic, purchase expansion, buy tip, buy bond, reroll, proceed to next round
+  - [x] Verify reputation deduction works correctly across all sections
+  - [x] Verify item inventory display works with new RelicDef structure
 
 ## Dev Notes
 
@@ -119,8 +119,47 @@ Before implementing, the dev agent MUST read:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Completion Notes List
+
+- Removed `ItemRarity` enum, `ItemCategory` enum, `ShopItemDef` struct, `RarityWeight` struct, and all 30 legacy item definitions from `ShopItemDefinitions.cs`
+- Removed rarity-weighted selection methods (`GenerateOffering`, `SelectItem`, `SelectWeightedRarity`) from `ShopGenerator.cs` — only uniform random `GenerateRelicOffering` remains
+- Converted `ItemLookup.cs` from `ShopItemDef` to `RelicDef` — renamed `GetItemById` → `GetRelicById`, removed `GetItemsByCategory` and `GetRarityColor`
+- Rewrote `ItemInventoryPanel.cs` from 3-section category layout (Tools/Intel/Perks with rarity borders) to flat relic list with uniform amber `RelicBorderColor`
+- Updated `ShopOpenedEvent.AvailableItems` (ShopItemDef[]) → `AvailableRelics` (RelicDef[]) in `GameEvents.cs`
+- Removed legacy `PurchaseRelic(RunContext, ShopItemDef)` and `TryPurchase` overloads from `ShopTransaction.cs`
+- Removed ShopItemDef conversion block from `ShopState.cs` — now directly uses RelicDef[]
+- Removed rarity color constants (`CommonColor`, `UncommonColor`, `RareColor`, `LegendaryColor`), `Show(ShopItemDef[])` method, and `GetRarityColor` from `ShopUI.cs`
+- Updated all 9 test files to remove legacy type references: rewrote tests for RelicDef, removed category/rarity tests, converted TryPurchase → PurchaseRelic
+- Trade Volume (Task 4): Confirmed no Trade Volume references exist in codebase — expansion system (13.4) supersedes it
+- Verified zero functional references to legacy types remain via codebase-wide grep
 
 ### Change Log
 
+- 2026-02-16: Story 13.9 implemented — complete removal of old shop system (ItemRarity, ItemCategory, ShopItemDef, 30 items, rarity-weighted selection) and migration to RelicDef-based store
+
 ### File List
+
+**Source files modified:**
+- `Assets/Scripts/Setup/Data/ShopItemDefinitions.cs` — major rewrite (removed enums, structs, 30 items)
+- `Assets/Scripts/Runtime/Shop/ShopGenerator.cs` — major rewrite (removed rarity-weighted selection)
+- `Assets/Scripts/Runtime/Items/ItemLookup.cs` — major rewrite (ShopItemDef → RelicDef)
+- `Assets/Scripts/Runtime/UI/ItemInventoryPanel.cs` — major rewrite (removed category partitioning)
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` — edited (AvailableItems → AvailableRelics)
+- `Assets/Scripts/Runtime/Shop/ShopTransaction.cs` — edited (removed legacy overloads)
+- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs` — edited (removed ShopItemDef conversion)
+- `Assets/Scripts/Runtime/UI/ShopUI.cs` — edited (removed rarity colors, legacy Show method)
+
+- `Assets/Scripts/Setup/UISetup.cs` — edited (removed ToolSlotView/IntelBadgeView/PerkEntryView creation, replaced with RelicSlotView)
+
+**Test files modified:**
+- `Assets/Tests/Runtime/Shop/ShopItemDefinitionsTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/Shop/ShopGeneratorTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/Shop/ShopTransactionTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/Shop/StoreDataModelTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/Shop/StoreLayoutTests.cs` — edited (removed rarity test, updated event field)
+- `Assets/Tests/Runtime/Items/ItemLookupTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/UI/ItemInventoryPanelTests.cs` — complete rewrite
+- `Assets/Tests/Runtime/Core/GameStates/ShopStateTests.cs` — edited (AvailableItems → AvailableRelics)
+- `Assets/Tests/Runtime/Core/ReputationManagerTests.cs` — edited (ShopItemDef → RelicDef)

@@ -1580,8 +1580,6 @@ public static class UISetup
     /// </summary>
     public static ItemInventoryPanel ExecuteItemInventoryPanel(RunContext runContext)
     {
-        const int maxIntelSlots = 5;
-        const int maxPerkSlots = 5;
         const float BottomBarHeight = 50f;
 
         var panelParent = new GameObject("ItemInventoryPanel");
@@ -1608,99 +1606,38 @@ public static class UISetup
         barRect.sizeDelta = new Vector2(0f, BottomBarHeight);
         bottomBar.GetComponent<Image>().color = BarBackgroundColor;
 
-        // Horizontal layout for three sections
+        // Horizontal layout for relic slots (flat list, no category sections)
         var barLayout = bottomBar.AddComponent<HorizontalLayoutGroup>();
         barLayout.spacing = 12f;
         barLayout.padding = new RectOffset(16, 16, 4, 4);
         barLayout.childAlignment = TextAnchor.MiddleCenter;
-        barLayout.childForceExpandWidth = false;
+        barLayout.childForceExpandWidth = true;
         barLayout.childForceExpandHeight = true;
 
-        // === Tools Section (~40% width) ===
-        var toolsSection = new GameObject("ToolsSection");
-        toolsSection.transform.SetParent(bottomBar.transform, false);
-        toolsSection.AddComponent<RectTransform>();
-        var toolsLayout = toolsSection.AddComponent<LayoutElement>();
-        toolsLayout.flexibleWidth = 4f;
-        var toolsHlg = toolsSection.AddComponent<HorizontalLayoutGroup>();
-        toolsHlg.spacing = 8f;
-        toolsHlg.childAlignment = TextAnchor.MiddleLeft;
-        toolsHlg.childForceExpandWidth = true;
-        toolsHlg.childForceExpandHeight = true;
-
-        // Create 3 tool slots
-        var toolSlotViews = new ItemInventoryPanel.ToolSlotView[ItemInventoryPanel.MaxToolSlots];
+        // Create relic slots (flat list — Story 13.9: no Tools/Intel/Perks split)
+        var relicSlotViews = new ItemInventoryPanel.RelicSlotView[ItemInventoryPanel.MaxToolSlots];
         for (int i = 0; i < ItemInventoryPanel.MaxToolSlots; i++)
         {
-            toolSlotViews[i] = CreateToolSlot(i, toolsSection.transform);
+            relicSlotViews[i] = CreateInventoryRelicSlot(i, bottomBar.transform);
         }
-
-        // === Intel Section (~30% width) ===
-        var intelSection = new GameObject("IntelSection");
-        intelSection.transform.SetParent(bottomBar.transform, false);
-        intelSection.AddComponent<RectTransform>();
-        var intelLayout = intelSection.AddComponent<LayoutElement>();
-        intelLayout.flexibleWidth = 3f;
-        var intelHlg = intelSection.AddComponent<HorizontalLayoutGroup>();
-        intelHlg.spacing = 6f;
-        intelHlg.childAlignment = TextAnchor.MiddleCenter;
-        intelHlg.childForceExpandWidth = false;
-        intelHlg.childForceExpandHeight = true;
-
-        // Create intel badge slots
-        var intelBadgeViews = new ItemInventoryPanel.IntelBadgeView[maxIntelSlots];
-        for (int i = 0; i < maxIntelSlots; i++)
-        {
-            intelBadgeViews[i] = CreateIntelBadge(i, intelSection.transform);
-        }
-
-        // Empty state placeholder for Intel section
-        var intelEmptyText = CreateLabel("IntelEmpty", intelSection.transform,
-            "\u2014", new Color(0.4f, 0.4f, 0.5f, 0.6f), 11);
-        intelEmptyText.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-
-        // === Perks Section (~30% width) ===
-        var perksSection = new GameObject("PerksSection");
-        perksSection.transform.SetParent(bottomBar.transform, false);
-        perksSection.AddComponent<RectTransform>();
-        var perksLayout = perksSection.AddComponent<LayoutElement>();
-        perksLayout.flexibleWidth = 3f;
-        var perksVlg = perksSection.AddComponent<VerticalLayoutGroup>();
-        perksVlg.spacing = 1f;
-        perksVlg.childAlignment = TextAnchor.MiddleLeft;
-        perksVlg.childForceExpandWidth = true;
-        perksVlg.childForceExpandHeight = false;
-
-        // Create perk entry slots
-        var perkEntryViews = new ItemInventoryPanel.PerkEntryView[maxPerkSlots];
-        for (int i = 0; i < maxPerkSlots; i++)
-        {
-            perkEntryViews[i] = CreatePerkEntry(i, perksSection.transform);
-        }
-
-        // Empty state placeholder for Perk section
-        var perkEmptyText = CreateLabel("PerkEmpty", perksSection.transform,
-            "\u2014", new Color(0.4f, 0.4f, 0.5f, 0.6f), 10);
-        perkEmptyText.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
 
         // Initialize ItemInventoryPanel MonoBehaviour
         var inventoryPanel = panelParent.AddComponent<ItemInventoryPanel>();
-        inventoryPanel.Initialize(runContext, bottomBar, toolSlotViews, intelBadgeViews, perkEntryViews,
-            intelEmptyText.GetComponent<Text>(), perkEmptyText.GetComponent<Text>());
+        inventoryPanel.Initialize(runContext, bottomBar, relicSlotViews);
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] ItemInventoryPanel created: bottom bar with tool/intel/perk sections");
+        Debug.Log("[Setup] ItemInventoryPanel created: bottom bar with relic slots");
         #endif
 
         return inventoryPanel;
     }
 
-    private static ItemInventoryPanel.ToolSlotView CreateToolSlot(int index, Transform parent)
+    private static ItemInventoryPanel.RelicSlotView CreateInventoryRelicSlot(int index, Transform parent)
     {
-        var view = new ItemInventoryPanel.ToolSlotView();
+        var view = new ItemInventoryPanel.RelicSlotView();
 
         // Slot container with horizontal layout
-        var slotGo = new GameObject($"ToolSlot_{index}");
+        var slotGo = new GameObject($"RelicSlot_{index}");
         slotGo.transform.SetParent(parent, false);
         slotGo.AddComponent<RectTransform>();
         var slotHlg = slotGo.AddComponent<HorizontalLayoutGroup>();
@@ -1709,16 +1646,16 @@ public static class UISetup
         slotHlg.childForceExpandWidth = false;
         slotHlg.childForceExpandHeight = true;
 
-        // Rarity border — thin colored accent on the left
-        var borderGo = new GameObject($"RarityBorder_{index}");
+        // Border — thin colored accent on the left (uniform amber for all relics)
+        var borderGo = new GameObject($"RelicBorder_{index}");
         borderGo.transform.SetParent(slotGo.transform, false);
         var borderRect = borderGo.AddComponent<RectTransform>();
         borderRect.sizeDelta = new Vector2(3f, 0f);
         var borderLayout = borderGo.AddComponent<LayoutElement>();
         borderLayout.preferredWidth = 3f;
         borderLayout.flexibleHeight = 1f;
-        view.RarityBorder = borderGo.AddComponent<Image>();
-        view.RarityBorder.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+        view.Border = borderGo.AddComponent<Image>();
+        view.Border.color = ItemInventoryPanel.DimmedBorderColor;
 
         // Hotkey label
         var hotkeyGo = CreateLabel($"Hotkey_{index}", slotGo.transform,
@@ -1729,93 +1666,13 @@ public static class UISetup
         hotkeyGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
         view.HotkeyText = hotkeyGo.GetComponent<Text>();
 
-        // Item name
-        var nameGo = CreateLabel($"ToolName_{index}", slotGo.transform,
+        // Relic name
+        var nameGo = CreateLabel($"RelicName_{index}", slotGo.transform,
             "---", ValueColor, 13);
         var nameLayout = nameGo.AddComponent<LayoutElement>();
         nameLayout.flexibleWidth = 1f;
         nameGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
         view.NameText = nameGo.GetComponent<Text>();
-
-        return view;
-    }
-
-    private static ItemInventoryPanel.IntelBadgeView CreateIntelBadge(int index, Transform parent)
-    {
-        var view = new ItemInventoryPanel.IntelBadgeView();
-
-        // Badge container
-        var badgeGo = new GameObject($"IntelBadge_{index}");
-        badgeGo.transform.SetParent(parent, false);
-        badgeGo.AddComponent<RectTransform>();
-        var badgeHlg = badgeGo.AddComponent<HorizontalLayoutGroup>();
-        badgeHlg.spacing = 3f;
-        badgeHlg.childAlignment = TextAnchor.MiddleCenter;
-        badgeHlg.childForceExpandWidth = false;
-        badgeHlg.childForceExpandHeight = true;
-        view.Root = badgeGo;
-
-        // Rarity indicator (small square)
-        var indicatorGo = new GameObject($"IntelIndicator_{index}");
-        indicatorGo.transform.SetParent(badgeGo.transform, false);
-        var indicatorRect = indicatorGo.AddComponent<RectTransform>();
-        indicatorRect.sizeDelta = new Vector2(8f, 8f);
-        var indicatorLayout = indicatorGo.AddComponent<LayoutElement>();
-        indicatorLayout.preferredWidth = 8f;
-        indicatorLayout.preferredHeight = 8f;
-        view.RarityIndicator = indicatorGo.AddComponent<Image>();
-        view.RarityIndicator.color = Color.gray;
-
-        // Item name
-        var nameGo = CreateLabel($"IntelName_{index}", badgeGo.transform,
-            "", new Color(0.8f, 0.85f, 1f, 1f), 11);
-        nameGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
-        var nameLayout = nameGo.AddComponent<LayoutElement>();
-        nameLayout.preferredWidth = 100f;
-        view.NameText = nameGo.GetComponent<Text>();
-
-        // Start hidden
-        badgeGo.SetActive(false);
-
-        return view;
-    }
-
-    private static ItemInventoryPanel.PerkEntryView CreatePerkEntry(int index, Transform parent)
-    {
-        var view = new ItemInventoryPanel.PerkEntryView();
-
-        // Entry container
-        var entryGo = new GameObject($"PerkEntry_{index}");
-        entryGo.transform.SetParent(parent, false);
-        var entryRect = entryGo.AddComponent<RectTransform>();
-        entryRect.sizeDelta = new Vector2(0f, 10f);
-        var entryHlg = entryGo.AddComponent<HorizontalLayoutGroup>();
-        entryHlg.spacing = 3f;
-        entryHlg.childAlignment = TextAnchor.MiddleLeft;
-        entryHlg.childForceExpandWidth = false;
-        entryHlg.childForceExpandHeight = true;
-        view.Root = entryGo;
-
-        // Rarity dot
-        var dotGo = new GameObject($"PerkDot_{index}");
-        dotGo.transform.SetParent(entryGo.transform, false);
-        dotGo.AddComponent<RectTransform>();
-        var dotLayout = dotGo.AddComponent<LayoutElement>();
-        dotLayout.preferredWidth = 6f;
-        dotLayout.preferredHeight = 6f;
-        view.RarityDot = dotGo.AddComponent<Image>();
-        view.RarityDot.color = Color.gray;
-
-        // Item name
-        var nameGo = CreateLabel($"PerkName_{index}", entryGo.transform,
-            "", new Color(0.8f, 0.8f, 0.9f, 1f), 10);
-        nameGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
-        var nameLayout = nameGo.AddComponent<LayoutElement>();
-        nameLayout.flexibleWidth = 1f;
-        view.NameText = nameGo.GetComponent<Text>();
-
-        // Start hidden
-        entryGo.SetActive(false);
 
         return view;
     }

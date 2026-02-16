@@ -2,6 +2,9 @@ using NUnit.Framework;
 
 namespace BullRun.Tests.Shop
 {
+    /// <summary>
+    /// Story 13.9: Updated to use RelicDef instead of ShopItemDef.
+    /// </summary>
     [TestFixture]
     public class StoreDataModelTests
     {
@@ -24,9 +27,9 @@ namespace BullRun.Tests.Shop
             EventBus.Clear();
         }
 
-        private ShopItemDef MakeItem(string id, string name, int cost)
+        private RelicDef MakeRelic(string id, string name, int cost)
         {
-            return new ShopItemDef(id, name, "Test item", cost, ItemRarity.Common, ItemCategory.TradingTool);
+            return new RelicDef(id, name, "Test relic", cost);
         }
 
         // === BondRecord struct ===
@@ -49,13 +52,13 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual("Stock X going up", tip.RevealedText);
         }
 
-        // === PurchaseRelic (existing TryPurchase behavior) ===
+        // === PurchaseRelic ===
 
         [Test]
         public void PurchaseRelic_DeductsReputation()
         {
-            var item = MakeItem("relic-1", "Relic One", 200);
-            var result = _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-1", "Relic One", 200);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(800, _ctx.Reputation.Current);
@@ -67,8 +70,8 @@ namespace BullRun.Tests.Shop
         public void PurchaseRelic_DoesNotTouchCash()
         {
             float cashBefore = _ctx.Portfolio.Cash;
-            var item = MakeItem("relic-1", "Relic One", 200);
-            _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-1", "Relic One", 200);
+            _transaction.PurchaseRelic(_ctx, relic);
             Assert.AreEqual(cashBefore, _ctx.Portfolio.Cash, 0.01f);
         }
 
@@ -76,8 +79,8 @@ namespace BullRun.Tests.Shop
         public void PurchaseRelic_RejectsAlreadyOwned()
         {
             _ctx.OwnedRelics.Add("relic-1");
-            var item = MakeItem("relic-1", "Relic One", 200);
-            var result = _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-1", "Relic One", 200);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
             Assert.AreEqual(ShopPurchaseResult.AlreadyOwned, result);
             Assert.AreEqual(1000, _ctx.Reputation.Current);
         }
@@ -87,21 +90,10 @@ namespace BullRun.Tests.Shop
         {
             _ctx.Reputation.Reset();
             _ctx.Reputation.Add(50);
-            var item = MakeItem("relic-1", "Relic One", 200);
-            var result = _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-1", "Relic One", 200);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
             Assert.AreEqual(50, _ctx.Reputation.Current);
-        }
-
-        [Test]
-        public void TryPurchase_DelegatesToPurchaseRelic()
-        {
-            var item = MakeItem("relic-1", "Relic One", 200);
-            var result = _transaction.TryPurchase(_ctx, item);
-
-            Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(1, _ctx.OwnedRelics.Count);
-            Assert.AreEqual(800, _ctx.Reputation.Current);
         }
 
         [Test]
@@ -111,8 +103,8 @@ namespace BullRun.Tests.Shop
             bool fired = false;
             EventBus.Subscribe<ShopItemPurchasedEvent>(e => { fired = true; received = e; });
 
-            var item = MakeItem("relic-1", "Relic One", 300);
-            _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-1", "Relic One", 300);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.IsTrue(fired);
             Assert.AreEqual("relic-1", received.ItemId);
@@ -297,8 +289,8 @@ namespace BullRun.Tests.Shop
         public void AllPurchaseTypes_AreAtomic_ValidateThenDeductThenApply()
         {
             // Relic: validate → deduct rep → add to list
-            var item = MakeItem("relic-a", "Relic A", 100);
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, item));
+            var relic = MakeRelic("relic-a", "Relic A", 100);
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, relic));
             Assert.AreEqual(1, _ctx.OwnedRelics.Count);
             Assert.AreEqual(900, _ctx.Reputation.Current);
 
@@ -353,10 +345,8 @@ namespace BullRun.Tests.Shop
         public void OwnedRelics_PersistsAcrossShopVisits()
         {
             _ctx.OwnedRelics.Add("relic-1");
-            // Simulate shop close → advance round → shop enter
             _ctx.CurrentShopRerollCount = 0;
             _ctx.RevealedTips.Clear();
-            // Relics should still be there
             Assert.AreEqual(1, _ctx.OwnedRelics.Count);
             Assert.IsTrue(_ctx.OwnedRelics.Contains("relic-1"));
         }
@@ -388,7 +378,7 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(4, _ctx.InsiderTipSlots);
         }
 
-        // === Code Review Fixes: MaxRelicSlots enforcement ===
+        // === MaxRelicSlots enforcement ===
 
         [Test]
         public void PurchaseRelic_RejectsWhenMaxRelicSlotsReached()
@@ -396,8 +386,8 @@ namespace BullRun.Tests.Shop
             for (int i = 0; i < GameConfig.MaxRelicSlots; i++)
                 _ctx.OwnedRelics.Add($"relic-{i}");
 
-            var item = MakeItem("relic-overflow", "Overflow", 100);
-            var result = _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-overflow", "Overflow", 100);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
             Assert.AreEqual(1000, _ctx.Reputation.Current);
         }
@@ -408,13 +398,13 @@ namespace BullRun.Tests.Shop
             for (int i = 0; i < GameConfig.MaxRelicSlots - 1; i++)
                 _ctx.OwnedRelics.Add($"relic-{i}");
 
-            var item = MakeItem("relic-last", "Last Slot", 100);
-            var result = _transaction.PurchaseRelic(_ctx, item);
+            var relic = MakeRelic("relic-last", "Last Slot", 100);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(GameConfig.MaxRelicSlots, _ctx.OwnedRelics.Count);
         }
 
-        // === Code Review Fixes: InsiderTipSlots capacity ===
+        // === InsiderTipSlots capacity ===
 
         [Test]
         public void PurchaseTip_RejectsWhenAllSlotsUsed()
@@ -440,7 +430,7 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(_ctx.InsiderTipSlots, _ctx.RevealedTips.Count);
         }
 
-        // === Code Review Fixes: PurchaseExpansion fires event ===
+        // === PurchaseExpansion fires event ===
 
         [Test]
         public void PurchaseExpansion_PublishesShopExpansionPurchasedEvent()

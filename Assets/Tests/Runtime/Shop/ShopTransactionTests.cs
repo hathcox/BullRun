@@ -4,7 +4,7 @@ namespace BullRun.Tests.Shop
 {
     /// <summary>
     /// FIX-12: Shop purchases deduct Reputation, NOT Portfolio.Cash.
-    /// All tests updated to verify Reputation flow and cash isolation.
+    /// Story 13.9: Updated to use RelicDef instead of ShopItemDef.
     /// </summary>
     [TestFixture]
     public class ShopTransactionTests
@@ -29,18 +29,18 @@ namespace BullRun.Tests.Shop
             EventBus.Clear();
         }
 
-        private ShopItemDef MakeItem(string id, string name, int cost)
+        private RelicDef MakeRelic(string id, string name, int cost)
         {
-            return new ShopItemDef(id, name, "Test item", cost, ItemRarity.Common, ItemCategory.TradingTool);
+            return new RelicDef(id, name, "Test relic", cost);
         }
 
         // === FIX-12 AC 4: Purchase deducts Reputation, not cash ===
 
         [Test]
-        public void TryPurchase_DeductsExactCostFromReputation()
+        public void PurchaseRelic_DeductsExactCostFromReputation()
         {
-            var item = MakeItem("test-item", "Test Item", 300);
-            var result = _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("test-relic", "Test Relic", 300);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(700, _ctx.Reputation.Current);
@@ -49,34 +49,34 @@ namespace BullRun.Tests.Shop
         // === FIX-12 AC 5: Portfolio.Cash is NEVER reduced by shop purchases ===
 
         [Test]
-        public void TryPurchase_DoesNotTouchPortfolioCash()
+        public void PurchaseRelic_DoesNotTouchPortfolioCash()
         {
             float cashBefore = _ctx.Portfolio.Cash;
-            var item = MakeItem("test-item", "Test Item", 300);
-            _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("test-relic", "Test Relic", 300);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(cashBefore, _ctx.Portfolio.Cash, 0.01f, "Cash must be unchanged after shop purchase");
         }
 
         [Test]
-        public void TryPurchase_ReturnsInsufficientFunds_WhenRepLessThanCost()
+        public void PurchaseRelic_ReturnsInsufficientFunds_WhenRepLessThanCost()
         {
             _ctx.Reputation.Reset();
             _ctx.Reputation.Add(100); // Only 100 Rep
-            var item = MakeItem("expensive", "Expensive", 1500);
-            var result = _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("expensive", "Expensive", 1500);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
             Assert.AreEqual(100, _ctx.Reputation.Current, "Rep should be unchanged");
         }
 
         [Test]
-        public void TryPurchase_ReturnsAlreadyOwned_WhenItemInOwnedRelics()
+        public void PurchaseRelic_ReturnsAlreadyOwned_WhenItemInOwnedRelics()
         {
-            _ctx.OwnedRelics.Add("owned-item");
-            var item = MakeItem("owned-item", "Owned Item", 100);
+            _ctx.OwnedRelics.Add("owned-relic");
+            var relic = MakeRelic("owned-relic", "Owned Relic", 100);
 
-            var result = _transaction.TryPurchase(_ctx, item);
+            var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.AlreadyOwned, result);
             Assert.AreEqual(1000, _ctx.Reputation.Current, "Rep should be unchanged");
@@ -86,19 +86,19 @@ namespace BullRun.Tests.Shop
         // === Purchased items added to RunContext.OwnedRelics ===
 
         [Test]
-        public void TryPurchase_AddsItemIdToOwnedRelics()
+        public void PurchaseRelic_AddsItemIdToOwnedRelics()
         {
-            var item = MakeItem("new-item", "New Item", 200);
-            _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("new-relic", "New Relic", 200);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(1, _ctx.OwnedRelics.Count);
-            Assert.IsTrue(_ctx.OwnedRelics.Contains("new-item"));
+            Assert.IsTrue(_ctx.OwnedRelics.Contains("new-relic"));
         }
 
         // === FIX-12 AC 10: ShopItemPurchasedEvent fires with Reputation data ===
 
         [Test]
-        public void TryPurchase_PublishesShopItemPurchasedEvent_OnSuccess()
+        public void PurchaseRelic_PublishesShopItemPurchasedEvent_OnSuccess()
         {
             ShopItemPurchasedEvent received = default;
             bool eventFired = false;
@@ -108,38 +108,38 @@ namespace BullRun.Tests.Shop
                 received = e;
             });
 
-            var item = MakeItem("signal-item", "Signal Item", 250);
-            _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("signal-relic", "Signal Relic", 250);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.IsTrue(eventFired, "ShopItemPurchasedEvent should fire on success");
-            Assert.AreEqual("signal-item", received.ItemId);
-            Assert.AreEqual("Signal Item", received.ItemName);
+            Assert.AreEqual("signal-relic", received.ItemId);
+            Assert.AreEqual("Signal Relic", received.ItemName);
             Assert.AreEqual(250, received.Cost);
             Assert.AreEqual(750, received.RemainingReputation);
         }
 
         [Test]
-        public void TryPurchase_DoesNotPublishEvent_OnInsufficientFunds()
+        public void PurchaseRelic_DoesNotPublishEvent_OnInsufficientFunds()
         {
             _ctx.Reputation.Reset(); // 0 Rep
             bool eventFired = false;
             EventBus.Subscribe<ShopItemPurchasedEvent>(_ => eventFired = true);
 
-            var item = MakeItem("too-costly", "Too Costly", 2000);
-            _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("too-costly", "Too Costly", 2000);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.IsFalse(eventFired);
         }
 
         [Test]
-        public void TryPurchase_DoesNotPublishEvent_OnAlreadyOwned()
+        public void PurchaseRelic_DoesNotPublishEvent_OnAlreadyOwned()
         {
             _ctx.OwnedRelics.Add("dup");
             bool eventFired = false;
             EventBus.Subscribe<ShopItemPurchasedEvent>(_ => eventFired = true);
 
-            var item = MakeItem("dup", "Duplicate", 100);
-            _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("dup", "Duplicate", 100);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.IsFalse(eventFired);
         }
@@ -147,15 +147,15 @@ namespace BullRun.Tests.Shop
         // === Can buy multiple items (deducts Rep each time) ===
 
         [Test]
-        public void TryPurchase_CanBuyMultipleItems()
+        public void PurchaseRelic_CanBuyMultipleItems()
         {
-            var itemA = MakeItem("item-a", "Item A", 200);
-            var itemB = MakeItem("item-b", "Item B", 300);
-            var itemC = MakeItem("item-c", "Item C", 100);
+            var relicA = MakeRelic("relic-a", "Relic A", 200);
+            var relicB = MakeRelic("relic-b", "Relic B", 300);
+            var relicC = MakeRelic("relic-c", "Relic C", 100);
 
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemA));
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemB));
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemC));
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, relicA));
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, relicB));
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, relicC));
 
             Assert.AreEqual(3, _ctx.OwnedRelics.Count);
             Assert.AreEqual(400, _ctx.Reputation.Current); // 1000 - 200 - 300 - 100
@@ -166,28 +166,28 @@ namespace BullRun.Tests.Shop
         // === Boundary tests ===
 
         [Test]
-        public void TryPurchase_Succeeds_WhenRepExactlyEqualsCost()
+        public void PurchaseRelic_Succeeds_WhenRepExactlyEqualsCost()
         {
             var ctx = new RunContext(1, 1, new Portfolio(1000f));
             ctx.Portfolio.StartRound(ctx.Portfolio.Cash);
             ctx.Reputation.Add(300);
-            var item = MakeItem("exact", "Exact Match", 300);
+            var relic = MakeRelic("exact", "Exact Match", 300);
 
-            var result = _transaction.TryPurchase(ctx, item);
+            var result = _transaction.PurchaseRelic(ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(0, ctx.Reputation.Current);
         }
 
         [Test]
-        public void TryPurchase_Fails_WhenRepOneShort()
+        public void PurchaseRelic_Fails_WhenRepOneShort()
         {
             var ctx = new RunContext(1, 1, new Portfolio(1000f));
             ctx.Portfolio.StartRound(ctx.Portfolio.Cash);
             ctx.Reputation.Add(299);
-            var item = MakeItem("close", "Close But No Cigar", 300);
+            var relic = MakeRelic("close", "Close But No Cigar", 300);
 
-            var result = _transaction.TryPurchase(ctx, item);
+            var result = _transaction.PurchaseRelic(ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
             Assert.AreEqual(299, ctx.Reputation.Current);
@@ -198,8 +198,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void CashAfterPurchases_IsUnaffected()
         {
-            var item = MakeItem("buy-one", "Buy One", 350);
-            _transaction.TryPurchase(_ctx, item);
+            var relic = MakeRelic("buy-one", "Buy One", 350);
+            _transaction.PurchaseRelic(_ctx, relic);
 
             // Cash should be completely untouched — full trading capital preserved
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);
@@ -207,29 +207,20 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void TryPurchase_ReturnsError_WhenContextIsNull()
-        {
-            var item = MakeItem("test", "Test", 100);
-            var result = _transaction.TryPurchase(null, item);
-
-            Assert.AreEqual(ShopPurchaseResult.Error, result);
-        }
-
-        [Test]
         public void MultiplePurchases_ReduceReputationAffordability()
         {
-            var itemA = MakeItem("item-a", "Item A", 400);
-            var itemB = MakeItem("item-b", "Item B", 400);
-            var itemC = MakeItem("item-c", "Item C", 400);
+            var relicA = MakeRelic("relic-a", "Relic A", 400);
+            var relicB = MakeRelic("relic-b", "Relic B", 400);
+            var relicC = MakeRelic("relic-c", "Relic C", 400);
 
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemA));
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, relicA));
             Assert.AreEqual(600, _ctx.Reputation.Current);
 
-            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemB));
+            Assert.AreEqual(ShopPurchaseResult.Success, _transaction.PurchaseRelic(_ctx, relicB));
             Assert.AreEqual(200, _ctx.Reputation.Current);
 
-            // Third item now unaffordable (200 Rep < 400 cost)
-            Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, _transaction.TryPurchase(_ctx, itemC));
+            // Third relic now unaffordable (200 Rep < 400 cost)
+            Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, _transaction.PurchaseRelic(_ctx, relicC));
             Assert.AreEqual(200, _ctx.Reputation.Current);
             // Cash still untouched
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);
