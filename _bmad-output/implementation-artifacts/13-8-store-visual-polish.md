@@ -1,6 +1,6 @@
 # Story 13.8: Store Visual Polish & Card Animations
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -97,14 +97,14 @@ IEnumerator AnimateCardPurchase(RectTransform card, CanvasGroup group)
 ### Existing Code to Understand
 
 Before implementing, the dev agent MUST read:
-- `Scripts/Runtime/UI/ShopUI.cs` — all card rendering code (after 13.1-13.5 are done)
+- `Scripts/Runtime/UI/ShopUI.cs` — all card rendering code (after 13.2-13.6 are done)
 - `Scripts/Setup/UISetup.cs` — card visual construction, color constants
 - `Scripts/Runtime/UI/EventPopup.cs` — reference for existing animation patterns in the game
 
 ### Depends On
 
-- Stories 13.1-13.5 — all panels must be functional before polish is added
-- Story 13.6 (Data Model) — store state must be working
+- Stories 13.2-13.6 — all panels must be functional before polish is added
+- Story 13.1 (Data Model) — store state must be working
 
 ## Dev Agent Record
 

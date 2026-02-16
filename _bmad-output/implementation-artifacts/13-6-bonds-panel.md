@@ -1,6 +1,6 @@
-# Story 13.5: Bonds Panel (Reputation Investment)
+# Story 13.6: Bonds Panel (Reputation Investment)
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -42,7 +42,7 @@ so that I have a long-term investment strategy alongside my immediate trading.
   - [ ] `PayoutRep(ReputationManager rep)` — add Rep payout at round start
   - [ ] File: `Scripts/Runtime/Shop/BondManager.cs` (NEW)
 - [ ] Task 2: Bond panel UI (AC: 1, 2, 8, 11, 13)
-  - [ ] Populate bottom-right panel (created in 13.1)
+  - [ ] Populate bottom-right panel (created in 13.2)
   - [ ] Bond card: shows current round's bond price, "BUY BOND" button
   - [ ] Info display: "Bonds Owned: X", "Earning: +Y Rep/round"
   - [ ] Sell button (visible when bonds > 0): "SELL BOND ($Z)"
@@ -116,8 +116,8 @@ Before implementing, the dev agent MUST read:
 
 ### Depends On
 
-- Story 13.1 (Store Layout Shell) — bonds panel must exist
-- Story 13.6 (Data Model) — `BondsOwned`, `BondPurchaseHistory` in RunContext
+- Story 13.2 (Store Layout Shell) — bonds panel must exist
+- Story 13.1 (Data Model) — `BondsOwned`, `BondPurchaseHistory` in RunContext
 
 ## Dev Agent Record
 

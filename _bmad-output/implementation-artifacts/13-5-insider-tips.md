@@ -1,6 +1,6 @@
-# Story 13.4: Insider Tips Panel (Hidden Intel)
+# Story 13.5: Insider Tips Panel (Hidden Intel)
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -61,7 +61,7 @@ so that I can gain an information edge at the cost of Reputation — but I won't
   - [ ] Tip generator reads from this pre-generated data
   - [ ] File: `Scripts/Runtime/Core/GameStates/ShopState.cs` — pre-generation call
 - [ ] Task 4: Mystery card UI (AC: 2, 3, 4, 5, 6)
-  - [ ] 2 card slots by default in the Insider Tips panel (created in 13.1)
+  - [ ] 2 card slots by default in the Insider Tips panel (created in 13.2)
   - [ ] Face-down state: dark card with "?" icon and cost label
   - [ ] Face-up state (after purchase): tip type name + revealed value text
   - [ ] Purchased cards stay face-up for remainder of shop visit
@@ -118,8 +118,8 @@ Before implementing, the dev agent MUST read:
 
 ### Depends On
 
-- Story 13.1 (Store Layout Shell) — insider tips panel must exist
-- Story 13.6 (Data Model) — `InsiderTipSlots`, `RevealedTips` fields in RunContext
+- Story 13.2 (Store Layout Shell) — insider tips panel must exist
+- Story 13.1 (Data Model) — `InsiderTipSlots`, `RevealedTips` fields in RunContext
 
 ## Dev Agent Record
 

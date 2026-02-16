@@ -1,6 +1,6 @@
-# Story 13.6: Store Data Model & State Management
+# Story 13.1: Store Data Model & State Management
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -101,7 +101,7 @@ The existing `ActiveItems: List<string>` field in RunContext tracks purchased sh
 
 ### This Story is the Foundation
 
-This is the **first story to implement** (recommended order). It creates the data model that Stories 13.1-13.5 and 13.7-13.9 all depend on. The ShopState orchestration here will initially call stub methods on managers that don't exist yet — that's fine. The structure is set up for each subsequent story to fill in.
+This is the **first story to implement** (recommended order). It creates the data model that Stories 13.2-13.6 and 13.7-13.9 all depend on. The ShopState orchestration here will initially call stub methods on managers that don't exist yet — that's fine. The structure is set up for each subsequent story to fill in.
 
 ### Existing Code to Understand
 

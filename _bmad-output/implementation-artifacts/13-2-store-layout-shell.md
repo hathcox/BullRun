@@ -1,6 +1,6 @@
-# Story 13.1: Store Layout & Navigation Shell
+# Story 13.2: Store Layout & Navigation Shell
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -46,7 +46,7 @@ so that I can quickly understand my options and make strategic purchases.
   - [ ] Expansions panel: "EXPANSIONS" header, empty content area
   - [ ] Insider Tips panel: "INSIDER TIPS" header, empty content area
   - [ ] Bonds panel: "BONDS" header, empty content area
-  - [ ] Placeholders will be replaced by Stories 13.2-13.5
+  - [ ] Placeholders will be replaced by Stories 13.3-13.6
 - [ ] Task 5: Keyboard navigation (AC: 11)
   - [ ] Tab cycles focus between panels
   - [ ] Arrow keys navigate within focused panel
@@ -54,7 +54,7 @@ so that I can quickly understand my options and make strategic purchases.
 - [ ] Task 6: Update ShopState orchestration (AC: 9, 10)
   - [ ] ShopState.Enter() shows new store layout instead of old shop
   - [ ] ShopState.Exit() hides store, fires ShopClosedEvent
-  - [ ] Remove old shop generation logic (will be re-added in 13.2-13.5)
+  - [ ] Remove old shop generation logic (will be re-added in 13.3-13.6)
   - [ ] File: `Scripts/Runtime/Core/GameStates/ShopState.cs`
 - [ ] Task 7: Update event payloads (AC: 10)
   - [ ] `ShopOpenedEvent` — add fields for section availability (expansions available, tips available, bond available)
@@ -109,7 +109,7 @@ Before implementing, the dev agent MUST read:
 
 ### Important: This is a Shell
 
-This story creates the **layout infrastructure only**. All panels will have placeholder/empty content. The actual functionality for each panel is built in Stories 13.2-13.5. This story should be implementable without any new game logic — it is purely UI scaffolding + event updates.
+This story creates the **layout infrastructure only**. All panels will have placeholder/empty content. The actual functionality for each panel is built in Stories 13.3-13.6. This story should be implementable without any new game logic — it is purely UI scaffolding + event updates.
 
 ## Dev Agent Record
 

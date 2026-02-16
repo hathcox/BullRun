@@ -1,6 +1,6 @@
 # Story 13.9: Cleanup & Migration from Old Shop
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -40,13 +40,13 @@ so that there is no dead code or conflicting behavior.
   - [ ] File: `Scripts/Runtime/Shop/ShopGenerator.cs`
 - [ ] Task 4: Migrate Trade Volume upgrade (AC: 7)
   - [ ] Remove Trade Volume upgrade card from old shop system (FIX-13)
-  - [ ] Ensure equivalent functionality exists in Trading Deck Expansions (if not already covered by 13.3)
+  - [ ] Ensure equivalent functionality exists in Trading Deck Expansions (if not already covered by 13.4)
   - [ ] Remove `QuantitySelector` tier-unlock shop integration if it references old shop
   - [ ] Files: `Scripts/Runtime/UI/QuantitySelector.cs`, `Scripts/Runtime/UI/ShopUI.cs`
 - [ ] Task 5: Remove old ShopUI layout code (AC: 1, 2)
   - [ ] Remove any remaining old 3-card horizontal layout code from ShopUI
   - [ ] Remove old category labels, old timer display, old single-panel structure
-  - [ ] Verify new multi-panel layout (from 13.1) is the only active layout
+  - [ ] Verify new multi-panel layout (from 13.2) is the only active layout
   - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
 - [ ] Task 6: Clean up old shop references (AC: 11)
   - [ ] Search for dead code referencing old shop concepts: category filtering, rarity weights, old item IDs
@@ -111,8 +111,8 @@ Before implementing, the dev agent MUST read:
 
 ### Depends On
 
-- Stories 13.1-13.5 — new store must be fully functional before old code is removed
-- Story 13.6 (Data Model) — new data structures must be in place
+- Stories 13.2-13.6 — new store must be fully functional before old code is removed
+- Story 13.1 (Data Model) — new data structures must be in place
 - Story 13.8 (Visual Polish) — animations complete before old UI code removed
 
 ## Dev Agent Record

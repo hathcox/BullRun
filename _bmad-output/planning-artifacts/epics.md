@@ -1047,7 +1047,17 @@ As a developer, I want comprehensive QA testing and a release build, so that the
 **Phase:** Post-FIX Sprint, replaces/supersedes Epic 7 shop UI and flow
 **Depends On:** FIX-12 (Reputation currency), FIX-14 (Economy rebalance)
 
-### Story 13.1: Store Layout & Navigation Shell
+### Story 13.1: Store Data Model & State Management
+
+As a developer, I want a clean data model that tracks all store state within RunContext, so that store state persists correctly across rounds.
+
+**Acceptance Criteria:**
+- RunContext extended with: OwnedRelics, OwnedExpansions, BondsOwned, BondPurchaseHistory, CurrentShopRerollCount, InsiderTipSlots, RevealedTips
+- ShopState orchestrates all four panels
+- All purchases atomic (validate → deduct → apply → fire event)
+- Old ActiveItems migrated to OwnedRelics
+
+### Story 13.2: Store Layout & Navigation Shell
 
 As a player, I want the between-rounds store to have a clear multi-panel layout with distinct sections for Relics, Expansions, Insider Tips, and Bonds, so that I can quickly understand my options and make strategic purchases.
 
@@ -1064,7 +1074,7 @@ As a player, I want the between-rounds store to have a clear multi-panel layout 
 - `ShopOpenedEvent` and `ShopClosedEvent` still fire with updated payload
 - Keyboard navigation between panels (arrow keys or tab)
 
-### Story 13.2: Relics Panel — Item Offering, Purchase & Reroll
+### Story 13.3: Relics Panel — Item Offering, Purchase & Reroll
 
 As a player, I want the top section of the store to show 3 randomly selected relics that I can purchase with Reputation, and a reroll button to refresh the selection, so that I have meaningful choices and agency in my build.
 
@@ -1078,7 +1088,7 @@ As a player, I want the top section of the store to show 3 randomly selected rel
 - Item limit: maximum 5 relics (expandable via Trading Deck Expansion)
 - Relic definitions are OUT OF SCOPE — designed in a future epic
 
-### Story 13.3: Trading Deck Expansions Panel (Vouchers)
+### Story 13.4: Trading Deck Expansions Panel (Vouchers)
 
 As a player, I want a bottom-left panel offering permanent one-time upgrades that expand my trading capabilities, so that I can invest Reputation into unlocking powerful new mechanics across the run.
 
@@ -1088,7 +1098,7 @@ As a player, I want a bottom-left panel offering permanent one-time upgrades tha
 - 2-3 available per shop visit from unowned pool
 - Purchase deducts Reputation
 
-### Story 13.4: Insider Tips Panel (Hidden Intel)
+### Story 13.5: Insider Tips Panel (Hidden Intel)
 
 As a player, I want a bottom-center panel where I can purchase mystery intel cards that reveal hidden information about the next round, so that I can gain an information edge — but I won't know exactly what I'm getting until I buy it.
 
@@ -1099,7 +1109,7 @@ As a player, I want a bottom-center panel where I can purchase mystery intel car
 - Values calculated from next round data with ±10% fuzz
 - One-time purchase per slot per visit
 
-### Story 13.5: Bonds Panel (Reputation Investment)
+### Story 13.6: Bonds Panel (Reputation Investment)
 
 As a player, I want a bonds section where I can invest cash now to earn recurring Reputation in future rounds, so that I have a long-term investment strategy alongside my immediate trading.
 
@@ -1109,16 +1119,6 @@ As a player, I want a bonds section where I can invest cash now to earn recurrin
 - Each bond generates +1 Rep at the START of each subsequent round (cumulative)
 - Sell bonds for half original purchase price
 - Cannot purchase on Round 8
-
-### Story 13.6: Store Data Model & State Management
-
-As a developer, I want a clean data model that tracks all store state within RunContext, so that store state persists correctly across rounds.
-
-**Acceptance Criteria:**
-- RunContext extended with: OwnedRelics, OwnedExpansions, BondsOwned, BondPurchaseHistory, CurrentShopRerollCount, InsiderTipSlots, RevealedTips
-- ShopState orchestrates all four panels
-- All purchases atomic (validate → deduct → apply → fire event)
-- Old ActiveItems migrated to OwnedRelics
 
 ### Story 13.7: Expansion Effects Integration
 

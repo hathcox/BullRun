@@ -1,6 +1,6 @@
 # Story 13.7: Expansion Effects Integration
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -101,12 +101,12 @@ Before implementing, the dev agent MUST read:
 - `Scripts/Runtime/Core/GameRunner.cs` — short state machine, trade execution, round timing
 - `Scripts/Setup/UISetup.cs` — stock sidebar, short button, trade panel
 - `Scripts/Runtime/Events/EventScheduler.cs` — event targeting
-- `Scripts/Runtime/Shop/ExpansionManager.cs` — created in 13.3
+- `Scripts/Runtime/Shop/ExpansionManager.cs` — created in 13.4
 
 ### Depends On
 
-- Story 13.3 (Trading Deck Expansions) — ExpansionManager and definitions must exist
-- Story 13.6 (Data Model) — OwnedExpansions in RunContext
+- Story 13.4 (Trading Deck Expansions) — ExpansionManager and definitions must exist
+- Story 13.1 (Data Model) — OwnedExpansions in RunContext
 
 ## Dev Agent Record
 

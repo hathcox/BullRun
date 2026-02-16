@@ -1,6 +1,6 @@
-# Story 13.3: Trading Deck Expansions Panel (Vouchers)
+# Story 13.4: Trading Deck Expansions Panel (Vouchers)
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -44,7 +44,7 @@ so that I can invest Reputation into unlocking powerful new mechanics across the
   - [ ] `GetAvailableForShop(int count)` — return N random unowned expansions for this shop visit
   - [ ] File: `Scripts/Runtime/Shop/ExpansionManager.cs` (NEW)
 - [ ] Task 3: Expansion panel UI rendering (AC: 1, 2, 7)
-  - [ ] Populate bottom-left panel (created in 13.1) with 2-3 expansion cards
+  - [ ] Populate bottom-left panel (created in 13.2) with 2-3 expansion cards
   - [ ] Each card: expansion name, description, cost with Rep icon, purchase button
   - [ ] "OWNED" watermark/state for purchased expansions still visible
   - [ ] Disable purchase button if insufficient Rep
@@ -55,7 +55,7 @@ so that I can invest Reputation into unlocking powerful new mechanics across the
   - [ ] `ExpansionPurchasedEvent` with expansion ID and remaining Rep
   - [ ] File: `Scripts/Runtime/Shop/ShopTransaction.cs` — expansion purchase path
 - [ ] Task 5: Wire to RunContext (AC: 4)
-  - [ ] `RunContext.OwnedExpansions: List<string>` (set up in 13.6)
+  - [ ] `RunContext.OwnedExpansions: List<string>` (set up in 13.1)
   - [ ] ExpansionManager reads/writes through RunContext
   - [ ] Expansions survive round transitions
   - [ ] File: `Scripts/Runtime/Core/RunContext.cs`
@@ -88,15 +88,15 @@ so that I can invest Reputation into unlocking powerful new mechanics across the
 ### Existing Code to Understand
 
 Before implementing, the dev agent MUST read:
-- `Scripts/Runtime/UI/ShopUI.cs` — where expansion panel content goes (after 13.1)
+- `Scripts/Runtime/UI/ShopUI.cs` — where expansion panel content goes (after 13.2)
 - `Scripts/Runtime/Shop/ShopTransaction.cs` — purchase flow pattern to follow
 - `Scripts/Runtime/Core/RunContext.cs` — how to add OwnedExpansions
 - `Scripts/Runtime/Core/GameEvents.cs` — event definition pattern
 
 ### Depends On
 
-- Story 13.1 (Store Layout Shell) — expansion panel must exist
-- Story 13.6 (Data Model) — `OwnedExpansions` field in RunContext
+- Story 13.2 (Store Layout Shell) — expansion panel must exist
+- Story 13.1 (Data Model) — `OwnedExpansions` field in RunContext
 
 ## Dev Agent Record
 

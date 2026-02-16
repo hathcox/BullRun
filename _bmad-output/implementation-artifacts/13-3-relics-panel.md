@@ -1,6 +1,6 @@
-# Story 13.2: Relics Panel — Item Offering, Purchase & Reroll
+# Story 13.3: Relics Panel — Item Offering, Purchase & Reroll
 
-Status: pending
+Status: ready for dev
 
 ## Story
 
@@ -42,7 +42,7 @@ so that I have meaningful choices and agency in my build.
   - [ ] Handle pool exhaustion: return null for exhausted slots
   - [ ] File: `Scripts/Runtime/Shop/ShopGenerator.cs` — rewrite
 - [ ] Task 3: Relic card UI rendering (AC: 4, 6)
-  - [ ] Populate 3 relic card slots in the top section (created in 13.1)
+  - [ ] Populate 3 relic card slots in the top section (created in 13.2)
   - [ ] Each card displays: relic name, description text, cost with Rep icon
   - [ ] "SOLD" state after purchase (card greys out or shows stamp)
   - [ ] "SOLD OUT" state when pool exhausted
@@ -91,8 +91,8 @@ Before implementing, the dev agent MUST read:
 
 ### Depends On
 
-- Story 13.1 (Store Layout Shell) — relic card slots must exist
-- Story 13.6 (Data Model) — `OwnedRelics` field in RunContext
+- Story 13.2 (Store Layout Shell) — relic card slots must exist
+- Story 13.1 (Data Model) — `OwnedRelics` field in RunContext
 
 ## Dev Agent Record
 
