@@ -74,6 +74,10 @@ public class ShopState : IGameState
         _expansionManager = new ExpansionManager(ctx);
         _expansionOffering = _expansionManager.GetAvailableForShop(GameConfig.ExpansionsPerShopVisit, _random);
 
+        // Story 13.7: Intel Expansion effect — increase tip slots when owned
+        ctx.InsiderTipSlots = GameConfig.DefaultInsiderTipSlots +
+            (ctx.OwnedExpansions.Contains(ExpansionDefinitions.IntelExpansion) ? 1 : 0);
+
         // Generate insider tip offering (Story 13.5)
         _tipGenerator = new InsiderTipGenerator();
         int nextRound = ctx.CurrentRound + 1;

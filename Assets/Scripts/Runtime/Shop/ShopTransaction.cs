@@ -86,7 +86,7 @@ public class ShopTransaction
     public static int GetEffectiveMaxRelicSlots(RunContext ctx)
     {
         int maxSlots = GameConfig.MaxRelicSlots;
-        if (ctx.OwnedExpansions.Contains("expanded_inventory"))
+        if (ctx.OwnedExpansions.Contains(ExpansionDefinitions.ExpandedInventory))
         {
             maxSlots += 2;
         }

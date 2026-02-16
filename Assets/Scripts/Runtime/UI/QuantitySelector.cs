@@ -30,6 +30,18 @@ public class QuantitySelector : MonoBehaviour
     public Text ShortPnlValueText { get; set; }
     public Text ShortPnlCountdownText { get; set; }
 
+    // Story 13.7: Leverage badge (shown when expansion active)
+    public GameObject LeverageBadge { get; set; }
+
+    // Story 13.7: Second short UI references (Dual Short expansion)
+    public Image Short2ButtonImage { get; set; }
+    public Text Short2ButtonText { get; set; }
+    public GameObject Short2PnlPanel { get; set; }
+    public Text Short2PnlEntryText { get; set; }
+    public Text Short2PnlValueText { get; set; }
+    public Text Short2PnlCountdownText { get; set; }
+    public GameObject Short2Container { get; set; }
+
     public void Initialize()
     {
         _selectedQuantity = GameConfig.DefaultTradeQuantity; // x1

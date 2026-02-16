@@ -1,6 +1,6 @@
 # Story 13.7: Expansion Effects Integration
 
-Status: ready for dev
+Status: done
 
 ## Story
 
@@ -21,53 +21,53 @@ so that my store investments have tangible impact during trading rounds.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Multi-Stock Trading effect (AC: 1)
-  - [ ] `MarketOpenState.Enter()`: check for multi-stock expansion → spawn 2 stocks from tier pool instead of 1
-  - [ ] Re-enable stock selection sidebar (removed in FIX-5) when 2 stocks active
-  - [ ] Event system: ensure events work correctly with 2 active stocks
-  - [ ] Trading: ensure buy/sell/short target the selected stock
-  - [ ] Files: `Scripts/Runtime/Core/GameStates/MarketOpenState.cs`, `Scripts/Setup/UISetup.cs`, `Scripts/Runtime/Events/EventScheduler.cs`
-- [ ] Task 2: Leverage Trading effect (AC: 2)
-  - [ ] `TradeExecutor`: when calculating long trade P&L, multiply by 2 if leverage expansion owned
-  - [ ] Leverage applies to BOTH gains and losses (double-edged)
-  - [ ] Visual indicator on trade panel: "2x LEVERAGE" badge when active
-  - [ ] Does NOT affect short trades (shorts have their own mechanics)
-  - [ ] Files: `Scripts/Runtime/Trading/TradeExecutor.cs`, `Scripts/Runtime/UI/TradingHUD.cs`
-- [ ] Task 3: Expanded Inventory effect (AC: 3)
-  - [ ] When checking relic capacity, compute effective max: `GameConfig.MaxRelicSlots + (hasExpandedInventory ? 2 : 0)`
-  - [ ] ShopUI relic panel: re-enable purchase buttons if under new capacity
-  - [ ] ItemInventoryPanel: display area accommodates up to 7 items
-  - [ ] Files: `Scripts/Runtime/Shop/ShopTransaction.cs`, `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Runtime/UI/ItemInventoryPanel.cs`
-- [ ] Task 4: Dual Short effect (AC: 4)
-  - [ ] Short state machine: allow 2 independent short positions when expansion owned
-  - [ ] Second SHORT button appears in UI (or same button allows opening second short)
-  - [ ] Each short has independent lifecycle (hold timer, cash-out window, cooldown)
-  - [ ] P&L tracked separately per short position
-  - [ ] Files: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Setup/UISetup.cs`, `Scripts/Runtime/UI/PositionOverlay.cs`
-- [ ] Task 5: Intel Expansion effect (AC: 5)
-  - [ ] Update `RunContext.InsiderTipSlots` from 2 to 3 when expansion purchased
-  - [ ] ShopUI Insider Tips panel: render 3rd mystery card slot when slots = 3
-  - [ ] InsiderTipGenerator: generate 3 tips instead of 2 when slots increased
-  - [ ] Files: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Runtime/Shop/InsiderTipGenerator.cs`
-- [ ] Task 6: Extended Trading effect (AC: 6)
-  - [ ] When entering TradingState: check for extended trading expansion → add 15s to round duration
-  - [ ] Timer UI reflects extended duration
-  - [ ] Expansion notes say "stacks up to 2x" — but expansions can only be purchased once, so this means if combined with a future item that also extends time. For now: +15s, one-time.
-  - [ ] Files: `Scripts/Runtime/Core/GameStates/TradingState.cs` or `Scripts/Runtime/Core/GameRunner.cs`
-- [ ] Task 7: ExpansionManager effect application (AC: 7, 8)
-  - [ ] `ExpansionManager.HasExpansion(string expansionId)` — convenience method used by all systems
-  - [ ] Each system checks at its entry point (state Enter, trade execution, shop rendering)
-  - [ ] Guard against double-application: effects are stateless checks, not cumulative modifiers
-  - [ ] File: `Scripts/Runtime/Shop/ExpansionManager.cs`
-- [ ] Task 8: Write tests (All AC)
-  - [ ] Multi-Stock: 2 stocks spawned when expansion owned, 1 without
-  - [ ] Leverage: P&L doubled on long trades, unaffected on shorts
-  - [ ] Expanded Inventory: capacity correctly increased, purchase re-enabled
-  - [ ] Dual Short: 2 shorts possible, independent lifecycles
-  - [ ] Intel Expansion: 3 tip slots when owned
-  - [ ] Extended Trading: round duration increased by 15s
-  - [ ] No stacking: purchasing same expansion twice has no additional effect
-  - [ ] Files: `Tests/Runtime/Shop/ExpansionEffectsTests.cs`
+- [x] Task 1: Multi-Stock Trading effect (AC: 1)
+  - [x] `MarketOpenState.Enter()`: check for multi-stock expansion → spawn 2 stocks from tier pool instead of 1
+  - [x] Re-enable stock selection sidebar (removed in FIX-5) when 2 stocks active
+  - [x] Event system: ensure events work correctly with 2 active stocks
+  - [x] Trading: ensure buy/sell/short target the selected stock
+  - [x] Files: `Scripts/Runtime/Core/GameStates/MarketOpenState.cs`, `Scripts/Setup/UISetup.cs`, `Scripts/Runtime/Events/EventScheduler.cs`
+- [x] Task 2: Leverage Trading effect (AC: 2)
+  - [x] `TradeExecutor`: when calculating long trade P&L, multiply by 2 if leverage expansion owned
+  - [x] Leverage applies to BOTH gains and losses (double-edged)
+  - [x] Visual indicator on trade panel: "2x LEVERAGE" badge when active
+  - [x] Does NOT affect short trades (shorts have their own mechanics)
+  - [x] Files: `Scripts/Runtime/Trading/TradeExecutor.cs`, `Scripts/Runtime/UI/TradingHUD.cs`
+- [x] Task 3: Expanded Inventory effect (AC: 3)
+  - [x] When checking relic capacity, compute effective max: `GameConfig.MaxRelicSlots + (hasExpandedInventory ? 2 : 0)`
+  - [x] ShopUI relic panel: re-enable purchase buttons if under new capacity
+  - [x] ItemInventoryPanel: display area accommodates up to 7 items
+  - [x] Files: `Scripts/Runtime/Shop/ShopTransaction.cs`, `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Runtime/UI/ItemInventoryPanel.cs`
+- [x] Task 4: Dual Short effect (AC: 4)
+  - [x] Short state machine: allow 2 independent short positions when expansion owned
+  - [x] Second SHORT button appears in UI (or same button allows opening second short)
+  - [x] Each short has independent lifecycle (hold timer, cash-out window, cooldown)
+  - [x] P&L tracked separately per short position
+  - [x] Files: `Scripts/Runtime/Core/GameRunner.cs`, `Scripts/Setup/UISetup.cs`, `Scripts/Runtime/UI/PositionOverlay.cs`
+- [x] Task 5: Intel Expansion effect (AC: 5)
+  - [x] Update `RunContext.InsiderTipSlots` from 2 to 3 when expansion purchased
+  - [x] ShopUI Insider Tips panel: render 3rd mystery card slot when slots = 3
+  - [x] InsiderTipGenerator: generate 3 tips instead of 2 when slots increased
+  - [x] Files: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Runtime/Shop/InsiderTipGenerator.cs`
+- [x] Task 6: Extended Trading effect (AC: 6)
+  - [x] When entering TradingState: check for extended trading expansion → add 15s to round duration
+  - [x] Timer UI reflects extended duration
+  - [x] Expansion notes say "stacks up to 2x" — but expansions can only be purchased once, so this means if combined with a future item that also extends time. For now: +15s, one-time.
+  - [x] Files: `Scripts/Runtime/Core/GameStates/TradingState.cs` or `Scripts/Runtime/Core/GameRunner.cs`
+- [x] Task 7: ExpansionManager effect application (AC: 7, 8)
+  - [x] `ExpansionManager.HasExpansion(string expansionId)` — convenience method used by all systems
+  - [x] Each system checks at its entry point (state Enter, trade execution, shop rendering)
+  - [x] Guard against double-application: effects are stateless checks, not cumulative modifiers
+  - [x] File: `Scripts/Runtime/Shop/ExpansionManager.cs`
+- [x] Task 8: Write tests (All AC)
+  - [x] Multi-Stock: 2 stocks spawned when expansion owned, 1 without
+  - [x] Leverage: P&L doubled on long trades, unaffected on shorts
+  - [x] Expanded Inventory: capacity correctly increased, purchase re-enabled
+  - [x] Dual Short: 2 shorts possible, independent lifecycles
+  - [x] Intel Expansion: 3 tip slots when owned
+  - [x] Extended Trading: round duration increased by 15s
+  - [x] No stacking: purchasing same expansion twice has no additional effect
+  - [x] Files: `Tests/Runtime/Shop/ExpansionEffectsTests.cs`
 
 ## Dev Notes
 
@@ -112,8 +112,50 @@ Before implementing, the dev agent MUST read:
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Completion Notes List
+
+- Task 3 (Expanded Inventory) was already implemented by `ShopTransaction.GetEffectiveMaxRelicSlots()` from Story 13.3 — no additional code changes needed.
+- Leverage P&L bonus is applied in `GameRunner.ExecuteSell()` via `Portfolio.AddCash(pnl)` because `Portfolio.ClosePosition()` doesn't have access to RunContext. This keeps the leverage effect at the GameRunner orchestration layer.
+- Dual Short uses duplicated state machine fields (`_short2State`, `_short2Timer`, etc.) rather than refactoring into a reusable class. This was a deliberate safety choice — lower refactoring risk for the existing short lifecycle.
+- Multi-Stock conditionally re-enables the StockSidebar that was hidden by FIX-5. All trading operations (buy/sell/short) now use `GetSelectedStockId()` / `GetSelectedTicker()` which respect sidebar selection.
+- Event targeting updated to randomly select target stock when multiple stocks are active, rather than hardcoding index 0.
+- **Tests cannot be run from CLI** per project rules. All 24 tests written in `ExpansionEffectsTests.cs` must be validated manually in Unity Editor.
 
 ### Change Log
 
+- `Assets/Scripts/Runtime/PriceEngine/PriceGenerator.cs` — Added `stockCountOverride` parameter to `InitializeRound()` and `SelectStocksForRound()`
+- `Assets/Scripts/Runtime/Core/GameStates/MarketOpenState.cs` — Checks multi-stock expansion to pass stockCount=2
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` — Multi-stock sidebar, stock selection, leverage 2x P&L, dual short state machine (Short2), second short UI wiring
+- `Assets/Scripts/Runtime/Events/EventScheduler.cs` — Random stock targeting in `FireEvent()` and multi-stock `FireSectorRotation()`
+- `Assets/Scripts/Runtime/UI/QuantitySelector.cs` — Added LeverageBadge, Short2* UI property refs
+- `Assets/Scripts/Setup/UISetup.cs` — Created leverage badge UI, second SHORT button + P&L panel
+- `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs` — Extended trading +15s in `Enter()`
+- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs` — Intel expansion tip slots calculation in `Enter()`
+- `Assets/Scripts/Runtime/Shop/ExpansionManager.cs` — Added `HasExpansion()` instance and static convenience methods
+- `Assets/Tests/Runtime/Shop/ExpansionEffectsTests.cs` — Created: 24 tests covering all 8 ACs
+- `Assets/Scripts/Setup/Data/ExpansionDefinitions.cs` — Added `const string` ID constants for compile-time safety
+- `Assets/Scripts/Runtime/Shop/ShopTransaction.cs` — Updated to use ExpansionDefinitions constants
+
+#### Code Review Fixes (2026-02-16)
+
+- **[C1+C2] Fixed short position price bug**: Added `_shortOpenStockId` and `_short2OpenStockId` int fields to track the numeric stock ID that a short was opened on. All close/P&L display methods now use the correct stock's price instead of the currently selected stock (which could differ in multi-stock mode).
+- **[H1] Improved test quality**: Replaced trivial math-only tests (Leverage, ExtendedTrading) with tests that exercise actual Portfolio.AddCash behavior and simulate real expansion check logic. Added `MultiStock_StocksAreDistinct`, `IntelExpansion_SlotCountUnchanged_WithoutExpansion`, `ExtendedTrading_NoDurationChange_WithoutExpansion`, and `ExpansionDefinitions_AllIdsMatchConstants` tests.
+- **[H2] Centralized expansion IDs**: Added `const string` constants to `ExpansionDefinitions` (e.g., `MultiStockTrading`, `LeverageTrading`). Updated all callsites across 6 files to use constants instead of raw strings.
+- **[M3] Added null position guard**: `ExecuteSell()` leverage bonus now skipped when `position` is null, preventing unearned cash bonus on edge-case sells.
+
 ### File List
+
+- `Assets/Scripts/Runtime/PriceEngine/PriceGenerator.cs`
+- `Assets/Scripts/Runtime/Core/GameStates/MarketOpenState.cs`
+- `Assets/Scripts/Runtime/Core/GameRunner.cs`
+- `Assets/Scripts/Runtime/Events/EventScheduler.cs`
+- `Assets/Scripts/Runtime/UI/QuantitySelector.cs`
+- `Assets/Scripts/Setup/UISetup.cs`
+- `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs`
+- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs`
+- `Assets/Scripts/Runtime/Shop/ExpansionManager.cs`
+- `Assets/Scripts/Runtime/Shop/ShopTransaction.cs`
+- `Assets/Scripts/Setup/Data/ExpansionDefinitions.cs`
+- `Assets/Tests/Runtime/Shop/ExpansionEffectsTests.cs`

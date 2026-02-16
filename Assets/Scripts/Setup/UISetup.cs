@@ -1462,6 +1462,82 @@ public static class UISetup
 
         shortPnlGo.SetActive(false); // Hidden until short is active
 
+        // Story 13.7: Second SHORT button + P&L panel (Dual Short expansion)
+        var short2ContainerGo = CreatePanel("Short2Container", canvasGo.transform);
+        var short2ContainerRect = short2ContainerGo.GetComponent<RectTransform>();
+        short2ContainerRect.anchorMin = new Vector2(0.5f, 0f);
+        short2ContainerRect.anchorMax = new Vector2(0.5f, 0f);
+        short2ContainerRect.pivot = new Vector2(0.5f, 1f);
+        short2ContainerRect.anchoredPosition = new Vector2(220f, 80f); // Right of first short
+        short2ContainerRect.sizeDelta = new Vector2(200f, 40f);
+        short2ContainerGo.GetComponent<Image>().color = new Color(0.08f, 0.05f, 0.15f, 0.85f);
+
+        var short2Vlg = short2ContainerGo.AddComponent<VerticalLayoutGroup>();
+        short2Vlg.spacing = 4f;
+        short2Vlg.padding = new RectOffset(8, 8, 4, 4);
+        short2Vlg.childAlignment = TextAnchor.MiddleCenter;
+        short2Vlg.childForceExpandWidth = true;
+        short2Vlg.childForceExpandHeight = false;
+        var short2Fitter = short2ContainerGo.AddComponent<ContentSizeFitter>();
+        short2Fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var short2BtnGo = CreatePanel("Short2Button", short2ContainerGo.transform);
+        short2BtnGo.GetComponent<Image>().color = shortPink;
+        var short2BtnLayout = short2BtnGo.AddComponent<LayoutElement>();
+        short2BtnLayout.preferredHeight = 32f;
+        var short2Button = short2BtnGo.AddComponent<Button>();
+        var short2BtnLabel = CreateLabel("Short2ButtonText", short2BtnGo.transform, "SHORT 2", Color.white, 16);
+        short2BtnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        short2BtnLabel.GetComponent<Text>().raycastTarget = false;
+
+        short2Button.onClick.AddListener(() =>
+        {
+            var runner = Object.FindObjectOfType<GameRunner>();
+            if (runner != null) runner.HandleShort2Input();
+        });
+
+        var short2PnlGo = new GameObject("Short2PnlPanel");
+        short2PnlGo.transform.SetParent(short2ContainerGo.transform, false);
+        short2PnlGo.AddComponent<RectTransform>();
+        var short2PnlVlg = short2PnlGo.AddComponent<VerticalLayoutGroup>();
+        short2PnlVlg.spacing = 1f;
+        short2PnlVlg.childAlignment = TextAnchor.MiddleCenter;
+        short2PnlVlg.childForceExpandWidth = true;
+        short2PnlVlg.childForceExpandHeight = false;
+
+        var short2EntryGo = CreateLabel("Short2EntryText", short2PnlGo.transform, "Entry: $0.00", LabelColor, 12);
+        short2EntryGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        var short2ValueGo = CreateLabel("Short2PnlValue", short2PnlGo.transform, "P&L: +$0.00", Color.white, 14);
+        short2ValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        short2ValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        var short2CountdownGo = CreateLabel("Short2Countdown", short2PnlGo.transform, "",
+            new Color(1f, 0.85f, 0.2f, 1f), 12);
+        short2CountdownGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+
+        short2PnlGo.SetActive(false);
+        short2ContainerGo.SetActive(false); // Hidden unless Dual Short expansion owned
+
+        // Story 13.7: Leverage badge — shown when leverage expansion is active
+        var leverageBadgeGo = CreatePanel("LeverageBadge", canvasGo.transform);
+        var leverageBadgeRect = leverageBadgeGo.GetComponent<RectTransform>();
+        leverageBadgeRect.anchorMin = new Vector2(0.5f, 0f);
+        leverageBadgeRect.anchorMax = new Vector2(0.5f, 0f);
+        leverageBadgeRect.pivot = new Vector2(0.5f, 0f);
+        leverageBadgeRect.anchoredPosition = new Vector2(0f, 144f); // Above buy/sell container
+        leverageBadgeRect.sizeDelta = new Vector2(160f, 24f);
+        leverageBadgeGo.GetComponent<Image>().color = new Color(1f, 0.6f, 0f, 0.9f); // Orange
+        var leverageLabel = CreateLabel("LeverageText", leverageBadgeGo.transform, "2x LEVERAGE",
+            Color.white, 14);
+        leverageLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        leverageLabel.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        leverageLabel.GetComponent<Text>().raycastTarget = false;
+        var leverageLabelRect = leverageLabel.GetComponent<RectTransform>();
+        leverageLabelRect.anchorMin = Vector2.zero;
+        leverageLabelRect.anchorMax = Vector2.one;
+        leverageLabelRect.offsetMin = Vector2.zero;
+        leverageLabelRect.offsetMax = Vector2.zero;
+        leverageBadgeGo.SetActive(false); // Hidden until expansion owned
+
         // Initialize QuantitySelector MonoBehaviour
         var quantitySelector = panelParent.AddComponent<QuantitySelector>();
         quantitySelector.Initialize();
@@ -1473,6 +1549,14 @@ public static class UISetup
         quantitySelector.ShortPnlEntryText = shortEntryGo.GetComponent<Text>();
         quantitySelector.ShortPnlValueText = shortValueGo.GetComponent<Text>();
         quantitySelector.ShortPnlCountdownText = shortCountdownGo.GetComponent<Text>();
+        quantitySelector.LeverageBadge = leverageBadgeGo;
+        quantitySelector.Short2ButtonImage = short2BtnGo.GetComponent<Image>();
+        quantitySelector.Short2ButtonText = short2BtnLabel.GetComponent<Text>();
+        quantitySelector.Short2PnlPanel = short2PnlGo;
+        quantitySelector.Short2PnlEntryText = short2EntryGo.GetComponent<Text>();
+        quantitySelector.Short2PnlValueText = short2ValueGo.GetComponent<Text>();
+        quantitySelector.Short2PnlCountdownText = short2CountdownGo.GetComponent<Text>();
+        quantitySelector.Short2Container = short2ContainerGo;
 
         // Wire BUY/SELL buttons to publish TradeButtonPressedEvent
         buyButton.onClick.AddListener(() =>

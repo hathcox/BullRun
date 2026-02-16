@@ -24,24 +24,32 @@ public struct ExpansionDef
 /// </summary>
 public static class ExpansionDefinitions
 {
+    // Expansion ID constants — use these instead of raw strings for compile-time safety
+    public const string MultiStockTrading = "multi_stock_trading";
+    public const string LeverageTrading = "leverage_trading";
+    public const string ExpandedInventory = "expanded_inventory";
+    public const string DualShort = "dual_short";
+    public const string IntelExpansion = "intel_expansion";
+    public const string ExtendedTrading = "extended_trading";
+
     public static readonly ExpansionDef[] All = new ExpansionDef[]
     {
-        new ExpansionDef("multi_stock_trading", "Multi-Stock Trading",
+        new ExpansionDef(MultiStockTrading, "Multi-Stock Trading",
             "Trade 2 stocks simultaneously per round",
             GameConfig.ExpansionCostMultiStock),
-        new ExpansionDef("leverage_trading", "Leverage Trading",
+        new ExpansionDef(LeverageTrading, "Leverage Trading",
             "Trade with 2x leverage (double gains/losses)",
             GameConfig.ExpansionCostLeverage),
-        new ExpansionDef("expanded_inventory", "Expanded Inventory",
+        new ExpansionDef(ExpandedInventory, "Expanded Inventory",
             "+2 relic slots (5 \u2192 7 max)",
             GameConfig.ExpansionCostExpandedInventory),
-        new ExpansionDef("dual_short", "Dual Short",
+        new ExpansionDef(DualShort, "Dual Short",
             "Short a second stock simultaneously",
             GameConfig.ExpansionCostDualShort),
-        new ExpansionDef("intel_expansion", "Intel Expansion",
+        new ExpansionDef(IntelExpansion, "Intel Expansion",
             "+1 Insider Tip slot per shop visit (2 \u2192 3)",
             GameConfig.ExpansionCostIntelExpansion),
-        new ExpansionDef("extended_trading", "Extended Trading",
+        new ExpansionDef(ExtendedTrading, "Extended Trading",
             "+15 seconds to round timer",
             GameConfig.ExpansionCostExtendedTrading),
     };

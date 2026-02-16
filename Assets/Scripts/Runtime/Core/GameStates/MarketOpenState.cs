@@ -45,9 +45,11 @@ public class MarketOpenState : IGameState
         }
 
         // Initialize stocks for this round
+        // Multi-Stock expansion: spawn 2 stocks instead of 1 (Story 13.7, AC 1)
         if (_priceGenerator != null)
         {
-            _priceGenerator.InitializeRound(ctx.CurrentAct, ctx.CurrentRound);
+            int stockCount = ctx.OwnedExpansions.Contains(ExpansionDefinitions.MultiStockTrading) ? 2 : -1;
+            _priceGenerator.InitializeRound(ctx.CurrentAct, ctx.CurrentRound, stockCount);
         }
 
         // Bond Rep payout at round start (Story 13.6, AC 6, 7, 14)
