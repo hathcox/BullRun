@@ -32,6 +32,12 @@ public static class GameConfig
     // Reputation: shop currency (FIX-12). Earning logic below (FIX-14).
     public static readonly int StartingReputation = 0;
 
+    // Store: max relic slots per run (Epic 13, AC 1)
+    public static readonly int MaxRelicSlots = 5;
+
+    // Store: default insider tip slots per shop visit (Epic 13)
+    public static readonly int DefaultInsiderTipSlots = 2;
+
     // FIX-14: Reputation earning constants
     // Base Rep awarded per round completion (0-indexed: index 0 = Round 1)
     public static readonly int[] RepBaseAwardPerRound = new int[]

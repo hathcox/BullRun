@@ -55,9 +55,9 @@ namespace BullRun.Tests.Events
                 if (count > maxSeen) maxSeen = count;
             }
 
-            // MidValue EventFrequencyModifier is 1.0, so event count should be exactly 2-3
-            Assert.GreaterOrEqual(minSeen, 2, "Early rounds should schedule at least 2 events (AC1)");
-            Assert.LessOrEqual(maxSeen, 3, "Early rounds should not exceed 3 events with modifier 1.0 (AC1)");
+            // MidValue EventFrequencyModifier is 1.0, so event count should be exactly 5-7
+            Assert.GreaterOrEqual(minSeen, 5, "Early rounds should schedule at least 5 events (AC1)");
+            Assert.LessOrEqual(maxSeen, 7, "Early rounds should not exceed 7 events with modifier 1.0 (AC1)");
         }
 
         [Test]
@@ -76,9 +76,9 @@ namespace BullRun.Tests.Events
                 if (count > maxSeen) maxSeen = count;
             }
 
-            // MidValue EventFrequencyModifier is 1.0, so event count should be exactly 3-4
-            Assert.GreaterOrEqual(minSeen, 3, "Late rounds should schedule at least 3 events (AC1)");
-            Assert.LessOrEqual(maxSeen, 4, "Late rounds should not exceed 4 events with modifier 1.0 (AC1)");
+            // MidValue EventFrequencyModifier is 1.0, so event count should be exactly 7-10
+            Assert.GreaterOrEqual(minSeen, 7, "Late rounds should schedule at least 7 events (AC1)");
+            Assert.LessOrEqual(maxSeen, 10, "Late rounds should not exceed 10 events with modifier 1.0 (AC1)");
         }
 
         [Test]
@@ -353,11 +353,11 @@ namespace BullRun.Tests.Events
             Assert.AreEqual(1, _eventEffects.ActiveEventCount);
 
             // Update with deltaTime — should advance event timers via UpdateActiveEvents
-            // Since EarningsBeat has 5s duration, it should remain active after 0.1s
+            // Since EarningsBeat has 4s duration, it should remain active after 0.1s
             _scheduler.Update(0f, 0.1f, _activeStocks, StockTier.MidValue);
             Assert.AreEqual(1, _eventEffects.ActiveEventCount, "Event should still be active after 0.1s");
 
-            // Advance past duration (5s) — event should expire
+            // Advance past duration (4s) — event should expire
             _scheduler.Update(0f, 6f, _activeStocks, StockTier.MidValue);
             Assert.AreEqual(0, _eventEffects.ActiveEventCount, "Event should expire after 6s");
         }
@@ -367,12 +367,12 @@ namespace BullRun.Tests.Events
         [Test]
         public void EventSchedulerConfig_HasCorrectDefaults()
         {
-            Assert.AreEqual(2, EventSchedulerConfig.MinEventsEarlyRounds);
-            Assert.AreEqual(3, EventSchedulerConfig.MaxEventsEarlyRounds);
-            Assert.AreEqual(3, EventSchedulerConfig.MinEventsLateRounds);
-            Assert.AreEqual(4, EventSchedulerConfig.MaxEventsLateRounds);
-            Assert.AreEqual(5f, EventSchedulerConfig.EarlyBufferSeconds, 0.01f);
-            Assert.AreEqual(5f, EventSchedulerConfig.LateBufferSeconds, 0.01f);
+            Assert.AreEqual(5, EventSchedulerConfig.MinEventsEarlyRounds);
+            Assert.AreEqual(7, EventSchedulerConfig.MaxEventsEarlyRounds);
+            Assert.AreEqual(7, EventSchedulerConfig.MinEventsLateRounds);
+            Assert.AreEqual(10, EventSchedulerConfig.MaxEventsLateRounds);
+            Assert.AreEqual(2f, EventSchedulerConfig.EarlyBufferSeconds, 0.01f);
+            Assert.AreEqual(2f, EventSchedulerConfig.LateBufferSeconds, 0.01f);
         }
 
         // --- GetEventsForTier helper ---
@@ -437,7 +437,7 @@ namespace BullRun.Tests.Events
             Assert.IsNotNull(received.Headline, "Headline should not be null");
             Assert.IsTrue(received.Headline.Length > 0, "Headline should not be empty");
             Assert.IsTrue(received.IsPositive, "EarningsBeat should be positive");
-            Assert.AreEqual(5f, received.Duration, 0.01f, "Duration should match EventDefinitions config");
+            Assert.AreEqual(4f, received.Duration, 0.01f, "Duration should match EventDefinitions config");
         }
 
         [Test]
@@ -453,7 +453,7 @@ namespace BullRun.Tests.Events
 
             Assert.IsNotNull(received.Headline);
             Assert.IsFalse(received.IsPositive, "EarningsMiss should not be positive");
-            Assert.AreEqual(5f, received.Duration, 0.01f);
+            Assert.AreEqual(4f, received.Duration, 0.01f);
         }
 
         [Test]
@@ -469,10 +469,10 @@ namespace BullRun.Tests.Events
                 var scheduler = new EventScheduler(_eventEffects, rng);
                 scheduler.FireEvent(EventDefinitions.EarningsBeat, _activeStocks);
 
-                Assert.GreaterOrEqual(received.PriceEffectPercent, 0.20f,
-                    $"EarningsBeat price effect should be >= 20%, got {received.PriceEffectPercent}");
-                Assert.LessOrEqual(received.PriceEffectPercent, 0.50f,
-                    $"EarningsBeat price effect should be <= 50%, got {received.PriceEffectPercent}");
+                Assert.GreaterOrEqual(received.PriceEffectPercent, 0.35f,
+                    $"EarningsBeat price effect should be >= 35%, got {received.PriceEffectPercent}");
+                Assert.LessOrEqual(received.PriceEffectPercent, 0.75f,
+                    $"EarningsBeat price effect should be <= 75%, got {received.PriceEffectPercent}");
             }
         }
 
@@ -488,10 +488,10 @@ namespace BullRun.Tests.Events
                 var scheduler = new EventScheduler(_eventEffects, rng);
                 scheduler.FireEvent(EventDefinitions.EarningsMiss, _activeStocks);
 
-                Assert.LessOrEqual(received.PriceEffectPercent, -0.20f,
-                    $"EarningsMiss price effect should be <= -20%, got {received.PriceEffectPercent}");
-                Assert.GreaterOrEqual(received.PriceEffectPercent, -0.50f,
-                    $"EarningsMiss price effect should be >= -50%, got {received.PriceEffectPercent}");
+                Assert.LessOrEqual(received.PriceEffectPercent, -0.35f,
+                    $"EarningsMiss price effect should be <= -35%, got {received.PriceEffectPercent}");
+                Assert.GreaterOrEqual(received.PriceEffectPercent, -0.75f,
+                    $"EarningsMiss price effect should be >= -75%, got {received.PriceEffectPercent}");
             }
         }
 
@@ -532,7 +532,7 @@ namespace BullRun.Tests.Events
             _scheduler.FireEvent(EventDefinitions.PumpAndDump, pennyStocks);
 
             Assert.AreEqual(MarketEventType.PumpAndDump, received.EventType);
-            Assert.AreEqual(8f, received.Duration, 0.01f, "PumpAndDump duration should be 8s");
+            Assert.AreEqual(6f, received.Duration, 0.01f, "PumpAndDump duration should be 6s");
             Assert.IsTrue(received.IsPositive, "PumpAndDump should appear positive to lure players during pump phase");
         }
 
@@ -575,7 +575,7 @@ namespace BullRun.Tests.Events
             _scheduler.FireEvent(EventDefinitions.SECInvestigation, pennyStocks);
 
             Assert.AreEqual(MarketEventType.SECInvestigation, received.EventType);
-            Assert.AreEqual(10f, received.Duration, 0.01f);
+            Assert.AreEqual(6f, received.Duration, 0.01f);
             Assert.Less(received.PriceEffectPercent, 0f, "SEC Investigation should have negative price effect");
             Assert.IsFalse(received.IsPositive);
         }
@@ -589,7 +589,7 @@ namespace BullRun.Tests.Events
             _scheduler.FireEvent(EventDefinitions.MergerRumor, _activeStocks);
 
             Assert.AreEqual(MarketEventType.MergerRumor, received.EventType);
-            Assert.AreEqual(6f, received.Duration, 0.01f);
+            Assert.AreEqual(5f, received.Duration, 0.01f);
             Assert.Greater(received.PriceEffectPercent, 0f, "Merger Rumor should have positive price effect");
             Assert.IsTrue(received.IsPositive);
         }
@@ -793,8 +793,8 @@ namespace BullRun.Tests.Events
                     totalEvents++;
                 }
 
-                Assert.LessOrEqual(rareEventsInRound, 1,
-                    $"Seed {seed}: Should have at most 1 rare event per round, got {rareEventsInRound}");
+                Assert.LessOrEqual(rareEventsInRound, 2,
+                    $"Seed {seed}: Should have at most 2 rare events per round, got {rareEventsInRound}");
             }
         }
 

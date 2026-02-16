@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Central data carrier for run state.
-/// Carries current act, round, portfolio, and active items.
+/// Carries current act, round, portfolio, owned relics, expansions, bonds, and tips.
 /// Internal setters on state properties allow DebugManager (F3 skip-to-round)
 /// to reset context during editor/dev builds. Production mutation should go
 /// through AdvanceRound(), PrepareForNextRound(), or ResetForNewRun().
@@ -13,7 +13,13 @@ public class RunContext
     public int CurrentAct { get; internal set; }
     public int CurrentRound { get; internal set; }
     public Portfolio Portfolio { get; internal set; }
-    public List<string> ActiveItems { get; private set; }
+    public List<string> OwnedRelics { get; private set; }
+    public List<string> OwnedExpansions { get; private set; }
+    public int BondsOwned { get; internal set; }
+    public List<BondRecord> BondPurchaseHistory { get; private set; }
+    public int CurrentShopRerollCount { get; internal set; }
+    public int InsiderTipSlots { get; internal set; }
+    public List<RevealedTip> RevealedTips { get; private set; }
     public ReputationManager Reputation { get; private set; }
     public float StartingCapital { get; internal set; }
 
@@ -29,9 +35,9 @@ public class RunContext
     public float PeakCash { get; internal set; }
 
     /// <summary>
-    /// Number of items collected during the run. Derived from ActiveItems list.
+    /// Number of relics collected during the run. Derived from OwnedRelics list.
     /// </summary>
-    public int ItemsCollected => ActiveItems.Count;
+    public int ItemsCollected => OwnedRelics.Count;
 
     /// <summary>
     /// Highest single-round profit achieved during the run.
@@ -74,7 +80,13 @@ public class RunContext
         CurrentAct = currentAct;
         CurrentRound = currentRound;
         Portfolio = portfolio;
-        ActiveItems = new List<string>();
+        OwnedRelics = new List<string>();
+        OwnedExpansions = new List<string>();
+        BondsOwned = 0;
+        BondPurchaseHistory = new List<BondRecord>();
+        CurrentShopRerollCount = 0;
+        InsiderTipSlots = GameConfig.DefaultInsiderTipSlots;
+        RevealedTips = new List<RevealedTip>();
         Reputation = new ReputationManager();
         StartingCapital = portfolio.Cash;
         PeakCash = portfolio.Cash;
@@ -189,7 +201,13 @@ public class RunContext
         Portfolio.StartRound(Portfolio.Cash);
         CurrentAct = 1;
         CurrentRound = 1;
-        ActiveItems.Clear();
+        OwnedRelics.Clear();
+        OwnedExpansions.Clear();
+        BondsOwned = 0;
+        BondPurchaseHistory.Clear();
+        CurrentShopRerollCount = 0;
+        InsiderTipSlots = GameConfig.DefaultInsiderTipSlots;
+        RevealedTips.Clear();
         Reputation.Reset();
         StartingCapital = Portfolio.Cash;
         RunCompleted = false;

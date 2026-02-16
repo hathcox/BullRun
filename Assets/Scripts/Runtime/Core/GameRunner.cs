@@ -127,7 +127,7 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteRoundResultsUI();
         UISetup.ExecuteRunSummaryUI();
         UISetup.ExecuteTierTransitionUI();
-        UISetup.ExecuteShopUI();
+        UISetup.ExecuteStoreUI();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring

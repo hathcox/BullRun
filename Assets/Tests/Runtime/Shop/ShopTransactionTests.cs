@@ -71,28 +71,28 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void TryPurchase_ReturnsAlreadyOwned_WhenItemInActiveItems()
+        public void TryPurchase_ReturnsAlreadyOwned_WhenItemInOwnedRelics()
         {
-            _ctx.ActiveItems.Add("owned-item");
+            _ctx.OwnedRelics.Add("owned-item");
             var item = MakeItem("owned-item", "Owned Item", 100);
 
             var result = _transaction.TryPurchase(_ctx, item);
 
             Assert.AreEqual(ShopPurchaseResult.AlreadyOwned, result);
             Assert.AreEqual(1000, _ctx.Reputation.Current, "Rep should be unchanged");
-            Assert.AreEqual(1, _ctx.ActiveItems.Count, "Should still have only the original item");
+            Assert.AreEqual(1, _ctx.OwnedRelics.Count, "Should still have only the original item");
         }
 
-        // === Purchased items added to RunContext.ActiveItems ===
+        // === Purchased items added to RunContext.OwnedRelics ===
 
         [Test]
-        public void TryPurchase_AddsItemIdToActiveItems()
+        public void TryPurchase_AddsItemIdToOwnedRelics()
         {
             var item = MakeItem("new-item", "New Item", 200);
             _transaction.TryPurchase(_ctx, item);
 
-            Assert.AreEqual(1, _ctx.ActiveItems.Count);
-            Assert.IsTrue(_ctx.ActiveItems.Contains("new-item"));
+            Assert.AreEqual(1, _ctx.OwnedRelics.Count);
+            Assert.IsTrue(_ctx.OwnedRelics.Contains("new-item"));
         }
 
         // === FIX-12 AC 10: ShopItemPurchasedEvent fires with Reputation data ===
@@ -134,7 +134,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void TryPurchase_DoesNotPublishEvent_OnAlreadyOwned()
         {
-            _ctx.ActiveItems.Add("dup");
+            _ctx.OwnedRelics.Add("dup");
             bool eventFired = false;
             EventBus.Subscribe<ShopItemPurchasedEvent>(_ => eventFired = true);
 
@@ -157,7 +157,7 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemB));
             Assert.AreEqual(ShopPurchaseResult.Success, _transaction.TryPurchase(_ctx, itemC));
 
-            Assert.AreEqual(3, _ctx.ActiveItems.Count);
+            Assert.AreEqual(3, _ctx.OwnedRelics.Count);
             Assert.AreEqual(400, _ctx.Reputation.Current); // 1000 - 200 - 300 - 100
             // FIX-12 AC 5: Cash untouched
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);

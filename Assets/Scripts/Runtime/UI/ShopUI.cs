@@ -2,9 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Shop UI overlay. Displays 3 item cards (one per category), optional upgrade card, and Reputation display.
-/// FIX-12: Shop uses Reputation currency, not Portfolio.Cash.
-/// FIX-13: Adds Trade Volume upgrade card for quantity tier unlocks.
+/// Store UI controller for the multi-panel Balatro-style store layout (Epic 13).
+/// Top section: control panel (Next Round + Reroll) + 3 relic card slots.
+/// Bottom section: 3 panels — Expansions (left), Insider Tips (center), Bonds (right).
+/// Currency bar: Reputation (amber star) and Cash displays.
+/// Keyboard navigation: Tab cycles panels, arrow keys navigate within.
 /// MonoBehaviour created by UISetup during F5 generation.
 /// </summary>
 public class ShopUI : MonoBehaviour
@@ -15,36 +17,53 @@ public class ShopUI : MonoBehaviour
     public static readonly Color RareColor = new Color(0.3f, 0.5f, 1f, 1f);
     public static readonly Color LegendaryColor = new Color(1f, 0.84f, 0f, 1f);
 
-    // FIX-12: Reputation display color (amber/gold)
+    // Reputation display color (amber/gold)
     public static readonly Color ReputationColor = new Color(1f, 0.7f, 0f, 1f);
 
-    // FIX-13: Upgrade card accent color (cyan/teal)
-    public static readonly Color UpgradeAccentColor = new Color(0f, 0.8f, 0.9f, 1f);
+    // Cash display color (green)
+    public static readonly Color CashColor = new Color(0.2f, 0.9f, 0.3f, 1f);
+
+    // Panel header color (muted blue-grey)
+    public static readonly Color PanelHeaderColor = new Color(0.5f, 0.6f, 0.8f, 1f);
+
+    // Panel border/background colors
+    public static readonly Color PanelBgColor = new Color(0.06f, 0.08f, 0.16f, 0.9f);
+    public static readonly Color PanelBorderColor = new Color(0.2f, 0.25f, 0.4f, 1f);
+
+    // Focus indicator color
+    public static readonly Color FocusColor = new Color(0.3f, 0.5f, 1f, 0.6f);
 
     private GameObject _root;
     private Text _repText;
+    private Text _cashText;
     private Text _headerText;
-    private ItemCardView[] _cards;
     private CanvasGroup _canvasGroup;
 
-    private Button _continueButton;
+    // Top section: relic card slots
+    private RelicSlotView[] _relicSlots;
 
+    // Bottom panels
+    private GameObject _expansionsPanel;
+    private GameObject _tipsPanel;
+    private GameObject _bondsPanel;
+
+    // Control buttons
+    private Button _nextRoundButton;
+    private Button _rerollButton;
+    private Text _rerollCostText;
+
+    // Keyboard navigation
+    private GameObject[] _focusablePanels;
+    private Image[] _panelFocusIndicators;
+    private int _focusedPanelIndex = -1;
+
+    // State
     private ShopItemDef?[] _items;
     private RunContext _ctx;
     private System.Action<int> _onPurchase;
     private System.Action _onClose;
 
-    // FIX-13: Upgrade card elements
-    private GameObject _upgradeCardRoot;
-    private Text _upgradeNameText;
-    private Text _upgradeDescText;
-    private Text _upgradeCostText;
-    private Button _upgradeBuyButton;
-    private Text _upgradeBuyButtonText;
-    private int _upgradeCost;
-    private System.Action _onUpgradePurchase;
-
-    public struct ItemCardView
+    public struct RelicSlotView
     {
         public GameObject Root;
         public Text CategoryLabel;
@@ -61,61 +80,75 @@ public class ShopUI : MonoBehaviour
     public void Initialize(
         GameObject root,
         Text repText,
+        Text cashText,
         Text headerText,
-        ItemCardView[] cards,
+        RelicSlotView[] relicSlots,
         CanvasGroup canvasGroup)
     {
         _root = root;
         _repText = repText;
+        _cashText = cashText;
         _headerText = headerText;
-        _cards = cards;
+        _relicSlots = relicSlots;
         _canvasGroup = canvasGroup;
         _root.SetActive(false);
     }
 
-    /// <summary>
-    /// FIX-13: Sets the upgrade card UI element references. Called by UISetup during F5.
-    /// </summary>
-    public void SetUpgradeCard(GameObject root, Text nameText, Text descText, Text costText,
-        Button buyButton, Text buyButtonText)
+    public void SetBottomPanels(GameObject expansionsPanel, GameObject tipsPanel, GameObject bondsPanel)
     {
-        _upgradeCardRoot = root;
-        _upgradeNameText = nameText;
-        _upgradeDescText = descText;
-        _upgradeCostText = costText;
-        _upgradeBuyButton = buyButton;
-        _upgradeBuyButtonText = buyButtonText;
+        _expansionsPanel = expansionsPanel;
+        _tipsPanel = tipsPanel;
+        _bondsPanel = bondsPanel;
+
+        // Build focusable panel list for keyboard navigation
+        _focusablePanels = new GameObject[] { expansionsPanel, tipsPanel, bondsPanel };
+        _panelFocusIndicators = new Image[_focusablePanels.Length];
+        for (int i = 0; i < _focusablePanels.Length; i++)
+        {
+            var focusGo = new GameObject($"FocusIndicator_{i}");
+            focusGo.transform.SetParent(_focusablePanels[i].transform, false);
+            var focusRect = focusGo.AddComponent<RectTransform>();
+            focusRect.anchorMin = Vector2.zero;
+            focusRect.anchorMax = Vector2.one;
+            focusRect.offsetMin = new Vector2(-2f, -2f);
+            focusRect.offsetMax = new Vector2(2f, 2f);
+            var focusImg = focusGo.AddComponent<Image>();
+            focusImg.color = FocusColor;
+            focusImg.raycastTarget = false;
+            focusGo.SetActive(false);
+            _panelFocusIndicators[i] = focusImg;
+        }
+        _focusedPanelIndex = -1;
     }
 
-    /// <summary>
-    /// Sets the Continue button reference. Called by UISetup during F5 generation.
-    /// </summary>
-    public void SetContinueButton(Button continueButton)
+    public void SetNextRoundButton(Button nextRoundButton)
     {
-        _continueButton = continueButton;
+        _nextRoundButton = nextRoundButton;
         if (_onClose != null)
         {
-            _continueButton.onClick.RemoveAllListeners();
-            _continueButton.onClick.AddListener(() => _onClose?.Invoke());
+            _nextRoundButton.onClick.RemoveAllListeners();
+            _nextRoundButton.onClick.AddListener(() => _onClose?.Invoke());
         }
     }
 
-    /// <summary>
-    /// Registers a callback for the Continue button. ShopState calls this to close shop.
-    /// </summary>
+    public void SetRerollButton(Button rerollButton, Text costText)
+    {
+        _rerollButton = rerollButton;
+        _rerollCostText = costText;
+    }
+
     public void SetOnCloseCallback(System.Action callback)
     {
         _onClose = callback;
-        if (_continueButton != null)
+        if (_nextRoundButton != null)
         {
-            _continueButton.onClick.RemoveAllListeners();
-            _continueButton.onClick.AddListener(() => _onClose?.Invoke());
+            _nextRoundButton.onClick.RemoveAllListeners();
+            _nextRoundButton.onClick.AddListener(() => _onClose?.Invoke());
         }
     }
 
     /// <summary>
-    /// Shows the shop with the given items. Called by ShopState.Enter.
-    /// Null items indicate a category pool is exhausted — shows "SOLD OUT" state.
+    /// Shows the store with the given relic items. Called by ShopState.Enter.
     /// </summary>
     public void Show(RunContext ctx, ShopItemDef?[] items, System.Action<int> onPurchase)
     {
@@ -123,198 +156,169 @@ public class ShopUI : MonoBehaviour
         _items = items;
         _onPurchase = onPurchase;
         _root.SetActive(true);
+        _focusedPanelIndex = -1;
 
-        _headerText.text = $"DRAFT SHOP \u2014 ROUND {ctx.CurrentRound}";
-        UpdateReputationDisplay();
+        _headerText.text = $"STORE \u2014 ROUND {ctx.CurrentRound}";
+        UpdateCurrencyDisplays();
 
-        for (int i = 0; i < _cards.Length && i < items.Length; i++)
+        for (int i = 0; i < _relicSlots.Length && i < items.Length; i++)
         {
             if (items[i].HasValue)
             {
-                SetupCard(i, items[i].Value);
+                SetupRelicSlot(i, items[i].Value);
             }
             else
             {
-                SetupSoldOutCard(i);
+                SetupEmptyRelicSlot(i);
             }
         }
     }
 
-    /// <summary>
-    /// FIX-13: Shows the Trade Volume upgrade card with the next available tier.
-    /// </summary>
-    public void ShowUpgrade(int tierValue, int repCost, System.Action onPurchase)
-    {
-        if (_upgradeCardRoot == null) return;
-
-        _onUpgradePurchase = onPurchase;
-        _upgradeCost = repCost;
-        _upgradeCardRoot.SetActive(true);
-        _upgradeNameText.text = $"Trade Volume: x{tierValue}";
-        _upgradeDescText.text = $"Unlock x{tierValue} quantity preset for trading";
-        _upgradeCostText.text = $"\u2605 {repCost}";
-
-        bool canAfford = _ctx != null && _ctx.Reputation.CanAfford(repCost);
-        _upgradeBuyButton.interactable = canAfford;
-        _upgradeBuyButtonText.text = canAfford ? "UNLOCK" : "CAN'T AFFORD";
-        _upgradeCostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
-
-        _upgradeBuyButton.onClick.RemoveAllListeners();
-        _upgradeBuyButton.onClick.AddListener(() => _onUpgradePurchase?.Invoke());
-    }
-
-    /// <summary>
-    /// FIX-13: Hides the upgrade card (all tiers unlocked or no upgrade available).
-    /// </summary>
-    public void HideUpgrade()
-    {
-        if (_upgradeCardRoot != null)
-            _upgradeCardRoot.SetActive(false);
-    }
-
-    /// <summary>
-    /// FIX-13: Marks upgrade as purchased and refreshes affordability on all cards.
-    /// </summary>
-    public void RefreshAfterUpgradePurchase()
-    {
-        UpdateReputationDisplay();
-
-        // Mark upgrade card as purchased
-        if (_upgradeCardRoot != null)
-        {
-            _upgradeBuyButton.interactable = false;
-            _upgradeBuyButtonText.text = "UNLOCKED";
-        }
-
-        // Refresh affordability on item cards
-        RefreshItemCardAffordability();
-    }
-
-    /// <summary>
-    /// Hides the shop overlay. Called by ShopState.Exit.
-    /// </summary>
     public void Hide()
     {
         if (_root != null)
             _root.SetActive(false);
     }
 
-    /// <summary>
-    /// Called after a purchase to refresh affordability state.
-    /// FIX-12: Uses Reputation.CanAfford instead of Portfolio.CanAfford.
-    /// </summary>
     public void RefreshAfterPurchase(int cardIndex)
     {
-        UpdateReputationDisplay();
+        UpdateCurrencyDisplays();
 
-        // Mark purchased card as sold
-        if (cardIndex >= 0 && cardIndex < _cards.Length)
+        if (cardIndex >= 0 && cardIndex < _relicSlots.Length)
         {
-            _cards[cardIndex].PurchaseButton.interactable = false;
-            _cards[cardIndex].ButtonText.text = "PURCHASED";
-            _cards[cardIndex].CardBackground.color = new Color(0.1f, 0.15f, 0.1f, 0.7f);
+            _relicSlots[cardIndex].PurchaseButton.interactable = false;
+            _relicSlots[cardIndex].ButtonText.text = "PURCHASED";
+            _relicSlots[cardIndex].CardBackground.color = new Color(0.1f, 0.15f, 0.1f, 0.7f);
         }
 
-        // Update affordability on remaining cards and upgrade card
-        RefreshItemCardAffordability();
-        RefreshUpgradeAffordability();
+        RefreshRelicAffordability();
     }
 
-    private void RefreshItemCardAffordability()
+    private void Update()
     {
-        for (int i = 0; i < _cards.Length && i < _items.Length; i++)
-        {
-            if (!_items[i].HasValue) continue; // sold out slot
-            if (!_cards[i].PurchaseButton.interactable) continue; // already purchased
+        if (_root == null || !_root.activeSelf) return;
+        HandleKeyboardNavigation();
+    }
 
-            bool canAfford = _ctx.Reputation.CanAfford(_items[i].Value.Cost);
-            _cards[i].PurchaseButton.interactable = canAfford;
-            _cards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-            _cards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+    private void HandleKeyboardNavigation()
+    {
+        if (_focusablePanels == null) return;
+
+        if (Input.GetKeyDown(KeyCode.Tab))
+        {
+            // Cycle to next panel
+            int next = (_focusedPanelIndex + 1) % _focusablePanels.Length;
+            SetFocusedPanel(next);
+        }
+        else if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            if (_focusedPanelIndex > 0)
+                SetFocusedPanel(_focusedPanelIndex - 1);
+            else if (_focusedPanelIndex < 0)
+                SetFocusedPanel(0);
+        }
+        else if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            if (_focusedPanelIndex < _focusablePanels.Length - 1)
+                SetFocusedPanel(_focusedPanelIndex + 1);
+            else if (_focusedPanelIndex < 0)
+                SetFocusedPanel(0);
+        }
+    }
+
+    private void SetFocusedPanel(int index)
+    {
+        // Clear previous focus
+        if (_focusedPanelIndex >= 0 && _focusedPanelIndex < _panelFocusIndicators.Length)
+        {
+            _panelFocusIndicators[_focusedPanelIndex].gameObject.SetActive(false);
+        }
+
+        _focusedPanelIndex = index;
+
+        // Show new focus
+        if (_focusedPanelIndex >= 0 && _focusedPanelIndex < _panelFocusIndicators.Length)
+        {
+            _panelFocusIndicators[_focusedPanelIndex].gameObject.SetActive(true);
         }
     }
 
     /// <summary>
-    /// FIX-13: Refreshes upgrade card affordability after any purchase.
+    /// Returns the currently focused panel index (-1 if none).
+    /// Used by tests and potential future keyboard interaction.
     /// </summary>
-    private void RefreshUpgradeAffordability()
-    {
-        if (_upgradeCardRoot == null || !_upgradeCardRoot.activeSelf) return;
-        if (_upgradeBuyButtonText.text == "UNLOCKED") return; // Already purchased this session
+    public int FocusedPanelIndex => _focusedPanelIndex;
 
-        if (_ctx != null)
-        {
-            bool canAfford = _ctx.Reputation.CanAfford(_upgradeCost);
-            _upgradeBuyButton.interactable = canAfford;
-            _upgradeBuyButtonText.text = canAfford ? "UNLOCK" : "CAN'T AFFORD";
-            _upgradeCostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
-        }
+    private void SetupEmptyRelicSlot(int index)
+    {
+        var slot = _relicSlots[index];
+        slot.CategoryLabel.text = "RELIC";
+        slot.NameText.text = "EMPTY";
+        slot.DescriptionText.text = "No relic available";
+        slot.CostText.text = "";
+        slot.RarityText.text = "";
+        slot.RarityBadge.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
+        slot.PurchaseButton.interactable = false;
+        slot.ButtonText.text = "SOLD OUT";
+        slot.CardBackground.color = new Color(0.15f, 0.15f, 0.15f, 0.5f);
+        slot.PurchaseButton.onClick.RemoveAllListeners();
     }
 
-    private void SetupSoldOutCard(int index)
+    private void SetupRelicSlot(int index, ShopItemDef item)
     {
-        var card = _cards[index];
-        string categoryName = index switch
-        {
-            0 => "TRADING TOOL",
-            1 => "MARKET INTEL",
-            2 => "PASSIVE PERK",
-            _ => "ITEM"
-        };
-        card.CategoryLabel.text = categoryName;
-        card.NameText.text = "SOLD OUT";
-        card.DescriptionText.text = "No items available in this category";
-        card.CostText.text = "";
-        card.RarityText.text = "";
-        card.RarityBadge.color = new Color(0.3f, 0.3f, 0.3f, 0.5f);
-        card.PurchaseButton.interactable = false;
-        card.ButtonText.text = "SOLD OUT";
-        card.CardBackground.color = new Color(0.15f, 0.15f, 0.15f, 0.5f);
-        card.PurchaseButton.onClick.RemoveAllListeners();
-    }
-
-    private void SetupCard(int index, ShopItemDef item)
-    {
-        var card = _cards[index];
+        var slot = _relicSlots[index];
 
         string categoryName = item.Category switch
         {
             ItemCategory.TradingTool => "TRADING TOOL",
             ItemCategory.MarketIntel => "MARKET INTEL",
             ItemCategory.PassivePerk => "PASSIVE PERK",
-            _ => "ITEM"
+            _ => "RELIC"
         };
-        card.CategoryLabel.text = categoryName;
-        card.NameText.text = item.Name;
-        card.DescriptionText.text = item.Description;
-        // FIX-12: Show Rep cost with star icon instead of $
-        card.CostText.text = $"\u2605 {item.Cost}";
+        slot.CategoryLabel.text = categoryName;
+        slot.NameText.text = item.Name;
+        slot.DescriptionText.text = item.Description;
+        slot.CostText.text = $"\u2605 {item.Cost}";
 
         Color rarityColor = GetRarityColor(item.Rarity);
-        card.RarityText.text = item.Rarity.ToString().ToUpper();
-        card.RarityText.color = rarityColor;
-        card.RarityBadge.color = rarityColor;
+        slot.RarityText.text = item.Rarity.ToString().ToUpper();
+        slot.RarityText.color = rarityColor;
+        slot.RarityBadge.color = rarityColor;
 
-        // FIX-12: Check Reputation affordability, not cash
         bool canAfford = _ctx.Reputation.CanAfford(item.Cost);
-        card.PurchaseButton.interactable = canAfford;
-        card.ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-        card.CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        slot.PurchaseButton.interactable = canAfford;
+        slot.ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+        slot.CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
 
-        // Wire button
-        card.PurchaseButton.onClick.RemoveAllListeners();
+        slot.PurchaseButton.onClick.RemoveAllListeners();
         int capturedIndex = index;
-        card.PurchaseButton.onClick.AddListener(() => _onPurchase?.Invoke(capturedIndex));
+        slot.PurchaseButton.onClick.AddListener(() => _onPurchase?.Invoke(capturedIndex));
     }
 
-    /// <summary>
-    /// FIX-12: Updates the Reputation balance display (was cash display).
-    /// </summary>
-    private void UpdateReputationDisplay()
+    private void RefreshRelicAffordability()
+    {
+        if (_items == null) return;
+        for (int i = 0; i < _relicSlots.Length && i < _items.Length; i++)
+        {
+            if (!_items[i].HasValue) continue;
+            if (!_relicSlots[i].PurchaseButton.interactable) continue;
+
+            bool canAfford = _ctx.Reputation.CanAfford(_items[i].Value.Cost);
+            _relicSlots[i].PurchaseButton.interactable = canAfford;
+            _relicSlots[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+            _relicSlots[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        }
+    }
+
+    private void UpdateCurrencyDisplays()
     {
         if (_repText != null && _ctx != null)
         {
             _repText.text = $"\u2605 {_ctx.Reputation.Current}";
+        }
+        if (_cashText != null && _ctx != null)
+        {
+            _cashText.text = $"$ {_ctx.Portfolio.Cash:N0}";
         }
     }
 

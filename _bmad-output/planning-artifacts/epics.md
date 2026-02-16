@@ -3,6 +3,7 @@
 > Generated from GDD Section 12 + full feature specifications
 > Project: BullRun | Date: 2026-02-10
 
+<!--
 ---
 
 ## Epic 1: Price Engine
@@ -1038,6 +1039,7 @@ As a developer, I want comprehensive QA testing and a release build, so that the
 - Edge case testing (zero cash, max items, all events)
 - Build for Steam submission
 - No critical or major bugs remaining
+-->
 
 ---
 

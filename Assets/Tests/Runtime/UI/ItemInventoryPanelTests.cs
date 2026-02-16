@@ -155,7 +155,7 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void GetItemsByCategory_EmptyActiveItems_ReturnsEmptyLists()
+        public void GetItemsByCategory_EmptyOwnedRelics_ReturnsEmptyLists()
         {
             var items = new List<string>();
             var tools = ItemLookup.GetItemsByCategory(items, ItemCategory.TradingTool);

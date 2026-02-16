@@ -32,33 +32,33 @@ namespace BullRun.Tests.Core
         // --- GameConfig Short Constants ---
 
         [Test]
-        public void GameConfig_ShortRoundStartLockout_Is5Seconds()
+        public void GameConfig_ShortRoundStartLockout_Is0Seconds()
         {
-            Assert.AreEqual(5.0f, GameConfig.ShortRoundStartLockout, 0.001f);
+            Assert.AreEqual(0.0f, GameConfig.ShortRoundStartLockout, 0.001f);
         }
 
         [Test]
-        public void GameConfig_ShortForcedHoldDuration_Is8Seconds()
+        public void GameConfig_ShortForcedHoldDuration_Is3Seconds()
         {
-            Assert.AreEqual(8.0f, GameConfig.ShortForcedHoldDuration, 0.001f);
+            Assert.AreEqual(3.0f, GameConfig.ShortForcedHoldDuration, 0.001f);
         }
 
         [Test]
-        public void GameConfig_ShortCashOutWindow_Is10Seconds()
+        public void GameConfig_ShortCashOutWindow_Is5Seconds()
         {
-            Assert.AreEqual(10.0f, GameConfig.ShortCashOutWindow, 0.001f);
+            Assert.AreEqual(5.0f, GameConfig.ShortCashOutWindow, 0.001f);
         }
 
         [Test]
-        public void GameConfig_ShortCashOutFlashThreshold_Is4Seconds()
+        public void GameConfig_ShortCashOutFlashThreshold_Is2Seconds()
         {
-            Assert.AreEqual(4.0f, GameConfig.ShortCashOutFlashThreshold, 0.001f);
+            Assert.AreEqual(2.0f, GameConfig.ShortCashOutFlashThreshold, 0.001f);
         }
 
         [Test]
-        public void GameConfig_ShortPostCloseCooldown_Is10Seconds()
+        public void GameConfig_ShortPostCloseCooldown_Is3Seconds()
         {
-            Assert.AreEqual(10.0f, GameConfig.ShortPostCloseCooldown, 0.001f);
+            Assert.AreEqual(3.0f, GameConfig.ShortPostCloseCooldown, 0.001f);
         }
 
         [Test]

@@ -193,14 +193,18 @@ public struct ActTransitionEvent
 }
 
 /// <summary>
-/// Fired when the draft shop opens after a successful round.
+/// Fired when the store opens after a successful round.
 /// FIX-12: Carries Reputation balance (shop currency) instead of cash.
+/// 13.2: Added section availability flags for the multi-panel store layout.
 /// </summary>
 public struct ShopOpenedEvent
 {
     public int RoundNumber;
     public ShopItemDef[] AvailableItems;
     public int CurrentReputation;
+    public bool ExpansionsAvailable;
+    public bool TipsAvailable;
+    public bool BondAvailable;
 }
 
 /// <summary>
@@ -216,14 +220,30 @@ public struct ShopItemPurchasedEvent
 }
 
 /// <summary>
-/// Fired when the shop closes (player clicked Continue).
+/// Fired when the player purchases an expansion from the shop.
+/// </summary>
+public struct ShopExpansionPurchasedEvent
+{
+    public string ExpansionId;
+    public string DisplayName;
+    public int Cost;
+    public int RemainingReputation;
+}
+
+/// <summary>
+/// Fired when the store closes (player clicked Next Round).
 /// FIX-12: Remaining balance is in Reputation, not cash.
+/// 13.2: Added per-section purchase counts for analytics.
 /// </summary>
 public struct ShopClosedEvent
 {
     public string[] PurchasedItemIds;
     public int ReputationRemaining;
     public int RoundNumber;
+    public int RelicsPurchased;
+    public int ExpansionsPurchased;
+    public int TipsPurchased;
+    public int BondsPurchased;
 }
 
 /// <summary>

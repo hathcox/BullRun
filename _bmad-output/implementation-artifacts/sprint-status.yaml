@@ -40,129 +40,19 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  # === Epic 1: Price Engine (Phase 1, Weeks 1-4) ===
-  epic-1: done
-  1-1-base-trend-generation: done
-  1-2-noise-layer: done
-  1-3-event-spike-integration: done
-  1-4-mean-reversion: done
-  1-5-stock-tier-configuration: done
-  1-6-debug-overlay: done
-  epic-1-retrospective: optional
+  # === Epics 1-7: DONE (commented out — see epics.md for full history) ===
+  # === FIX Sprint: DONE (commented out — see epics.md for full history) ===
+  # === Epics 8-12: BACKLOG (commented out — see epics.md for full history) ===
 
-  # === Epic 2: Trading System (Phase 1, Weeks 1-4) ===
-  epic-2: done
-  2-1-buy-execution: done
-  2-2-sell-execution: done
-  2-3-short-execution: done
-  2-4-portfolio-tracking: done
-  2-5-capital-management: done
-  epic-2-retrospective: optional
-
-  # === Epic 3: Chart Rendering (Phase 1, Weeks 1-4) ===
-  epic-3: done
-  3-1-real-time-price-chart: done
-  3-2-trading-hud: done
-  3-3-stock-selection-sidebar: done
-  3-4-positions-panel: done
-  epic-3-retrospective: optional
-
-  # === Epic 4: Round Management (Phase 1-2, Weeks 3-6) ===
-  epic-4: done
-  4-1-round-timer: done
-  4-2-market-open-phase: done
-  4-3-auto-liquidation: done
-  4-4-margin-call-check: done
-  4-5-round-transition: done
-  epic-4-retrospective: optional
-
-  # === Epic 5: Event System (Phase 1-2, Weeks 4-7) ===
-  epic-5: done
-  5-1-event-scheduler: done
-  5-2-core-market-events: done
-  5-3-tier-specific-events: done
-  5-4-global-market-events: done
-  5-5-event-visual-signals: done
-  epic-5-retrospective: optional
-
-  # === Epic 6: Run Structure (Phase 2, Weeks 5-8) ===
-  epic-6: done
-  6-1-act-round-progression: done
-  6-2-tier-transitions: done
-  6-3-escalating-profit-targets: done
-  6-4-stock-pool-management: done
-  6-5-win-state: done
-  epic-6-retrospective: optional
-
-  # === Epic 7: Draft Shop (Phase 2, Weeks 6-8) ===
-  epic-7: done
-  7-1-shop-ui: done
-  7-2-item-pool-generation: done
-  7-3-purchase-flow: done
-  7-4-item-inventory-display: done
-  epic-7-retrospective: optional
-
-  # === FIX Sprint: Bugs & Gameplay Critical Fixes ===
-  fix-sprint: in-progress
-  FIX-1-shop-click-and-timer: done
-  FIX-2-short-selling-ui: done
-  FIX-3-trade-quantity-selection: done
-  FIX-4-event-popup-display: done
-  FIX-5-single-stock-per-round: done
-  FIX-6-trading-panel-overhaul: done
-  FIX-7-position-overlay: done
-  FIX-8-chart-price-gridlines: done
-  FIX-9-scope-events-to-single-stock: done
-  FIX-10-trade-execution-delay: done
-  FIX-11-short-selling-redesign: done
-  FIX-12-reputation-shop-currency: done
-  FIX-13-single-share-unlock-tiers: done
-  FIX-14-economy-rebalance: done
-
-  # === Epic 8: Item/Upgrade System (Phase 2-3, Weeks 6-10) ===
-  epic-8: backlog
-  8-1-trading-tools-framework: backlog
-  8-2-core-trading-tools: backlog
-  8-3-advanced-trading-tools: backlog
-  8-4-market-intel-items: backlog
-  8-5-passive-perks: backlog
-  8-6-item-balance-and-synergy-tracking: backlog
-  epic-8-retrospective: optional
-
-  # === Epic 9: Meta-Progression (Phase 3, Weeks 9-12) ===
-  epic-9: backlog
-  9-1-reputation-currency: backlog
-  9-2-office-visual-progression: backlog
-  9-3-stock-unlocks: backlog
-  9-4-shop-item-unlocks: backlog
-  9-5-broker-perks: backlog
-  9-6-save-load-system: backlog
-  epic-9-retrospective: optional
-
-  # === Epic 10: UI/UX Polish (Phase 3, Weeks 11-12) ===
-  epic-10: backlog
-  10-1-trade-execution-feedback: backlog
-  10-2-big-win-celebrations: backlog
-  10-3-margin-call-drama: backlog
-  10-4-chart-visual-polish: backlog
-  10-5-screen-transitions: backlog
-  10-6-tutorial-first-run: backlog
-  epic-10-retrospective: optional
-
-  # === Epic 11: Audio (Phase 3, Weeks 11-12) ===
-  epic-11: backlog
-  11-1-dynamic-music-system: backlog
-  11-2-trading-sound-effects: backlog
-  11-3-ambient-soundscapes: backlog
-  11-4-event-audio-cues: backlog
-  epic-11-retrospective: optional
-
-  # === Epic 12: Ship Prep (Phase 4, Weeks 13-16) ===
-  epic-12: backlog
-  12-1-controller-support: backlog
-  12-2-steam-integration: backlog
-  12-3-settings-menu: backlog
-  12-4-performance-optimization: backlog
-  12-5-balance-pass: backlog
-  12-6-final-qa-and-build: backlog
-  epic-12-retrospective: optional
+  # === Epic 13: Store Phase Rework — Balatro-Style Shop ===
+  epic-13: in-progress
+  13-1-store-data-model: done
+  13-2-store-layout-shell: done
+  13-3-relics-panel: ready-for-dev
+  13-4-trading-deck-expansions: ready-for-dev
+  13-5-insider-tips: ready-for-dev
+  13-6-bonds-panel: ready-for-dev
+  13-7-expansion-effects: ready-for-dev
+  13-8-store-visual-polish: ready-for-dev
+  13-9-cleanup-migration: ready-for-dev
+  epic-13-retrospective: optional

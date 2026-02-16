@@ -40,7 +40,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = _sm,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             _sm.TransitionTo<ShopState>();
             return (ShopState)_sm.CurrentState;
@@ -60,7 +61,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = _sm,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             var state = new ShopState();
             Assert.DoesNotThrow(() => state.Enter(_ctx));
@@ -160,7 +162,7 @@ namespace BullRun.Tests.Core.GameStates
             Assert.Less(_ctx.Reputation.Current, startRep, "Rep should have been deducted");
             Assert.AreEqual(receivedEvent.Cost, startRep - _ctx.Reputation.Current,
                 "Deducted amount should match item cost");
-            Assert.AreEqual(1, _ctx.ActiveItems.Count, "One item should be tracked");
+            Assert.AreEqual(1, _ctx.OwnedRelics.Count, "One item should be tracked");
             // FIX-12 AC 5: Cash must be untouched
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f, "Cash must not be deducted by shop");
         }
@@ -192,7 +194,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = poorSm,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             poorSm.TransitionTo<ShopState>();
             var shopState = (ShopState)poorSm.CurrentState;
@@ -204,7 +207,7 @@ namespace BullRun.Tests.Core.GameStates
 
             Assert.IsFalse(eventFired, "Purchase should be rejected with insufficient Reputation");
             Assert.AreEqual(0, poorCtx.Reputation.Current, "Rep should be unchanged");
-            Assert.AreEqual(0, poorCtx.ActiveItems.Count, "No items should be tracked");
+            Assert.AreEqual(0, poorCtx.OwnedRelics.Count, "No items should be tracked");
         }
 
         [Test]
@@ -219,7 +222,7 @@ namespace BullRun.Tests.Core.GameStates
 
             Assert.AreEqual(repAfterFirst, _ctx.Reputation.Current,
                 "Rep should not change on duplicate purchase");
-            Assert.AreEqual(1, _ctx.ActiveItems.Count,
+            Assert.AreEqual(1, _ctx.OwnedRelics.Count,
                 "Should still only have 1 item tracked");
         }
 
@@ -236,7 +239,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = richSm,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             richSm.TransitionTo<ShopState>();
             var shopState = (ShopState)richSm.CurrentState;
@@ -245,7 +249,7 @@ namespace BullRun.Tests.Core.GameStates
             shopState.OnPurchaseRequested(richCtx, 1);
             shopState.OnPurchaseRequested(richCtx, 2);
 
-            Assert.AreEqual(3, richCtx.ActiveItems.Count,
+            Assert.AreEqual(3, richCtx.OwnedRelics.Count,
                 "All 3 items should be purchased with ample Rep");
         }
 
@@ -258,14 +262,15 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = null,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             var state = new ShopState();
             state.Enter(_ctx);
 
             state.OnPurchaseRequested(_ctx, 0);
-            Assert.AreEqual(1, _ctx.ActiveItems.Count, "Setup: one item should be purchased");
-            string purchasedId = _ctx.ActiveItems[0];
+            Assert.AreEqual(1, _ctx.OwnedRelics.Count, "Setup: one item should be purchased");
+            string purchasedId = _ctx.OwnedRelics[0];
 
             ShopClosedEvent closedEvent = default;
             bool closedFired = false;
@@ -290,7 +295,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = null,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             var state = new ShopState();
             state.Enter(_ctx);
@@ -319,7 +325,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = null,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             var state = new ShopState();
             state.Enter(_ctx);
@@ -342,7 +349,8 @@ namespace BullRun.Tests.Core.GameStates
             {
                 StateMachine = null,
                 PriceGenerator = null,
-                TradeExecutor = null
+                TradeExecutor = null,
+                EventScheduler = null
             };
             var state = new ShopState();
             state.Enter(_ctx);
@@ -368,6 +376,60 @@ namespace BullRun.Tests.Core.GameStates
         {
             EnterShop();
             Assert.AreEqual(1000f, _ctx.Portfolio.Cash, 0.01f);
+        }
+
+        // === Code Review Fix: Exit fires ShopClosedEvent safety net ===
+
+        [Test]
+        public void Exit_FiresShopClosedEvent_WhenShopStillActive()
+        {
+            ShopState.NextConfig = new ShopStateConfig
+            {
+                StateMachine = null,
+                PriceGenerator = null,
+                TradeExecutor = null,
+                EventScheduler = null
+            };
+            var state = new ShopState();
+            state.Enter(_ctx);
+
+            ShopClosedEvent closedEvent = default;
+            bool closedFired = false;
+            EventBus.Subscribe<ShopClosedEvent>(e =>
+            {
+                closedFired = true;
+                closedEvent = e;
+            });
+
+            // Exit without calling CloseShop — safety net should fire event
+            state.Exit(_ctx);
+
+            Assert.IsTrue(closedFired, "ShopClosedEvent should fire from Exit safety net");
+            Assert.AreEqual(1, closedEvent.RoundNumber);
+        }
+
+        [Test]
+        public void Exit_DoesNotDoubleFireShopClosedEvent_AfterCloseShop()
+        {
+            ShopState.NextConfig = new ShopStateConfig
+            {
+                StateMachine = null,
+                PriceGenerator = null,
+                TradeExecutor = null,
+                EventScheduler = null
+            };
+            var state = new ShopState();
+            state.Enter(_ctx);
+
+            // Close shop normally first
+            InvokeCloseShop(state, _ctx);
+
+            int fireCount = 0;
+            EventBus.Subscribe<ShopClosedEvent>(_ => fireCount++);
+
+            // Exit should NOT fire again
+            state.Exit(_ctx);
+            Assert.AreEqual(0, fireCount, "ShopClosedEvent should not fire twice");
         }
     }
 }

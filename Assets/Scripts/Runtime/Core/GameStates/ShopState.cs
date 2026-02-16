@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Draft shop state. Shows shop UI with 3 items (one per category).
+/// Shop state orchestrating all four panels: relics, expansions, tips, bonds.
 /// Handles purchases, then advances to next round when player clicks Continue.
 /// Transitions to MarketOpenState (or TierTransitionState if act changes,
 /// or RunSummaryState if run complete).
@@ -38,9 +38,18 @@ public class ShopState : IGameState
             NextConfig = null;
         }
 
-        // Generate shop items with weighted rarity, unlock filtering, and duplicate prevention
+        // Reset per-visit store state
+        ctx.CurrentShopRerollCount = 0;
+        ctx.RevealedTips.Clear();
+
+        // Generate relic offering with weighted rarity, unlock filtering, and duplicate prevention
         var random = new System.Random();
-        _nullableOffering = ShopGenerator.GenerateOffering(ctx.ActiveItems, ShopItemDefinitions.DefaultUnlockedItems, random);
+        _nullableOffering = ShopGenerator.GenerateOffering(ctx.OwnedRelics, ShopItemDefinitions.DefaultUnlockedItems, random);
+
+        // TODO (Story 13.2+): Generate expansion offerings via ExpansionManager
+        // TODO (Story 13.5): Generate insider tips via InsiderTipGenerator
+        // TODO (Story 13.6): Calculate bond price via BondManager
+
         _purchased = new bool[_nullableOffering.Length];
         _purchasedItemIds = new List<string>();
         _shopTransaction = new ShopTransaction();
@@ -50,12 +59,11 @@ public class ShopState : IGameState
         Debug.Log($"[ShopState] Generated items: {ItemLabel(0)}, {ItemLabel(1)}, {ItemLabel(2)}");
         #endif
 
-        // Show shop UI with purchase and close callbacks
+        // Show store UI with purchase and close callbacks
         if (ShopUIInstance != null)
         {
             ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
-            ShopUIInstance.HideUpgrade();
         }
 
         // Publish shop opened event — only include non-null items
@@ -71,11 +79,14 @@ public class ShopState : IGameState
         {
             RoundNumber = ctx.CurrentRound,
             AvailableItems = availableItems,
-            CurrentReputation = ctx.Reputation.Current
+            CurrentReputation = ctx.Reputation.Current,
+            ExpansionsAvailable = false, // Placeholder — Stories 13.4+
+            TipsAvailable = false,       // Placeholder — Story 13.5
+            BondAvailable = false        // Placeholder — Story 13.6
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Enter: Shop opened (Round {ctx.CurrentRound}), {availableItems.Length} items, untimed");
+        Debug.Log($"[ShopState] Enter: Store opened (Round {ctx.CurrentRound}), {availableItems.Length} relics, untimed");
         #endif
     }
 
@@ -86,6 +97,22 @@ public class ShopState : IGameState
 
     public void Exit(RunContext ctx)
     {
+        // Safety net: if shop was still active (not closed via CloseShop), fire event
+        if (_shopActive)
+        {
+            _shopActive = false;
+            EventBus.Publish(new ShopClosedEvent
+            {
+                PurchasedItemIds = _purchasedItemIds?.ToArray() ?? System.Array.Empty<string>(),
+                ReputationRemaining = ctx.Reputation.Current,
+                RoundNumber = ctx.CurrentRound,
+                RelicsPurchased = _purchasedItemIds?.Count ?? 0,
+                ExpansionsPurchased = 0,
+                TipsPurchased = 0,
+                BondsPurchased = 0
+            });
+        }
+
         if (ShopUIInstance != null)
         {
             ShopUIInstance.Hide();
@@ -144,7 +171,11 @@ public class ShopState : IGameState
         {
             PurchasedItemIds = _purchasedItemIds.ToArray(),
             ReputationRemaining = ctx.Reputation.Current,
-            RoundNumber = ctx.CurrentRound
+            RoundNumber = ctx.CurrentRound,
+            RelicsPurchased = _purchasedItemIds.Count,
+            ExpansionsPurchased = 0,
+            TipsPurchased = 0,
+            BondsPurchased = 0
         });
 
         // Advance to next round

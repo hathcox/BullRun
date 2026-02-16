@@ -5,7 +5,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Bottom bar displaying active Trading Tools (with hotkey labels Q/E/R),
 /// Intel badges, and Passive Perks during trading rounds.
-/// Reads from RunContext.ActiveItems (one-way dependency).
+/// Reads from RunContext.OwnedRelics (one-way dependency).
 /// Refreshes on RoundStartedEvent and ShopItemPurchasedEvent.
 /// Created by UISetup.ExecuteItemInventoryPanel() at runtime.
 /// </summary>
@@ -139,7 +139,7 @@ public class ItemInventoryPanel : MonoBehaviour
     {
         if (!_initialized || _runContext == null) return;
 
-        // Partition ActiveItems into categories — reuse cached lists to avoid allocation
+        // Partition OwnedRelics into categories — reuse cached lists to avoid allocation
         _cachedTools.Clear();
         _cachedIntel.Clear();
         _cachedPerks.Clear();
@@ -147,9 +147,9 @@ public class ItemInventoryPanel : MonoBehaviour
         var intel = _cachedIntel;
         var perks = _cachedPerks;
 
-        for (int i = 0; i < _runContext.ActiveItems.Count; i++)
+        for (int i = 0; i < _runContext.OwnedRelics.Count; i++)
         {
-            string itemId = _runContext.ActiveItems[i];
+            string itemId = _runContext.OwnedRelics[i];
             ShopItemDef? def = ItemLookup.GetItemById(itemId);
             if (def == null) continue;
 

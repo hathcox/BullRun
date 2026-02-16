@@ -1,6 +1,6 @@
 # Story 13.2: Store Layout & Navigation Shell
 
-Status: ready for dev
+Status: done
 
 ## Story
 
@@ -24,48 +24,48 @@ so that I can quickly understand my options and make strategic purchases.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Design store panel layout structure (AC: 1, 2, 3, 4, 5)
-  - [ ] Create main store container with two rows: top (relics) and bottom (3-column split)
-  - [ ] Top row: left control panel (Next Round + Reroll buttons) + 3 relic card slots
-  - [ ] Bottom row: left panel (Expansions), center panel (Insider Tips), right panel (Bonds)
-  - [ ] Each panel has header label, bordered background, and content area
-  - [ ] File: `Scripts/Setup/UISetup.cs` — new `ExecuteStoreUI()` method replacing `ExecuteShopUI()`
-- [ ] Task 2: Rewrite ShopUI as StoreUI controller (AC: 1, 9, 10)
-  - [ ] Replace existing `ShopUI.cs` layout code with new multi-panel layout references
-  - [ ] Wire "Next Round" button to close store and advance (same as existing Continue button)
-  - [ ] Ensure `ShopOpenedEvent` fires on store open with updated payload
-  - [ ] Ensure `ShopClosedEvent` fires on store close with updated payload
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs` — rewrite
-- [ ] Task 3: Currency display bar (AC: 6, 7)
-  - [ ] Reputation balance: amber/gold star icon + number (top of store or integrated into control panel)
-  - [ ] Cash balance: green dollar icon + number
-  - [ ] Both update reactively on purchase
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Setup/UISetup.cs`
-- [ ] Task 4: Panel placeholder content (AC: 2, 3, 4, 5)
-  - [ ] Relic slots: 3 empty card frames with "empty" state
-  - [ ] Expansions panel: "EXPANSIONS" header, empty content area
-  - [ ] Insider Tips panel: "INSIDER TIPS" header, empty content area
-  - [ ] Bonds panel: "BONDS" header, empty content area
-  - [ ] Placeholders will be replaced by Stories 13.3-13.6
-- [ ] Task 5: Keyboard navigation (AC: 11)
-  - [ ] Tab cycles focus between panels
-  - [ ] Arrow keys navigate within focused panel
-  - [ ] Visual focus indicator on active panel
-- [ ] Task 6: Update ShopState orchestration (AC: 9, 10)
-  - [ ] ShopState.Enter() shows new store layout instead of old shop
-  - [ ] ShopState.Exit() hides store, fires ShopClosedEvent
-  - [ ] Remove old shop generation logic (will be re-added in 13.3-13.6)
-  - [ ] File: `Scripts/Runtime/Core/GameStates/ShopState.cs`
-- [ ] Task 7: Update event payloads (AC: 10)
-  - [ ] `ShopOpenedEvent` — add fields for section availability (expansions available, tips available, bond available)
-  - [ ] `ShopClosedEvent` — add fields for purchases per section
-  - [ ] File: `Scripts/Runtime/Core/GameEvents.cs`
-- [ ] Task 8: Write tests (All AC)
-  - [ ] Store opens and displays all 4 panels
-  - [ ] "Next Round" button transitions to next state
-  - [ ] Currency displays show correct values
-  - [ ] Events fire with correct payloads
-  - [ ] File: `Tests/Runtime/Shop/StoreLayoutTests.cs`
+- [x] Task 1: Design store panel layout structure (AC: 1, 2, 3, 4, 5)
+  - [x] Create main store container with two rows: top (relics) and bottom (3-column split)
+  - [x] Top row: left control panel (Next Round + Reroll buttons) + 3 relic card slots
+  - [x] Bottom row: left panel (Expansions), center panel (Insider Tips), right panel (Bonds)
+  - [x] Each panel has header label, bordered background, and content area
+  - [x] File: `Scripts/Setup/UISetup.cs` — new `ExecuteStoreUI()` method replacing `ExecuteShopUI()`
+- [x] Task 2: Rewrite ShopUI as StoreUI controller (AC: 1, 9, 10)
+  - [x] Replace existing `ShopUI.cs` layout code with new multi-panel layout references
+  - [x] Wire "Next Round" button to close store and advance (same as existing Continue button)
+  - [x] Ensure `ShopOpenedEvent` fires on store open with updated payload
+  - [x] Ensure `ShopClosedEvent` fires on store close with updated payload
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs` — rewrite
+- [x] Task 3: Currency display bar (AC: 6, 7)
+  - [x] Reputation balance: amber/gold star icon + number (top of store or integrated into control panel)
+  - [x] Cash balance: green dollar icon + number
+  - [x] Both update reactively on purchase
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Setup/UISetup.cs`
+- [x] Task 4: Panel placeholder content (AC: 2, 3, 4, 5)
+  - [x] Relic slots: 3 empty card frames with "empty" state
+  - [x] Expansions panel: "EXPANSIONS" header, empty content area
+  - [x] Insider Tips panel: "INSIDER TIPS" header, empty content area
+  - [x] Bonds panel: "BONDS" header, empty content area
+  - [x] Placeholders will be replaced by Stories 13.3-13.6
+- [x] Task 5: Keyboard navigation (AC: 11)
+  - [x] Tab cycles focus between panels
+  - [x] Arrow keys navigate within focused panel
+  - [x] Visual focus indicator on active panel
+- [x] Task 6: Update ShopState orchestration (AC: 9, 10)
+  - [x] ShopState.Enter() shows new store layout instead of old shop
+  - [x] ShopState.Exit() hides store, fires ShopClosedEvent
+  - [x] Remove old shop generation logic (will be re-added in 13.3-13.6)
+  - [x] File: `Scripts/Runtime/Core/GameStates/ShopState.cs`
+- [x] Task 7: Update event payloads (AC: 10)
+  - [x] `ShopOpenedEvent` — add fields for section availability (expansions available, tips available, bond available)
+  - [x] `ShopClosedEvent` — add fields for purchases per section
+  - [x] File: `Scripts/Runtime/Core/GameEvents.cs`
+- [x] Task 8: Write tests (All AC)
+  - [x] Store opens and displays all 4 panels
+  - [x] "Next Round" button transitions to next state
+  - [x] Currency displays show correct values
+  - [x] Events fire with correct payloads
+  - [x] File: `Tests/Runtime/Shop/StoreLayoutTests.cs`
 
 ## Dev Notes
 
@@ -115,8 +115,33 @@ This story creates the **layout infrastructure only**. All panels will have plac
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Completion Notes List
+
+- Rewrote `ShopUI.cs` from single-panel item card layout to multi-panel Balatro-style store controller with top section (control panel + 3 relic slots) and bottom section (3 labeled panels: Expansions, Insider Tips, Bonds)
+- Created `ExecuteStoreUI()` in UISetup.cs replacing `ExecuteShopUI()`, building the full multi-panel layout programmatically with uGUI
+- Added currency bar with both Reputation (amber/gold star) and Cash (green dollar) displays that update reactively
+- Implemented keyboard navigation: Tab cycles between bottom panels, left/right arrow keys navigate, visual focus indicator (blue highlight) on active panel
+- Updated `ShopOpenedEvent` with section availability flags (ExpansionsAvailable, TipsAvailable, BondAvailable)
+- Updated `ShopClosedEvent` with per-section purchase counts (RelicsPurchased, ExpansionsPurchased, TipsPurchased, BondsPurchased)
+- Updated ShopState to use new StoreUI API, removed old upgrade card references (HideUpgrade)
+- Updated GameRunner.cs call from `ExecuteShopUI()` to `ExecuteStoreUI()`
+- All bottom panels have placeholder "Coming soon..." content — to be populated by Stories 13.3-13.6
+- Added `CreateRelicSlot()` and `CreateStorePanel()` helper methods in UISetup for creating relic card slots and labeled bottom panels
+- Created comprehensive test suite in StoreLayoutTests.cs covering event payloads, section availability flags, per-section purchase counts, currency tracking, color constants, and null-UI safety
 
 ### Change Log
 
+- 2026-02-16: Implemented Story 13.2 — Multi-panel store layout shell replacing single-panel shop. New Balatro-style store with relics top section, 3 bottom panels (Expansions/Tips/Bonds), currency bar, keyboard navigation, and updated event payloads.
+- 2026-02-16: Code Review (AI) — Fixed 6 issues: increased test reputation to prevent flaky purchase tests (H2), added keyboard navigation tests for AC 11 (M1), added cash balance test for AC 7 (M2), added EventScheduler field to all ShopStateConfig in tests for consistency (H1/M). 3 LOW issues noted but deferred (shell-appropriate).
+
 ### File List
+
+- Assets/Scripts/Runtime/UI/ShopUI.cs (modified — rewritten as multi-panel store controller)
+- Assets/Scripts/Setup/UISetup.cs (modified — ExecuteShopUI replaced with ExecuteStoreUI, added CreateRelicSlot and CreateStorePanel helpers)
+- Assets/Scripts/Runtime/Core/GameEvents.cs (modified — ShopOpenedEvent and ShopClosedEvent extended with new fields)
+- Assets/Scripts/Runtime/Core/GameStates/ShopState.cs (modified — updated to new ShopUI API, added per-section purchase counts to events)
+- Assets/Scripts/Runtime/Core/GameRunner.cs (modified — ExecuteShopUI call changed to ExecuteStoreUI)
+- Assets/Tests/Runtime/Shop/StoreLayoutTests.cs (new — 17 tests for store layout, events, colors, keyboard navigation)
+- Assets/Tests/Runtime/Core/GameStates/ShopStateTests.cs (modified — added EventScheduler to ShopStateConfig instances)
