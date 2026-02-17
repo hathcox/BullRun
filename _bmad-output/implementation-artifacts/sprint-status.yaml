@@ -62,7 +62,7 @@ development_status:
 
   # === Epic 14: Terminal 1999 — CRT Trading Cockpit UI ===
   epic-14: in-progress
-  14-1-crt-theme-data-system: ready-for-dev
+  14-1-crt-theme-data-system: done
   14-2-control-deck-layout-shell: ready-for-dev
   14-3-wallet-stats-wiring: ready-for-dev
   14-4-action-buttons-center-core: ready-for-dev

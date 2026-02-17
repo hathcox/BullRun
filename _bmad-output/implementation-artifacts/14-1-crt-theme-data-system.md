@@ -1,6 +1,6 @@
 # Story 14.1: CRT Theme Data System
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -21,24 +21,24 @@ so that all subsequent UI stories share consistent colors and GameRunner has cle
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create `CRTThemeData.cs` (AC: 1, 5)
-  - [ ] 1.1: Define all color constants with correct hex-to-Color conversions
-  - [ ] 1.2: Add `ApplyLabelStyle(Text, bool)` helper method
-  - [ ] 1.3: Add `ApplyPanelStyle(Image)` helper method
-  - [ ] 1.4: Add button color constants (Buy green, Sell red, Short amber)
-- [ ] Task 2: Create `DashboardReferences.cs` (AC: 2)
-  - [ ] 2.1: Define public fields for Left Wing text elements (Cash, Profit, Target)
-  - [ ] 2.2: Define public fields for Center Core elements (BuyButton, SellButton, ShortButton, CooldownOverlay)
-  - [ ] 2.3: Define public fields for Right Wing text elements (Direction, AvgPrice, PnL, Timer, Rep)
-  - [ ] 2.4: Define public fields for container transforms (LeftWing, CenterCore, RightWing, ControlDeckPanel)
-  - [ ] 2.5: Define public fields for event ticker and stock labels
-- [ ] Task 3: Write Edit Mode tests (AC: 5, 8)
-  - [ ] 3.1: Test all color values match expected hex conversions
-  - [ ] 3.2: Test ApplyLabelStyle sets correct colors
-  - [ ] 3.3: Test ApplyPanelStyle sets correct color
-- [ ] Task 4: Verify compilation (AC: 6, 7)
-  - [ ] 4.1: Ensure no existing files are modified
-  - [ ] 4.2: Run full test suite to confirm zero regressions
+- [x] Task 1: Create `CRTThemeData.cs` (AC: 1, 5)
+  - [x] 1.1: Define all color constants with correct hex-to-Color conversions
+  - [x] 1.2: Add `ApplyLabelStyle(Text, bool)` helper method
+  - [x] 1.3: Add `ApplyPanelStyle(Image)` helper method
+  - [x] 1.4: Add button color constants (Buy green, Sell red, Short amber)
+- [x] Task 2: Create `DashboardReferences.cs` (AC: 2)
+  - [x] 2.1: Define public fields for Left Wing text elements (Cash, Profit, Target)
+  - [x] 2.2: Define public fields for Center Core elements (BuyButton, SellButton, ShortButton, CooldownOverlay)
+  - [x] 2.3: Define public fields for Right Wing text elements (Direction, AvgPrice, PnL, Timer, Rep)
+  - [x] 2.4: Define public fields for container transforms (LeftWing, CenterCore, RightWing, ControlDeckPanel)
+  - [x] 2.5: Define public fields for event ticker and stock labels
+- [x] Task 3: Write Edit Mode tests (AC: 5, 8)
+  - [x] 3.1: Test all color values match expected hex conversions
+  - [x] 3.2: Test ApplyLabelStyle sets correct colors
+  - [x] 3.3: Test ApplyPanelStyle sets correct color
+- [x] Task 4: Verify compilation (AC: 6, 7)
+  - [x] 4.1: Ensure no existing files are modified
+  - [x] 4.2: Run full test suite to confirm zero regressions
 
 ## Dev Notes
 
@@ -108,9 +108,33 @@ Do NOT modify these in this story — just define the CRT equivalents. Story 14.
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6
 
 ### Debug Log References
+- Unity EditMode test run: 1418 total, 1417 passed, 0 failed, 1 skipped (pre-existing Ignore). Exit code 0.
+- Verified no existing files modified via `git diff --name-only HEAD -- Assets/` (empty output).
 
 ### Completion Notes List
+- Created `CRTThemeData.cs` as a `public static class` with 10 color constants (Background, Panel, Border, TextHigh, TextLow, Amber, Red, BuyGreen, SellRed, ShortAmber, PanelBorder) using precise hex-to-Color float conversions.
+- Implemented `ApplyLabelStyle(Text, bool)` helper — sets TextHigh for highlight, TextLow for dim.
+- Implemented `ApplyPanelStyle(Image)` helper — applies Panel color to image.
+- Created `DashboardReferences.cs` as a plain C# class (not MonoBehaviour) with public fields for all Control Deck UI elements: Left Wing texts (Cash, Profit, Target), Center Core buttons (Buy, Sell, Short) + CooldownOverlay, Right Wing texts (Direction, AvgPrice, PnL, Timer, Rep), container RectTransforms (LeftWing, CenterCore, RightWing, ControlDeckPanel), and event ticker/stock labels.
+- Created 14 Edit Mode tests covering all color value accuracy (11 tests) + ApplyLabelStyle highlight/dim (2 tests) + ApplyPanelStyle (1 test). All pass within 0.01f tolerance.
+- Zero regressions: full test suite (1417/1417) passes.
+- Additive-only: no existing files modified.
+
+### Change Log
+- 2026-02-17: Story 14.1 implemented — CRTThemeData color system, DashboardReferences struct, and 14 Edit Mode tests added. All ACs satisfied.
+- 2026-02-17: **Code Review (AI)** — 3 HIGH, 4 MEDIUM, 1 LOW issues found. All HIGH and MEDIUM issues auto-fixed:
+  - H1: Renamed color fields to match Epic 14 spec (Amber→Warning, Red→Danger, BuyGreen→ButtonBuy, SellRed→ButtonSell, ShortAmber→ButtonShort, removed PanelBorder)
+  - H2: Fixed Border hex from #3b6e6e to correct #224444 per spec
+  - H3: ApplyPanelStyle now applies Border color Outline component (was missing per AC4)
+  - M1-M2: Added null guards to ApplyLabelStyle and ApplyPanelStyle
+  - M3: Fixed Border test to verify correct hex #224444 (was validating wrong value)
+  - M4: Added 3 new tests (null guards + border outline = 16 total tests)
+  - Full test suite: 1420 total, 1419 passed, 0 failed, 1 skipped (pre-existing). Exit code 0.
 
 ### File List
+- `Assets/Scripts/Setup/Data/CRTThemeData.cs` (new)
+- `Assets/Scripts/Runtime/UI/DashboardReferences.cs` (new)
+- `Assets/Tests/Runtime/UI/CRTThemeDataTests.cs` (new)
