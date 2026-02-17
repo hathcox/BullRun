@@ -168,14 +168,14 @@ public class EventScheduler
 
     /// <summary>
     /// Creates a MarketEvent instance and fires it via EventEffects.StartEvent().
-    /// All events target activeStocks[0] — single stock per round (FIX-5/FIX-9).
+    /// FIX-15: Always targets activeStocks[0] — single stock per round is permanent.
     /// </summary>
     public void FireEvent(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
     {
         if (activeStocks.Count == 0)
             return;
 
-        // All events target the single active stock
+        // FIX-15: Always target the single active stock
         int targetStockId = activeStocks[0].StockId;
 
         // Roll price effect between min and max
@@ -242,8 +242,8 @@ public class EventScheduler
     }
 
     /// <summary>
-    /// Fires a sector rotation as a single directional effect on the active stock (FIX-9).
-    /// Randomly chooses positive or negative direction since there's only one stock.
+    /// Fires a sector rotation effect on the single active stock with random direction.
+    /// FIX-15: Multi-stock branch removed — single stock per round is permanent.
     /// </summary>
     private void FireSectorRotation(MarketEventConfig config, IReadOnlyList<StockInstance> activeStocks)
     {
@@ -252,10 +252,9 @@ public class EventScheduler
 
         float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect);
 
-        // Randomly choose direction: 50/50 positive or negative
+        // Single stock: random direction
         bool isPositive = _random.NextDouble() >= 0.5;
         float effect = isPositive ? rotationPercent : -rotationPercent;
-
         var evt = new MarketEvent(config.EventType, activeStocks[0].StockId, effect, config.Duration);
         _eventEffects.StartEvent(evt);
 

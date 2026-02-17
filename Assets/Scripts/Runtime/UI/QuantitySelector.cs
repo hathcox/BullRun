@@ -8,8 +8,9 @@ using UnityEngine.UI;
 /// </summary>
 public class QuantitySelector : MonoBehaviour
 {
-    public static readonly Color ActiveButtonColor = new Color(0f, 0.5f, 0.25f, 1f);
-    public static readonly Color InactiveButtonColor = new Color(0.12f, 0.14f, 0.25f, 0.8f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static readonly Color ActiveButtonColor = new Color(CRTThemeData.TextHigh.r * 0.5f, CRTThemeData.TextHigh.g * 0.5f, CRTThemeData.TextHigh.b * 0.5f, 1f);
+    public static readonly Color InactiveButtonColor = CRTThemeData.Panel;
 
     private int _selectedQuantity;
 
@@ -22,13 +23,11 @@ public class QuantitySelector : MonoBehaviour
     /// <summary>Grey overlay GameObject that covers buttons during post-trade cooldown.</summary>
     public GameObject CooldownOverlay { get; set; }
 
-    // Short UI references (integrated into trade panel)
-    public Image ShortButtonImage { get; set; }
-    public Text ShortButtonText { get; set; }
-    public GameObject ShortPnlPanel { get; set; }
-    public Text ShortPnlEntryText { get; set; }
-    public Text ShortPnlValueText { get; set; }
-    public Text ShortPnlCountdownText { get; set; }
+    // Story 13.7: Leverage badge (shown when expansion active)
+    public GameObject LeverageBadge { get; set; }
+
+    // Story 13.7: Short 2 container (Dual Short expansion visibility)
+    public GameObject Short2Container { get; set; }
 
     public void Initialize()
     {

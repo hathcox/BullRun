@@ -9,11 +9,12 @@ using UnityEngine.UI;
 /// </summary>
 public class PositionOverlay : MonoBehaviour
 {
-    public static readonly Color LongColor = new Color(0f, 1f, 0.533f, 1f);   // #00FF88 neon green
-    public static readonly Color ShortColor = new Color(1f, 0.4f, 0.7f, 1f);  // #FF66B3 hot pink
-    public static readonly Color FlatColor = new Color(0.5f, 0.5f, 0.55f, 1f); // Gray
-    public static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f);
-    public static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static Color LongColor => CRTThemeData.TextHigh;
+    public static Color ShortColor => CRTThemeData.Warning; // Amber for CRT theme
+    public static readonly Color FlatColor = new Color(0.5f, 0.5f, 0.55f, 1f); // Gray (no CRT equivalent)
+    public static Color ProfitGreen => CRTThemeData.TextHigh;
+    public static Color LossRed => CRTThemeData.Danger;
 
     private Portfolio _portfolio;
     private Text _directionText;  // "15x LONG" or "FLAT"

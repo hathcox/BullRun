@@ -44,22 +44,22 @@ namespace BullRun.Tests.Core
         }
 
         [Test]
-        public void ActiveItems_DefaultsToEmptyList()
+        public void OwnedRelics_DefaultsToEmptyList()
         {
             var portfolio = new Portfolio(1000f);
             var ctx = new RunContext(1, 1, portfolio);
-            Assert.IsNotNull(ctx.ActiveItems);
-            Assert.AreEqual(0, ctx.ActiveItems.Count);
+            Assert.IsNotNull(ctx.OwnedRelics);
+            Assert.AreEqual(0, ctx.OwnedRelics.Count);
         }
 
         [Test]
-        public void ActiveItems_CanAddItems()
+        public void OwnedRelics_CanAddItems()
         {
             var portfolio = new Portfolio(1000f);
             var ctx = new RunContext(1, 1, portfolio);
-            ctx.ActiveItems.Add("TestItem");
-            Assert.AreEqual(1, ctx.ActiveItems.Count);
-            Assert.AreEqual("TestItem", ctx.ActiveItems[0]);
+            ctx.OwnedRelics.Add("TestItem");
+            Assert.AreEqual(1, ctx.OwnedRelics.Count);
+            Assert.AreEqual("TestItem", ctx.OwnedRelics[0]);
         }
         // --- Run Initialization Tests (Story 2.5 Task 1) ---
 
@@ -85,11 +85,11 @@ namespace BullRun.Tests.Core
         }
 
         [Test]
-        public void StartNewRun_InitializesEmptyActiveItems()
+        public void StartNewRun_InitializesEmptyOwnedRelics()
         {
             var ctx = RunContext.StartNewRun();
-            Assert.IsNotNull(ctx.ActiveItems);
-            Assert.AreEqual(0, ctx.ActiveItems.Count);
+            Assert.IsNotNull(ctx.OwnedRelics);
+            Assert.AreEqual(0, ctx.OwnedRelics.Count);
         }
 
         [Test]
@@ -462,13 +462,13 @@ namespace BullRun.Tests.Core
         }
 
         [Test]
-        public void ResetForNewRun_ClearsActiveItems()
+        public void ResetForNewRun_ClearsOwnedRelics()
         {
             var ctx = new RunContext(1, 1, new Portfolio(1000f));
             ctx.Portfolio.SubscribeToPriceUpdates();
-            ctx.ActiveItems.Add("TestItem");
+            ctx.OwnedRelics.Add("TestItem");
             ctx.ResetForNewRun();
-            Assert.AreEqual(0, ctx.ActiveItems.Count);
+            Assert.AreEqual(0, ctx.OwnedRelics.Count);
         }
 
         [Test]
@@ -707,8 +707,8 @@ namespace BullRun.Tests.Core
             ctx.PeakCash = 8000f;
             ctx.BestRoundProfit = 2000f;
             ctx.TotalRunProfit = 6000f;
-            ctx.ActiveItems.Add("item1");
-            ctx.ActiveItems.Add("item2");
+            ctx.OwnedRelics.Add("item1");
+            ctx.OwnedRelics.Add("item2");
             Assert.AreEqual(2, ctx.ItemsCollected);
             ctx.ResetForNewRun();
             Assert.AreEqual(GameConfig.StartingCapital, ctx.PeakCash, 0.01f);

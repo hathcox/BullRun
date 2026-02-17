@@ -187,10 +187,10 @@ namespace BullRun.Tests.Core.GameStates
         }
 
         [Test]
-        public void Enter_ItemsCollectedReflectsActiveItems()
+        public void Enter_ItemsCollectedReflectsOwnedRelics()
         {
-            _ctx.ActiveItems.Add("item1");
-            _ctx.ActiveItems.Add("item2");
+            _ctx.OwnedRelics.Add("item1");
+            _ctx.OwnedRelics.Add("item2");
 
             RunEndedEvent received = default;
             EventBus.Subscribe<RunEndedEvent>(e => received = e);
@@ -376,8 +376,8 @@ namespace BullRun.Tests.Core.GameStates
             ctx.PeakCash = 6000f;
             ctx.BestRoundProfit = 1200f;
             ctx.ReputationEarned = 158; // FIX-14: Pre-accumulated per-round Rep
-            ctx.ActiveItems.Add("item1");
-            ctx.ActiveItems.Add("item2");
+            ctx.OwnedRelics.Add("item1");
+            ctx.OwnedRelics.Add("item2");
 
             RunEndedEvent received = default;
             bool eventFired = false;

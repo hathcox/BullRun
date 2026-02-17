@@ -158,7 +158,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 #### Test Framework
 - Unity Test Framework 1.6.0 — supports both Edit Mode and Play Mode tests
-- **ABSOLUTE HARD RULE: AI agents must NEVER attempt to run tests. NEVER. Not via `dotnet test`, not via `unity -runTests`, not via any CLI command, not via any shell command. There is NO way to run Unity tests from the command line in this project. The user runs ALL tests manually in the Unity Editor. Do NOT try. Do NOT suggest trying. Do NOT verify test results. Write the tests, leave them for the user.**
+- **Running Tests:** AI agents can and should run Unity EditMode tests via the CLI to verify changes:
+  ```
+  "D:/UnityHub/Editor/6000.3.4f1/Editor/Unity.exe" -runTests -batchmode -nographics -projectPath "E:/BullRun" -testPlatform EditMode -testResults "E:/BullRun/TestResults.xml" -logFile "E:/BullRun/unity-test.log"
+  ```
+  - Exit code 0 = all tests passed; results written to `TestResults.xml` (NUnit format)
+  - Run in background — Unity takes ~90s to load the project and execute tests
+  - Check the log tail for `Test run completed. Exiting with code 0 (Ok)` to confirm success
+  - Parse `TestResults.xml` header for pass/fail/skip counts
 
 #### Test Organization
 - Edit Mode tests for pure logic (price calculations, trade execution, data validation, event dispatch)
@@ -264,4 +271,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Review quarterly for outdated rules
 - Remove rules that become obvious over time
 
-Last Updated: 2026-02-13
+Last Updated: 2026-02-16

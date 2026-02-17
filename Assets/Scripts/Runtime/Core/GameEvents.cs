@@ -114,6 +114,8 @@ public struct MarketOpenEvent
     public string[] TierNames;
     public float ProfitTarget;
     public string Headline;
+    /// <summary>Story 13.6: Bond Rep earned at round start (0 if no bonds).</summary>
+    public int BondRepEarned;
 }
 
 /// <summary>
@@ -193,14 +195,19 @@ public struct ActTransitionEvent
 }
 
 /// <summary>
-/// Fired when the draft shop opens after a successful round.
+/// Fired when the store opens after a successful round.
 /// FIX-12: Carries Reputation balance (shop currency) instead of cash.
+/// 13.2: Added section availability flags for the multi-panel store layout.
+/// 13.9: AvailableRelics replaced legacy ShopItemDef[] AvailableItems.
 /// </summary>
 public struct ShopOpenedEvent
 {
     public int RoundNumber;
-    public ShopItemDef[] AvailableItems;
+    public RelicDef[] AvailableRelics;
     public int CurrentReputation;
+    public bool ExpansionsAvailable;
+    public bool TipsAvailable;
+    public bool BondAvailable;
 }
 
 /// <summary>
@@ -216,14 +223,41 @@ public struct ShopItemPurchasedEvent
 }
 
 /// <summary>
-/// Fired when the shop closes (player clicked Continue).
+/// Fired when the player purchases an expansion from the shop.
+/// </summary>
+public struct ShopExpansionPurchasedEvent
+{
+    public string ExpansionId;
+    public string DisplayName;
+    public int Cost;
+    public int RemainingReputation;
+}
+
+/// <summary>
+/// Fired when the player purchases an insider tip from the shop (Story 13.5, AC 9).
+/// </summary>
+public struct InsiderTipPurchasedEvent
+{
+    public InsiderTipType TipType;
+    public string RevealedText;
+    public int Cost;
+    public int RemainingReputation;
+}
+
+/// <summary>
+/// Fired when the store closes (player clicked Next Round).
 /// FIX-12: Remaining balance is in Reputation, not cash.
+/// 13.2: Added per-section purchase counts for analytics.
 /// </summary>
 public struct ShopClosedEvent
 {
     public string[] PurchasedItemIds;
     public int ReputationRemaining;
     public int RoundNumber;
+    public int RelicsPurchased;
+    public int ExpansionsPurchased;
+    public int TipsPurchased;
+    public int BondsPurchased;
 }
 
 /// <summary>
@@ -264,4 +298,37 @@ public struct RunEndedEvent
     public int ItemsCollected;
     public float PeakCash;
     public float BestRoundProfit;
+}
+
+/// <summary>
+/// Fired when the player purchases a bond (Story 13.6, AC 15).
+/// Bonds cost Cash (not Reputation).
+/// </summary>
+public struct BondPurchasedEvent
+{
+    public int Round;
+    public float PricePaid;
+    public int TotalBondsOwned;
+    public float RemainingCash;
+}
+
+/// <summary>
+/// Fired when the player sells a bond (Story 13.6, AC 15).
+/// Sell price = purchase price × BondSellMultiplier (LIFO).
+/// </summary>
+public struct BondSoldEvent
+{
+    public float SellPrice;
+    public int TotalBondsOwned;
+    public float CashAfterSale;
+}
+
+/// <summary>
+/// Fired at round start when bonds pay out Reputation (Story 13.6, AC 14, 15).
+/// </summary>
+public struct BondRepPaidEvent
+{
+    public int BondsOwned;
+    public int RepEarned;
+    public int TotalReputation;
 }

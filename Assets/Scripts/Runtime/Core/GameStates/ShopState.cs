@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Draft shop state. Shows shop UI with 3 items (one per category).
-/// Handles purchases, then advances to next round when player clicks Continue.
+/// Shop state orchestrating all four panels: relics, expansions, tips, bonds.
+/// Handles purchases and rerolls, then advances to next round when player clicks Continue.
 /// Transitions to MarketOpenState (or TierTransitionState if act changes,
 /// or RunSummaryState if run complete).
+/// Story 13.3: Uses RelicDef + uniform random selection + reroll mechanism.
 /// </summary>
 public class ShopState : IGameState
 {
@@ -15,10 +16,26 @@ public class ShopState : IGameState
     private EventScheduler _eventScheduler;
 
     private bool _shopActive;
-    private ShopItemDef?[] _nullableOffering;
+    private RelicDef?[] _relicOffering;
     private bool[] _purchased;
     private List<string> _purchasedItemIds;
     private ShopTransaction _shopTransaction;
+    private System.Random _random;
+    private int _randomSeedOverride = -1;
+
+    // Expansion panel state (Story 13.4)
+    private ExpansionManager _expansionManager;
+    private ExpansionDef[] _expansionOffering;
+    private int _expansionsPurchasedCount;
+
+    // Insider tips panel state (Story 13.5)
+    private InsiderTipGenerator _tipGenerator;
+    private InsiderTipGenerator.TipOffering[] _tipOffering;
+    private bool[] _tipPurchased;
+    private int _tipsPurchasedCount;
+
+    // Bonds panel state (Story 13.6)
+    private int _bondsPurchasedCount;
 
     public static ShopStateConfig NextConfig;
 
@@ -35,47 +52,91 @@ public class ShopState : IGameState
             _priceGenerator = NextConfig.PriceGenerator;
             _tradeExecutor = NextConfig.TradeExecutor;
             _eventScheduler = NextConfig.EventScheduler;
+            _randomSeedOverride = NextConfig.RandomSeed;
             NextConfig = null;
         }
 
-        // Generate shop items with weighted rarity, unlock filtering, and duplicate prevention
-        var random = new System.Random();
-        _nullableOffering = ShopGenerator.GenerateOffering(ctx.ActiveItems, ShopItemDefinitions.DefaultUnlockedItems, random);
-        _purchased = new bool[_nullableOffering.Length];
+        // Reset per-visit store state (AC 9: reroll cost resets each shop visit)
+        ctx.CurrentShopRerollCount = 0;
+        ctx.RevealedTips.Clear();
+
+        // Generate relic offering with uniform random selection (AC 1, 2, 3)
+        _random = _randomSeedOverride >= 0 ? new System.Random(_randomSeedOverride) : new System.Random();
+        _relicOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, _random);
+
+        _purchased = new bool[_relicOffering.Length];
         _purchasedItemIds = new List<string>();
         _shopTransaction = new ShopTransaction();
         _shopActive = true;
+        _expansionsPurchasedCount = 0;
+
+        // Generate expansion offering (Story 13.4)
+        _expansionManager = new ExpansionManager(ctx);
+        _expansionOffering = _expansionManager.GetAvailableForShop(GameConfig.ExpansionsPerShopVisit, _random);
+
+        // Story 13.7: Intel Expansion effect — increase tip slots when owned
+        ctx.InsiderTipSlots = GameConfig.DefaultInsiderTipSlots +
+            (ctx.OwnedExpansions.Contains(ExpansionDefinitions.IntelExpansion) ? 1 : 0);
+
+        // Generate insider tip offering (Story 13.5)
+        _tipGenerator = new InsiderTipGenerator();
+        int nextRound = ctx.CurrentRound + 1;
+        int nextAct = RunContext.GetActForRound(nextRound);
+        _tipOffering = _tipGenerator.GenerateTips(ctx.InsiderTipSlots, nextRound, nextAct, _random);
+        _tipPurchased = new bool[_tipOffering.Length];
+        _tipsPurchasedCount = 0;
+        _bondsPurchasedCount = 0;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Generated items: {ItemLabel(0)}, {ItemLabel(1)}, {ItemLabel(2)}");
+        Debug.Log($"[ShopState] Generated relics: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
         #endif
 
-        // Show shop UI with purchase and close callbacks
+        // Show store UI with purchase, close, and reroll callbacks
         if (ShopUIInstance != null)
         {
-            ShopUIInstance.Show(ctx, _nullableOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
+            ShopUIInstance.ShowRelics(ctx, _relicOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
-            ShopUIInstance.HideUpgrade();
+            ShopUIInstance.SetOnRerollCallback(() => OnRerollRequested(ctx));
+
+            // Populate expansion panel (Story 13.4)
+            ShopUIInstance.ShowExpansions(ctx, _expansionOffering, (cardIndex) => OnExpansionPurchaseRequested(ctx, cardIndex));
+
+            // Populate insider tips panel (Story 13.5)
+            ShopUIInstance.ShowTips(ctx, _tipOffering, (cardIndex) => OnTipPurchaseRequested(ctx, cardIndex));
+
+            // Populate bonds panel (Story 13.6)
+            ShopUIInstance.ShowBonds(ctx,
+                () => OnBondPurchaseRequested(ctx),
+                () => OnBondSellRequested(ctx));
         }
 
-        // Publish shop opened event — only include non-null items
+        // Publish shop opened event — only include non-null relics
         int availableCount = 0;
-        for (int i = 0; i < _nullableOffering.Length; i++)
-            if (_nullableOffering[i].HasValue) availableCount++;
-        var availableItems = new ShopItemDef[availableCount];
+        for (int i = 0; i < _relicOffering.Length; i++)
+            if (_relicOffering[i].HasValue) availableCount++;
+
+        var availableRelics = new RelicDef[availableCount];
         int availIdx = 0;
-        for (int i = 0; i < _nullableOffering.Length; i++)
-            if (_nullableOffering[i].HasValue) availableItems[availIdx++] = _nullableOffering[i].Value;
+        for (int i = 0; i < _relicOffering.Length; i++)
+        {
+            if (_relicOffering[i].HasValue)
+            {
+                availableRelics[availIdx++] = _relicOffering[i].Value;
+            }
+        }
 
         EventBus.Publish(new ShopOpenedEvent
         {
             RoundNumber = ctx.CurrentRound,
-            AvailableItems = availableItems,
-            CurrentReputation = ctx.Reputation.Current
+            AvailableRelics = availableRelics,
+            CurrentReputation = ctx.Reputation.Current,
+            ExpansionsAvailable = _expansionOffering.Length > 0,
+            TipsAvailable = _tipOffering != null && _tipOffering.Length > 0,
+            BondAvailable = ctx.CurrentRound < GameConfig.TotalRounds
         });
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Enter: Shop opened (Round {ctx.CurrentRound}), {availableItems.Length} items, untimed");
+        Debug.Log($"[ShopState] Enter: Store opened (Round {ctx.CurrentRound}), {availableRelics.Length} relics, untimed");
         #endif
     }
 
@@ -86,6 +147,22 @@ public class ShopState : IGameState
 
     public void Exit(RunContext ctx)
     {
+        // Safety net: if shop was still active (not closed via CloseShop), fire event
+        if (_shopActive)
+        {
+            _shopActive = false;
+            EventBus.Publish(new ShopClosedEvent
+            {
+                PurchasedItemIds = _purchasedItemIds?.ToArray() ?? System.Array.Empty<string>(),
+                ReputationRemaining = ctx.Reputation.Current,
+                RoundNumber = ctx.CurrentRound,
+                RelicsPurchased = _purchasedItemIds?.Count ?? 0,
+                ExpansionsPurchased = _expansionsPurchasedCount,
+                TipsPurchased = _tipsPurchasedCount,
+                BondsPurchased = _bondsPurchasedCount
+            });
+        }
+
         if (ShopUIInstance != null)
         {
             ShopUIInstance.Hide();
@@ -97,35 +174,184 @@ public class ShopState : IGameState
     }
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
-    private string ItemLabel(int index)
+    private string RelicLabel(int index)
     {
-        if (index < 0 || index >= _nullableOffering.Length) return "none";
-        return _nullableOffering[index].HasValue ? _nullableOffering[index].Value.Name : "none";
+        if (index < 0 || index >= _relicOffering.Length) return "none";
+        return _relicOffering[index].HasValue ? _relicOffering[index].Value.Name : "none";
     }
     #endif
 
     /// <summary>
     /// Called when player clicks a buy button. Delegates to ShopTransaction for atomic purchase.
+    /// Uses RelicDef purchase flow (AC 5, 11, 12, 15).
     /// </summary>
     public void OnPurchaseRequested(RunContext ctx, int cardIndex)
     {
         if (!_shopActive) return;
-        if (cardIndex < 0 || cardIndex >= _nullableOffering.Length) return;
+        if (cardIndex < 0 || cardIndex >= _relicOffering.Length) return;
         if (_purchased[cardIndex]) return;
-        if (!_nullableOffering[cardIndex].HasValue) return;
+        if (!_relicOffering[cardIndex].HasValue) return;
 
-        var item = _nullableOffering[cardIndex].Value;
-        var result = _shopTransaction.TryPurchase(ctx, item);
+        var relic = _relicOffering[cardIndex].Value;
+        var result = _shopTransaction.PurchaseRelic(ctx, relic);
 
         if (result == ShopPurchaseResult.Success)
         {
             _purchased[cardIndex] = true;
-            _purchasedItemIds.Add(item.Id);
+            _purchasedItemIds.Add(relic.Id);
 
             // Update UI: mark purchased and refresh affordability
             if (ShopUIInstance != null)
             {
                 ShopUIInstance.RefreshAfterPurchase(cardIndex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player clicks the reroll button (AC 7, 8, 9, 10).
+    /// Deducts Rep, regenerates unsold relic slots with new random items.
+    /// </summary>
+    private void OnRerollRequested(RunContext ctx)
+    {
+        if (!_shopActive) return;
+
+        if (!_shopTransaction.TryReroll(ctx))
+        {
+            return; // Insufficient funds
+        }
+
+        // Regenerate offering — only unsold slots get new items (AC 10)
+        // Exclude currently displayed unsold relics so reroll yields fresh items
+        var currentUnsoldIds = new List<string>();
+        for (int i = 0; i < _relicOffering.Length; i++)
+        {
+            if (!_purchased[i] && _relicOffering[i].HasValue)
+                currentUnsoldIds.Add(_relicOffering[i].Value.Id);
+        }
+        var newOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, currentUnsoldIds, _random);
+
+        // Preserve sold slots
+        for (int i = 0; i < _relicOffering.Length && i < newOffering.Length; i++)
+        {
+            if (_purchased[i])
+            {
+                newOffering[i] = _relicOffering[i]; // Keep sold item reference
+            }
+        }
+
+        _relicOffering = newOffering;
+
+        if (ShopUIInstance != null)
+        {
+            ShopUIInstance.RefreshRelicOffering(newOffering);
+        }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ShopState] Reroll #{ctx.CurrentShopRerollCount}: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
+        #endif
+    }
+
+    /// <summary>
+    /// Called when player clicks an expansion buy button (Story 13.4, AC 3, 5, 8).
+    /// Delegates to ShopTransaction.PurchaseExpansion for atomic purchase.
+    /// </summary>
+    private void OnExpansionPurchaseRequested(RunContext ctx, int cardIndex)
+    {
+        if (!_shopActive) return;
+        if (_expansionOffering == null) return;
+        if (cardIndex < 0 || cardIndex >= _expansionOffering.Length) return;
+
+        var expansion = _expansionOffering[cardIndex];
+        if (ctx.OwnedExpansions.Contains(expansion.Id)) return;
+
+        var result = _shopTransaction.PurchaseExpansion(ctx, expansion.Id, expansion.Name, expansion.Cost);
+
+        if (result == ShopPurchaseResult.Success)
+        {
+            _expansionsPurchasedCount++;
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshExpansionAfterPurchase(cardIndex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player clicks a tip buy button (Story 13.5, AC 6, 8, 9).
+    /// Delegates to ShopTransaction.PurchaseTip for atomic purchase.
+    /// Fires InsiderTipPurchasedEvent on success.
+    /// </summary>
+    private void OnTipPurchaseRequested(RunContext ctx, int cardIndex)
+    {
+        if (!_shopActive) return;
+        if (_tipOffering == null) return;
+        if (cardIndex < 0 || cardIndex >= _tipOffering.Length) return;
+        if (_tipPurchased[cardIndex]) return;
+
+        var offering = _tipOffering[cardIndex];
+        var tip = new RevealedTip(offering.Definition.Type, offering.RevealedText);
+        var result = _shopTransaction.PurchaseTip(ctx, tip, offering.Definition.Cost);
+
+        if (result == ShopPurchaseResult.Success)
+        {
+            _tipPurchased[cardIndex] = true;
+            _tipsPurchasedCount++;
+
+            EventBus.Publish(new InsiderTipPurchasedEvent
+            {
+                TipType = offering.Definition.Type,
+                RevealedText = offering.RevealedText,
+                Cost = offering.Definition.Cost,
+                RemainingReputation = ctx.Reputation.Current
+            });
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshTipAfterPurchase(cardIndex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player clicks the BUY BOND button (Story 13.6, AC 3).
+    /// Delegates to ShopTransaction.PurchaseBond for atomic purchase.
+    /// </summary>
+    private void OnBondPurchaseRequested(RunContext ctx)
+    {
+        if (!_shopActive) return;
+
+        int price = BondManager.GetCurrentPrice(ctx.CurrentRound);
+        if (price <= 0) return;
+
+        var result = _shopTransaction.PurchaseBond(ctx, price);
+        if (result == ShopPurchaseResult.Success)
+        {
+            _bondsPurchasedCount++;
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshBondPanel(ctx);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player confirms bond sell (Story 13.6, AC 9, 10, 12).
+    /// Delegates to ShopTransaction.SellBond for LIFO sell.
+    /// </summary>
+    private void OnBondSellRequested(RunContext ctx)
+    {
+        if (!_shopActive) return;
+        if (ctx.BondsOwned <= 0) return;
+
+        var result = _shopTransaction.SellBond(ctx);
+        if (result == ShopPurchaseResult.Success)
+        {
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshBondPanel(ctx);
             }
         }
     }
@@ -144,7 +370,11 @@ public class ShopState : IGameState
         {
             PurchasedItemIds = _purchasedItemIds.ToArray(),
             ReputationRemaining = ctx.Reputation.Current,
-            RoundNumber = ctx.CurrentRound
+            RoundNumber = ctx.CurrentRound,
+            RelicsPurchased = _purchasedItemIds.Count,
+            ExpansionsPurchased = _expansionsPurchasedCount,
+            TipsPurchased = _tipsPurchasedCount,
+            BondsPurchased = _bondsPurchasedCount
         });
 
         // Advance to next round
@@ -213,4 +443,8 @@ public class ShopStateConfig
     public PriceGenerator PriceGenerator;
     public TradeExecutor TradeExecutor;
     public EventScheduler EventScheduler;
+    /// <summary>
+    /// Optional random seed for deterministic relic generation. -1 = time-based (default).
+    /// </summary>
+    public int RandomSeed = -1;
 }

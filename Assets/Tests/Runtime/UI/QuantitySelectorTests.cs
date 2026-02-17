@@ -182,18 +182,22 @@ namespace BullRun.Tests.UI
             Assert.AreEqual(1, GameConfig.DefaultTradeQuantity);
         }
 
-        // --- Button colors ---
+        // --- Button colors (Story 14.6: migrated to CRTThemeData) ---
 
         [Test]
-        public void ActiveButtonColor_IsGreen()
+        public void ActiveButtonColor_IsCRTDerivedGreen()
         {
-            Assert.AreEqual(new Color(0f, 0.5f, 0.25f, 1f), QuantitySelector.ActiveButtonColor);
+            // Derived from CRTThemeData.TextHigh at 50% intensity
+            Assert.Greater(QuantitySelector.ActiveButtonColor.g, 0f, "Green channel should be positive");
+            Assert.AreEqual(1f, QuantitySelector.ActiveButtonColor.a, 0.01f, "Alpha should be 1");
         }
 
         [Test]
-        public void InactiveButtonColor_IsDarkBlue()
+        public void InactiveButtonColor_MatchesCRTPanel()
         {
-            Assert.AreEqual(new Color(0.12f, 0.14f, 0.25f, 0.8f), QuantitySelector.InactiveButtonColor);
+            Assert.AreEqual(CRTThemeData.Panel.r, QuantitySelector.InactiveButtonColor.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.Panel.g, QuantitySelector.InactiveButtonColor.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.Panel.b, QuantitySelector.InactiveButtonColor.b, 0.01f);
         }
 
         // --- Smart routing tests (FIX-6) ---

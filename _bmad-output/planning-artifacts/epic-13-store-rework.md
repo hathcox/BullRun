@@ -2,6 +2,7 @@
 
 **Description:** Complete overhaul of the Draft Shop (Epic 7) into a multi-panel Balatro-inspired store with four distinct sections: Relics (items), Trading Deck Expansions (vouchers), Insider Tips (hidden intel), and Bonds (reputation investment). Replaces the current 3-card shop with a rich, strategic between-rounds experience.
 
+**Status:** Ready for dev
 **Phase:** Post-FIX Sprint, replaces/supersedes Epic 7 shop UI and flow
 **Depends On:** FIX-12 (Reputation currency), FIX-14 (Economy rebalance)
 
@@ -28,7 +29,37 @@
 
 ---
 
-## Story 13.1: Store Layout & Navigation Shell
+## Story 13.1: Store Data Model & State Management
+
+As a developer, I want a clean data model that tracks all store state (owned relics, expansions, tips, bonds, reroll count) within RunContext, so that store state persists correctly across rounds and integrates with save/load.
+
+**Acceptance Criteria:**
+- `RunContext` extended with:
+  - `OwnedRelics: List<string>` (item IDs, max = `MaxRelicSlots`)
+  - `OwnedExpansions: List<string>` (expansion IDs, permanent per run)
+  - `BondsOwned: int` (total bonds held)
+  - `BondPurchaseHistory: List<int>` (which rounds bonds were bought — for sell price calc)
+  - `CurrentShopRerollCount: int` (resets per shop visit)
+  - `InsiderTipSlots: int` (default 2, increased by expansion)
+  - `RevealedTips: List<InsiderTip>` (tips bought this shop visit, cleared on shop close)
+- `ShopState` orchestrates all four panels:
+  - Generates relic offering via `ShopGenerator`
+  - Selects available expansions via `ExpansionManager`
+  - Generates insider tips via `InsiderTipGenerator`
+  - Calculates bond price via `BondManager`
+- All purchases are atomic (validate → deduct currency → apply effect → fire event)
+- State survives round transitions correctly
+- Old `ActiveItems` field in RunContext migrated to `OwnedRelics`
+
+**Files to modify:**
+- `Assets/Scripts/Runtime/Core/RunContext.cs` — expanded state fields
+- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs` — orchestration of all panels
+- `Assets/Scripts/Runtime/Shop/ShopGenerator.cs` — adapted for relic-only generation
+- `Assets/Scripts/Runtime/Shop/ShopTransaction.cs` — updated for multi-panel purchase types
+
+---
+
+## Story 13.2: Store Layout & Navigation Shell
 
 As a player, I want the between-rounds store to have a clear multi-panel layout with distinct sections for Relics, Expansions, Insider Tips, and Bonds, so that I can quickly understand my options and make strategic purchases.
 
@@ -53,7 +84,7 @@ As a player, I want the between-rounds store to have a clear multi-panel layout 
 
 ---
 
-## Story 13.2: Relics Panel — Item Offering, Purchase & Reroll
+## Story 13.3: Relics Panel — Item Offering, Purchase & Reroll
 
 As a player, I want the top section of the store to show 3 randomly selected relics (items) that I can purchase with Reputation, and a reroll button to refresh the selection, so that I have meaningful choices and agency in my build.
 
@@ -85,7 +116,7 @@ As a player, I want the top section of the store to show 3 randomly selected rel
 
 ---
 
-## Story 13.3: Trading Deck Expansions Panel (Vouchers)
+## Story 13.4: Trading Deck Expansions Panel (Vouchers)
 
 As a player, I want a bottom-left panel offering permanent one-time upgrades that expand my trading capabilities, so that I can invest Reputation into unlocking powerful new mechanics across the run.
 
@@ -122,7 +153,7 @@ As a player, I want a bottom-left panel offering permanent one-time upgrades tha
 
 ---
 
-## Story 13.4: Insider Tips Panel (Hidden Intel)
+## Story 13.5: Insider Tips Panel (Hidden Intel)
 
 As a player, I want a bottom-center panel where I can purchase mystery intel cards that reveal hidden information about the next round, so that I can gain an information edge at the cost of Reputation — but I won't know exactly what I'm getting until I buy it.
 
@@ -163,7 +194,7 @@ As a player, I want a bottom-center panel where I can purchase mystery intel car
 
 ---
 
-## Story 13.5: Bonds Panel (Reputation Investment)
+## Story 13.6: Bonds Panel (Reputation Investment)
 
 As a player, I want a bonds section where I can invest cash now to earn recurring Reputation in future rounds, so that I have a long-term investment strategy alongside my immediate trading.
 
@@ -198,36 +229,6 @@ As a player, I want a bonds section where I can invest cash now to earn recurrin
 - `Assets/Scripts/Runtime/Core/GameStates/MarketOpenState.cs` — bond Rep payout at round start
 - `Assets/Scripts/Runtime/Core/GameEvents.cs` — `BondPurchasedEvent`, `BondSoldEvent`, `BondRepPaidEvent`
 - `Assets/Scripts/Runtime/Core/ReputationManager.cs` — bond payout integration
-
----
-
-## Story 13.6: Store Data Model & State Management
-
-As a developer, I want a clean data model that tracks all store state (owned relics, expansions, tips, bonds, reroll count) within RunContext, so that store state persists correctly across rounds and integrates with save/load.
-
-**Acceptance Criteria:**
-- `RunContext` extended with:
-  - `OwnedRelics: List<string>` (item IDs, max = `MaxRelicSlots`)
-  - `OwnedExpansions: List<string>` (expansion IDs, permanent per run)
-  - `BondsOwned: int` (total bonds held)
-  - `BondPurchaseHistory: List<int>` (which rounds bonds were bought — for sell price calc)
-  - `CurrentShopRerollCount: int` (resets per shop visit)
-  - `InsiderTipSlots: int` (default 2, increased by expansion)
-  - `RevealedTips: List<InsiderTip>` (tips bought this shop visit, cleared on shop close)
-- `ShopState` orchestrates all four panels:
-  - Generates relic offering via `ShopGenerator`
-  - Selects available expansions via `ExpansionManager`
-  - Generates insider tips via `InsiderTipGenerator`
-  - Calculates bond price via `BondManager`
-- All purchases are atomic (validate → deduct currency → apply effect → fire event)
-- State survives round transitions correctly
-- Old `ActiveItems` field in RunContext migrated to `OwnedRelics`
-
-**Files to modify:**
-- `Assets/Scripts/Runtime/Core/RunContext.cs` — expanded state fields
-- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs` — orchestration of all panels
-- `Assets/Scripts/Runtime/Shop/ShopGenerator.cs` — adapted for relic-only generation
-- `Assets/Scripts/Runtime/Shop/ShopTransaction.cs` — updated for multi-panel purchase types
 
 ---
 
@@ -303,21 +304,22 @@ As a developer, I want to cleanly remove the old 3-card draft shop implementatio
 ## Dependency Graph
 
 ```
-13.1 (Layout Shell)
-  ├── 13.2 (Relics) ──────────┐
-  ├── 13.3 (Expansions) ──────┤
-  ├── 13.4 (Insider Tips) ────┤──→ 13.6 (Data Model) ──→ 13.7 (Expansion Effects)
-  └── 13.5 (Bonds) ───────────┘                      ──→ 13.8 (Visual Polish)
-                                                      ──→ 13.9 (Cleanup & Migration)
+13.1 (Data Model)
+  └── 13.2 (Layout Shell)
+        ├── 13.3 (Relics) ──────────┐
+        ├── 13.4 (Expansions) ──────┤
+        ├── 13.5 (Insider Tips) ────┤──→ 13.7 (Expansion Effects)
+        └── 13.6 (Bonds) ───────────┘──→ 13.8 (Visual Polish)
+                                      ──→ 13.9 (Cleanup & Migration)
 ```
 
 **Recommended implementation order:**
-1. **13.6** — Data model first (foundation for everything)
-2. **13.1** — Layout shell (empty panels with navigation)
-3. **13.2** — Relics panel (most similar to existing shop, easiest win)
-4. **13.3** — Trading Deck Expansions (new system, but UI-simple)
-5. **13.4** — Insider Tips (requires round pre-generation hookup)
-6. **13.5** — Bonds (new economy mechanic, needs careful testing)
+1. **13.1** — Data model first (foundation for everything)
+2. **13.2** — Layout shell (empty panels with navigation)
+3. **13.3** — Relics panel (most similar to existing shop, easiest win)
+4. **13.4** — Trading Deck Expansions (new system, but UI-simple)
+5. **13.5** — Insider Tips (requires round pre-generation hookup)
+6. **13.6** — Bonds (new economy mechanic, needs careful testing)
 7. **13.7** — Expansion effects (largest integration surface)
 8. **13.8** — Visual polish (after all panels functional)
 9. **13.9** — Cleanup (last — remove old code once new is stable)

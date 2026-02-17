@@ -22,7 +22,7 @@ public static class SceneSetup
         var cam = camGo.AddComponent<Camera>();
         cam.orthographic = true;
         cam.orthographicSize = 5f;
-        cam.backgroundColor = new Color(0.02f, 0.03f, 0.08f, 1f); // Dark navy background
+        cam.backgroundColor = CRTThemeData.Background; // Story 14.6: CRT dark background
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.nearClipPlane = 0.1f;
         cam.farClipPlane = 100f;

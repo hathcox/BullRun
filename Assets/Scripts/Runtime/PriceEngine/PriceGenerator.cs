@@ -134,6 +134,7 @@ public class PriceGenerator
 
     /// <summary>
     /// Creates stock instances for a new round by selecting from named stock pools.
+    /// FIX-15: Always spawns exactly the count specified by tier config (1 stock per round).
     /// For Mid-Value and Blue Chip tiers, stocks in the same sector share a trend direction.
     /// </summary>
     public void InitializeRound(int act, int round)
@@ -199,6 +200,7 @@ public class PriceGenerator
 
     /// <summary>
     /// Selects a random subset of stocks from a tier's pool for a round.
+    /// FIX-15: Count always driven by tier config (1 stock per round).
     /// </summary>
     public List<StockDefinition> SelectStocksForRound(StockTier tier)
     {

@@ -13,6 +13,9 @@ using UnityEngine.UI;
 /// </summary>
 public class GameRunner : MonoBehaviour
 {
+    /// <summary>Cached instance set in Awake, used by UISetup button wiring to avoid FindObjectOfType per click.</summary>
+    internal static GameRunner Instance { get; private set; }
+
     // FIX-11: Short lifecycle state machine
     public enum ShortState { RoundLockout, Ready, Holding, CashOutWindow, Cooldown }
 
@@ -24,20 +27,29 @@ public class GameRunner : MonoBehaviour
     private QuantitySelector _quantitySelector;
     private PositionOverlay _positionOverlay;
     private bool _firstFrameSkipped;
-    private bool _tradePanelVisible;
 
     // Post-trade cooldown (FIX-10 v2): instant trade, then lock out both buttons
     private float _postTradeCooldownTimer;
     private bool _isPostTradeCooldownActive;
 
-    // FIX-11: Short state machine fields
+    // FIX-11: Short state machine fields (slot 1)
     private ShortState _shortState = ShortState.RoundLockout;
     private float _shortTimer;
     private float _shortEntryPrice;
     private int _shortShares;
     private string _shortStockId;
+    private int _shortOpenStockId = -1; // Numeric stock ID for price lookups (multi-stock safe)
 
-    // Short UI references (integrated into trade panel via QuantitySelector)
+    // Story 13.7: Dual Short — second short slot fields
+    private ShortState _short2State = ShortState.RoundLockout;
+    private float _short2Timer;
+    private float _short2EntryPrice;
+    private int _short2Shares;
+    private string _short2StockId;
+    private int _short2OpenStockId = -1; // Numeric stock ID for price lookups (multi-stock safe)
+    private bool _dualShortActive;
+
+    // Short UI references (wired from DashboardReferences in Start)
     private Image _shortButtonImage;
     private Text _shortButtonText;
     private GameObject _shortPnlPanel;
@@ -47,8 +59,20 @@ public class GameRunner : MonoBehaviour
     private Color _shortButtonOriginalColor;
     private float _shortFlashTimer;
 
+    // Story 13.7: Second short UI references
+    private Image _short2ButtonImage;
+    private Text _short2ButtonText;
+    private GameObject _short2PnlPanel;
+    private Text _short2PnlEntryText;
+    private Text _short2PnlValueText;
+    private Text _short2PnlCountdownText;
+    private Color _short2ButtonOriginalColor;
+    private float _short2FlashTimer;
+
     private void Awake()
     {
+        Instance = this;
+
         // Clear stale EventBus subscriptions from previous play sessions
         EventBus.Clear();
 
@@ -78,11 +102,15 @@ public class GameRunner : MonoBehaviour
         // Create chart system (subscribes to PriceUpdatedEvent, RoundStartedEvent, etc.)
         ChartSetup.Execute();
 
-        // Create all UI systems with runtime data (FIX-5: sidebar removed — single stock per round)
-        UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
+        // Create all UI systems with runtime data — returns PositionOverlay for direct wiring
+        _positionOverlay = UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
-        // FIX-7: Compact position overlay replaces old right-side PositionPanel
-        _positionOverlay = UISetup.ExecutePositionOverlay(_ctx.Portfolio);
+
+        // Story 14.6: CRT bezel overlay (vignette + scanlines on top of everything)
+        UISetup.ExecuteCRTOverlay();
+
+        // Story 14.6: URP Bloom post-processing for phosphor glow
+        UISetup.ExecuteBloomSetup();
 
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);
@@ -90,19 +118,38 @@ public class GameRunner : MonoBehaviour
         // Create trade feedback overlay
         UISetup.ExecuteTradeFeedback();
 
-        // Create trade panel with BUY/SELL buttons and quantity presets (FIX-6)
-        _quantitySelector = UISetup.ExecuteTradePanel();
-        _quantitySelector.gameObject.SetActive(false); // Hidden until TradingState activates
+        // Story 14.4: Create QuantitySelector (trade quantity logic only — UI now in Control Deck)
+        var qsGo = new GameObject("QuantitySelector");
+        _quantitySelector = qsGo.AddComponent<QuantitySelector>();
+        _quantitySelector.Initialize();
 
-        // Short UI references are now integrated into the trade panel
-        _shortButtonImage = _quantitySelector.ShortButtonImage;
-        _shortButtonText = _quantitySelector.ShortButtonText;
-        _shortPnlPanel = _quantitySelector.ShortPnlPanel;
-        _shortPnlEntryText = _quantitySelector.ShortPnlEntryText;
-        _shortPnlValueText = _quantitySelector.ShortPnlValueText;
-        _shortPnlCountdownText = _quantitySelector.ShortPnlCountdownText;
+        // Story 14.4: Wire short/cooldown UI refs from DashboardReferences (populated by ExecuteControlDeck)
+        var dashRefs = UISetup.DashRefs;
+        _quantitySelector.CooldownOverlay = dashRefs.CooldownOverlay;
+        _quantitySelector.CooldownTimerText = dashRefs.CooldownTimerText;
+
+        _shortButtonImage = dashRefs.ShortButtonImage;
+        _shortButtonText = dashRefs.ShortButtonText;
+        _shortPnlPanel = dashRefs.ShortPnlPanel;
+        _shortPnlEntryText = dashRefs.ShortPnlEntryText;
+        _shortPnlValueText = dashRefs.ShortPnlValueText;
+        _shortPnlCountdownText = dashRefs.ShortPnlCountdownText;
         if (_shortButtonImage != null)
             _shortButtonOriginalColor = _shortButtonImage.color;
+
+        // Story 13.7: Second short UI references from DashboardReferences
+        _short2ButtonImage = dashRefs.Short2ButtonImage;
+        _short2ButtonText = dashRefs.Short2ButtonText;
+        _short2PnlPanel = dashRefs.Short2PnlPanel;
+        _short2PnlEntryText = dashRefs.Short2PnlEntryText;
+        _short2PnlValueText = dashRefs.Short2PnlValueText;
+        _short2PnlCountdownText = dashRefs.Short2PnlCountdownText;
+        if (_short2ButtonImage != null)
+            _short2ButtonOriginalColor = _short2ButtonImage.color;
+
+        // Story 14.4: Wire expansion visibility refs from DashboardReferences
+        _quantitySelector.LeverageBadge = dashRefs.LeverageBadge;
+        _quantitySelector.Short2Container = dashRefs.Short2Container;
 
         // Subscribe to trade button clicks from UI
         EventBus.Subscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
@@ -118,8 +165,8 @@ public class GameRunner : MonoBehaviour
         EventBus.Subscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
 
         // Create event display systems (subscribe to MarketEventFiredEvent)
-        UISetup.ExecuteNewsBanner();
-        UISetup.ExecuteNewsTicker();
+        // Story 14.5: NewsBanner replaced by EventTickerBanner (created in ChartSetup).
+        // NewsTicker removed — covered by Control Deck.
         UISetup.ExecuteScreenEffects();
         UISetup.ExecuteEventPopup();
 
@@ -127,7 +174,7 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteRoundResultsUI();
         UISetup.ExecuteRunSummaryUI();
         UISetup.ExecuteTierTransitionUI();
-        UISetup.ExecuteShopUI();
+        UISetup.ExecuteStoreUI();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring
@@ -164,12 +211,8 @@ public class GameRunner : MonoBehaviour
 
         _stateMachine.Update();
 
-        // Show/hide trade panel (includes short section) based on trading state
-        if (TradingState.IsActive != _tradePanelVisible)
-        {
-            _tradePanelVisible = TradingState.IsActive;
-            _quantitySelector.gameObject.SetActive(_tradePanelVisible);
-        }
+        // Story 14.4: Action buttons are now part of Control Deck (always visible).
+        // Button clicks are gated by TradingState.IsActive checks in OnTradeButtonPressed / HandleShortInput.
 
         // FIX-10 v2: Tick post-trade cooldown timer and update countdown display
         if (_isPostTradeCooldownActive)
@@ -189,7 +232,11 @@ public class GameRunner : MonoBehaviour
 
         // FIX-11: Update short state machine
         if (TradingState.IsActive)
+        {
             UpdateShortStateMachine();
+            if (_dualShortActive)
+                UpdateShort2StateMachine();
+        }
 
         HandleTradingInput();
     }
@@ -204,6 +251,7 @@ public class GameRunner : MonoBehaviour
 
     /// <summary>
     /// FIX-7: Sets the position overlay's active stock when the market opens.
+    /// FIX-15: Multi-stock sidebar removed — single stock per round is permanent.
     /// </summary>
     private void OnMarketOpenForOverlay(MarketOpenEvent evt)
     {
@@ -211,6 +259,15 @@ public class GameRunner : MonoBehaviour
         {
             _positionOverlay.SetActiveStock(evt.StockIds[0]);
         }
+
+        // Story 13.7: Leverage badge visibility
+        if (_quantitySelector.LeverageBadge != null)
+            _quantitySelector.LeverageBadge.SetActive(_ctx.OwnedExpansions.Contains(ExpansionDefinitions.LeverageTrading));
+
+        // Story 13.7: Dual Short visibility
+        _dualShortActive = _ctx.OwnedExpansions.Contains(ExpansionDefinitions.DualShort);
+        if (_quantitySelector.Short2Container != null)
+            _quantitySelector.Short2Container.SetActive(_dualShortActive);
     }
 
     // ========================
@@ -225,6 +282,7 @@ public class GameRunner : MonoBehaviour
         _shortEntryPrice = 0f;
         _shortShares = 0;
         _shortStockId = null;
+        _shortOpenStockId = -1;
         if (_shortPnlPanel != null)
             _shortPnlPanel.SetActive(false);
 
@@ -238,6 +296,24 @@ public class GameRunner : MonoBehaviour
         {
             _shortState = ShortState.RoundLockout;
             _shortTimer = GameConfig.ShortRoundStartLockout;
+        }
+
+        // Story 13.7: Reset second short
+        _short2EntryPrice = 0f;
+        _short2Shares = 0;
+        _short2StockId = null;
+        _short2OpenStockId = -1;
+        if (_short2PnlPanel != null)
+            _short2PnlPanel.SetActive(false);
+        if (GameConfig.ShortRoundStartLockout <= 0f)
+        {
+            _short2State = ShortState.Ready;
+            _short2Timer = 0f;
+        }
+        else
+        {
+            _short2State = ShortState.RoundLockout;
+            _short2Timer = GameConfig.ShortRoundStartLockout;
         }
     }
 
@@ -323,6 +399,7 @@ public class GameRunner : MonoBehaviour
             _shortEntryPrice = currentPrice;
             _shortShares = shares;
             _shortStockId = stockIdStr;
+            _shortOpenStockId = stockId;
             if (_shortPnlPanel != null)
                 _shortPnlPanel.SetActive(true);
 
@@ -353,7 +430,7 @@ public class GameRunner : MonoBehaviour
     {
         if (_shortStockId == null) return;
 
-        float currentPrice = GetStockPrice(GetSelectedStockId());
+        float currentPrice = GetStockPrice(_shortOpenStockId);
         if (currentPrice <= 0f) currentPrice = _shortEntryPrice; // fallback
 
         bool success = _tradeExecutor.ExecuteCover(_shortStockId, _shortShares, currentPrice, _ctx.Portfolio);
@@ -384,6 +461,7 @@ public class GameRunner : MonoBehaviour
         _shortEntryPrice = 0f;
         _shortShares = 0;
         _shortStockId = null;
+        _shortOpenStockId = -1;
         if (_shortPnlPanel != null)
             _shortPnlPanel.SetActive(false);
     }
@@ -405,8 +483,23 @@ public class GameRunner : MonoBehaviour
         _shortEntryPrice = 0f;
         _shortShares = 0;
         _shortStockId = null;
+        _shortOpenStockId = -1;
         if (_shortPnlPanel != null)
             _shortPnlPanel.SetActive(false);
+
+        // Story 13.7: Reset second short on round end
+        if (_short2State == ShortState.Holding || _short2State == ShortState.CashOutWindow)
+        {
+            CloseShort2Position(true);
+        }
+        _short2State = ShortState.RoundLockout;
+        _short2Timer = 0f;
+        _short2EntryPrice = 0f;
+        _short2Shares = 0;
+        _short2StockId = null;
+        _short2OpenStockId = -1;
+        if (_short2PnlPanel != null)
+            _short2PnlPanel.SetActive(false);
     }
 
     /// <summary>
@@ -462,7 +555,7 @@ public class GameRunner : MonoBehaviour
     {
         if (_shortPnlPanel == null || _shortStockId == null) return;
 
-        float currentPrice = GetStockPrice(GetSelectedStockId());
+        float currentPrice = GetStockPrice(_shortOpenStockId);
         float pnl = (_shortEntryPrice - currentPrice) * _shortShares;
 
         if (_shortPnlEntryText != null)
@@ -481,6 +574,170 @@ public class GameRunner : MonoBehaviour
                 _shortPnlCountdownText.text = $"Auto-close: {_shortTimer:F1}s";
             else
                 _shortPnlCountdownText.text = "";
+        }
+    }
+
+    // ========================
+    // Story 13.7: Dual Short — Second Short State Machine
+    // ========================
+
+    private void UpdateShort2StateMachine()
+    {
+        float dt = Time.deltaTime;
+        switch (_short2State)
+        {
+            case ShortState.RoundLockout:
+                _short2Timer -= dt;
+                if (_short2Timer <= 0f) { _short2State = ShortState.Ready; _short2Timer = 0f; }
+                break;
+            case ShortState.Ready:
+                break;
+            case ShortState.Holding:
+                _short2Timer -= dt;
+                UpdateShort2PnlDisplay();
+                if (_short2Timer <= 0f) { _short2State = ShortState.CashOutWindow; _short2Timer = GameConfig.ShortCashOutWindow; }
+                break;
+            case ShortState.CashOutWindow:
+                _short2Timer -= dt;
+                UpdateShort2PnlDisplay();
+                if (_short2Timer <= 0f) CloseShort2Position(true);
+                break;
+            case ShortState.Cooldown:
+                _short2Timer -= dt;
+                if (_short2Timer <= 0f) { _short2State = ShortState.Ready; _short2Timer = 0f; }
+                break;
+        }
+        UpdateShort2ButtonVisuals();
+    }
+
+    public void HandleShort2Input()
+    {
+        if (!TradingState.IsActive) return;
+
+        switch (_short2State)
+        {
+            case ShortState.Ready:
+                OpenShort2Position();
+                break;
+            case ShortState.CashOutWindow:
+                CloseShort2Position(false);
+                break;
+        }
+    }
+
+    private void OpenShort2Position()
+    {
+        int stockId = GetSelectedStockId();
+        if (stockId < 0) return;
+        float currentPrice = GetStockPrice(stockId);
+        if (currentPrice <= 0f) return;
+
+        string stockIdStr = stockId.ToString();
+        int shares = GameConfig.ShortBaseShares;
+
+        bool success = _tradeExecutor.ExecuteShort(stockIdStr + "_s2", shares, currentPrice, _ctx.Portfolio);
+        if (success)
+        {
+            _short2State = ShortState.Holding;
+            _short2Timer = GameConfig.ShortForcedHoldDuration;
+            _short2EntryPrice = currentPrice;
+            _short2Shares = shares;
+            _short2StockId = stockIdStr + "_s2";
+            _short2OpenStockId = stockId;
+            if (_short2PnlPanel != null) _short2PnlPanel.SetActive(true);
+
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = $"SHORTED #2 {shares} @ ${currentPrice:F2}",
+                IsSuccess = true, IsBuy = false, IsShort = true
+            });
+        }
+    }
+
+    private void CloseShort2Position(bool isAutoClose)
+    {
+        if (_short2StockId == null) return;
+        float currentPrice = GetStockPrice(_short2OpenStockId);
+        if (currentPrice <= 0f) currentPrice = _short2EntryPrice;
+
+        bool success = _tradeExecutor.ExecuteCover(_short2StockId, _short2Shares, currentPrice, _ctx.Portfolio);
+        float pnl = (_short2EntryPrice - currentPrice) * _short2Shares;
+
+        if (success && pnl > 0f)
+        {
+            _ctx.Reputation.Add(GameConfig.RepPerProfitableTrade);
+            _ctx.ReputationEarned += GameConfig.RepPerProfitableTrade;
+        }
+
+        string pnlStr = pnl >= 0 ? $"+${pnl:F2}" : $"-${Mathf.Abs(pnl):F2}";
+        string prefix = isAutoClose ? "AUTO-CLOSED #2" : "CASHED OUT #2";
+
+        EventBus.Publish(new TradeFeedbackEvent { Message = $"{prefix} {pnlStr}", IsSuccess = true, IsBuy = false, IsShort = true });
+
+        _short2State = ShortState.Cooldown;
+        _short2Timer = GameConfig.ShortPostCloseCooldown;
+        _short2EntryPrice = 0f;
+        _short2Shares = 0;
+        _short2StockId = null;
+        _short2OpenStockId = -1;
+        if (_short2PnlPanel != null) _short2PnlPanel.SetActive(false);
+    }
+
+    private void UpdateShort2ButtonVisuals()
+    {
+        if (_short2ButtonImage == null || _short2ButtonText == null) return;
+        switch (_short2State)
+        {
+            case ShortState.RoundLockout:
+                _short2ButtonImage.color = DimColor(_short2ButtonOriginalColor);
+                _short2ButtonText.text = $"{_short2Timer:F1}s";
+                break;
+            case ShortState.Ready:
+                _short2ButtonImage.color = _short2ButtonOriginalColor;
+                _short2ButtonText.text = "SHORT 2";
+                break;
+            case ShortState.Holding:
+                _short2ButtonImage.color = DimColor(_short2ButtonOriginalColor);
+                _short2ButtonText.text = $"{_short2Timer:F1}s";
+                break;
+            case ShortState.CashOutWindow:
+                _short2ButtonImage.color = _short2ButtonOriginalColor;
+                _short2ButtonText.text = $"CASH OUT ({Mathf.CeilToInt(_short2Timer)}s)";
+                if (_short2Timer <= GameConfig.ShortCashOutFlashThreshold)
+                {
+                    _short2FlashTimer += Time.deltaTime * 6f;
+                    float alpha = 0.6f + Mathf.Sin(_short2FlashTimer) * 0.4f;
+                    Color flashColor = _short2ButtonOriginalColor;
+                    flashColor.a = alpha;
+                    _short2ButtonImage.color = flashColor;
+                }
+                break;
+            case ShortState.Cooldown:
+                _short2ButtonImage.color = DimColor(_short2ButtonOriginalColor);
+                _short2ButtonText.text = $"{_short2Timer:F1}s";
+                _short2FlashTimer = 0f;
+                break;
+        }
+    }
+
+    private void UpdateShort2PnlDisplay()
+    {
+        if (_short2PnlPanel == null || _short2StockId == null) return;
+        float currentPrice = GetStockPrice(_short2OpenStockId);
+        float pnl = (_short2EntryPrice - currentPrice) * _short2Shares;
+
+        if (_short2PnlEntryText != null)
+            _short2PnlEntryText.text = $"Entry: ${_short2EntryPrice:F2}";
+        if (_short2PnlValueText != null)
+        {
+            bool profit = pnl >= 0f;
+            _short2PnlValueText.text = profit ? $"P&L: +${pnl:F2}" : $"P&L: -${Mathf.Abs(pnl):F2}";
+            _short2PnlValueText.color = profit ? PositionOverlay.ProfitGreen : PositionOverlay.LossRed;
+        }
+        if (_short2PnlCountdownText != null)
+        {
+            _short2PnlCountdownText.text = _short2State == ShortState.CashOutWindow
+                ? $"Auto-close: {_short2Timer:F1}s" : "";
         }
     }
 
@@ -530,9 +787,12 @@ public class GameRunner : MonoBehaviour
 
     /// <summary>
     /// FIX-11: Handles D key press (or SHORT button click) based on current short state.
+    /// Gated by TradingState.IsActive to prevent trades outside the trading phase.
     /// </summary>
     public void HandleShortInput()
     {
+        if (!TradingState.IsActive) return;
+
         switch (_shortState)
         {
             case ShortState.Ready:
@@ -689,10 +949,20 @@ public class GameRunner : MonoBehaviour
         float entryPrice = position != null ? position.AverageBuyPrice : 0f;
 
         bool success = _tradeExecutor.ExecuteSell(stockIdStr, qty, currentPrice, _ctx.Portfolio);
-        if (success && currentPrice > entryPrice)
+        if (success)
         {
-            _ctx.Reputation.Add(GameConfig.RepPerProfitableTrade);
-            _ctx.ReputationEarned += GameConfig.RepPerProfitableTrade;
+            // Story 13.7 AC 2: Leverage expansion doubles long trade P&L
+            if (position != null && _ctx.OwnedExpansions.Contains(ExpansionDefinitions.LeverageTrading))
+            {
+                float pnl = (currentPrice - entryPrice) * qty;
+                _ctx.Portfolio.AddCash(pnl);
+            }
+
+            if (currentPrice > entryPrice)
+            {
+                _ctx.Reputation.Add(GameConfig.RepPerProfitableTrade);
+                _ctx.ReputationEarned += GameConfig.RepPerProfitableTrade;
+            }
         }
         EventBus.Publish(new TradeFeedbackEvent
         {
@@ -701,7 +971,7 @@ public class GameRunner : MonoBehaviour
         });
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log(success
-            ? $"[Trade] SELL {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId})"
+            ? $"[Trade] SELL {qty} shares @ ${currentPrice:F2} (Stock {selectedStockId}){(_ctx.OwnedExpansions.Contains(ExpansionDefinitions.LeverageTrading) ? " [2x LEVERAGE]" : "")}"
             : "[Trade] SELL rejected — no position to sell");
         #endif
         return success;
@@ -711,25 +981,37 @@ public class GameRunner : MonoBehaviour
     // Utility
     // ========================
 
+    /// <summary>
+    /// FIX-15: Always returns the single active stock's ID.
+    /// </summary>
     private int GetSelectedStockId()
     {
         if (_priceGenerator.ActiveStocks.Count == 0) return -1;
         return _priceGenerator.ActiveStocks[0].StockId;
     }
 
+    /// <summary>
+    /// FIX-15: Always returns the single active stock's ticker.
+    /// </summary>
     private string GetSelectedTicker()
     {
         if (_priceGenerator.ActiveStocks.Count == 0) return "???";
         return _priceGenerator.ActiveStocks[0].TickerSymbol;
     }
 
+    /// <summary>
+    /// Returns the current price for a given stock ID.
+    /// FIX-15: With single stock, this is always ActiveStocks[0] but we keep the
+    /// ID-based lookup for Dual Short which tracks stockId per short position.
+    /// </summary>
     private float GetStockPrice(int stockId)
     {
         if (_priceGenerator.ActiveStocks.Count == 0) return 0f;
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        if (stockId != _priceGenerator.ActiveStocks[0].StockId)
-            Debug.LogWarning($"[GameRunner] GetStockPrice called with stockId {stockId} but ActiveStocks[0] is {_priceGenerator.ActiveStocks[0].StockId} — FIX-5 assumes single stock");
-        #endif
+        for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
+        {
+            if (_priceGenerator.ActiveStocks[i].StockId == stockId)
+                return _priceGenerator.ActiveStocks[i].CurrentPrice;
+        }
         return _priceGenerator.ActiveStocks[0].CurrentPrice;
     }
 }

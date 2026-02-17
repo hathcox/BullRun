@@ -66,22 +66,22 @@ namespace BullRun.Tests.UI
             Assert.AreEqual("FLAT", PositionOverlay.FormatFlat());
         }
 
-        // --- Color Constants ---
+        // --- Color Constants (Story 14.6: migrated to CRTThemeData) ---
 
         [Test]
-        public void LongColor_IsNeonGreen()
+        public void LongColor_MatchesCRTTextHigh()
         {
-            Assert.AreEqual(0f, PositionOverlay.LongColor.r, 0.01f);
-            Assert.AreEqual(1f, PositionOverlay.LongColor.g, 0.01f);
-            Assert.AreEqual(0.533f, PositionOverlay.LongColor.b, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextHigh.r, PositionOverlay.LongColor.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextHigh.g, PositionOverlay.LongColor.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextHigh.b, PositionOverlay.LongColor.b, 0.01f);
         }
 
         [Test]
-        public void ShortColor_IsHotPink()
+        public void ShortColor_MatchesCRTWarning()
         {
-            Assert.AreEqual(1f, PositionOverlay.ShortColor.r, 0.01f);
-            Assert.AreEqual(0.4f, PositionOverlay.ShortColor.g, 0.01f);
-            Assert.AreEqual(0.7f, PositionOverlay.ShortColor.b, 0.01f);
+            Assert.AreEqual(CRTThemeData.Warning.r, PositionOverlay.ShortColor.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.Warning.g, PositionOverlay.ShortColor.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.Warning.b, PositionOverlay.ShortColor.b, 0.01f);
         }
 
         [Test]

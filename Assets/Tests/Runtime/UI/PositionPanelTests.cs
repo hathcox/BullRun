@@ -190,11 +190,11 @@ namespace BullRun.Tests.UI
         // --- Short Squeeze Warning Color (Story 5-5) ---
 
         [Test]
-        public void ShortSqueezeWarningColor_IsRed()
+        public void ShortSqueezeWarningColor_MatchesCRTDanger()
         {
-            Assert.AreEqual(1f, PositionPanel.ShortSqueezeWarningColor.r, 0.01f);
-            Assert.AreEqual(0f, PositionPanel.ShortSqueezeWarningColor.g, 0.01f);
-            Assert.AreEqual(0f, PositionPanel.ShortSqueezeWarningColor.b, 0.01f);
+            Assert.AreEqual(CRTThemeData.Danger.r, PositionPanel.ShortSqueezeWarningColor.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.Danger.g, PositionPanel.ShortSqueezeWarningColor.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.Danger.b, PositionPanel.ShortSqueezeWarningColor.b, 0.01f);
         }
     }
 }

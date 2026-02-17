@@ -311,17 +311,15 @@ namespace BullRun.Tests.PriceEngine
         }
 
         [Test]
-        public void InitializeRound_MultipleStocksCanHaveIndependentTrends()
+        public void InitializeRound_SingleStock_HasValidTrendAndPrice()
         {
+            // FIX-15: Single stock per round — verify the one stock has valid data
             _generator.InitializeRound(1, 1);
             var stocks = _generator.ActiveStocks;
 
-            Assert.Greater(stocks.Count, 1, "Should have multiple stocks for independent trend testing");
-            foreach (var stock in stocks)
-            {
-                Assert.IsNotNull(stock.TickerSymbol);
-                Assert.Greater(stock.CurrentPrice, 0f);
-            }
+            Assert.AreEqual(1, stocks.Count, "FIX-15: Should have exactly 1 stock per round");
+            Assert.IsNotNull(stocks[0].TickerSymbol);
+            Assert.Greater(stocks[0].CurrentPrice, 0f);
         }
 
         // --- Event Integration Tests (Story 1.3) ---
@@ -640,203 +638,8 @@ namespace BullRun.Tests.PriceEngine
             }
         }
 
-        // --- Sector Correlation Tests (Story 6.4) ---
-
-        [Test]
-        public void InitializeRound_MidValueStocks_SameSectorShareTrendDirection()
-        {
-            // Run multiple times to increase confidence (sector correlation is deterministic per-sector)
-            int correlatedRounds = 0;
-            int testableRounds = 0;
-
-            for (int trial = 0; trial < 50; trial++)
-            {
-                _generator.InitializeRound(3, 1); // Act 3 = MidValue tier
-                var stocks = _generator.ActiveStocks;
-
-                // Group by sector via ticker lookup
-                var sectorTrends = new Dictionary<StockSector, List<TrendDirection>>();
-                foreach (var stock in stocks)
-                {
-                    var def = FindDefinition(stock.TickerSymbol);
-                    if (def.Sector == StockSector.None) continue;
-
-                    if (!sectorTrends.ContainsKey(def.Sector))
-                        sectorTrends[def.Sector] = new List<TrendDirection>();
-                    sectorTrends[def.Sector].Add(stock.TrendDirection);
-                }
-
-                // Check sectors with 2+ stocks — they should share trend direction
-                foreach (var kvp in sectorTrends)
-                {
-                    if (kvp.Value.Count < 2) continue;
-                    testableRounds++;
-                    bool allSame = true;
-                    for (int i = 1; i < kvp.Value.Count; i++)
-                    {
-                        if (kvp.Value[i] != kvp.Value[0])
-                        {
-                            allSame = false;
-                            break;
-                        }
-                    }
-                    if (allSame) correlatedRounds++;
-                }
-            }
-
-            // Guarantee we actually tested something — same-sector pairs must appear in 50 trials
-            Assert.Greater(testableRounds, 0,
-                "MidValue pool should produce same-sector pairs in 50 trials — check pool sector distribution");
-
-            Assert.AreEqual(testableRounds, correlatedRounds,
-                $"All same-sector stock pairs should share trend direction. " +
-                $"Correlated: {correlatedRounds}/{testableRounds}");
-        }
-
-        [Test]
-        public void InitializeRound_BlueChipStocks_SameSectorShareTrendDirection()
-        {
-            int correlatedRounds = 0;
-            int testableRounds = 0;
-
-            for (int trial = 0; trial < 50; trial++)
-            {
-                _generator.InitializeRound(4, 1); // Act 4 = BlueChip tier
-                var stocks = _generator.ActiveStocks;
-
-                var sectorTrends = new Dictionary<StockSector, List<TrendDirection>>();
-                foreach (var stock in stocks)
-                {
-                    var def = FindDefinition(stock.TickerSymbol);
-                    if (def.Sector == StockSector.None) continue;
-
-                    if (!sectorTrends.ContainsKey(def.Sector))
-                        sectorTrends[def.Sector] = new List<TrendDirection>();
-                    sectorTrends[def.Sector].Add(stock.TrendDirection);
-                }
-
-                foreach (var kvp in sectorTrends)
-                {
-                    if (kvp.Value.Count < 2) continue;
-                    testableRounds++;
-                    bool allSame = true;
-                    for (int i = 1; i < kvp.Value.Count; i++)
-                    {
-                        if (kvp.Value[i] != kvp.Value[0])
-                        {
-                            allSame = false;
-                            break;
-                        }
-                    }
-                    if (allSame) correlatedRounds++;
-                }
-            }
-
-            Assert.Greater(testableRounds, 0,
-                "BlueChip pool should produce same-sector pairs in 50 trials — check pool sector distribution");
-
-            Assert.AreEqual(testableRounds, correlatedRounds,
-                $"All same-sector Blue Chip pairs should share trend direction. " +
-                $"Correlated: {correlatedRounds}/{testableRounds}");
-        }
-
-        [Test]
-        public void InitializeRound_PennyStocks_NoSectorCorrelation()
-        {
-            // Penny stocks should NOT have sector correlation - each gets independent trend
-            // Run many trials — if no correlation is applied, same-sector stocks will
-            // sometimes differ in trend direction (statistically inevitable)
-            bool anyDifference = false;
-
-            for (int trial = 0; trial < 100; trial++)
-            {
-                _generator.InitializeRound(1, 1); // Act 1 = Penny tier
-                var stocks = _generator.ActiveStocks;
-
-                var sectorTrends = new Dictionary<StockSector, List<TrendDirection>>();
-                foreach (var stock in stocks)
-                {
-                    var def = FindDefinition(stock.TickerSymbol);
-                    if (def.Sector == StockSector.None) continue;
-
-                    if (!sectorTrends.ContainsKey(def.Sector))
-                        sectorTrends[def.Sector] = new List<TrendDirection>();
-                    sectorTrends[def.Sector].Add(stock.TrendDirection);
-                }
-
-                foreach (var kvp in sectorTrends)
-                {
-                    if (kvp.Value.Count < 2) continue;
-                    for (int i = 1; i < kvp.Value.Count; i++)
-                    {
-                        if (kvp.Value[i] != kvp.Value[0])
-                        {
-                            anyDifference = true;
-                            break;
-                        }
-                    }
-                    if (anyDifference) break;
-                }
-                if (anyDifference) break;
-            }
-
-            Assert.IsTrue(anyDifference,
-                "Penny stocks should have independent trends - same-sector stocks should sometimes differ");
-        }
-
-        [Test]
-        public void InitializeRound_LowValueStocks_NoSectorCorrelation()
-        {
-            bool anyDifference = false;
-
-            for (int trial = 0; trial < 100; trial++)
-            {
-                _generator.InitializeRound(2, 1); // Act 2 = LowValue tier
-                var stocks = _generator.ActiveStocks;
-
-                var sectorTrends = new Dictionary<StockSector, List<TrendDirection>>();
-                foreach (var stock in stocks)
-                {
-                    var def = FindDefinition(stock.TickerSymbol);
-                    if (def.Sector == StockSector.None) continue;
-
-                    if (!sectorTrends.ContainsKey(def.Sector))
-                        sectorTrends[def.Sector] = new List<TrendDirection>();
-                    sectorTrends[def.Sector].Add(stock.TrendDirection);
-                }
-
-                foreach (var kvp in sectorTrends)
-                {
-                    if (kvp.Value.Count < 2) continue;
-                    for (int i = 1; i < kvp.Value.Count; i++)
-                    {
-                        if (kvp.Value[i] != kvp.Value[0])
-                        {
-                            anyDifference = true;
-                            break;
-                        }
-                    }
-                    if (anyDifference) break;
-                }
-                if (anyDifference) break;
-            }
-
-            Assert.IsTrue(anyDifference,
-                "LowValue stocks should have independent trends - same-sector stocks should sometimes differ");
-        }
-
-        private StockDefinition FindDefinition(string ticker)
-        {
-            foreach (StockTier tier in System.Enum.GetValues(typeof(StockTier)))
-            {
-                var pool = StockPoolData.GetPool(tier);
-                foreach (var def in pool)
-                {
-                    if (def.TickerSymbol == ticker) return def;
-                }
-            }
-            return default;
-        }
+        // FIX-15: Sector correlation tests removed — single stock per round makes
+        // multi-stock sector correlation untestable and irrelevant
 
         // --- Debug Info Tests (Story 1.6) ---
 

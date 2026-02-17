@@ -21,11 +21,11 @@ namespace BullRun.Tests.Core
         // --- Config Tests (AC: 8) ---
 
         [Test]
-        public void PostTradeCooldown_ConfigIs3Seconds()
+        public void PostTradeCooldown_ConfigIs1Second()
         {
             // AC 8: Cooldown duration configurable in GameConfig
-            Assert.AreEqual(3.0f, GameConfig.PostTradeCooldown,
-                "PostTradeCooldown should be 3.0 seconds");
+            Assert.AreEqual(1.0f, GameConfig.PostTradeCooldown,
+                "PostTradeCooldown should be 1.0 seconds");
         }
 
         [Test]

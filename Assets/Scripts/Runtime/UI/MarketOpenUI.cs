@@ -8,11 +8,13 @@ using UnityEngine.UI;
 /// </summary>
 public class MarketOpenUI : MonoBehaviour
 {
-    private static readonly Color HeaderColor = new Color(0f, 1f, 0.533f, 1f);
-    private static readonly Color LabelColor = new Color(0.6f, 0.6f, 0.7f, 1f);
-    private static readonly Color ValueColor = Color.white;
-    private static readonly Color TargetColor = new Color(1f, 0.85f, 0.2f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static Color HeaderColor => CRTThemeData.TextHigh;
+    private static Color LabelColor => CRTThemeData.TextLow;
+    private static Color ValueColor => CRTThemeData.TextHigh;
+    private static Color TargetColor => CRTThemeData.Warning;
     private static readonly Color HeadlineColor = new Color(0.8f, 0.85f, 1f, 1f);
+    private static readonly Color BondRepColor = new Color(1f, 0.7f, 0f, 1f);
 
     private GameObject _panel;
     private Text _headerText;
@@ -20,6 +22,7 @@ public class MarketOpenUI : MonoBehaviour
     private Text _headlineText;
     private Text _targetText;
     private Text _countdownText;
+    private Text _bondRepText;
     private CanvasGroup _canvasGroup;
 
     private bool _initialized;
@@ -28,7 +31,8 @@ public class MarketOpenUI : MonoBehaviour
     private static readonly float FadeInDuration = 0.5f;
 
     public void Initialize(GameObject panel, Text headerText, Text stockListText,
-        Text headlineText, Text targetText, Text countdownText, CanvasGroup canvasGroup)
+        Text headlineText, Text targetText, Text countdownText, CanvasGroup canvasGroup,
+        Text bondRepText = null)
     {
         _panel = panel;
         _headerText = headerText;
@@ -37,6 +41,7 @@ public class MarketOpenUI : MonoBehaviour
         _targetText = targetText;
         _countdownText = countdownText;
         _canvasGroup = canvasGroup;
+        _bondRepText = bondRepText;
         _initialized = true;
         _visible = false;
 
@@ -65,6 +70,20 @@ public class MarketOpenUI : MonoBehaviour
 
         if (_targetText != null)
             _targetText.text = $"${evt.ProfitTarget:N2}";
+
+        // Bond Rep display (Story 13.6, AC 14)
+        if (_bondRepText != null)
+        {
+            if (evt.BondRepEarned > 0)
+            {
+                _bondRepText.text = $"+{evt.BondRepEarned} Rep from Bonds";
+                _bondRepText.gameObject.SetActive(true);
+            }
+            else
+            {
+                _bondRepText.gameObject.SetActive(false);
+            }
+        }
 
         _visible = true;
         _fadeTimer = 0f;

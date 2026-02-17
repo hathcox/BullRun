@@ -32,6 +32,51 @@ public static class GameConfig
     // Reputation: shop currency (FIX-12). Earning logic below (FIX-14).
     public static readonly int StartingReputation = 0;
 
+    // Store: max relic slots per run (Epic 13, AC 11)
+    public static readonly int MaxRelicSlots = 5;
+
+    // Store: reroll base cost in Reputation (Epic 13, AC 7)
+    public static readonly int RerollBaseCost = 5;
+
+    // Store: reroll cost increment per use within a shop visit (Epic 13, AC 8)
+    public static readonly int RerollCostIncrement = 2;
+
+    // Store: default insider tip slots per shop visit (Epic 13)
+    public static readonly int DefaultInsiderTipSlots = 2;
+
+    // Store: insider tip fuzz percentage (Story 13.5, AC 11)
+    public static readonly float InsiderTipFuzzPercent = 0.10f;
+
+    // Store: insider tip costs in Reputation (Story 13.5)
+    public static readonly int TipCostPriceForecast = 15;
+    public static readonly int TipCostPriceFloor = 20;
+    public static readonly int TipCostPriceCeiling = 20;
+    public static readonly int TipCostTrendDirection = 15;
+    public static readonly int TipCostEventForecast = 25;
+    public static readonly int TipCostEventCount = 10;
+    public static readonly int TipCostVolatilityWarning = 15;
+    public static readonly int TipCostOpeningPrice = 20;
+
+    // Store: expansion costs in Reputation (Epic 13, Story 13.4)
+    // FIX-15: ExpansionCostMultiStock removed — Multi-Stock expansion permanently removed
+    public static readonly int ExpansionCostLeverage = 60;
+    public static readonly int ExpansionCostExpandedInventory = 50;
+    public static readonly int ExpansionCostDualShort = 70;
+    public static readonly int ExpansionCostIntelExpansion = 40;
+    public static readonly int ExpansionCostExtendedTrading = 55;
+
+    // Store: number of expansion cards shown per shop visit (Epic 13, Story 13.4)
+    public static readonly int ExpansionsPerShopVisit = 3;
+
+    // Store: bond prices per round (Story 13.6, AC 4). Index 0 = Round 1, index 7 = Round 8 (unavailable).
+    public static readonly int[] BondPricePerRound = new int[] { 3, 5, 8, 12, 17, 23, 30, 0 };
+
+    // Store: bond sell multiplier — sell price = purchase price × this (Story 13.6, AC 9)
+    public static readonly float BondSellMultiplier = 0.5f;
+
+    // Store: Rep earned per round per bond owned (Story 13.6, AC 6)
+    public static readonly int BondRepPerRoundPerBond = 1;
+
     // FIX-14: Reputation earning constants
     // Base Rep awarded per round completion (0-indexed: index 0 = Round 1)
     public static readonly int[] RepBaseAwardPerRound = new int[]

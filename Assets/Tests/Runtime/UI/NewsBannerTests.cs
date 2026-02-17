@@ -37,18 +37,18 @@ namespace BullRun.Tests.UI
         // --- Banner Color Values ---
 
         [Test]
-        public void PositiveBannerColor_IsGreenWithAlpha()
+        public void PositiveBannerColor_UsesCRTTextHighWithAlpha()
         {
-            Assert.AreEqual(0f, NewsBanner.PositiveBannerColor.r, 0.01f, "Red channel should be 0");
-            Assert.Greater(NewsBanner.PositiveBannerColor.g, 0.9f, "Green channel should be high");
-            Assert.Greater(NewsBanner.PositiveBannerColor.a, 0.5f, "Alpha should be visible");
+            Assert.AreEqual(CRTThemeData.TextHigh.r, NewsBanner.PositiveBannerColor.r, 0.01f, "Red matches CRT TextHigh");
+            Assert.AreEqual(CRTThemeData.TextHigh.g, NewsBanner.PositiveBannerColor.g, 0.01f, "Green matches CRT TextHigh");
+            Assert.AreEqual(0.8f, NewsBanner.PositiveBannerColor.a, 0.01f, "Alpha should be 0.8");
         }
 
         [Test]
-        public void NegativeBannerColor_IsRedWithAlpha()
+        public void NegativeBannerColor_UsesCRTDangerWithAlpha()
         {
-            Assert.Greater(NewsBanner.NegativeBannerColor.r, 0.9f, "Red channel should be high");
-            Assert.Greater(NewsBanner.NegativeBannerColor.a, 0.5f, "Alpha should be visible");
+            Assert.AreEqual(CRTThemeData.Danger.r, NewsBanner.NegativeBannerColor.r, 0.01f, "Red matches CRT Danger");
+            Assert.AreEqual(0.8f, NewsBanner.NegativeBannerColor.a, 0.01f, "Alpha should be 0.8");
         }
 
         // --- Banner Constants ---

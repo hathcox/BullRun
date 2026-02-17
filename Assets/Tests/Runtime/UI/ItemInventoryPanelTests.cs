@@ -1,9 +1,13 @@
-using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
 namespace BullRun.Tests.UI
 {
+    /// <summary>
+    /// Story 13.9: Tests for ItemInventoryPanel formatting, hotkeys, and colors.
+    /// Removed legacy category partitioning and rarity color tests
+    /// (GetItemsByCategory, GetRarityColor, ItemCategory no longer exist).
+    /// </summary>
     [TestFixture]
     public class ItemInventoryPanelTests
     {
@@ -24,15 +28,15 @@ namespace BullRun.Tests.UI
         // --- Formatting Utilities ---
 
         [Test]
-        public void FormatToolSlot_WithItemName()
+        public void FormatRelicSlot_WithItemName()
         {
-            Assert.AreEqual("[Q] Insider Tip", ItemInventoryPanel.FormatToolSlot("Q", "Insider Tip"));
+            Assert.AreEqual("[Q] Insider Tip", ItemInventoryPanel.FormatRelicSlot("Q", "Insider Tip"));
         }
 
         [Test]
-        public void FormatEmptyToolSlot_ShowsDashes()
+        public void FormatEmptyRelicSlot_ShowsDashes()
         {
-            Assert.AreEqual("[Q] ---", ItemInventoryPanel.FormatEmptyToolSlot("Q"));
+            Assert.AreEqual("[Q] ---", ItemInventoryPanel.FormatEmptyRelicSlot("Q"));
         }
 
         [Test]
@@ -46,136 +50,29 @@ namespace BullRun.Tests.UI
         // --- Hotkey Constants ---
 
         [Test]
-        public void ToolHotkeys_AreQER()
+        public void RelicHotkeys_AreQER()
         {
-            Assert.AreEqual(3, ItemInventoryPanel.ToolHotkeys.Length);
-            Assert.AreEqual("Q", ItemInventoryPanel.ToolHotkeys[0]);
-            Assert.AreEqual("E", ItemInventoryPanel.ToolHotkeys[1]);
-            Assert.AreEqual("R", ItemInventoryPanel.ToolHotkeys[2]);
+            Assert.AreEqual(3, ItemInventoryPanel.RelicHotkeys.Length);
+            Assert.AreEqual("Q", ItemInventoryPanel.RelicHotkeys[0]);
+            Assert.AreEqual("E", ItemInventoryPanel.RelicHotkeys[1]);
+            Assert.AreEqual("R", ItemInventoryPanel.RelicHotkeys[2]);
         }
 
         [Test]
-        public void MaxToolSlots_IsThree()
+        public void MaxDisplaySlots_IsThree()
         {
-            Assert.AreEqual(3, ItemInventoryPanel.MaxToolSlots);
+            Assert.AreEqual(3, ItemInventoryPanel.MaxDisplaySlots);
         }
 
-        // --- Item Category Partitioning (via ItemLookup) ---
+        // --- Relic Border Color ---
 
         [Test]
-        public void GetItemsByCategory_SingleTool_ReturnsMatchingItem()
+        public void RelicBorderColor_IsAmberGold()
         {
-            var items = new List<string> { "tool_stop_loss" };
-            var tools = ItemLookup.GetItemsByCategory(items, ItemCategory.TradingTool);
-            Assert.AreEqual(1, tools.Count);
-            Assert.AreEqual("Stop-Loss Order", tools[0].Name);
-        }
-
-        [Test]
-        public void GetItemsByCategory_MultipleTools_OrderPreserved()
-        {
-            var items = new List<string>
-            {
-                "tool_leverage",
-                "intel_insider_tip",
-                "tool_stop_loss",
-                "tool_dark_pool"
-            };
-            var tools = ItemLookup.GetItemsByCategory(items, ItemCategory.TradingTool);
-            Assert.AreEqual(3, tools.Count);
-            Assert.AreEqual("tool_leverage", tools[0].Id, "First tool = Q slot");
-            Assert.AreEqual("tool_stop_loss", tools[1].Id, "Second tool = E slot");
-            Assert.AreEqual("tool_dark_pool", tools[2].Id, "Third tool = R slot");
-        }
-
-        [Test]
-        public void GetItemsByCategory_FourTools_ReturnsAll()
-        {
-            var items = new List<string>
-            {
-                "tool_stop_loss",
-                "tool_limit_order",
-                "tool_speed_trader",
-                "tool_flash_trade" // 4th tool — exceeds max display
-            };
-            var tools = ItemLookup.GetItemsByCategory(items, ItemCategory.TradingTool);
-            // ItemLookup returns all matching items; panel caps display at MaxToolSlots (3)
-            Assert.AreEqual(4, tools.Count, "ItemLookup returns all tools");
-            // Panel would only display first 3 in Q/E/R slots
-        }
-
-        [Test]
-        public void GetItemsByCategory_PassivePerks_ListedCorrectly()
-        {
-            var items = new List<string>
-            {
-                "perk_volume_discount",
-                "perk_golden_parachute"
-            };
-            var perks = ItemLookup.GetItemsByCategory(items, ItemCategory.PassivePerk);
-            Assert.AreEqual(2, perks.Count);
-            Assert.AreEqual("Volume Discount", perks[0].Name);
-            Assert.AreEqual("Golden Parachute", perks[1].Name);
-        }
-
-        [Test]
-        public void GetItemsByCategory_IntelItems_ReturnsCorrectItems()
-        {
-            var items = new List<string>
-            {
-                "intel_analyst_report",
-                "intel_crystal_ball"
-            };
-            var intel = ItemLookup.GetItemsByCategory(items, ItemCategory.MarketIntel);
-            Assert.AreEqual(2, intel.Count);
-            Assert.AreEqual("Analyst Report", intel[0].Name);
-            Assert.AreEqual("Crystal Ball", intel[1].Name);
-        }
-
-        [Test]
-        public void GetItemsByCategory_MixedItems_SortIntoCorrectSections()
-        {
-            var items = new List<string>
-            {
-                "tool_stop_loss",
-                "intel_insider_tip",
-                "perk_volume_discount",
-                "tool_leverage",
-                "intel_crystal_ball",
-                "perk_golden_parachute"
-            };
-
-            var tools = ItemLookup.GetItemsByCategory(items, ItemCategory.TradingTool);
-            var intel = ItemLookup.GetItemsByCategory(items, ItemCategory.MarketIntel);
-            var perks = ItemLookup.GetItemsByCategory(items, ItemCategory.PassivePerk);
-
-            Assert.AreEqual(2, tools.Count, "Should have 2 tools");
-            Assert.AreEqual(2, intel.Count, "Should have 2 intel items");
-            Assert.AreEqual(2, perks.Count, "Should have 2 perks");
-        }
-
-        [Test]
-        public void GetItemsByCategory_EmptyActiveItems_ReturnsEmptyLists()
-        {
-            var items = new List<string>();
-            var tools = ItemLookup.GetItemsByCategory(items, ItemCategory.TradingTool);
-            var intel = ItemLookup.GetItemsByCategory(items, ItemCategory.MarketIntel);
-            var perks = ItemLookup.GetItemsByCategory(items, ItemCategory.PassivePerk);
-
-            Assert.AreEqual(0, tools.Count);
-            Assert.AreEqual(0, intel.Count);
-            Assert.AreEqual(0, perks.Count);
-        }
-
-        // --- Rarity Display ---
-
-        [Test]
-        public void GetRarityColor_AllTiers_ReturnExpectedColors()
-        {
-            Assert.AreEqual(new Color(0.6f, 0.6f, 0.6f, 1f), ItemLookup.GetRarityColor(ItemRarity.Common));
-            Assert.AreEqual(new Color(0.2f, 0.8f, 0.2f, 1f), ItemLookup.GetRarityColor(ItemRarity.Uncommon));
-            Assert.AreEqual(new Color(0.3f, 0.5f, 1f, 1f), ItemLookup.GetRarityColor(ItemRarity.Rare));
-            Assert.AreEqual(new Color(1f, 0.85f, 0f, 1f), ItemLookup.GetRarityColor(ItemRarity.Legendary));
+            var color = ItemInventoryPanel.RelicBorderColor;
+            Assert.AreEqual(1f, color.r, 0.01f);
+            Assert.AreEqual(0.7f, color.g, 0.01f);
+            Assert.AreEqual(0f, color.b, 0.01f);
         }
 
         // --- Dimmed/Empty State Colors ---

@@ -33,7 +33,9 @@ public class TradingState : IGameState
 
     public void Enter(RunContext ctx)
     {
-        _roundDuration = GameConfig.RoundDurationSeconds;
+        // Story 13.7: Extended Trading expansion adds 15s to round duration
+        _roundDuration = GameConfig.RoundDurationSeconds
+            + (ctx.OwnedExpansions.Contains(ExpansionDefinitions.ExtendedTrading) ? 15f : 0f);
         _timeRemaining = _roundDuration;
 
         Debug.Assert(NextConfig != null,

@@ -7,10 +7,10 @@ using UnityEngine.UI;
 /// </summary>
 public class TradingHUD : MonoBehaviour
 {
-    // Color constants for profit/loss states
-    public static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f); // #00FF88
-    public static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);     // #FF3333
-    public static readonly Color WarningYellow = new Color(1f, 0.85f, 0.2f, 1f); // #FFD933
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static Color ProfitGreen => CRTThemeData.TextHigh;
+    public static Color LossRed => CRTThemeData.Danger;
+    public static Color WarningYellow => CRTThemeData.Warning;
 
     private RunContext _runContext;
     private int _currentRound;
@@ -34,6 +34,9 @@ public class TradingHUD : MonoBehaviour
 
     // Tier theme reference — background image for tinting
     private Image _topBarBackground;
+
+    // Story 13.5: Insider tips display during trading
+    private Text _tipsDisplayText;
 
     public void Initialize(RunContext runContext, int currentRound, float roundDuration,
         Text cashText, Text portfolioValueText, Text portfolioChangeText,
@@ -61,6 +64,27 @@ public class TradingHUD : MonoBehaviour
     }
 
     /// <summary>
+    /// Story 14.2: Initialize from DashboardReferences instead of individual fields.
+    /// Extracts text references from DashboardReferences into existing private fields.
+    /// Backward-compatible: null refs are handled gracefully by RefreshDisplay null checks.
+    /// </summary>
+    public void Initialize(DashboardReferences dashRefs, RunContext runContext, int currentRound, float roundDuration)
+    {
+        Initialize(
+            runContext, currentRound, roundDuration,
+            dashRefs.CashText,
+            null, // portfolioValueText — populated by future story
+            null, // portfolioChangeText — populated by future story
+            dashRefs.ProfitText,
+            dashRefs.TargetText,
+            dashRefs.TargetProgressBar
+        );
+
+        if (dashRefs.RepText != null)
+            SetReputationDisplay(dashRefs.RepText);
+    }
+
+    /// <summary>
     /// Sets the top bar background image reference for tier theme tinting.
     /// Called by UISetup after creating the HUD.
     /// </summary>
@@ -75,6 +99,14 @@ public class TradingHUD : MonoBehaviour
     public void SetReputationDisplay(Text reputationText)
     {
         _reputationText = reputationText;
+    }
+
+    /// <summary>
+    /// Story 13.5: Sets the insider tips display text reference. Called by UISetup.
+    /// </summary>
+    public void SetTipsDisplay(Text tipsDisplayText)
+    {
+        _tipsDisplayText = tipsDisplayText;
     }
 
     private void OnDestroy()
@@ -133,6 +165,26 @@ public class TradingHUD : MonoBehaviour
         if (_reputationText != null)
             _reputationText.text = $"\u2605 {_runContext.Reputation.Current}";
 
+        // Story 13.5: Insider tips
+        if (_tipsDisplayText != null)
+        {
+            if (_runContext.RevealedTips != null && _runContext.RevealedTips.Count > 0)
+            {
+                var sb = new System.Text.StringBuilder();
+                for (int i = 0; i < _runContext.RevealedTips.Count; i++)
+                {
+                    if (i > 0) sb.Append(" | ");
+                    sb.Append(_runContext.RevealedTips[i].RevealedText);
+                }
+                _tipsDisplayText.text = sb.ToString();
+                _tipsDisplayText.gameObject.SetActive(true);
+            }
+            else
+            {
+                _tipsDisplayText.gameObject.SetActive(false);
+            }
+        }
+
         // Portfolio value + % change
         float totalValue = portfolio.GetTotalValue();
         if (_portfolioValueText != null)
@@ -178,17 +230,14 @@ public class TradingHUD : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies tier visual theme colors to HUD elements.
-    /// Updates top bar background tint with the tier's background color.
+    /// Story 14.6: Tier themes no longer tint the Control Deck background.
+    /// CRT base colors (Panel, TextHigh, TextLow) remain constant across tiers.
+    /// Chart line color is handled separately by ChartLineView.ApplyTierTheme().
     /// </summary>
     public void ApplyTierTheme(TierVisualTheme theme)
     {
-        if (_topBarBackground != null)
-        {
-            _topBarBackground.color = new Color(
-                theme.BackgroundTint.r, theme.BackgroundTint.g,
-                theme.BackgroundTint.b, 0.9f);
-        }
+        // No-op: CRT dashboard uses fixed CRTThemeData.Panel color regardless of tier.
+        // Chart line color (tier accent) is handled by ChartLineView.ApplyTierTheme.
     }
 
     // --- Static utility methods for testability ---

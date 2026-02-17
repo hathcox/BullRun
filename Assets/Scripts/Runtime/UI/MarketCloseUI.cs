@@ -8,8 +8,9 @@ using UnityEngine.UI;
 /// </summary>
 public class MarketCloseUI : MonoBehaviour
 {
-    private static readonly Color ProfitColor = new Color(0f, 1f, 0.4f, 1f);
-    private static readonly Color LossColor = new Color(1f, 0.3f, 0.3f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static Color ProfitColor => CRTThemeData.TextHigh;
+    private static Color LossColor => CRTThemeData.Danger;
     private static readonly Color HeaderColor = new Color(1f, 0.2f, 0.2f, 1f);
 
     private GameObject _panel;

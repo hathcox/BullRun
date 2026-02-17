@@ -84,6 +84,14 @@ public class Portfolio
         return true;
     }
 
+    /// <summary>
+    /// Adds cash to the portfolio (e.g. bond sell proceeds).
+    /// </summary>
+    public void AddCash(float amount)
+    {
+        Cash += amount;
+    }
+
     private void ClampCash()
     {
         if (Cash < 0f)

@@ -1,0 +1,14 @@
+unity_path: D:/UnityHub/Editor/6000.3.8f1/Editor/Unity.exe
+allowed_tools:
+- Read
+- Edit
+- Write
+- Glob
+- Grep
+- Bash(*)
+- Task
+- Skill
+max_turns: 150
+max_budget_usd: 15.0
+dev_story_command: bmad-gds-dev-story
+code_review_command: bmad-gds-code-review

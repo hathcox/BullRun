@@ -51,48 +51,48 @@ namespace BullRun.Tests.UI
             Assert.AreEqual("1:30", RoundTimerUI.FormatTime(90f));
         }
 
-        // --- GetTimerColor tests ---
+        // --- GetTimerColor tests (Story 14.6: migrated to CRTThemeData) ---
 
         [Test]
-        public void GetTimerColor_Above15s_ReturnsGreen()
+        public void GetTimerColor_Above15s_ReturnsCRTTextHigh()
         {
             Color color = RoundTimerUI.GetTimerColor(30f);
-            Assert.AreEqual(new Color(0f, 1f, 0.533f, 1f), color);
+            Assert.AreEqual(CRTThemeData.TextHigh, color);
         }
 
         [Test]
-        public void GetTimerColor_At15s_ReturnsYellow()
+        public void GetTimerColor_At15s_ReturnsCRTWarning()
         {
             Color color = RoundTimerUI.GetTimerColor(15f);
-            Assert.AreEqual(new Color(1f, 0.85f, 0.2f, 1f), color);
+            Assert.AreEqual(CRTThemeData.Warning, color);
         }
 
         [Test]
-        public void GetTimerColor_Between15And5_ReturnsYellow()
+        public void GetTimerColor_Between15And5_ReturnsCRTWarning()
         {
             Color color = RoundTimerUI.GetTimerColor(10f);
-            Assert.AreEqual(new Color(1f, 0.85f, 0.2f, 1f), color);
+            Assert.AreEqual(CRTThemeData.Warning, color);
         }
 
         [Test]
-        public void GetTimerColor_At5s_ReturnsRed()
+        public void GetTimerColor_At5s_ReturnsCRTDanger()
         {
             Color color = RoundTimerUI.GetTimerColor(5f);
-            Assert.AreEqual(new Color(1f, 0.2f, 0.2f, 1f), color);
+            Assert.AreEqual(CRTThemeData.Danger, color);
         }
 
         [Test]
-        public void GetTimerColor_Below5s_ReturnsRed()
+        public void GetTimerColor_Below5s_ReturnsCRTDanger()
         {
             Color color = RoundTimerUI.GetTimerColor(2f);
-            Assert.AreEqual(new Color(1f, 0.2f, 0.2f, 1f), color);
+            Assert.AreEqual(CRTThemeData.Danger, color);
         }
 
         [Test]
-        public void GetTimerColor_At0s_ReturnsRed()
+        public void GetTimerColor_At0s_ReturnsCRTDanger()
         {
             Color color = RoundTimerUI.GetTimerColor(0f);
-            Assert.AreEqual(new Color(1f, 0.2f, 0.2f, 1f), color);
+            Assert.AreEqual(CRTThemeData.Danger, color);
         }
 
         // --- GetProgressFraction tests ---

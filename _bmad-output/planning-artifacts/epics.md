@@ -3,6 +3,7 @@
 > Generated from GDD Section 12 + full feature specifications
 > Project: BullRun | Date: 2026-02-10
 
+<!--
 ---
 
 ## Epic 1: Price Engine
@@ -1038,6 +1039,7 @@ As a developer, I want comprehensive QA testing and a release build, so that the
 - Edge case testing (zero cash, max items, all events)
 - Build for Steam submission
 - No critical or major bugs remaining
+-->
 
 ---
 
@@ -1047,7 +1049,17 @@ As a developer, I want comprehensive QA testing and a release build, so that the
 **Phase:** Post-FIX Sprint, replaces/supersedes Epic 7 shop UI and flow
 **Depends On:** FIX-12 (Reputation currency), FIX-14 (Economy rebalance)
 
-### Story 13.1: Store Layout & Navigation Shell
+### Story 13.1: Store Data Model & State Management
+
+As a developer, I want a clean data model that tracks all store state within RunContext, so that store state persists correctly across rounds.
+
+**Acceptance Criteria:**
+- RunContext extended with: OwnedRelics, OwnedExpansions, BondsOwned, BondPurchaseHistory, CurrentShopRerollCount, InsiderTipSlots, RevealedTips
+- ShopState orchestrates all four panels
+- All purchases atomic (validate → deduct → apply → fire event)
+- Old ActiveItems migrated to OwnedRelics
+
+### Story 13.2: Store Layout & Navigation Shell
 
 As a player, I want the between-rounds store to have a clear multi-panel layout with distinct sections for Relics, Expansions, Insider Tips, and Bonds, so that I can quickly understand my options and make strategic purchases.
 
@@ -1064,7 +1076,7 @@ As a player, I want the between-rounds store to have a clear multi-panel layout 
 - `ShopOpenedEvent` and `ShopClosedEvent` still fire with updated payload
 - Keyboard navigation between panels (arrow keys or tab)
 
-### Story 13.2: Relics Panel — Item Offering, Purchase & Reroll
+### Story 13.3: Relics Panel — Item Offering, Purchase & Reroll
 
 As a player, I want the top section of the store to show 3 randomly selected relics that I can purchase with Reputation, and a reroll button to refresh the selection, so that I have meaningful choices and agency in my build.
 
@@ -1078,7 +1090,7 @@ As a player, I want the top section of the store to show 3 randomly selected rel
 - Item limit: maximum 5 relics (expandable via Trading Deck Expansion)
 - Relic definitions are OUT OF SCOPE — designed in a future epic
 
-### Story 13.3: Trading Deck Expansions Panel (Vouchers)
+### Story 13.4: Trading Deck Expansions Panel (Vouchers)
 
 As a player, I want a bottom-left panel offering permanent one-time upgrades that expand my trading capabilities, so that I can invest Reputation into unlocking powerful new mechanics across the run.
 
@@ -1088,7 +1100,7 @@ As a player, I want a bottom-left panel offering permanent one-time upgrades tha
 - 2-3 available per shop visit from unowned pool
 - Purchase deducts Reputation
 
-### Story 13.4: Insider Tips Panel (Hidden Intel)
+### Story 13.5: Insider Tips Panel (Hidden Intel)
 
 As a player, I want a bottom-center panel where I can purchase mystery intel cards that reveal hidden information about the next round, so that I can gain an information edge — but I won't know exactly what I'm getting until I buy it.
 
@@ -1099,7 +1111,7 @@ As a player, I want a bottom-center panel where I can purchase mystery intel car
 - Values calculated from next round data with ±10% fuzz
 - One-time purchase per slot per visit
 
-### Story 13.5: Bonds Panel (Reputation Investment)
+### Story 13.6: Bonds Panel (Reputation Investment)
 
 As a player, I want a bonds section where I can invest cash now to earn recurring Reputation in future rounds, so that I have a long-term investment strategy alongside my immediate trading.
 
@@ -1109,16 +1121,6 @@ As a player, I want a bonds section where I can invest cash now to earn recurrin
 - Each bond generates +1 Rep at the START of each subsequent round (cumulative)
 - Sell bonds for half original purchase price
 - Cannot purchase on Round 8
-
-### Story 13.6: Store Data Model & State Management
-
-As a developer, I want a clean data model that tracks all store state within RunContext, so that store state persists correctly across rounds.
-
-**Acceptance Criteria:**
-- RunContext extended with: OwnedRelics, OwnedExpansions, BondsOwned, BondPurchaseHistory, CurrentShopRerollCount, InsiderTipSlots, RevealedTips
-- ShopState orchestrates all four panels
-- All purchases atomic (validate → deduct → apply → fire event)
-- Old ActiveItems migrated to OwnedRelics
 
 ### Story 13.7: Expansion Effects Integration
 
@@ -1157,3 +1159,74 @@ As a developer, I want to cleanly remove the old 3-card draft shop and migrate r
 - Rarity-weighted selection replaced with uniform random
 - Old Trade Volume upgrade migrated to Trading Deck Expansions
 - All existing shop tests updated or replaced
+
+## Epic 14: Terminal 1999 — CRT Trading Cockpit UI
+
+**Description:** Complete visual rework of the trading-phase UI from scattered floating panels into a cohesive retro-futuristic CRT Trading Cockpit. Consolidates the top HUD bar, position overlay, and trade panel into a single bottom-docked "Control Deck." Frames the entire screen as a 1999 CRT monitor with scanlines, vignette, and phosphor-green text. Introduces a centralized theme system for consistent CRT aesthetic.
+**Phase:** Post-Epic 13, visual overhaul of the trading phase
+**Depends On:** Epic 13 (Store Rework — complete), FIX-16 (UI positioning — complete)
+
+### Story 14.1: CRT Theme Data System
+
+As a developer, I want a centralized CRT theme data class with all Terminal 1999 colors and a DashboardReferences struct, so that all UI stories share consistent colors and GameRunner has clean access to UI elements without GameObject.Find.
+
+**Acceptance Criteria:**
+- New CRTThemeData.cs with all Terminal 1999 color constants
+- New DashboardReferences.cs with public fields for all dashboard UI elements
+- Helper methods ApplyLabelStyle and ApplyPanelStyle for consistent styling
+- No existing code modified — additive only
+
+### Story 14.2: Control Deck Layout Shell
+
+As a developer, I want the bottom-docked Control Deck panel structure with three empty columns, so that subsequent stories can populate the Wallet, Actions, and Stats wings.
+
+**Acceptance Criteria:**
+- ExecuteControlDeck() creates bottom-center anchored panel with HorizontalLayoutGroup
+- Three child containers: Left_Wing, Center_Core, Right_Wing
+- CRT theme colors for panel background and border
+- Old top bar creation removed from UISetup.Execute()
+- TradingHUD.Initialize() updated for new DashboardReferences
+
+### Story 14.3: Wallet & Stats Wiring (Left/Right Wings)
+
+As a player, I want my Cash, Profit, and Target in the left column and Position, Time, and Rep in the right column of the Control Deck, so that all critical info is consolidated.
+
+**Acceptance Criteria:**
+- Left Wing: WALLET header, Cash/Profit/Target rows with CRT theme colors
+- Right Wing: POSITIONS header, Direction/P&L/Time/Rep rows
+- TradingHUD, PositionOverlay, RoundTimerUI rewired to new text refs
+- Old ExecutePositionOverlay() removed
+- All real-time updates continue working
+
+### Story 14.4: Action Buttons (Center Core)
+
+As a player, I want SELL, BUY, and SHORT buttons in the center column of the Control Deck, so that trading actions are consolidated with the dashboard.
+
+**Acceptance Criteria:**
+- Top row: SELL (red) + BUY (green); Bottom row: SHORT (amber)
+- Cooldown overlay covers Center Core
+- Short P&L panel inline below SHORT button
+- All button click wiring and keyboard shortcuts preserved
+- Old ExecuteTradePanel() removed
+
+### Story 14.5: Chart Repositioning & Event Ticker
+
+As a player, I want the price chart anchored above the Control Deck with an amber event ticker banner, so that the chart is framed within the CRT viewport and events are visible.
+
+**Acceptance Criteria:**
+- Chart bounds recalculated for above Control Deck
+- Stock label area with larger CRT-themed fonts
+- Amber event ticker banner between stock label and chart
+- Chart grid/background/label colors updated to CRT theme
+- NewsBanner redirected to event ticker
+
+### Story 14.6: CRT Bezel Overlay & Visual Polish
+
+As a player, I want the entire screen framed as a curved 1999 CRT monitor with scanline effects and phosphor glow, so that the cockpit has a cohesive retro-futuristic aesthetic.
+
+**Acceptance Criteria:**
+- Full-screen CRT overlay (vignette + scanlines, non-interactive)
+- All scattered color constants migrated to CRTThemeData
+- URP Bloom for phosphor glow effect
+- Tier themes layer over CRT base (accents only, base colors fixed)
+- No performance regressions
