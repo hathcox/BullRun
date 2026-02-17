@@ -681,13 +681,13 @@ namespace BullRun.Tests.Trading
         }
 
         [Test]
-        public void Cash_FlooredAtZero_AfterLiquidation_ShortLossExceedsMargin()
+        public void Cash_GoesNegative_AfterLiquidation_ShortLossExceedsCash()
         {
             var portfolio = new Portfolio(300f);
             portfolio.OpenShort("ACME", 10, 30.00f); // no margin, cash = 300
-            // price goes to 100: pnl = (30-100)*10 = -700, cash = 300 - 700 -> clamped to 0
+            // price goes to 100: pnl = (30-100)*10 = -700, cash = 300 - 700 = -400
             float pnl = portfolio.LiquidateAllPositions(id => 100.00f);
-            Assert.GreaterOrEqual(portfolio.Cash, 0f);
+            Assert.AreEqual(-400f, portfolio.Cash, 0.01f);
         }
 
         // --- Liquidation Tests (Story 2.5 Task 2) ---

@@ -161,7 +161,7 @@ public class Portfolio
 
     /// <summary>
     /// Covers (closes) a short position. Applies P&L directly to cash.
-    /// If loss exceeds available cash, cash floors at zero.
+    /// Cash can go negative if loss exceeds available funds.
     /// Returns realized P&L. Returns 0 if no short position or insufficient shares.
     /// </summary>
     public float CoverShort(string stockId, int shares, float currentPrice)
@@ -184,10 +184,8 @@ public class Portfolio
 
         float pnl = position.CalculateRealizedPnL(currentPrice, shares);
 
-        // No margin — apply P&L directly to cash
+        // No margin — apply P&L directly to cash (can go negative)
         Cash += pnl;
-        if (Cash < 0f)
-            Cash = 0f;
 
         if (shares == position.Shares)
         {
@@ -327,8 +325,6 @@ public class Portfolio
             float pnl = pos.UnrealizedPnL(price);
             totalPnL += pnl;
             Cash += pnl;
-            if (Cash < 0f)
-                Cash = 0f;
         }
         _shortPositions.Clear();
 

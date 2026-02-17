@@ -1465,7 +1465,8 @@ public class ShopUI : MonoBehaviour
         }
         if (_cashText != null && _ctx != null)
         {
-            _cashText.text = $"$ {_ctx.Portfolio.Cash:N0}";
+            _cashText.text = TradingHUD.FormatCurrency(_ctx.Portfolio.Cash);
+            _cashText.color = _ctx.Portfolio.Cash < 0f ? TradingHUD.LossRed : CRTThemeData.TextHigh;
         }
     }
 

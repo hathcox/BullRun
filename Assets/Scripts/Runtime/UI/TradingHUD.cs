@@ -159,7 +159,10 @@ public class TradingHUD : MonoBehaviour
 
         // Cash
         if (_cashText != null)
+        {
             _cashText.text = FormatCurrency(portfolio.Cash);
+            _cashText.color = portfolio.Cash < 0f ? LossRed : CRTThemeData.TextHigh;
+        }
 
         // FIX-12: Reputation
         if (_reputationText != null)
@@ -244,6 +247,8 @@ public class TradingHUD : MonoBehaviour
 
     public static string FormatCurrency(float value)
     {
+        if (value < 0f)
+            return "-" + (-value).ToString("$#,##0.00");
         return value.ToString("$#,##0.00");
     }
 

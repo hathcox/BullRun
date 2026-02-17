@@ -331,40 +331,6 @@ public static class ChartSetup
         stockPriceText.alignment = TextAnchor.MiddleCenter;
         stockPriceText.text = "";
 
-        // Story 14.5 AC 4: Event Ticker Banner — amber banner between stock label and chart
-        var tickerBannerGo = new GameObject("EventTickerBanner");
-        tickerBannerGo.transform.SetParent(canvasGo.transform, false);
-        var tickerBannerRect = tickerBannerGo.AddComponent<RectTransform>();
-        tickerBannerRect.anchorMin = new Vector2(0.5f, 1f);
-        tickerBannerRect.anchorMax = new Vector2(0.5f, 1f);
-        tickerBannerRect.pivot = new Vector2(0.5f, 1f);
-        // Position below stock label area (stock name -30, stock price -66...-94), above chart top
-        tickerBannerRect.anchoredPosition = new Vector2(0f, -94f);
-        tickerBannerRect.sizeDelta = new Vector2(1920f * ChartWidthPercent, EventTickerBanner.BannerHeight);
-
-        var tickerBg = tickerBannerGo.AddComponent<Image>();
-        tickerBg.color = EventTickerBanner.GetBannerColor();
-
-        var tickerCanvasGroup = tickerBannerGo.AddComponent<CanvasGroup>();
-
-        var tickerTextGo = new GameObject("HeadlineText");
-        tickerTextGo.transform.SetParent(tickerBannerGo.transform, false);
-        var tickerTextRect = tickerTextGo.AddComponent<RectTransform>();
-        tickerTextRect.anchorMin = Vector2.zero;
-        tickerTextRect.anchorMax = Vector2.one;
-        tickerTextRect.offsetMin = new Vector2(16f, 0f);
-        tickerTextRect.offsetMax = new Vector2(-16f, 0f);
-
-        var tickerText = tickerTextGo.AddComponent<Text>();
-        tickerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        tickerText.fontSize = 16;
-        tickerText.color = Color.white;
-        tickerText.fontStyle = FontStyle.Bold;
-        tickerText.alignment = TextAnchor.MiddleCenter;
-
-        var eventTickerBanner = canvasGo.AddComponent<EventTickerBanner>();
-        eventTickerBanner.Initialize(tickerBannerGo, tickerBg, tickerText, tickerCanvasGroup);
-
         // Initialize ChartUI MonoBehaviour
         var chartUIComponent = chartParent.AddComponent<ChartUI>();
         chartUIComponent.Initialize(chartRenderer, axisLabels, fillImage, priceText, chartBounds);
