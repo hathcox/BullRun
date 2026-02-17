@@ -71,18 +71,18 @@ namespace BullRun.Tests.Chart
         [Test]
         public void AxisLabelColor_IsCRTTextLow()
         {
-            // Story 14.5 AC 7: axis labels use dim cyan (#3b6e6e)
-            Assert.AreEqual(59 / 255f, CRTThemeData.TextLow.r, Tolerance, "TextLow red channel should be 59/255");
-            Assert.AreEqual(110 / 255f, CRTThemeData.TextLow.g, Tolerance, "TextLow green channel should be 110/255");
-            Assert.AreEqual(110 / 255f, CRTThemeData.TextLow.b, Tolerance, "TextLow blue channel should be 110/255");
-            Assert.Greater(CRTThemeData.TextLow.g, CRTThemeData.TextLow.r, "TextLow should be more green than red (teal)");
+            // Story 14.5 AC 7: axis labels use dim green (ColorPalette.GreenDim #245046)
+            Assert.AreEqual(ColorPalette.GreenDim.r, CRTThemeData.TextLow.r, Tolerance, "TextLow red channel");
+            Assert.AreEqual(ColorPalette.GreenDim.g, CRTThemeData.TextLow.g, Tolerance, "TextLow green channel");
+            Assert.AreEqual(ColorPalette.GreenDim.b, CRTThemeData.TextLow.b, Tolerance, "TextLow blue channel");
+            Assert.Greater(CRTThemeData.TextLow.g, CRTThemeData.TextLow.r, "TextLow should be more green than red");
         }
 
         [Test]
         public void CurrentPriceLabelColor_IsCRTTextHigh()
         {
-            // Story 14.5 AC 8: current price label uses phosphor green
-            Assert.Greater(CRTThemeData.TextHigh.g, 0.9f, "TextHigh green channel should be bright");
+            // Story 14.5 AC 8: current price label uses ColorPalette.Green (#3daa6e)
+            Assert.AreEqual(ColorPalette.Green, CRTThemeData.TextHigh, "TextHigh should match ColorPalette.Green");
         }
 
         // --- Canvas Coordinate Mapping ---

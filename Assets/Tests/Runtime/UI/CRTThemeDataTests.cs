@@ -43,49 +43,52 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void TextHigh_MatchesHex28f58d()
+        public void TextHigh_MatchesHex3daa6e()
         {
-            // #28f58d → (40/255, 245/255, 141/255, 1)
-            AssertColorEqual(new Color(0.157f, 0.961f, 0.553f, 1f), CRTThemeData.TextHigh, "TextHigh");
+            // TextHigh = ColorPalette.Green
+            AssertColorEqual(ColorPalette.Green, CRTThemeData.TextHigh, "TextHigh");
         }
 
         [Test]
-        public void TextLow_MatchesHex3b6e6e()
+        public void TextLow_MatchesHex245046()
         {
-            // #3b6e6e → (59/255, 110/255, 110/255, 1)
-            AssertColorEqual(new Color(0.231f, 0.431f, 0.431f, 1f), CRTThemeData.TextLow, "TextLow");
+            // TextLow = ColorPalette.GreenDim
+            AssertColorEqual(ColorPalette.GreenDim, CRTThemeData.TextLow, "TextLow");
         }
 
         [Test]
-        public void Warning_MatchesHexffb800()
+        public void Warning_MatchesHexcc9400()
         {
-            // #ffb800 → (1, 184/255, 0, 1)
-            AssertColorEqual(new Color(1f, 0.722f, 0f, 1f), CRTThemeData.Warning, "Warning");
+            // Warning = ColorPalette.Amber
+            AssertColorEqual(ColorPalette.Amber, CRTThemeData.Warning, "Warning");
         }
 
         [Test]
-        public void Danger_MatchesHexff4444()
+        public void Danger_MatchesHexe65555()
         {
-            // #ff4444 → (1, 68/255, 68/255, 1)
-            AssertColorEqual(new Color(1f, 0.267f, 0.267f, 1f), CRTThemeData.Danger, "Danger");
+            // Danger = ColorPalette.Red
+            AssertColorEqual(ColorPalette.Red, CRTThemeData.Danger, "Danger");
         }
 
         [Test]
-        public void ButtonBuy_MatchesHex28f58d()
+        public void ButtonBuy_MatchesHex3daa6e()
         {
-            AssertColorEqual(new Color(0.157f, 0.961f, 0.553f, 1f), CRTThemeData.ButtonBuy, "ButtonBuy");
+            // ButtonBuy = ColorPalette.Green
+            AssertColorEqual(ColorPalette.Green, CRTThemeData.ButtonBuy, "ButtonBuy");
         }
 
         [Test]
-        public void ButtonSell_MatchesHexff4444()
+        public void ButtonSell_MatchesHexe65555()
         {
-            AssertColorEqual(new Color(1f, 0.267f, 0.267f, 1f), CRTThemeData.ButtonSell, "ButtonSell");
+            // ButtonSell = ColorPalette.Red
+            AssertColorEqual(ColorPalette.Red, CRTThemeData.ButtonSell, "ButtonSell");
         }
 
         [Test]
-        public void ButtonShort_MatchesHexffb800()
+        public void ButtonShort_MatchesHexcc9400()
         {
-            AssertColorEqual(new Color(1f, 0.722f, 0f, 1f), CRTThemeData.ButtonShort, "ButtonShort");
+            // ButtonShort = ColorPalette.Amber
+            AssertColorEqual(ColorPalette.Amber, CRTThemeData.ButtonShort, "ButtonShort");
         }
 
         // ── 3.2  ApplyLabelStyle tests ─────────────────────────────────

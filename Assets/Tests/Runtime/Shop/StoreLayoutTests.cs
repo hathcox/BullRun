@@ -194,18 +194,15 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ShopUI_ReputationColor_IsAmberGold()
         {
-            var color = ShopUI.ReputationColor;
-            Assert.AreEqual(1f, color.r, 0.01f);
-            Assert.AreEqual(0.7f, color.g, 0.01f);
-            Assert.AreEqual(0f, color.b, 0.01f);
+            // ReputationColor = ColorPalette.Amber (#cc9400)
+            Assert.AreEqual(ColorPalette.Amber, ShopUI.ReputationColor);
         }
 
         [Test]
         public void ShopUI_CashColor_IsGreen()
         {
-            var color = ShopUI.CashColor;
-            Assert.Greater(color.g, 0.8f);
-            Assert.Less(color.r, 0.5f);
+            // CashColor = ColorPalette.Green (#3daa6e)
+            Assert.AreEqual(ColorPalette.Green, ShopUI.CashColor);
         }
 
         [Test]
@@ -270,9 +267,9 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ShopUI_FocusColor_IsBlueHighlight()
         {
-            var color = ShopUI.FocusColor;
-            Assert.Greater(color.b, 0.8f, "Focus color should have strong blue component");
-            Assert.Greater(color.a, 0.3f, "Focus color should be somewhat visible");
+            // FocusColor = ColorPalette.WithAlpha(ColorPalette.Cyan, 0.6f)
+            var expected = ColorPalette.WithAlpha(ColorPalette.Cyan, 0.6f);
+            Assert.AreEqual(expected, ShopUI.FocusColor);
         }
     }
 }

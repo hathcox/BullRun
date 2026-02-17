@@ -16,10 +16,12 @@ namespace BullRun.Tests.Shop
         [Test]
         public void RelicCardColor_MatchesExpectedDarkBlue()
         {
-            var color = ShopUI.RelicCardColor;
-            Assert.AreEqual(0.08f, color.r, 0.01f);
-            Assert.AreEqual(0.1f, color.g, 0.01f);
-            Assert.AreEqual(0.22f, color.b, 0.01f);
+            // RelicCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.2f), 0.9f)
+            var expected = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.2f), 0.9f);
+            Assert.AreEqual(expected.r, ShopUI.RelicCardColor.r, 0.01f);
+            Assert.AreEqual(expected.g, ShopUI.RelicCardColor.g, 0.01f);
+            Assert.AreEqual(expected.b, ShopUI.RelicCardColor.b, 0.01f);
+            Assert.AreEqual(expected.a, ShopUI.RelicCardColor.a, 0.01f);
         }
 
         [Test]

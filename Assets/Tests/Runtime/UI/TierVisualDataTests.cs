@@ -98,9 +98,8 @@ namespace BullRun.Tests.UI
         public void Penny_AccentColor_IsNeonGreen()
         {
             var theme = TierVisualData.GetTheme(StockTier.Penny);
-            // Hot neon green
-            Assert.Greater(theme.AccentColor.g, 0.8f);
-            Assert.Less(theme.AccentColor.r, 0.2f);
+            // Penny accent = ColorPalette.Green (#3daa6e)
+            Assert.AreEqual(ColorPalette.Green, theme.AccentColor);
         }
 
         [Test]
@@ -117,10 +116,8 @@ namespace BullRun.Tests.UI
         public void LowValue_AccentColor_IsAmberGold()
         {
             var theme = TierVisualData.GetTheme(StockTier.LowValue);
-            // Amber/gold: high red, moderate green, low blue
-            Assert.Greater(theme.AccentColor.r, 0.8f);
-            Assert.Greater(theme.AccentColor.g, 0.5f);
-            Assert.Less(theme.AccentColor.b, 0.3f);
+            // LowValue accent = ColorPalette.Amber (#cc9400)
+            Assert.AreEqual(ColorPalette.Amber, theme.AccentColor);
         }
 
         // --- Mid-Value theme: cyan/teal accents, navy tint ---
@@ -129,10 +126,8 @@ namespace BullRun.Tests.UI
         public void MidValue_AccentColor_IsCyanTeal()
         {
             var theme = TierVisualData.GetTheme(StockTier.MidValue);
-            // Cyan/teal: low red, high green and blue
-            Assert.Less(theme.AccentColor.r, 0.3f);
-            Assert.Greater(theme.AccentColor.g, 0.7f);
-            Assert.Greater(theme.AccentColor.b, 0.7f);
+            // MidValue accent = ColorPalette.Cyan (#38a0b0)
+            Assert.AreEqual(ColorPalette.Cyan, theme.AccentColor);
         }
 
         // --- Blue Chip theme: gold accents, deep black tint ---
@@ -141,10 +136,8 @@ namespace BullRun.Tests.UI
         public void BlueChip_AccentColor_IsGold()
         {
             var theme = TierVisualData.GetTheme(StockTier.BlueChip);
-            // Gold: high red, high green, low blue
-            Assert.Greater(theme.AccentColor.r, 0.8f);
-            Assert.Greater(theme.AccentColor.g, 0.7f);
-            Assert.Less(theme.AccentColor.b, 0.3f);
+            // BlueChip accent = ColorPalette.Gold (#ccac28)
+            Assert.AreEqual(ColorPalette.Gold, theme.AccentColor);
         }
 
         [Test]

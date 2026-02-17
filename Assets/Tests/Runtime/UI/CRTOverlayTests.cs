@@ -126,10 +126,9 @@ namespace BullRun.Tests.UI
         [Test]
         public void TierVisualData_PennyTheme_ChartLineIsNeonGreen()
         {
+            // Penny ChartLineColor = ColorPalette.Green (#3daa6e)
             var theme = TierVisualData.GetTheme(StockTier.Penny);
-            Assert.AreEqual(0f, theme.ChartLineColor.r, Tolerance);
-            Assert.AreEqual(1f, theme.ChartLineColor.g, Tolerance);
-            Assert.AreEqual(0.533f, theme.ChartLineColor.b, Tolerance);
+            Assert.AreEqual(ColorPalette.Green, theme.ChartLineColor);
         }
 
         [Test]

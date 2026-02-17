@@ -12,10 +12,8 @@ namespace BullRun.Tests.Chart
         {
             var config = ChartVisualConfig.Default;
 
-            // Neon green: approximately #00FF88
-            Assert.AreEqual(0f, config.LineColor.r, 0.01f);
-            Assert.Greater(config.LineColor.g, 0.9f);
-            Assert.Greater(config.LineColor.b, 0.4f);
+            // Default line color = ColorPalette.Green (#3daa6e)
+            Assert.AreEqual(ColorPalette.Green, config.LineColor);
         }
 
         [Test]
