@@ -159,8 +159,8 @@ public class GameRunner : MonoBehaviour
         EventBus.Subscribe<MarketOpenEvent>(OnMarketOpenForOverlay);
 
         // Create event display systems (subscribe to MarketEventFiredEvent)
-        UISetup.ExecuteNewsBanner();
-        UISetup.ExecuteNewsTicker();
+        // Story 14.5: NewsBanner replaced by EventTickerBanner (created in ChartSetup).
+        // NewsTicker removed — covered by Control Deck.
         UISetup.ExecuteScreenEffects();
         UISetup.ExecuteEventPopup();
 

@@ -47,16 +47,17 @@ public class ChartUI : MonoBehaviour
         _stockNameLabel = stockNameLabel;
         _stockPriceLabel = stockPriceLabel;
 
+        // Story 14.5 AC 3: dot prefix on ticker display
         EventBus.Subscribe<StockSelectedEvent>(evt =>
         {
             if (_stockNameLabel != null)
-                _stockNameLabel.text = evt.TickerSymbol;
+                _stockNameLabel.text = "\u25C9 " + evt.TickerSymbol;
         });
 
         EventBus.Subscribe<MarketOpenEvent>(evt =>
         {
             if (_stockNameLabel != null && evt.TickerSymbols != null && evt.TickerSymbols.Length > 0)
-                _stockNameLabel.text = evt.TickerSymbols[0];
+                _stockNameLabel.text = "\u25C9 " + evt.TickerSymbols[0];
         });
     }
 

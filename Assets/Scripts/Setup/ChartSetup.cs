@@ -10,9 +10,12 @@ public static class ChartSetup
 {
     // FIX-5: No sidebar on left. FIX-7: No positions panel on right — chart uses full width.
     private static readonly float ChartWidthPercent = 0.80f;
-    private static readonly float ChartHeightPercent = 0.70f;
+    // Story 14.5: Reduced from 0.70 to 0.55 — chart occupies middle ~55%, leaving
+    // bottom ~25% for Control Deck and top ~10% for stock label + event ticker.
+    private static readonly float ChartHeightPercent = 0.55f;
     private static readonly int AxisLabelCount = 5;
-    private static readonly Color BackgroundColor = new Color(0.039f, 0.055f, 0.153f, 1f); // #0A0E27 dark navy
+    // Note: Chart background is determined by Camera clear color, not a panel.
+    // AC 6 (CRT background) deferred to Story 14.6 global CRT theme application.
     private static Material _lineMaterial;
     private static Material _meshMaterial;
 
@@ -51,8 +54,10 @@ public static class ChartSetup
         float chartWorldHeight = worldHeight * ChartHeightPercent;
         float chartLeft = -chartWorldWidth / 2f;
         float chartRight = chartWorldWidth / 2f;
-        float chartBottom = -chartWorldHeight / 2f;
-        float chartTop = chartWorldHeight / 2f;
+        // Story 14.5: Shift chart upward so bottom edge clears the Control Deck.
+        // Reserve bottom ~25% for Control Deck, chart starts at -25% from center.
+        float chartBottom = -worldHeight * 0.5f + worldHeight * 0.25f;
+        float chartTop = chartBottom + chartWorldHeight;
 
         var chartBounds = new Rect(chartLeft, chartBottom, chartWorldWidth, chartWorldHeight);
 
@@ -93,12 +98,14 @@ public static class ChartSetup
         var gridlinesParent = new GameObject("PriceGridlines");
         gridlinesParent.transform.SetParent(chartParent.transform);
         var gridlines = new LineRenderer[AxisLabelCount];
+        // Story 14.5 AC 5: CRT border color with subtle opacity
+        var gridColor = new Color(CRTThemeData.Border.r, CRTThemeData.Border.g, CRTThemeData.Border.b, 0.2f);
         for (int i = 0; i < AxisLabelCount; i++)
         {
             var gridlineGo = CreateLineRendererObject($"Gridline_{i}", gridlinesParent.transform);
             var lr = gridlineGo.GetComponent<LineRenderer>();
-            lr.startColor = new Color(0.4f, 0.4f, 0.5f, 0.15f);
-            lr.endColor = new Color(0.4f, 0.4f, 0.5f, 0.15f);
+            lr.startColor = gridColor;
+            lr.endColor = gridColor;
             lr.startWidth = 0.005f;
             lr.endWidth = 0.005f;
             lr.sortingOrder = -2;
@@ -116,7 +123,7 @@ public static class ChartSetup
         chartLineView.SetTradeVisuals(breakEvenLR, shortPositionLR, markerPoolGo.transform);
 
         // Create chart UI Canvas — returns ChartUI for event wiring
-        var chartUI = CreateChartUI(chartParent, chartRenderer, chartBounds);
+        var chartUI = CreateChartUI(chartParent, chartRenderer, chartBounds, worldHeight);
 
         // Subscribe ChartRenderer to EventBus
         EventBus.Subscribe<PriceUpdatedEvent>(chartRenderer.ProcessPriceUpdate);
@@ -208,7 +215,7 @@ public static class ChartSetup
         return go;
     }
 
-    private static ChartUI CreateChartUI(GameObject chartParent, ChartRenderer chartRenderer, Rect chartBounds)
+    private static ChartUI CreateChartUI(GameObject chartParent, ChartRenderer chartRenderer, Rect chartBounds, float worldHeight)
     {
         // Create Canvas for chart UI elements
         var canvasGo = new GameObject("ChartCanvas");
@@ -228,15 +235,20 @@ public static class ChartSetup
         // 960 = half canvas width. Labels placed at right edge of chart area with margin.
         float axisLabelX = 960f * ChartWidthPercent + 10f; // Just past right edge of chart
 
+        // Story 14.5: Convert world-space chart bounds to canvas-space Y positions.
+        // Canvas ref is 1920x1080, center at (0,0). World bounds map proportionally.
+        float canvasChartBottom = (chartBounds.yMin / worldHeight) * 1080f;
+        float canvasChartTop = (chartBounds.yMax / worldHeight) * 1080f;
+
         for (int i = 0; i < AxisLabelCount; i++)
         {
             var labelGo = new GameObject($"AxisLabel_{i}");
             labelGo.transform.SetParent(canvasGo.transform);
             var rectTransform = labelGo.AddComponent<RectTransform>();
 
-            // Position labels on right side, evenly distributed vertically
+            // Position labels on right side, evenly distributed vertically within chart bounds
             float yNorm = (float)i / (AxisLabelCount - 1);
-            float yPos = Mathf.Lerp(-540f * ChartHeightPercent, 540f * ChartHeightPercent, yNorm);
+            float yPos = Mathf.Lerp(canvasChartBottom, canvasChartTop, yNorm);
 
             rectTransform.anchoredPosition = new Vector2(axisLabelX, yPos);
             rectTransform.sizeDelta = new Vector2(70f, 30f);
@@ -244,18 +256,18 @@ public static class ChartSetup
             var text = labelGo.AddComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.fontSize = 14;
-            text.color = new Color(0.8f, 0.8f, 0.8f, 1f); // Light gray
+            text.color = CRTThemeData.TextLow; // Story 14.5: dim cyan for axis labels
             text.alignment = TextAnchor.MiddleLeft;
             text.text = "$0.00";
 
             axisLabels[i] = text;
         }
 
-        // Create time progress bar along bottom
+        // Create time progress bar along bottom of chart area
         var progressBarBg = new GameObject("TimeProgressBarBg");
         progressBarBg.transform.SetParent(canvasGo.transform);
         var bgRect = progressBarBg.AddComponent<RectTransform>();
-        bgRect.anchoredPosition = new Vector2(0f, -540f * ChartHeightPercent - 20f);
+        bgRect.anchoredPosition = new Vector2(0f, canvasChartBottom - 20f);
         bgRect.sizeDelta = new Vector2(1920f * ChartWidthPercent, 6f);
         var bgImage = progressBarBg.AddComponent<Image>();
         bgImage.color = new Color(0.15f, 0.15f, 0.2f, 0.5f);
@@ -268,7 +280,7 @@ public static class ChartSetup
         fillRect.offsetMin = Vector2.zero;
         fillRect.offsetMax = Vector2.zero;
         var fillImage = progressBarFill.AddComponent<Image>();
-        fillImage.color = new Color(0f, 1f, 0.533f, 0.4f); // Subtle neon green
+        fillImage.color = new Color(CRTThemeData.TextHigh.r, CRTThemeData.TextHigh.g, CRTThemeData.TextHigh.b, 0.4f); // Story 14.5: CRT phosphor green
         fillImage.type = Image.Type.Filled;
         fillImage.fillMethod = Image.FillMethod.Horizontal;
         fillImage.fillAmount = 0f;
@@ -282,42 +294,76 @@ public static class ChartSetup
         var priceText = priceLabelGo.AddComponent<Text>();
         priceText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         priceText.fontSize = 16;
-        priceText.color = ChartVisualConfig.Default.LineColor;
+        priceText.color = CRTThemeData.TextHigh; // Story 14.5 AC 8: phosphor green for current price
         priceText.fontStyle = FontStyle.Bold;
         priceText.alignment = TextAnchor.MiddleLeft;
 
-        // Stock name label — centered above chart
+        // Story 14.5: Stock name label — centered at top, larger font for CRT readability
         var stockNameGo = new GameObject("StockNameLabel");
         stockNameGo.transform.SetParent(canvasGo.transform);
         var stockNameRect = stockNameGo.AddComponent<RectTransform>();
         stockNameRect.anchorMin = new Vector2(0.5f, 1f);
         stockNameRect.anchorMax = new Vector2(0.5f, 1f);
         stockNameRect.pivot = new Vector2(0.5f, 1f);
-        stockNameRect.anchoredPosition = new Vector2(0f, -70f); // Below top bar
-        stockNameRect.sizeDelta = new Vector2(200f, 30f);
+        stockNameRect.anchoredPosition = new Vector2(0f, -30f);
+        stockNameRect.sizeDelta = new Vector2(400f, 36f);
         var stockNameText = stockNameGo.AddComponent<Text>();
         stockNameText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        stockNameText.fontSize = 24;
-        stockNameText.color = new Color(0f, 1f, 0.533f, 1f); // Neon green
+        stockNameText.fontSize = 28; // AC 3: larger 28pt for CRT readability
+        stockNameText.color = CRTThemeData.TextHigh; // AC 3: phosphor green
         stockNameText.fontStyle = FontStyle.Bold;
         stockNameText.alignment = TextAnchor.MiddleCenter;
         stockNameText.text = "";
 
-        // Stock price label — just below ticker
+        // Story 14.5: Stock price label — just below ticker, 20pt white
         var stockPriceGo = new GameObject("StockPriceLabel");
         stockPriceGo.transform.SetParent(canvasGo.transform);
         var stockPriceRect = stockPriceGo.AddComponent<RectTransform>();
         stockPriceRect.anchorMin = new Vector2(0.5f, 1f);
         stockPriceRect.anchorMax = new Vector2(0.5f, 1f);
         stockPriceRect.pivot = new Vector2(0.5f, 1f);
-        stockPriceRect.anchoredPosition = new Vector2(0f, -100f);
-        stockPriceRect.sizeDelta = new Vector2(200f, 24f);
+        stockPriceRect.anchoredPosition = new Vector2(0f, -66f);
+        stockPriceRect.sizeDelta = new Vector2(400f, 28f);
         var stockPriceText = stockPriceGo.AddComponent<Text>();
         stockPriceText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        stockPriceText.fontSize = 18;
+        stockPriceText.fontSize = 20; // AC 3: larger 20pt for CRT readability
         stockPriceText.color = Color.white;
         stockPriceText.alignment = TextAnchor.MiddleCenter;
         stockPriceText.text = "";
+
+        // Story 14.5 AC 4: Event Ticker Banner — amber banner between stock label and chart
+        var tickerBannerGo = new GameObject("EventTickerBanner");
+        tickerBannerGo.transform.SetParent(canvasGo.transform, false);
+        var tickerBannerRect = tickerBannerGo.AddComponent<RectTransform>();
+        tickerBannerRect.anchorMin = new Vector2(0.5f, 1f);
+        tickerBannerRect.anchorMax = new Vector2(0.5f, 1f);
+        tickerBannerRect.pivot = new Vector2(0.5f, 1f);
+        // Position below stock label area (stock name -30, stock price -66...-94), above chart top
+        tickerBannerRect.anchoredPosition = new Vector2(0f, -94f);
+        tickerBannerRect.sizeDelta = new Vector2(1920f * ChartWidthPercent, EventTickerBanner.BannerHeight);
+
+        var tickerBg = tickerBannerGo.AddComponent<Image>();
+        tickerBg.color = EventTickerBanner.GetBannerColor();
+
+        var tickerCanvasGroup = tickerBannerGo.AddComponent<CanvasGroup>();
+
+        var tickerTextGo = new GameObject("HeadlineText");
+        tickerTextGo.transform.SetParent(tickerBannerGo.transform, false);
+        var tickerTextRect = tickerTextGo.AddComponent<RectTransform>();
+        tickerTextRect.anchorMin = Vector2.zero;
+        tickerTextRect.anchorMax = Vector2.one;
+        tickerTextRect.offsetMin = new Vector2(16f, 0f);
+        tickerTextRect.offsetMax = new Vector2(-16f, 0f);
+
+        var tickerText = tickerTextGo.AddComponent<Text>();
+        tickerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        tickerText.fontSize = 16;
+        tickerText.color = Color.white;
+        tickerText.fontStyle = FontStyle.Bold;
+        tickerText.alignment = TextAnchor.MiddleCenter;
+
+        var eventTickerBanner = canvasGo.AddComponent<EventTickerBanner>();
+        eventTickerBanner.Initialize(tickerBannerGo, tickerBg, tickerText, tickerCanvasGroup);
 
         // Initialize ChartUI MonoBehaviour
         var chartUIComponent = chartParent.AddComponent<ChartUI>();
