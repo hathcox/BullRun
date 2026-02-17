@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<test-run id="2" testcasecount="0" result="Passed" total="0" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-02-17 01:19:09Z" end-time="2026-02-17 01:19:09Z" duration="0.0022879">
-  <test-suite type="TestSuite" id="1004" name="BullRun" fullname="BullRun" runstate="Runnable" testcasecount="0" result="Passed" start-time="2026-02-17 01:19:09Z" end-time="2026-02-17 01:19:09Z" duration="0.002288" total="0" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0">
+<test-run id="2" testcasecount="0" result="Passed" total="0" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-02-17 01:36:46Z" end-time="2026-02-17 01:36:46Z" duration="0.0024191">
+  <test-suite type="TestSuite" id="1004" name="BullRun" fullname="BullRun" runstate="Runnable" testcasecount="0" result="Passed" start-time="2026-02-17 01:36:46Z" end-time="2026-02-17 01:36:46Z" duration="0.002419" total="0" passed="0" failed="0" inconclusive="0" skipped="0" asserts="0">
     <properties>
       <property name="platform" value="PlayMode" />
     </properties>

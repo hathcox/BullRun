@@ -13,6 +13,9 @@ using UnityEngine.UI;
 /// </summary>
 public class GameRunner : MonoBehaviour
 {
+    /// <summary>Cached instance set in Awake, used by UISetup button wiring to avoid FindObjectOfType per click.</summary>
+    internal static GameRunner Instance { get; private set; }
+
     // FIX-11: Short lifecycle state machine
     public enum ShortState { RoundLockout, Ready, Holding, CashOutWindow, Cooldown }
 
@@ -24,7 +27,6 @@ public class GameRunner : MonoBehaviour
     private QuantitySelector _quantitySelector;
     private PositionOverlay _positionOverlay;
     private bool _firstFrameSkipped;
-    private bool _tradePanelVisible;
 
     // Post-trade cooldown (FIX-10 v2): instant trade, then lock out both buttons
     private float _postTradeCooldownTimer;
@@ -47,7 +49,7 @@ public class GameRunner : MonoBehaviour
     private int _short2OpenStockId = -1; // Numeric stock ID for price lookups (multi-stock safe)
     private bool _dualShortActive;
 
-    // Short UI references (integrated into trade panel via QuantitySelector)
+    // Short UI references (wired from DashboardReferences in Start)
     private Image _shortButtonImage;
     private Text _shortButtonText;
     private GameObject _shortPnlPanel;
@@ -69,6 +71,8 @@ public class GameRunner : MonoBehaviour
 
     private void Awake()
     {
+        Instance = this;
+
         // Clear stale EventBus subscriptions from previous play sessions
         EventBus.Clear();
 
@@ -108,29 +112,38 @@ public class GameRunner : MonoBehaviour
         // Create trade feedback overlay
         UISetup.ExecuteTradeFeedback();
 
-        // Create trade panel with BUY/SELL buttons and quantity presets (FIX-6)
-        _quantitySelector = UISetup.ExecuteTradePanel();
-        _quantitySelector.gameObject.SetActive(false); // Hidden until TradingState activates
+        // Story 14.4: Create QuantitySelector (trade quantity logic only — UI now in Control Deck)
+        var qsGo = new GameObject("QuantitySelector");
+        _quantitySelector = qsGo.AddComponent<QuantitySelector>();
+        _quantitySelector.Initialize();
 
-        // Short UI references are now integrated into the trade panel
-        _shortButtonImage = _quantitySelector.ShortButtonImage;
-        _shortButtonText = _quantitySelector.ShortButtonText;
-        _shortPnlPanel = _quantitySelector.ShortPnlPanel;
-        _shortPnlEntryText = _quantitySelector.ShortPnlEntryText;
-        _shortPnlValueText = _quantitySelector.ShortPnlValueText;
-        _shortPnlCountdownText = _quantitySelector.ShortPnlCountdownText;
+        // Story 14.4: Wire short/cooldown UI refs from DashboardReferences (populated by ExecuteControlDeck)
+        var dashRefs = UISetup.DashRefs;
+        _quantitySelector.CooldownOverlay = dashRefs.CooldownOverlay;
+        _quantitySelector.CooldownTimerText = dashRefs.CooldownTimerText;
+
+        _shortButtonImage = dashRefs.ShortButtonImage;
+        _shortButtonText = dashRefs.ShortButtonText;
+        _shortPnlPanel = dashRefs.ShortPnlPanel;
+        _shortPnlEntryText = dashRefs.ShortPnlEntryText;
+        _shortPnlValueText = dashRefs.ShortPnlValueText;
+        _shortPnlCountdownText = dashRefs.ShortPnlCountdownText;
         if (_shortButtonImage != null)
             _shortButtonOriginalColor = _shortButtonImage.color;
 
-        // Story 13.7: Second short UI references
-        _short2ButtonImage = _quantitySelector.Short2ButtonImage;
-        _short2ButtonText = _quantitySelector.Short2ButtonText;
-        _short2PnlPanel = _quantitySelector.Short2PnlPanel;
-        _short2PnlEntryText = _quantitySelector.Short2PnlEntryText;
-        _short2PnlValueText = _quantitySelector.Short2PnlValueText;
-        _short2PnlCountdownText = _quantitySelector.Short2PnlCountdownText;
+        // Story 13.7: Second short UI references from DashboardReferences
+        _short2ButtonImage = dashRefs.Short2ButtonImage;
+        _short2ButtonText = dashRefs.Short2ButtonText;
+        _short2PnlPanel = dashRefs.Short2PnlPanel;
+        _short2PnlEntryText = dashRefs.Short2PnlEntryText;
+        _short2PnlValueText = dashRefs.Short2PnlValueText;
+        _short2PnlCountdownText = dashRefs.Short2PnlCountdownText;
         if (_short2ButtonImage != null)
             _short2ButtonOriginalColor = _short2ButtonImage.color;
+
+        // Story 14.4: Wire expansion visibility refs from DashboardReferences
+        _quantitySelector.LeverageBadge = dashRefs.LeverageBadge;
+        _quantitySelector.Short2Container = dashRefs.Short2Container;
 
         // Subscribe to trade button clicks from UI
         EventBus.Subscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
@@ -192,12 +205,8 @@ public class GameRunner : MonoBehaviour
 
         _stateMachine.Update();
 
-        // Show/hide trade panel (includes short section) based on trading state
-        if (TradingState.IsActive != _tradePanelVisible)
-        {
-            _tradePanelVisible = TradingState.IsActive;
-            _quantitySelector.gameObject.SetActive(_tradePanelVisible);
-        }
+        // Story 14.4: Action buttons are now part of Control Deck (always visible).
+        // Button clicks are gated by TradingState.IsActive checks in OnTradeButtonPressed / HandleShortInput.
 
         // FIX-10 v2: Tick post-trade cooldown timer and update countdown display
         if (_isPostTradeCooldownActive)
@@ -597,6 +606,8 @@ public class GameRunner : MonoBehaviour
 
     public void HandleShort2Input()
     {
+        if (!TradingState.IsActive) return;
+
         switch (_short2State)
         {
             case ShortState.Ready:
@@ -770,9 +781,12 @@ public class GameRunner : MonoBehaviour
 
     /// <summary>
     /// FIX-11: Handles D key press (or SHORT button click) based on current short state.
+    /// Gated by TradingState.IsActive to prevent trades outside the trading phase.
     /// </summary>
     public void HandleShortInput()
     {
+        if (!TradingState.IsActive) return;
+
         switch (_shortState)
         {
             case ShortState.Ready:

@@ -18,7 +18,28 @@ public class DashboardReferences
     public Button BuyButton;
     public Button SellButton;
     public Button ShortButton;
-    public Image CooldownOverlay;
+
+    // Short UI references
+    public Image ShortButtonImage;
+    public Text ShortButtonText;
+    public GameObject ShortPnlPanel;
+    public Text ShortPnlEntryText;
+    public Text ShortPnlValueText;
+    public Text ShortPnlCountdownText;
+
+    // Short 2 (Dual Short expansion) references
+    public Image Short2ButtonImage;
+    public Text Short2ButtonText;
+    public GameObject Short2PnlPanel;
+    public Text Short2PnlEntryText;
+    public Text Short2PnlValueText;
+    public Text Short2PnlCountdownText;
+    public GameObject Short2Container;
+
+    // Cooldown & Leverage
+    public GameObject CooldownOverlay;
+    public Text CooldownTimerText;
+    public GameObject LeverageBadge;
 
     // ── Right Wing: Position Info ───────────────────────────────────────
     public Text DirectionText;

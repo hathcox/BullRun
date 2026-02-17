@@ -22,24 +22,10 @@ public class QuantitySelector : MonoBehaviour
     /// <summary>Grey overlay GameObject that covers buttons during post-trade cooldown.</summary>
     public GameObject CooldownOverlay { get; set; }
 
-    // Short UI references (integrated into trade panel)
-    public Image ShortButtonImage { get; set; }
-    public Text ShortButtonText { get; set; }
-    public GameObject ShortPnlPanel { get; set; }
-    public Text ShortPnlEntryText { get; set; }
-    public Text ShortPnlValueText { get; set; }
-    public Text ShortPnlCountdownText { get; set; }
-
     // Story 13.7: Leverage badge (shown when expansion active)
     public GameObject LeverageBadge { get; set; }
 
-    // Story 13.7: Second short UI references (Dual Short expansion)
-    public Image Short2ButtonImage { get; set; }
-    public Text Short2ButtonText { get; set; }
-    public GameObject Short2PnlPanel { get; set; }
-    public Text Short2PnlEntryText { get; set; }
-    public Text Short2PnlValueText { get; set; }
-    public Text Short2PnlCountdownText { get; set; }
+    // Story 13.7: Short 2 container (Dual Short expansion visibility)
     public GameObject Short2Container { get; set; }
 
     public void Initialize()
