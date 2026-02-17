@@ -18,7 +18,7 @@ public class PositionPanel : MonoBehaviour
     public static Color ShortSqueezeWarningColor => CRTThemeData.Danger;
     public static readonly float WarningPulseFrequency = 5f;
 
-    private static readonly Color DimTextColor = new Color(0.5f, 0.5f, 0.55f, 1f);
+    private static readonly Color DimTextColor = ColorPalette.WhiteDim;
 
     private PositionPanelData _data;
     private Portfolio _portfolio;

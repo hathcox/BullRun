@@ -22,40 +22,36 @@ public readonly struct TierVisualTheme
 /// <summary>
 /// Static data class containing visual theme definitions per stock tier.
 /// Per GDD Section 7.1: synthwave aesthetic with escalating visual intensity.
-///
-/// Penny:     Wild/chaotic feel — hot neon green accent, dark purple tint
-/// Low-Value: Warmer — amber/gold accents, dark blue tint
-/// Mid-Value: Professional — cyan/teal accents, navy tint
-/// Blue Chip: Premium — gold accents, deep black tint
+/// All colors derived from ColorPalette.
 /// </summary>
 public static class TierVisualData
 {
-    // Penny: Wild, chaotic, "back alley trading" — neon green on dark purple
+    // Penny: Wild, chaotic — green accent on dark teal
     public static readonly TierVisualTheme Penny = new TierVisualTheme(
-        accentColor: new Color(0f, 1f, 0.533f, 1f),       // #00FF88 hot neon green
-        backgroundTint: new Color(0.06f, 0.03f, 0.15f, 1f), // Dark purple
-        chartLineColor: new Color(0f, 1f, 0.533f, 1f)      // #00FF88 neon green
+        accentColor: ColorPalette.Green,
+        backgroundTint: new Color(0.03f, 0.04f, 0.06f, 1f),
+        chartLineColor: ColorPalette.Green
     );
 
-    // Low-Value: Warmer, more structured, "trading floor" — amber/gold on dark blue
+    // Low-Value: Warmer, more structured — amber on dark blue
     public static readonly TierVisualTheme LowValue = new TierVisualTheme(
-        accentColor: new Color(1f, 0.75f, 0.1f, 1f),       // Amber/gold
-        backgroundTint: new Color(0.03f, 0.05f, 0.15f, 1f), // Dark blue
-        chartLineColor: new Color(1f, 0.75f, 0.1f, 1f)      // Amber/gold line
+        accentColor: ColorPalette.Amber,
+        backgroundTint: new Color(0.03f, 0.05f, 0.15f, 1f),
+        chartLineColor: ColorPalette.Amber
     );
 
-    // Mid-Value: Professional, clean, "corner office" — cyan/teal on navy
+    // Mid-Value: Professional, clean — cyan on navy
     public static readonly TierVisualTheme MidValue = new TierVisualTheme(
-        accentColor: new Color(0f, 0.9f, 0.9f, 1f),        // Cyan/teal
-        backgroundTint: new Color(0.02f, 0.04f, 0.12f, 1f), // Navy
-        chartLineColor: new Color(0f, 0.9f, 0.9f, 1f)       // Cyan/teal line
+        accentColor: ColorPalette.Cyan,
+        backgroundTint: new Color(0.02f, 0.04f, 0.12f, 1f),
+        chartLineColor: ColorPalette.Cyan
     );
 
-    // Blue Chip: Premium, refined, "penthouse" — gold on deep black
+    // Blue Chip: Premium, refined — gold on deep black
     public static readonly TierVisualTheme BlueChip = new TierVisualTheme(
-        accentColor: new Color(1f, 0.85f, 0f, 1f),          // Gold
-        backgroundTint: new Color(0.02f, 0.02f, 0.05f, 1f), // Deep black
-        chartLineColor: new Color(1f, 0.85f, 0f, 1f)         // Gold line
+        accentColor: ColorPalette.Gold,
+        backgroundTint: new Color(0.02f, 0.02f, 0.05f, 1f),
+        chartLineColor: ColorPalette.Gold
     );
 
     private static readonly Dictionary<StockTier, TierVisualTheme> _themes =
@@ -96,8 +92,7 @@ public static class TierVisualData
         return new ChartVisualConfig
         {
             LineColor = theme.ChartLineColor,
-            GlowColor = new Color(theme.ChartLineColor.r, theme.ChartLineColor.g,
-                theme.ChartLineColor.b, 0.3f),
+            GlowColor = ColorPalette.WithAlpha(theme.ChartLineColor, 0.3f),
             LineWidthPixels = defaults.LineWidthPixels,
             GlowWidthPixels = defaults.GlowWidthPixels,
             IndicatorSize = defaults.IndicatorSize

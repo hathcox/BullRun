@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// </summary>
 public class ActTransitionUI : MonoBehaviour
 {
-    private static readonly Color HeaderColor = new Color(1f, 0.85f, 0f, 1f);
+    private static readonly Color HeaderColor = ColorPalette.Gold;
 
     private GameObject _panel;
     private Text _headerText;

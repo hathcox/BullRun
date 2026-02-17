@@ -9,8 +9,8 @@ using UnityEngine.UI;
 /// </summary>
 public class TradeFeedback : MonoBehaviour
 {
-    public static readonly Color ShortPink = new Color(1f, 0.4f, 0.7f, 1f);
-    public static readonly Color SellCyan = new Color(0.4f, 0.85f, 1f, 1f);
+    public static readonly Color ShortPink = ColorPalette.Amber;
+    public static readonly Color SellCyan = ColorPalette.Cyan;
 
     private Text _feedbackText;
     private CanvasGroup _canvasGroup;

@@ -8,9 +8,9 @@ using UnityEngine.UI;
 /// </summary>
 public class ScreenEffects : MonoBehaviour
 {
-    public static readonly Color CrashRedPulse = new Color(0.8f, 0f, 0f, 0.3f);    // #CC0000
-    public static readonly Color BullGreenTint = new Color(0f, 0.8f, 0.267f, 0.15f); // #00CC44
-    public static readonly Color FlashRed = new Color(1f, 0f, 0f, 0.5f);            // #FF0000
+    public static readonly Color CrashRedPulse = ColorPalette.WithAlpha(ColorPalette.Red, 0.3f);
+    public static readonly Color BullGreenTint = ColorPalette.WithAlpha(ColorPalette.Green, 0.15f);
+    public static readonly Color FlashRed = ColorPalette.WithAlpha(ColorPalette.Red, 0.5f);
     public static readonly float ShakeDuration = 1.5f;
     public static readonly float ShakeIntensity = 8f;
     public static readonly float RedPulseDuration = 2f;

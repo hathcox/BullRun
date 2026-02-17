@@ -29,8 +29,8 @@ public struct ChartVisualConfig
     /// </summary>
     public static ChartVisualConfig Default => new ChartVisualConfig
     {
-        LineColor = new Color(0f, 1f, 0.533f, 1f), // #00FF88
-        GlowColor = new Color(0f, 1f, 0.533f, 0.3f), // Same at 30% alpha
+        LineColor = ColorPalette.Green,
+        GlowColor = ColorPalette.WithAlpha(ColorPalette.Green, 0.3f),
         LineWidthPixels = 3f,
         GlowWidthPixels = 7.5f, // 2.5x main line
         IndicatorSize = 0.15f

@@ -15,16 +15,16 @@ public class StockSidebar : MonoBehaviour
     private bool _dirty;
 
     // Story 14.6: Color constants migrated to CRTThemeData
-    private static readonly Color DefaultSelectedBgColor = new Color(CRTThemeData.Panel.r * 1.5f, CRTThemeData.Panel.g * 1.5f, CRTThemeData.Panel.b * 1.5f, 0.9f);
-    private static readonly Color DefaultNormalBgColor = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.6f);
+    private static readonly Color DefaultSelectedBgColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.9f);
+    private static readonly Color DefaultNormalBgColor = ColorPalette.WithAlpha(ColorPalette.Panel, 0.6f);
     private static Color ProfitGreen => CRTThemeData.TextHigh;
     private static Color LossRed => CRTThemeData.Danger;
 
     // Event indicator colors
-    public static readonly Color VolumeIconColor = new Color(1f, 0.533f, 0f, 1f);    // #FF8800 orange
+    public static readonly Color VolumeIconColor = ColorPalette.Amber;
     public static Color WarningIconColor => CRTThemeData.Warning;
-    public static readonly Color SectorWinColor = new Color(CRTThemeData.TextHigh.r, CRTThemeData.TextHigh.g, CRTThemeData.TextHigh.b, 0.4f);
-    public static readonly Color SectorLoseColor = new Color(CRTThemeData.Danger.r, CRTThemeData.Danger.g, CRTThemeData.Danger.b, 0.4f);
+    public static readonly Color SectorWinColor = ColorPalette.WithAlpha(ColorPalette.Green, 0.4f);
+    public static readonly Color SectorLoseColor = ColorPalette.WithAlpha(ColorPalette.Red, 0.4f);
     public static readonly float VolumePulseFrequency = 4f;
 
     // Tier-themed colors (defaults to standard colors)

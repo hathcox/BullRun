@@ -11,7 +11,7 @@ public class MarketCloseUI : MonoBehaviour
     // Story 14.6: Color constants migrated to CRTThemeData
     private static Color ProfitColor => CRTThemeData.TextHigh;
     private static Color LossColor => CRTThemeData.Danger;
-    private static readonly Color HeaderColor = new Color(1f, 0.2f, 0.2f, 1f);
+    private static readonly Color HeaderColor = ColorPalette.Red;
 
     private GameObject _panel;
     private Text _headerText;

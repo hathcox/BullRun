@@ -13,8 +13,8 @@ public class MarketOpenUI : MonoBehaviour
     private static Color LabelColor => CRTThemeData.TextLow;
     private static Color ValueColor => CRTThemeData.TextHigh;
     private static Color TargetColor => CRTThemeData.Warning;
-    private static readonly Color HeadlineColor = new Color(0.8f, 0.85f, 1f, 1f);
-    private static readonly Color BondRepColor = new Color(1f, 0.7f, 0f, 1f);
+    private static readonly Color HeadlineColor = ColorPalette.White;
+    private static readonly Color BondRepColor = ColorPalette.Amber;
 
     private GameObject _panel;
     private Text _headerText;

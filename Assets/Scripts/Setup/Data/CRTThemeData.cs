@@ -3,31 +3,31 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Terminal 1999 CRT theme colors and styling helpers.
-/// All values are hex-accurate constants for the cockpit UI overhaul (Epic 14).
+/// Thin wrapper around ColorPalette for UI styling convenience.
 /// </summary>
 public static class CRTThemeData
 {
     // ── Background & Structure ──────────────────────────────────────────
-    public static readonly Color Background  = new Color(5 / 255f, 10 / 255f, 10 / 255f, 1f);      // #050a0a
-    public static readonly Color Panel       = new Color(6 / 255f, 24 / 255f, 24 / 255f, 0.9f);     // #061818 @ 90%
-    public static readonly Color Border      = new Color(34 / 255f, 68 / 255f, 68 / 255f, 1f);      // #224444
+    public static readonly Color Background  = ColorPalette.Background;
+    public static readonly Color Panel       = ColorPalette.Panel;
+    public static readonly Color Border      = ColorPalette.Border;
 
     // ── Text ────────────────────────────────────────────────────────────
-    public static readonly Color TextHigh    = new Color(40 / 255f, 245 / 255f, 141 / 255f, 1f);    // #28f58d  phosphor green
-    public static readonly Color TextLow     = new Color(59 / 255f, 110 / 255f, 110 / 255f, 1f);    // #3b6e6e  dim green
+    public static readonly Color TextHigh    = ColorPalette.Green;
+    public static readonly Color TextLow     = ColorPalette.GreenDim;
 
     // ── Accent / Action ─────────────────────────────────────────────────
-    public static readonly Color Warning     = new Color(1f, 184 / 255f, 0f, 1f);                   // #ffb800
-    public static readonly Color Danger      = new Color(1f, 68 / 255f, 68 / 255f, 1f);             // #ff4444
+    public static readonly Color Warning     = ColorPalette.Amber;
+    public static readonly Color Danger      = ColorPalette.Red;
 
     // ── CRT Overlay ──────────────────────────────────────────────────────
-    public static readonly float ScanlineOpacity   = 0.08f;  // 5-10% opacity for scanline dark lines
-    public static readonly float VignetteIntensity = 0.6f;   // Max alpha at vignette edges
+    public static readonly float ScanlineOpacity   = 0.08f;
+    public static readonly float VignetteIntensity = 0.6f;
 
     // ── Button Colors ───────────────────────────────────────────────────
-    public static readonly Color ButtonBuy   = new Color(40 / 255f, 245 / 255f, 141 / 255f, 1f);    // #28f58d
-    public static readonly Color ButtonSell  = new Color(1f, 68 / 255f, 68 / 255f, 1f);             // #ff4444
-    public static readonly Color ButtonShort = new Color(1f, 184 / 255f, 0f, 1f);                   // #ffb800
+    public static readonly Color ButtonBuy   = ColorPalette.Green;
+    public static readonly Color ButtonSell  = ColorPalette.Red;
+    public static readonly Color ButtonShort = ColorPalette.Amber;
 
     // ── Styling Helpers ─────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ public class RoundResultsUI : MonoBehaviour
 {
     // Story 14.6: Color constants migrated to CRTThemeData
     private static Color HeaderColor => CRTThemeData.TextHigh;
-    private static readonly Color StatsColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+    private static readonly Color StatsColor = ColorPalette.WhiteDim;
     private static Color CheckmarkColor => CRTThemeData.TextHigh;
     private static Color FailCheckmarkColor => CRTThemeData.Danger;
 

@@ -397,7 +397,7 @@ public static class UISetup
         leverageBadgeRect.pivot = new Vector2(0.5f, 0f);
         leverageBadgeRect.anchoredPosition = new Vector2(0f, 162f); // Just above Control Deck (160px)
         leverageBadgeRect.sizeDelta = new Vector2(0f, 24f);
-        leverageBadgeGo.GetComponent<Image>().color = new Color(1f, 0.6f, 0f, 0.9f); // Orange
+        leverageBadgeGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Amber, 0.9f);
         var leverageLabel = CreateLabel("LeverageText", leverageBadgeGo.transform, "2x LEVERAGE",
             Color.white, 14);
         leverageLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
@@ -437,7 +437,7 @@ public static class UISetup
         refs.PositionEntryContainer = posContainerGo.transform;
 
         // "No positions" empty text — shown when no positions are open
-        var emptyTextGo = CreateLabel("PositionEmptyText", posContainerGo.transform, "No positions", new Color(0.5f, 0.5f, 0.55f, 1f), 15);
+        var emptyTextGo = CreateLabel("PositionEmptyText", posContainerGo.transform, "No positions", ColorPalette.WhiteDim, 15);
         emptyTextGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
         emptyTextGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
         refs.PositionEmptyText = emptyTextGo.GetComponent<Text>();
@@ -526,7 +526,7 @@ public static class UISetup
         var entryRect = entryGo.GetComponent<RectTransform>();
         entryRect.sizeDelta = new Vector2(0f, EntryHeight);
         view.Background = entryGo.GetComponent<Image>();
-        view.Background.color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.6f);
+        view.Background.color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.6f);
 
         // Single-row layout: [1] TICK  $100.00  +1.2%
         // All elements vertically centered at Y=0.5
@@ -645,7 +645,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.92f);
+        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.92f);
 
         // CanvasGroup for fade-in
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
@@ -678,7 +678,7 @@ public static class UISetup
 
         // Headline
         var headlineGo = CreateLabel("Headline", centerPanel.transform, "\"Markets await direction\"",
-            new Color(0.8f, 0.85f, 1f, 1f), 18);
+            ColorPalette.White, 18);
         headlineGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
 
         // Target label
@@ -686,7 +686,7 @@ public static class UISetup
 
         // Target value (large, prominent)
         var targetGo = CreateLabel("TargetValue", centerPanel.transform, "$0",
-            new Color(1f, 0.85f, 0.2f, 1f), 36);
+            ColorPalette.Gold, 36);
         targetGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // Countdown text
@@ -695,7 +695,7 @@ public static class UISetup
 
         // Bond Rep payout text (Story 13.6, AC 14) — hidden by default
         var bondRepGo = CreateLabel("BondRepText", centerPanel.transform, "",
-            new Color(1f, 0.7f, 0f, 1f), 16);
+            ColorPalette.Amber, 16);
         bondRepGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         bondRepGo.SetActive(false);
 
@@ -747,7 +747,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.95f);
+        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.95f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -773,12 +773,12 @@ public static class UISetup
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // Stats
-        var statsGo = CreateLabel("Stats", centerPanel.transform, "", new Color(0.8f, 0.8f, 0.8f, 1f), 16);
+        var statsGo = CreateLabel("Stats", centerPanel.transform, "", ColorPalette.WhiteDim, 16);
         statsGo.GetComponent<RectTransform>().sizeDelta = new Vector2(400f, 120f);
 
         // Prompt
         var promptGo = CreateLabel("Prompt", centerPanel.transform, "Press any key to continue",
-            new Color(0.6f, 0.6f, 0.6f, 1f), 14);
+            ColorPalette.Dimmed(ColorPalette.WhiteDim, 0.7f), 14);
 
         // Initialize MonoBehaviour
         var runSummaryUI = overlayParent.AddComponent<RunSummaryUI>();
@@ -823,7 +823,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.9f);
+        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.9f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -849,7 +849,7 @@ public static class UISetup
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // Stats
-        var statsGo = CreateLabel("Stats", centerPanel.transform, "", new Color(0.8f, 0.8f, 0.8f, 1f), 16);
+        var statsGo = CreateLabel("Stats", centerPanel.transform, "", ColorPalette.WhiteDim, 16);
         statsGo.GetComponent<RectTransform>().sizeDelta = new Vector2(350f, 80f);
 
         // Checkmark/X indicator
@@ -901,7 +901,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.95f);
+        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.95f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -923,7 +923,7 @@ public static class UISetup
 
         // "ACT 2" — large, bold, gold header
         var actHeaderGo = CreateLabel("ActHeader", centerPanel.transform, "ACT 2",
-            new Color(1f, 0.85f, 0f, 1f), 48);
+            ColorPalette.Gold, 48);
         actHeaderGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // "LOW-VALUE STOCKS" — subtitle, white
@@ -934,7 +934,7 @@ public static class UISetup
         // "Rising Stakes — Trends and Reversals" — tagline, smaller, muted color
         var taglineGo = CreateLabel("Tagline", centerPanel.transform,
             "Rising Stakes \u2014 Trends and Reversals",
-            new Color(0.7f, 0.7f, 0.8f, 1f), 18);
+            ColorPalette.WhiteDim, 18);
         taglineGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
 
         // Initialize TierTransitionUI MonoBehaviour
@@ -1021,7 +1021,7 @@ public static class UISetup
         barRect.pivot = new Vector2(0.5f, 0f);
         barRect.anchoredPosition = Vector2.zero;
         barRect.sizeDelta = new Vector2(0f, tickerHeight);
-        barGo.GetComponent<Image>().color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.85f);
+        barGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.85f);
 
         // Scroll container — clipped by parent
         var scrollGo = new GameObject("ScrollContainer");
@@ -1083,7 +1083,7 @@ public static class UISetup
         redPulseRect.offsetMin = Vector2.zero;
         redPulseRect.offsetMax = Vector2.zero;
         var redPulseImage = redPulseGo.GetComponent<Image>();
-        redPulseImage.color = new Color(0.8f, 0f, 0f, 0f);
+        redPulseImage.color = ColorPalette.WithAlpha(ColorPalette.Red, 0f);
         redPulseImage.raycastTarget = false;
 
         // Green tint overlay (BullRun)
@@ -1094,7 +1094,7 @@ public static class UISetup
         greenTintRect.offsetMin = Vector2.zero;
         greenTintRect.offsetMax = Vector2.zero;
         var greenTintImage = greenTintGo.GetComponent<Image>();
-        greenTintImage.color = new Color(0f, 0.8f, 0.267f, 0f);
+        greenTintImage.color = ColorPalette.WithAlpha(ColorPalette.Green, 0f);
         greenTintImage.raycastTarget = false;
 
         // Flash overlay (FlashCrash)
@@ -1105,7 +1105,7 @@ public static class UISetup
         flashRect.offsetMin = Vector2.zero;
         flashRect.offsetMax = Vector2.zero;
         var flashImage = flashGo.GetComponent<Image>();
-        flashImage.color = new Color(1f, 0f, 0f, 0f);
+        flashImage.color = ColorPalette.WithAlpha(ColorPalette.Red, 0f);
         flashImage.raycastTarget = false;
 
         var screenEffects = effectsParent.AddComponent<ScreenEffects>();
@@ -1147,7 +1147,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.95f);
+        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.95f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -1217,7 +1217,7 @@ public static class UISetup
 
         // "Next Round" button
         var nextRoundBtnGo = CreatePanel("NextRoundBtn", controlPanel.transform);
-        nextRoundBtnGo.GetComponent<Image>().color = new Color(0.15f, 0.3f, 0.6f, 1f);
+        nextRoundBtnGo.GetComponent<Image>().color = ColorPalette.Dimmed(ColorPalette.Cyan, 0.4f);
         var nextRoundBtnLayout = nextRoundBtnGo.AddComponent<LayoutElement>();
         nextRoundBtnLayout.preferredHeight = 50f;
         var nextRoundButton = nextRoundBtnGo.AddComponent<Button>();
@@ -1227,7 +1227,7 @@ public static class UISetup
 
         // "Reroll" button
         var rerollBtnGo = CreatePanel("RerollBtn", controlPanel.transform);
-        rerollBtnGo.GetComponent<Image>().color = new Color(0.4f, 0.2f, 0.5f, 1f);
+        rerollBtnGo.GetComponent<Image>().color = ColorPalette.Dimmed(ColorPalette.CyanDim, 0.6f);
         var rerollBtnLayout = rerollBtnGo.AddComponent<LayoutElement>();
         rerollBtnLayout.preferredHeight = 40f;
         var rerollButton = rerollBtnGo.AddComponent<Button>();
@@ -1335,7 +1335,7 @@ public static class UISetup
 
         // Description text — adequate contrast and line spacing (Story 13.8, AC 7)
         var descGo = CreateLabel($"Desc_{index}", cardGo.transform, "",
-            new Color(0.8f, 0.8f, 0.85f, 1f), 13);
+            ColorPalette.WhiteDim, 13);
         var descRect = descGo.GetComponent<RectTransform>();
         descRect.sizeDelta = new Vector2(200f, 60f);
         view.DescriptionText = descGo.GetComponent<Text>();
@@ -1356,7 +1356,7 @@ public static class UISetup
         var btnLayoutElem = btnGo.AddComponent<LayoutElement>();
         btnLayoutElem.minHeight = 36f;
         btnLayoutElem.preferredHeight = 36f;
-        btnGo.GetComponent<Image>().color = new Color(0f, 0.6f, 0.3f, 1f);
+        btnGo.GetComponent<Image>().color = ColorPalette.Dimmed(ColorPalette.Green, 0.5f);
         view.PurchaseButton = btnGo.AddComponent<Button>();
 
         var btnLabel = CreateLabel($"BuyBtnText_{index}", btnGo.transform, "BUY",
@@ -1395,7 +1395,7 @@ public static class UISetup
 
         // Placeholder content area
         var contentGo = CreateLabel($"{name}Content", panelGo.transform, "Coming soon...",
-            new Color(0.4f, 0.4f, 0.5f, 0.7f), 12);
+            ColorPalette.WithAlpha(ColorPalette.GreenDim, 0.7f), 12);
         contentGo.GetComponent<Text>().raycastTarget = false;
 
         return panelGo;
@@ -1505,7 +1505,7 @@ public static class UISetup
         containerRect.pivot = new Vector2(0.5f, 0.5f);
         containerRect.anchoredPosition = new Vector2(0f, -120f);
         containerRect.sizeDelta = new Vector2(420f, 50f);
-        containerGo.GetComponent<Image>().color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.85f);
+        containerGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.85f);
         containerGo.GetComponent<Image>().raycastTarget = false;
 
         var canvasGroup = containerGo.AddComponent<CanvasGroup>();

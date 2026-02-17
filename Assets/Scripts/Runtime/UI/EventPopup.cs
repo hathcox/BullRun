@@ -17,10 +17,10 @@ public class EventPopup : MonoBehaviour
     public static readonly float FlyDuration = 0.4f;
     public static readonly float FlyDistance = 1200f;
     public static readonly float FlyScaleEnd = 1.2f;
-    public static readonly Color PositiveColor = new Color(0f, 0.8f, 0.3f, 0.85f);
-    public static readonly Color NegativeColor = new Color(0.9f, 0f, 0.2f, 0.85f);
-    public static readonly Color PositiveTextColor = new Color(0.7f, 1f, 0.7f, 1f);
-    public static readonly Color NegativeTextColor = new Color(1f, 0.7f, 0.7f, 1f);
+    public static readonly Color PositiveColor = ColorPalette.WithAlpha(ColorPalette.Green, 0.85f);
+    public static readonly Color NegativeColor = ColorPalette.WithAlpha(ColorPalette.Red, 0.85f);
+    public static readonly Color PositiveTextColor = ColorPalette.Dimmed(ColorPalette.Green, 0.7f) + new Color(0.3f, 0.3f, 0.3f, 0f);
+    public static readonly Color NegativeTextColor = ColorPalette.Dimmed(ColorPalette.Red, 0.7f) + new Color(0.3f, 0.3f, 0.3f, 0f);
     public static readonly string UpArrow = "\u25B2";
     public static readonly string DownArrow = "\u25BC";
 

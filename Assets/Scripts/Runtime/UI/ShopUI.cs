@@ -15,30 +15,30 @@ using UnityEngine.UI;
 public class ShopUI : MonoBehaviour
 {
     // Reputation display color (amber/gold)
-    public static readonly Color ReputationColor = new Color(1f, 0.7f, 0f, 1f);
+    public static readonly Color ReputationColor = ColorPalette.Amber;
 
     // Cash display color (green)
-    public static readonly Color CashColor = new Color(0.2f, 0.9f, 0.3f, 1f);
+    public static readonly Color CashColor = ColorPalette.Green;
 
     // Story 14.6: Color constants migrated to CRTThemeData
-    public static Color PanelHeaderColor => CRTThemeData.TextLow;
+    public static Color PanelHeaderColor => ColorPalette.GreenDim;
 
     // Panel border/background colors
-    public static readonly Color PanelBgColor = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.9f);
-    public static readonly Color PanelBorderColor = CRTThemeData.Border;
+    public static readonly Color PanelBgColor = ColorPalette.Panel;
+    public static readonly Color PanelBorderColor = ColorPalette.Border;
 
     // Focus indicator color
-    public static readonly Color FocusColor = new Color(0.3f, 0.5f, 1f, 0.6f);
+    public static readonly Color FocusColor = ColorPalette.WithAlpha(ColorPalette.Cyan, 0.6f);
 
     // Sold card color
-    public static readonly Color SoldCardColor = new Color(0.1f, 0.15f, 0.1f, 0.7f);
+    public static readonly Color SoldCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.7f);
 
     // Sold out card color
     public static readonly Color SoldOutCardColor = new Color(0.15f, 0.15f, 0.15f, 0.5f);
 
     // Unified relic card border color (AC 1 — no rarity differentiation)
-    public static readonly Color RelicCardColor = new Color(0.08f, 0.1f, 0.22f, 0.9f);
-    public static readonly Color RelicCardHoverColor = new Color(0.14f, 0.18f, 0.38f, 1f);
+    public static readonly Color RelicCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.2f), 0.9f);
+    public static readonly Color RelicCardHoverColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2f), 1f);
 
     // Animation timing constants
     public const float HoverScale = 1.05f;
@@ -80,7 +80,7 @@ public class ShopUI : MonoBehaviour
     private int _focusedPanelIndex = -1;
 
     // Expansion card color (teal accent)
-    public static readonly Color ExpansionCardColor = new Color(0.08f, 0.14f, 0.18f, 0.9f);
+    public static readonly Color ExpansionCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.4f), 0.9f);
     public static readonly Color OwnedOverlayColor = new Color(0.1f, 0.2f, 0.1f, 0.85f);
 
     // State — now uses RelicDef
@@ -101,12 +101,12 @@ public class ShopUI : MonoBehaviour
     private InsiderTipGenerator.TipOffering[] _tipOffering;
     private System.Action<int> _onTipPurchase;
 
-    // Tip card colors (dark purple/mystery theme)
-    public static readonly Color TipCardFaceDownColor = new Color(0.12f, 0.08f, 0.18f, 0.9f);
-    public static readonly Color TipCardRevealedColor = new Color(0.08f, 0.16f, 0.12f, 0.9f);
+    // Tip card colors (mystery theme — cyan-tinted)
+    public static readonly Color TipCardFaceDownColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.CyanDim, 0.3f), 0.9f);
+    public static readonly Color TipCardRevealedColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.9f);
 
     // Bond panel colors (green/cash theme — Story 13.6)
-    public static readonly Color BondCardColor = new Color(0.08f, 0.16f, 0.10f, 0.9f);
+    public static readonly Color BondCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.9f);
 
     // Hover animation state (Story 13.8)
     private Coroutine[] _hoverCoroutines;
@@ -362,7 +362,7 @@ public class ShopUI : MonoBehaviour
                 bool canAfford = ctx.Reputation.CanAfford(offering[i].Cost);
                 _expansionCards[i].PurchaseButton.interactable = canAfford;
                 _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-                _expansionCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+                _expansionCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
             }
         }
     }
@@ -410,7 +410,7 @@ public class ShopUI : MonoBehaviour
             bool canAfford = _ctx.Reputation.CanAfford(_expansionOffering[i].Cost);
             _expansionCards[i].PurchaseButton.interactable = canAfford;
             _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-            _expansionCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+            _expansionCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
         }
     }
 
@@ -455,7 +455,7 @@ public class ShopUI : MonoBehaviour
         view.DescriptionText = descGo.AddComponent<Text>();
         view.DescriptionText.text = expansion.Description;
         view.DescriptionText.fontSize = 11;
-        view.DescriptionText.color = new Color(0.8f, 0.8f, 0.85f, 1f);
+        view.DescriptionText.color = ColorPalette.WhiteDim;
         view.DescriptionText.alignment = TextAnchor.MiddleCenter;
         view.DescriptionText.raycastTarget = false;
         view.DescriptionText.lineSpacing = 1.1f;
@@ -478,7 +478,7 @@ public class ShopUI : MonoBehaviour
         var btnGo = new GameObject("BuyButton");
         btnGo.transform.SetParent(cardGo.transform, false);
         var btnImg = btnGo.AddComponent<Image>();
-        btnImg.color = new Color(0.15f, 0.3f, 0.15f, 1f);
+        btnImg.color = ColorPalette.Dimmed(ColorPalette.Green, 0.3f);
         view.PurchaseButton = btnGo.AddComponent<Button>();
         var btnLayout = btnGo.AddComponent<LayoutElement>();
         btnLayout.preferredHeight = 20f;
@@ -529,7 +529,7 @@ public class ShopUI : MonoBehaviour
             bool canAfford = ctx.Reputation.CanAfford(offering[i].Definition.Cost);
             _tipCards[i].PurchaseButton.interactable = canAfford;
             _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-            _tipCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+            _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
         }
     }
 
@@ -565,7 +565,7 @@ public class ShopUI : MonoBehaviour
             bool canAfford = _ctx.Reputation.CanAfford(_tipOffering[i].Definition.Cost);
             _tipCards[i].PurchaseButton.interactable = canAfford;
             _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-            _tipCards[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+            _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
         }
     }
 
@@ -600,7 +600,7 @@ public class ShopUI : MonoBehaviour
         view.NameText.text = "INSIDER TIP";
         view.NameText.fontSize = 14;
         view.NameText.fontStyle = FontStyle.Bold;
-        view.NameText.color = new Color(0.7f, 0.5f, 0.9f, 1f);
+        view.NameText.color = ColorPalette.Cyan;
         view.NameText.alignment = TextAnchor.MiddleCenter;
         view.NameText.raycastTarget = false;
         var nameLayout = nameGo.AddComponent<LayoutElement>();
@@ -613,7 +613,7 @@ public class ShopUI : MonoBehaviour
         view.DescriptionText.text = "?";
         view.DescriptionText.fontSize = 24;
         view.DescriptionText.fontStyle = FontStyle.Bold;
-        view.DescriptionText.color = new Color(0.5f, 0.4f, 0.7f, 0.8f);
+        view.DescriptionText.color = ColorPalette.WithAlpha(ColorPalette.CyanDim, 0.8f);
         view.DescriptionText.alignment = TextAnchor.MiddleCenter;
         view.DescriptionText.raycastTarget = false;
         view.DescriptionText.lineSpacing = 1.1f;
@@ -636,7 +636,7 @@ public class ShopUI : MonoBehaviour
         var btnGo = new GameObject("BuyButton");
         btnGo.transform.SetParent(cardGo.transform, false);
         var btnImg = btnGo.AddComponent<Image>();
-        btnImg.color = new Color(0.2f, 0.15f, 0.3f, 1f);
+        btnImg.color = ColorPalette.Dimmed(ColorPalette.CyanDim, 0.5f);
         view.PurchaseButton = btnGo.AddComponent<Button>();
         var btnLayout = btnGo.AddComponent<LayoutElement>();
         btnLayout.preferredHeight = 20f;
@@ -751,14 +751,14 @@ public class ShopUI : MonoBehaviour
         _bondPriceText = priceGo.GetComponent<Text>();
 
         // Info display: bonds owned + earning
-        var infoGo = CreateTextChild(cardGo.transform, "Info", "", 11, FontStyle.Normal, new Color(0.8f, 0.8f, 0.8f, 1f), 32f);
+        var infoGo = CreateTextChild(cardGo.transform, "Info", "", 11, FontStyle.Normal, ColorPalette.WhiteDim, 32f);
         _bondInfoText = infoGo.GetComponent<Text>();
 
         // Buy button
         var buyBtnGo = new GameObject("BuyBondButton");
         buyBtnGo.transform.SetParent(cardGo.transform, false);
         var buyBtnImg = buyBtnGo.AddComponent<Image>();
-        buyBtnImg.color = new Color(0.1f, 0.3f, 0.1f, 1f);
+        buyBtnImg.color = ColorPalette.Dimmed(ColorPalette.Green, 0.3f);
         _bondBuyButton = buyBtnGo.AddComponent<Button>();
         var buyBtnLayout = buyBtnGo.AddComponent<LayoutElement>();
         buyBtnLayout.preferredHeight = 24f;
@@ -780,13 +780,13 @@ public class ShopUI : MonoBehaviour
         _bondBuyButton.onClick.AddListener(() => _onBondPurchase?.Invoke());
 
         // Sell button
-        var sellGo = CreateTextChild(cardGo.transform, "SellPrice", "", 10, FontStyle.Normal, new Color(0.7f, 0.7f, 0.7f, 1f), 16f);
+        var sellGo = CreateTextChild(cardGo.transform, "SellPrice", "", 10, FontStyle.Normal, ColorPalette.WhiteDim, 16f);
         _bondSellText = sellGo.GetComponent<Text>();
 
         var sellBtnGo = new GameObject("SellBondButton");
         sellBtnGo.transform.SetParent(cardGo.transform, false);
         var sellBtnImg = sellBtnGo.AddComponent<Image>();
-        sellBtnImg.color = new Color(0.3f, 0.15f, 0.1f, 1f);
+        sellBtnImg.color = ColorPalette.Dimmed(ColorPalette.Red, 0.3f);
         _bondSellButton = sellBtnGo.AddComponent<Button>();
         var sellBtnLayout = sellBtnGo.AddComponent<LayoutElement>();
         sellBtnLayout.preferredHeight = 22f;
@@ -899,7 +899,7 @@ public class ShopUI : MonoBehaviour
         overlayRect.offsetMin = Vector2.zero;
         overlayRect.offsetMax = Vector2.zero;
         var overlayImg = overlayGo.AddComponent<Image>();
-        overlayImg.color = new Color(0.05f, 0.05f, 0.1f, 0.92f);
+        overlayImg.color = ColorPalette.WithAlpha(ColorPalette.Background, 0.92f);
 
         var vlg = overlayGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 6f;
@@ -914,7 +914,7 @@ public class ShopUI : MonoBehaviour
         var yesBtnGo = new GameObject("YesButton");
         yesBtnGo.transform.SetParent(overlayGo.transform, false);
         var yesBtnImg = yesBtnGo.AddComponent<Image>();
-        yesBtnImg.color = new Color(0.3f, 0.15f, 0.1f, 1f);
+        yesBtnImg.color = ColorPalette.Dimmed(ColorPalette.Red, 0.3f);
         var yesBtn = yesBtnGo.AddComponent<Button>();
         var yesBtnLayout = yesBtnGo.AddComponent<LayoutElement>();
         yesBtnLayout.preferredHeight = 22f;
@@ -936,7 +936,7 @@ public class ShopUI : MonoBehaviour
         var noBtnGo = new GameObject("NoButton");
         noBtnGo.transform.SetParent(overlayGo.transform, false);
         var noBtnImg = noBtnGo.AddComponent<Image>();
-        noBtnImg.color = new Color(0.15f, 0.15f, 0.2f, 1f);
+        noBtnImg.color = ColorPalette.Dimmed(ColorPalette.Border, 0.5f);
         var noBtn = noBtnGo.AddComponent<Button>();
         var noBtnLayout = noBtnGo.AddComponent<LayoutElement>();
         noBtnLayout.preferredHeight = 22f;
@@ -1092,7 +1092,7 @@ public class ShopUI : MonoBehaviour
         stampText.text = "SOLD";
         stampText.fontSize = 32;
         stampText.fontStyle = FontStyle.Bold;
-        stampText.color = new Color(1f, 0.3f, 0.3f, 0.9f);
+        stampText.color = ColorPalette.WithAlpha(ColorPalette.Red, 0.9f);
         stampText.alignment = TextAnchor.MiddleCenter;
         stampText.raycastTarget = false;
 
@@ -1208,7 +1208,7 @@ public class ShopUI : MonoBehaviour
             card.DescriptionText.text = offering.RevealedText;
             card.DescriptionText.fontSize = 12;
             card.DescriptionText.fontStyle = FontStyle.Normal;
-            card.DescriptionText.color = new Color(0.9f, 0.95f, 0.8f, 1f);
+            card.DescriptionText.color = ColorPalette.White;
         }
         card.CardBackground.color = TipCardRevealedColor;
 
@@ -1382,7 +1382,7 @@ public class ShopUI : MonoBehaviour
         else
             slot.ButtonText.text = "BUY";
 
-        slot.CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+        slot.CostText.color = canAfford ? Color.white : ColorPalette.Red;
 
         slot.PurchaseButton.onClick.RemoveAllListeners();
         int capturedIndex = index;
@@ -1440,7 +1440,7 @@ public class ShopUI : MonoBehaviour
                 bool canAfford = _ctx.Reputation.CanAfford(_relicOffering[i].Value.Cost);
                 _relicSlots[i].PurchaseButton.interactable = canAfford;
                 _relicSlots[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-                _relicSlots[i].CostText.color = canAfford ? Color.white : new Color(1f, 0.3f, 0.3f, 1f);
+                _relicSlots[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
             }
         }
     }

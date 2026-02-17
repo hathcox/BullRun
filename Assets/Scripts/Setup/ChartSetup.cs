@@ -75,8 +75,8 @@ public static class ChartSetup
         // Create break-even line (yellow, thin horizontal — kept as LineRenderer)
         var breakEvenGo = CreateLineRendererObject("BreakEvenLine", chartParent.transform);
         var breakEvenLR = breakEvenGo.GetComponent<LineRenderer>();
-        breakEvenLR.startColor = new Color(1f, 0.85f, 0.2f, 0.8f); // Yellow
-        breakEvenLR.endColor = new Color(1f, 0.85f, 0.2f, 0.8f);
+        breakEvenLR.startColor = ColorPalette.WithAlpha(ColorPalette.White, 0.8f);
+        breakEvenLR.endColor = ColorPalette.WithAlpha(ColorPalette.White, 0.8f);
         breakEvenLR.startWidth = 0.015f;
         breakEvenLR.endWidth = 0.015f;
         breakEvenLR.sortingOrder = 2;
@@ -86,8 +86,8 @@ public static class ChartSetup
         // Create short position line (pink, thin horizontal — shows short entry price)
         var shortPositionGo = CreateLineRendererObject("ShortPositionLine", chartParent.transform);
         var shortPositionLR = shortPositionGo.GetComponent<LineRenderer>();
-        shortPositionLR.startColor = new Color(1f, 0.41f, 0.71f, 0.9f); // Hot pink
-        shortPositionLR.endColor = new Color(1f, 0.41f, 0.71f, 0.9f);
+        shortPositionLR.startColor = ColorPalette.WithAlpha(ColorPalette.Amber, 0.9f);
+        shortPositionLR.endColor = ColorPalette.WithAlpha(ColorPalette.Amber, 0.9f);
         shortPositionLR.startWidth = 0.015f;
         shortPositionLR.endWidth = 0.015f;
         shortPositionLR.sortingOrder = 2;
@@ -99,7 +99,7 @@ public static class ChartSetup
         gridlinesParent.transform.SetParent(chartParent.transform);
         var gridlines = new LineRenderer[AxisLabelCount];
         // Story 14.5 AC 5: CRT border color with subtle opacity
-        var gridColor = new Color(CRTThemeData.Border.r, CRTThemeData.Border.g, CRTThemeData.Border.b, 0.2f);
+        var gridColor = ColorPalette.WithAlpha(ColorPalette.Border, 0.2f);
         for (int i = 0; i < AxisLabelCount; i++)
         {
             var gridlineGo = CreateLineRendererObject($"Gridline_{i}", gridlinesParent.transform);
@@ -270,7 +270,7 @@ public static class ChartSetup
         bgRect.anchoredPosition = new Vector2(0f, canvasChartBottom - 20f);
         bgRect.sizeDelta = new Vector2(1920f * ChartWidthPercent, 6f);
         var bgImage = progressBarBg.AddComponent<Image>();
-        bgImage.color = new Color(0.15f, 0.15f, 0.2f, 0.5f);
+        bgImage.color = ColorPalette.WithAlpha(ColorPalette.Border, 0.5f);
 
         var progressBarFill = new GameObject("TimeProgressBarFill");
         progressBarFill.transform.SetParent(progressBarBg.transform);
@@ -280,7 +280,7 @@ public static class ChartSetup
         fillRect.offsetMin = Vector2.zero;
         fillRect.offsetMax = Vector2.zero;
         var fillImage = progressBarFill.AddComponent<Image>();
-        fillImage.color = new Color(CRTThemeData.TextHigh.r, CRTThemeData.TextHigh.g, CRTThemeData.TextHigh.b, 0.4f); // Story 14.5: CRT phosphor green
+        fillImage.color = ColorPalette.WithAlpha(ColorPalette.Green, 0.4f); // CRT phosphor green
         fillImage.type = Image.Type.Filled;
         fillImage.fillMethod = Image.FillMethod.Horizontal;
         fillImage.fillAmount = 0f;

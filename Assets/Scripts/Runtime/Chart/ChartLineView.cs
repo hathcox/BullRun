@@ -238,7 +238,9 @@ public class ChartLineView : MonoBehaviour
             go.transform.localScale = new Vector3(0.15f, 0.15f, 1f);
 
             var sr = go.GetComponent<SpriteRenderer>();
-            sr.color = marker.IsBuy ? CRTThemeData.TextHigh : CRTThemeData.Danger;
+            sr.color = marker.IsShort
+                ? (marker.IsBuy ? ColorPalette.Gold : ColorPalette.Amber)
+                : (marker.IsBuy ? ColorPalette.Green : ColorPalette.Red);
         }
 
         // Hide unused markers
