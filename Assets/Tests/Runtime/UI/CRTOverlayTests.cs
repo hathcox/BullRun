@@ -44,30 +44,30 @@ namespace BullRun.Tests.UI
             AssertColorEqual(CRTThemeData.Warning, TradingHUD.WarningYellow, "WarningYellow");
         }
 
-        // ── Color migration: PositionOverlay uses CRTThemeData ────────────
+        // ── Color migration: PositionPanel uses CRTThemeData ────────────
 
         [Test]
-        public void PositionOverlay_LongColor_MatchesCRTTextHigh()
+        public void PositionPanel_LongColor_MatchesCRTTextHigh()
         {
-            AssertColorEqual(CRTThemeData.TextHigh, PositionOverlay.LongColor, "LongColor");
+            AssertColorEqual(CRTThemeData.TextHigh, PositionPanel.LongAccentColor, "LongColor");
         }
 
         [Test]
-        public void PositionOverlay_ShortColor_MatchesCRTWarning()
+        public void PositionPanel_ShortColor_MatchesCRTWarning()
         {
-            AssertColorEqual(CRTThemeData.Warning, PositionOverlay.ShortColor, "ShortColor");
+            AssertColorEqual(CRTThemeData.Warning, PositionPanel.ShortAccentColor, "ShortColor");
         }
 
         [Test]
-        public void PositionOverlay_ProfitGreen_MatchesCRTTextHigh()
+        public void PositionPanel_ProfitGreen_MatchesCRTTextHigh()
         {
-            AssertColorEqual(CRTThemeData.TextHigh, PositionOverlay.ProfitGreen, "ProfitGreen");
+            AssertColorEqual(CRTThemeData.TextHigh, PositionPanel.ProfitGreen, "ProfitGreen");
         }
 
         [Test]
-        public void PositionOverlay_LossRed_MatchesCRTDanger()
+        public void PositionPanel_LossRed_MatchesCRTDanger()
         {
-            AssertColorEqual(CRTThemeData.Danger, PositionOverlay.LossRed, "LossRed");
+            AssertColorEqual(CRTThemeData.Danger, PositionPanel.LossRed, "LossRed");
         }
 
         // ── Color migration: NewsBanner uses CRTThemeData ─────────────────

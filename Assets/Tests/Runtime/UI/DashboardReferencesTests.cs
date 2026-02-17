@@ -25,21 +25,11 @@ namespace BullRun.Tests.UI
         {
             var refs = new DashboardReferences();
             // Right Wing fields should exist and be null by default
-            Assert.IsNull(refs.DirectionText);
-            Assert.IsNull(refs.AvgPriceText);
-            Assert.IsNull(refs.PnLText);
+            Assert.IsNull(refs.PositionEntryContainer);
+            Assert.IsNull(refs.PositionEmptyText);
             Assert.IsNull(refs.TimerText);
             Assert.IsNull(refs.TimerProgressBar);
             Assert.IsNull(refs.RepText);
-        }
-
-        [Test]
-        public void DashboardReferences_HasRowGameObjects()
-        {
-            var refs = new DashboardReferences();
-            // Row GameObjects for show/hide should exist and be null by default
-            Assert.IsNull(refs.AvgPriceRow);
-            Assert.IsNull(refs.PnlRow);
         }
 
         [Test]

@@ -332,3 +332,14 @@ public struct BondRepPaidEvent
     public int RepEarned;
     public int TotalReputation;
 }
+
+/// <summary>
+/// Fired every frame by GameRunner when a short position has an active countdown timer.
+/// PositionPanel uses this to display auto-close countdown on short entries.
+/// </summary>
+public struct ShortCountdownEvent
+{
+    public string StockId;
+    public float TimeRemaining;
+    public bool IsCashOutWindow;
+}

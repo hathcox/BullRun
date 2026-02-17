@@ -22,18 +22,10 @@ public class DashboardReferences
     // Short UI references
     public Image ShortButtonImage;
     public Text ShortButtonText;
-    public GameObject ShortPnlPanel;
-    public Text ShortPnlEntryText;
-    public Text ShortPnlValueText;
-    public Text ShortPnlCountdownText;
 
     // Short 2 (Dual Short expansion) references
     public Image Short2ButtonImage;
     public Text Short2ButtonText;
-    public GameObject Short2PnlPanel;
-    public Text Short2PnlEntryText;
-    public Text Short2PnlValueText;
-    public Text Short2PnlCountdownText;
     public GameObject Short2Container;
 
     // Cooldown & Leverage
@@ -42,14 +34,11 @@ public class DashboardReferences
     public GameObject LeverageBadge;
 
     // ── Right Wing: Position Info ───────────────────────────────────────
-    public Text DirectionText;
-    public Text AvgPriceText;
-    public Text PnLText;
+    public Transform PositionEntryContainer;
+    public Text PositionEmptyText;
     public Text TimerText;
     public Image TimerProgressBar;
     public Text RepText;
-    public GameObject AvgPriceRow;
-    public GameObject PnlRow;
 
     // ── Container Transforms ────────────────────────────────────────────
     public RectTransform LeftWing;

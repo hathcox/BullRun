@@ -73,7 +73,7 @@ public class RoundTimerUI : MonoBehaviour
         if (_progressBarFill != null)
         {
             _progressBarFill.fillAmount = GetProgressFraction(timeRemaining, roundDuration);
-            _progressBarFill.color = GetTimerColor(timeRemaining);
+            // Color is set by UISetup (subtle border tone); don't override here
         }
 
         // Pulse animation at critical threshold
