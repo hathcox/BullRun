@@ -160,30 +160,30 @@ namespace BullRun.Tests.UI
             Assert.AreEqual("0:00", RoundTimerUI.FormatTime(-5f));
         }
 
-        // --- Story 14.3: Verify timer color transitions (Right Wing urgency) ---
+        // --- Story 14.3/14.6: Verify timer color transitions (CRTThemeData) ---
 
         [Test]
         public void RoundTimerUI_GetTimerColor_Normal_ReturnsGreen()
         {
             Color color = RoundTimerUI.GetTimerColor(30f);
-            Assert.AreEqual(0f, color.r, 0.01f);
-            Assert.AreEqual(1f, color.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextHigh.r, color.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextHigh.g, color.g, 0.01f);
         }
 
         [Test]
         public void RoundTimerUI_GetTimerColor_Urgency_ReturnsYellow()
         {
             Color color = RoundTimerUI.GetTimerColor(10f);
-            Assert.AreEqual(1f, color.r, 0.01f);
-            Assert.AreEqual(0.85f, color.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.Warning.r, color.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.Warning.g, color.g, 0.01f);
         }
 
         [Test]
         public void RoundTimerUI_GetTimerColor_Critical_ReturnsRed()
         {
             Color color = RoundTimerUI.GetTimerColor(3f);
-            Assert.AreEqual(1f, color.r, 0.01f);
-            Assert.AreEqual(0.2f, color.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.Danger.r, color.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.Danger.g, color.g, 0.01f);
         }
 
         // --- Story 14.3: Verify timer progress fraction (Right Wing progress bar) ---

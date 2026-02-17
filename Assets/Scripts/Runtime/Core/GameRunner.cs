@@ -106,6 +106,12 @@ public class GameRunner : MonoBehaviour
         _positionOverlay = UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
 
+        // Story 14.6: CRT bezel overlay (vignette + scanlines on top of everything)
+        UISetup.ExecuteCRTOverlay();
+
+        // Story 14.6: URP Bloom post-processing for phosphor glow
+        UISetup.ExecuteBloomSetup();
+
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);
 

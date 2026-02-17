@@ -217,10 +217,12 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void ShopUI_PanelHeaderColor_IsMutedBlue()
+        public void ShopUI_PanelHeaderColor_MatchesCRTTextLow()
         {
             var color = ShopUI.PanelHeaderColor;
-            Assert.Greater(color.b, 0.5f);
+            Assert.AreEqual(CRTThemeData.TextLow.r, color.r, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextLow.g, color.g, 0.01f);
+            Assert.AreEqual(CRTThemeData.TextLow.b, color.b, 0.01f);
         }
 
         // === Keyboard Navigation Tests (AC: 11) ===

@@ -14,16 +14,17 @@ public class StockSidebar : MonoBehaviour
     private StockEntryView[] _entryViews;
     private bool _dirty;
 
-    private static readonly Color DefaultSelectedBgColor = new Color(0.1f, 0.15f, 0.35f, 0.9f);
-    private static readonly Color DefaultNormalBgColor = new Color(0.05f, 0.07f, 0.18f, 0.6f);
-    private static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f);
-    private static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static readonly Color DefaultSelectedBgColor = new Color(CRTThemeData.Panel.r * 1.5f, CRTThemeData.Panel.g * 1.5f, CRTThemeData.Panel.b * 1.5f, 0.9f);
+    private static readonly Color DefaultNormalBgColor = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.6f);
+    private static Color ProfitGreen => CRTThemeData.TextHigh;
+    private static Color LossRed => CRTThemeData.Danger;
 
     // Event indicator colors
     public static readonly Color VolumeIconColor = new Color(1f, 0.533f, 0f, 1f);    // #FF8800 orange
-    public static readonly Color WarningIconColor = new Color(1f, 0.843f, 0f, 1f);    // #FFD700 yellow
-    public static readonly Color SectorWinColor = new Color(0f, 1f, 0.533f, 0.4f);    // Green glow
-    public static readonly Color SectorLoseColor = new Color(1f, 0.2f, 0.2f, 0.4f);   // Red glow
+    public static Color WarningIconColor => CRTThemeData.Warning;
+    public static readonly Color SectorWinColor = new Color(CRTThemeData.TextHigh.r, CRTThemeData.TextHigh.g, CRTThemeData.TextHigh.b, 0.4f);
+    public static readonly Color SectorLoseColor = new Color(CRTThemeData.Danger.r, CRTThemeData.Danger.g, CRTThemeData.Danger.b, 0.4f);
     public static readonly float VolumePulseFrequency = 4f;
 
     // Tier-themed colors (defaults to standard colors)

@@ -14,9 +14,10 @@ public class RoundTimerUI : MonoBehaviour
     public static readonly float PulseMinScale = 0.85f;
     public static readonly float PulseMaxScale = 1.15f;
 
-    private static readonly Color NormalColor = new Color(0f, 1f, 0.533f, 1f); // Neon green
-    private static readonly Color UrgencyColor = new Color(1f, 0.85f, 0.2f, 1f); // Yellow
-    private static readonly Color CriticalColor = new Color(1f, 0.2f, 0.2f, 1f); // Red
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static Color NormalColor => CRTThemeData.TextHigh;
+    private static Color UrgencyColor => CRTThemeData.Warning;
+    private static Color CriticalColor => CRTThemeData.Danger;
 
     private Text _timerText;
     private Image _progressBarFill;

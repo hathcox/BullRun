@@ -20,6 +20,10 @@ public static class CRTThemeData
     public static readonly Color Warning     = new Color(1f, 184 / 255f, 0f, 1f);                   // #ffb800
     public static readonly Color Danger      = new Color(1f, 68 / 255f, 68 / 255f, 1f);             // #ff4444
 
+    // ── CRT Overlay ──────────────────────────────────────────────────────
+    public static readonly float ScanlineOpacity   = 0.08f;  // 5-10% opacity for scanline dark lines
+    public static readonly float VignetteIntensity = 0.6f;   // Max alpha at vignette edges
+
     // ── Button Colors ───────────────────────────────────────────────────
     public static readonly Color ButtonBuy   = new Color(40 / 255f, 245 / 255f, 141 / 255f, 1f);    // #28f58d
     public static readonly Color ButtonSell  = new Color(1f, 68 / 255f, 68 / 255f, 1f);             // #ff4444

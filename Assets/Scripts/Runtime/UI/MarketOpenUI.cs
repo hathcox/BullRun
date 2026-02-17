@@ -8,10 +8,11 @@ using UnityEngine.UI;
 /// </summary>
 public class MarketOpenUI : MonoBehaviour
 {
-    private static readonly Color HeaderColor = new Color(0f, 1f, 0.533f, 1f);
-    private static readonly Color LabelColor = new Color(0.6f, 0.6f, 0.7f, 1f);
-    private static readonly Color ValueColor = Color.white;
-    private static readonly Color TargetColor = new Color(1f, 0.85f, 0.2f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static Color HeaderColor => CRTThemeData.TextHigh;
+    private static Color LabelColor => CRTThemeData.TextLow;
+    private static Color ValueColor => CRTThemeData.TextHigh;
+    private static Color TargetColor => CRTThemeData.Warning;
     private static readonly Color HeadlineColor = new Color(0.8f, 0.85f, 1f, 1f);
     private static readonly Color BondRepColor = new Color(1f, 0.7f, 0f, 1f);
 

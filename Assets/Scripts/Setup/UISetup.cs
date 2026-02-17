@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 /// <summary>
@@ -19,11 +21,12 @@ public static class UISetup
     private static readonly float TopBarHeight = 60f;
     private static readonly float SidebarWidth = 240f;
     private static readonly float EntryHeight = 50f;
-    private static readonly Color BarBackgroundColor = new Color(0.05f, 0.07f, 0.18f, 0.9f);
-    private static readonly Color SidebarBgColor = new Color(0.05f, 0.07f, 0.18f, 0.85f);
-    private static readonly Color LabelColor = new Color(0.6f, 0.6f, 0.7f, 1f);
-    private static readonly Color ValueColor = Color.white;
-    private static readonly Color NeonGreen = new Color(0f, 1f, 0.533f, 1f);
+    // Story 14.6: Migrated to CRTThemeData references
+    private static Color BarBackgroundColor => CRTThemeData.Panel;
+    private static Color SidebarBgColor => CRTThemeData.Panel;
+    private static Color LabelColor => CRTThemeData.TextLow;
+    private static Color ValueColor => CRTThemeData.TextHigh;
+    private static Color NeonGreen => CRTThemeData.TextHigh;
     private static Material _sparklineMaterial;
 
     /// <summary>
@@ -139,6 +142,14 @@ public static class UISetup
 
         refs.LeftWing = leftWingGo.GetComponent<RectTransform>();
 
+        // Story 14.6: Add border outline to Left_Wing
+        var leftWingImg = leftWingGo.AddComponent<Image>();
+        leftWingImg.color = Color.clear; // Transparent fill — border only
+        leftWingImg.raycastTarget = false;
+        var leftWingBorder = leftWingGo.AddComponent<Outline>();
+        leftWingBorder.effectColor = CRTThemeData.Border;
+        leftWingBorder.effectDistance = new Vector2(1f, -1f);
+
         // 1.6: Create Center_Core container (~40% width via LayoutElement)
         var centerCoreGo = new GameObject("Center_Core");
         centerCoreGo.transform.SetParent(panelGo.transform, false);
@@ -152,6 +163,14 @@ public static class UISetup
 
         refs.CenterCore = centerCoreGo.GetComponent<RectTransform>();
 
+        // Story 14.6: Add border outline to Center_Core
+        var centerCoreImg = centerCoreGo.AddComponent<Image>();
+        centerCoreImg.color = Color.clear;
+        centerCoreImg.raycastTarget = false;
+        var centerCoreBorder = centerCoreGo.AddComponent<Outline>();
+        centerCoreBorder.effectColor = CRTThemeData.Border;
+        centerCoreBorder.effectDistance = new Vector2(1f, -1f);
+
         // 1.7: Create Right_Wing container (~30% width via LayoutElement)
         var rightWingGo = new GameObject("Right_Wing");
         rightWingGo.transform.SetParent(panelGo.transform, false);
@@ -164,6 +183,14 @@ public static class UISetup
         rightLayout.flexibleWidth = 0.3f;
 
         refs.RightWing = rightWingGo.GetComponent<RectTransform>();
+
+        // Story 14.6: Add border outline to Right_Wing
+        var rightWingImg = rightWingGo.AddComponent<Image>();
+        rightWingImg.color = Color.clear;
+        rightWingImg.raycastTarget = false;
+        var rightWingBorder = rightWingGo.AddComponent<Outline>();
+        rightWingBorder.effectColor = CRTThemeData.Border;
+        rightWingBorder.effectDistance = new Vector2(1f, -1f);
 
         // ── Story 14.3: Populate Left Wing (Wallet) ─────────────────────────
         leftVlg.spacing = 4f;
@@ -625,7 +652,7 @@ public static class UISetup
         var entryRect = entryGo.GetComponent<RectTransform>();
         entryRect.sizeDelta = new Vector2(0f, EntryHeight);
         view.Background = entryGo.GetComponent<Image>();
-        view.Background.color = new Color(0.05f, 0.07f, 0.18f, 0.6f);
+        view.Background.color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.6f);
 
         // Single-row layout: [1] TICK  $100.00  +1.2%
         // All elements vertically centered at Y=0.5
@@ -745,7 +772,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.92f);
+        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.92f);
 
         // CanvasGroup for fade-in
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
@@ -768,7 +795,7 @@ public static class UISetup
 
         // Act/Round header
         var headerGo = CreateLabel("Header", centerPanel.transform, "ACT 1 — ROUND 1",
-            new Color(0f, 1f, 0.533f, 1f), 28);
+            CRTThemeData.TextHigh, 28);
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // Stock list
@@ -847,7 +874,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.95f);
+        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.95f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -869,7 +896,7 @@ public static class UISetup
 
         // Header
         var headerGo = CreateLabel("Header", centerPanel.transform, "RUN COMPLETE",
-            new Color(0f, 1f, 0.4f, 1f), 32);
+            CRTThemeData.TextHigh, 32);
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // Stats
@@ -923,7 +950,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.9f);
+        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.9f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -945,7 +972,7 @@ public static class UISetup
 
         // Header
         var headerGo = CreateLabel("Header", centerPanel.transform, "ROUND 1 COMPLETE",
-            new Color(0f, 1f, 0.4f, 1f), 28);
+            CRTThemeData.TextHigh, 28);
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         // Stats
@@ -954,7 +981,7 @@ public static class UISetup
 
         // Checkmark/X indicator
         var checkGo = CreateLabel("Checkmark", centerPanel.transform, "\u2713",
-            new Color(0f, 1f, 0.4f, 1f), 48);
+            CRTThemeData.TextHigh, 48);
 
         // Initialize MonoBehaviour
         var roundResultsUI = overlayParent.AddComponent<RoundResultsUI>();
@@ -1001,7 +1028,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.95f);
+        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.95f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -1121,7 +1148,7 @@ public static class UISetup
         barRect.pivot = new Vector2(0.5f, 0f);
         barRect.anchoredPosition = Vector2.zero;
         barRect.sizeDelta = new Vector2(0f, tickerHeight);
-        barGo.GetComponent<Image>().color = new Color(0.03f, 0.04f, 0.12f, 0.85f);
+        barGo.GetComponent<Image>().color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.85f);
 
         // Scroll container — clipped by parent
         var scrollGo = new GameObject("ScrollContainer");
@@ -1247,13 +1274,13 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = new Color(0.02f, 0.03f, 0.08f, 0.95f);
+        bgGo.GetComponent<Image>().color = new Color(CRTThemeData.Background.r, CRTThemeData.Background.g, CRTThemeData.Background.b, 0.95f);
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
         // ── Header: "STORE — ROUND X" ──
         var headerGo = CreateLabel("StoreHeader", bgGo.transform, "STORE",
-            new Color(0f, 1f, 0.533f, 1f), 28);
+            CRTThemeData.TextHigh, 28);
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         var headerRect = headerGo.GetComponent<RectTransform>();
         headerRect.anchorMin = new Vector2(0.5f, 1f);
@@ -1303,7 +1330,7 @@ public static class UISetup
 
         // Control panel (Next Round + Reroll buttons)
         var controlPanel = CreatePanel("ControlPanel", topSection.transform);
-        controlPanel.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.15f, 0.9f);
+        controlPanel.GetComponent<Image>().color = CRTThemeData.Panel;
         var controlLayout = controlPanel.AddComponent<LayoutElement>();
         controlLayout.preferredWidth = 180f;
         controlLayout.flexibleWidth = 0f;
@@ -1605,7 +1632,7 @@ public static class UISetup
         containerRect.pivot = new Vector2(0.5f, 0.5f);
         containerRect.anchoredPosition = new Vector2(0f, -120f);
         containerRect.sizeDelta = new Vector2(420f, 50f);
-        containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.85f);
+        containerGo.GetComponent<Image>().color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.85f);
         containerGo.GetComponent<Image>().raycastTarget = false;
 
         var canvasGroup = containerGo.AddComponent<CanvasGroup>();
@@ -1711,7 +1738,7 @@ public static class UISetup
         // Hotkey label
         var hotkeyGo = CreateLabel($"Hotkey_{index}", slotGo.transform,
             $"[{ItemInventoryPanel.RelicHotkeys[index]}]",
-            TradingHUD.WarningYellow, 11);
+            CRTThemeData.Warning, 11);
         var hotkeyLayout = hotkeyGo.AddComponent<LayoutElement>();
         hotkeyLayout.preferredWidth = 24f;
         hotkeyGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
@@ -1726,6 +1753,161 @@ public static class UISetup
         view.NameText = nameGo.GetComponent<Text>();
 
         return view;
+    }
+
+    // ── Story 14.6: Cached CRT overlay textures and bloom profile ────────
+    private static Texture2D _vignetteTexture;
+    private static Texture2D _scanlineTexture;
+    private static VolumeProfile _bloomProfile;
+
+    /// <summary>
+    /// Story 14.6: Creates a full-screen CRT bezel overlay canvas with vignette and scanline effects.
+    /// ScreenSpaceOverlay at sortingOrder 999 so it renders on top of everything.
+    /// Raycast disabled on all elements so it never blocks input.
+    /// </summary>
+    public static void ExecuteCRTOverlay()
+    {
+        // 1.1: Create CRTOverlayCanvas (ScreenSpaceOverlay, sortingOrder=999)
+        var canvasGo = new GameObject("CRTOverlayCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 999;
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+
+        // 1.2: Disable GraphicRaycaster (no input blocking)
+        // Do NOT add GraphicRaycaster at all — this prevents any raycast processing
+
+        // 1.3: Create vignette panel — full-screen Image with gradient (dark edges, transparent center)
+        var vignetteGo = new GameObject("CRTVignette");
+        vignetteGo.transform.SetParent(canvasGo.transform, false);
+        var vignetteRect = vignetteGo.AddComponent<RectTransform>();
+        vignetteRect.anchorMin = Vector2.zero;
+        vignetteRect.anchorMax = Vector2.one;
+        vignetteRect.offsetMin = Vector2.zero;
+        vignetteRect.offsetMax = Vector2.zero;
+
+        var vignetteImage = vignetteGo.AddComponent<Image>();
+        vignetteImage.raycastTarget = false; // 1.5
+        vignetteImage.sprite = CreateVignetteSprite();
+        vignetteImage.type = Image.Type.Simple;
+        vignetteImage.color = Color.white; // Texture carries alpha
+
+        // 1.4: Create scanline panel — full-screen Image with horizontal line pattern
+        var scanlineGo = new GameObject("CRTScanlines");
+        scanlineGo.transform.SetParent(canvasGo.transform, false);
+        var scanlineRect = scanlineGo.AddComponent<RectTransform>();
+        scanlineRect.anchorMin = Vector2.zero;
+        scanlineRect.anchorMax = Vector2.one;
+        scanlineRect.offsetMin = Vector2.zero;
+        scanlineRect.offsetMax = Vector2.zero;
+
+        var scanlineImage = scanlineGo.AddComponent<Image>();
+        scanlineImage.raycastTarget = false; // 1.5
+        scanlineImage.sprite = CreateScanlineSprite();
+        scanlineImage.type = Image.Type.Tiled;
+        float screenHeight = Screen.height > 0 ? Screen.height : 1080f;
+        scanlineImage.pixelsPerUnitMultiplier = 1f;
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] CRT Overlay: vignette + scanlines created (sortingOrder=999, no raycaster)");
+        #endif
+    }
+
+    /// <summary>
+    /// Story 14.6: Sets up URP Bloom post-processing for phosphor glow on bright green text.
+    /// Creates a global Volume with Bloom if none exists.
+    /// </summary>
+    public static void ExecuteBloomSetup()
+    {
+        // Check if a global Volume already exists
+        var existingVolume = Object.FindFirstObjectByType<Volume>();
+        if (existingVolume != null && existingVolume.isGlobal)
+        {
+            // Ensure Bloom override exists on existing volume
+            if (existingVolume.profile != null && !existingVolume.profile.Has<Bloom>())
+            {
+                var bloom = existingVolume.profile.Add<Bloom>();
+                bloom.intensity.Override(0.5f);
+                bloom.threshold.Override(0.8f);
+            }
+            return;
+        }
+
+        // Cache VolumeProfile to prevent leaks on repeated calls
+        if (_bloomProfile == null)
+        {
+            _bloomProfile = ScriptableObject.CreateInstance<VolumeProfile>();
+            var bloomEffect = _bloomProfile.Add<Bloom>();
+            bloomEffect.intensity.Override(0.5f);
+            bloomEffect.threshold.Override(0.8f);
+        }
+
+        var volumeGo = new GameObject("CRTBloomVolume");
+        var volume = volumeGo.AddComponent<Volume>();
+        volume.isGlobal = true;
+        volume.profile = _bloomProfile;
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] CRT Bloom: global Volume created (intensity=0.5, threshold=0.8)");
+        #endif
+    }
+
+    /// <summary>
+    /// Story 14.6: Creates procedural vignette texture (radial gradient, dark edges).
+    /// Cached — only generated once.
+    /// </summary>
+    private static Sprite CreateVignetteSprite()
+    {
+        if (_vignetteTexture == null)
+        {
+            const int size = 256;
+            _vignetteTexture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            _vignetteTexture.name = "CRTVignette";
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = (x - 128f) / 128f;
+                    float dy = (y - 128f) / 128f;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    float alpha = Mathf.Clamp01((dist - 0.5f) * 1.5f) * CRTThemeData.VignetteIntensity;
+                    _vignetteTexture.SetPixel(x, y, new Color(0, 0, 0, alpha));
+                }
+            }
+            _vignetteTexture.Apply();
+        }
+        return Sprite.Create(_vignetteTexture,
+            new Rect(0, 0, _vignetteTexture.width, _vignetteTexture.height),
+            new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    /// <summary>
+    /// Story 14.6: Creates procedural scanline texture (horizontal lines, repeating pattern).
+    /// Cached — only generated once. 1x6 tiled texture.
+    /// </summary>
+    private static Sprite CreateScanlineSprite()
+    {
+        if (_scanlineTexture == null)
+        {
+            _scanlineTexture = new Texture2D(1, 6, TextureFormat.RGBA32, false);
+            _scanlineTexture.name = "CRTScanlines";
+            float opacity = CRTThemeData.ScanlineOpacity;
+            _scanlineTexture.SetPixel(0, 0, new Color(0, 0, 0, opacity)); // Dark line
+            _scanlineTexture.SetPixel(0, 1, Color.clear);
+            _scanlineTexture.SetPixel(0, 2, Color.clear);
+            _scanlineTexture.SetPixel(0, 3, new Color(0, 0, 0, opacity)); // Dark line
+            _scanlineTexture.SetPixel(0, 4, Color.clear);
+            _scanlineTexture.SetPixel(0, 5, Color.clear);
+            _scanlineTexture.wrapMode = TextureWrapMode.Repeat;
+            _scanlineTexture.filterMode = FilterMode.Point;
+            _scanlineTexture.Apply();
+        }
+        return Sprite.Create(_scanlineTexture,
+            new Rect(0, 0, _scanlineTexture.width, _scanlineTexture.height),
+            new Vector2(0.5f, 0.5f), 1f); // 1 pixel per unit for tiling
     }
 
     private static GameObject CreatePanel(string name, Transform parent)

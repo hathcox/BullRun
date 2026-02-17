@@ -20,12 +20,12 @@ public class ShopUI : MonoBehaviour
     // Cash display color (green)
     public static readonly Color CashColor = new Color(0.2f, 0.9f, 0.3f, 1f);
 
-    // Panel header color (muted blue-grey)
-    public static readonly Color PanelHeaderColor = new Color(0.5f, 0.6f, 0.8f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static Color PanelHeaderColor => CRTThemeData.TextLow;
 
     // Panel border/background colors
-    public static readonly Color PanelBgColor = new Color(0.06f, 0.08f, 0.16f, 0.9f);
-    public static readonly Color PanelBorderColor = new Color(0.2f, 0.25f, 0.4f, 1f);
+    public static readonly Color PanelBgColor = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.9f);
+    public static readonly Color PanelBorderColor = CRTThemeData.Border;
 
     // Focus indicator color
     public static readonly Color FocusColor = new Color(0.3f, 0.5f, 1f, 0.6f);

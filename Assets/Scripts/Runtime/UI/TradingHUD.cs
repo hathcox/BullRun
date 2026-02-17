@@ -7,10 +7,10 @@ using UnityEngine.UI;
 /// </summary>
 public class TradingHUD : MonoBehaviour
 {
-    // Color constants for profit/loss states
-    public static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f); // #00FF88
-    public static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);     // #FF3333
-    public static readonly Color WarningYellow = new Color(1f, 0.85f, 0.2f, 1f); // #FFD933
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static Color ProfitGreen => CRTThemeData.TextHigh;
+    public static Color LossRed => CRTThemeData.Danger;
+    public static Color WarningYellow => CRTThemeData.Warning;
 
     private RunContext _runContext;
     private int _currentRound;
@@ -230,17 +230,14 @@ public class TradingHUD : MonoBehaviour
     }
 
     /// <summary>
-    /// Applies tier visual theme colors to HUD elements.
-    /// Updates top bar background tint with the tier's background color.
+    /// Story 14.6: Tier themes no longer tint the Control Deck background.
+    /// CRT base colors (Panel, TextHigh, TextLow) remain constant across tiers.
+    /// Chart line color is handled separately by ChartLineView.ApplyTierTheme().
     /// </summary>
     public void ApplyTierTheme(TierVisualTheme theme)
     {
-        if (_topBarBackground != null)
-        {
-            _topBarBackground.color = new Color(
-                theme.BackgroundTint.r, theme.BackgroundTint.g,
-                theme.BackgroundTint.b, 0.9f);
-        }
+        // No-op: CRT dashboard uses fixed CRTThemeData.Panel color regardless of tier.
+        // Chart line color (tier accent) is handled by ChartLineView.ApplyTierTheme.
     }
 
     // --- Static utility methods for testability ---

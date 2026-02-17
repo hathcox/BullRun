@@ -8,8 +8,9 @@ using UnityEngine.UI;
 /// </summary>
 public class QuantitySelector : MonoBehaviour
 {
-    public static readonly Color ActiveButtonColor = new Color(0f, 0.5f, 0.25f, 1f);
-    public static readonly Color InactiveButtonColor = new Color(0.12f, 0.14f, 0.25f, 0.8f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static readonly Color ActiveButtonColor = new Color(CRTThemeData.TextHigh.r * 0.5f, CRTThemeData.TextHigh.g * 0.5f, CRTThemeData.TextHigh.b * 0.5f, 1f);
+    public static readonly Color InactiveButtonColor = CRTThemeData.Panel;
 
     private int _selectedQuantity;
 

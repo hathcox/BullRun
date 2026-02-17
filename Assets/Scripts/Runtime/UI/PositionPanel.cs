@@ -9,12 +9,13 @@ using UnityEngine.UI;
 /// </summary>
 public class PositionPanel : MonoBehaviour
 {
-    public static readonly Color ProfitGreen = new Color(0f, 1f, 0.533f, 1f);
-    public static readonly Color LossRed = new Color(1f, 0.2f, 0.2f, 1f);
-    public static readonly Color LongAccentColor = new Color(0f, 1f, 0.533f, 1f); // Neon green
-    public static readonly Color ShortAccentColor = new Color(1f, 0.4f, 0.7f, 1f); // Hot pink
+    // Story 14.6: Color constants migrated to CRTThemeData
+    public static Color ProfitGreen => CRTThemeData.TextHigh;
+    public static Color LossRed => CRTThemeData.Danger;
+    public static Color LongAccentColor => CRTThemeData.TextHigh;
+    public static Color ShortAccentColor => CRTThemeData.Warning;
 
-    public static readonly Color ShortSqueezeWarningColor = new Color(1f, 0f, 0f, 1f); // Red exclamation
+    public static Color ShortSqueezeWarningColor => CRTThemeData.Danger;
     public static readonly float WarningPulseFrequency = 5f;
 
     private PositionPanelData _data;
@@ -219,7 +220,7 @@ public class PositionPanel : MonoBehaviour
         var rect = entryGo.AddComponent<RectTransform>();
         rect.sizeDelta = new Vector2(0f, 50f);
         var bg = entryGo.AddComponent<Image>();
-        bg.color = new Color(0.05f, 0.07f, 0.18f, 0.6f);
+        bg.color = new Color(CRTThemeData.Panel.r, CRTThemeData.Panel.g, CRTThemeData.Panel.b, 0.6f);
         view.Root = entryGo;
 
         // Row 1: Ticker + Shares + Type

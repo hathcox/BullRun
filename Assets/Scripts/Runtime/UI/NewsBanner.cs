@@ -10,8 +10,9 @@ using UnityEngine.UI;
 /// </summary>
 public class NewsBanner : MonoBehaviour
 {
-    public static readonly Color PositiveBannerColor = new Color(0f, 1f, 0.533f, 0.8f); // #00FF88
-    public static readonly Color NegativeBannerColor = new Color(1f, 0f, 0.4f, 0.8f);   // #FF0066
+    // Story 14.6: Banner colors migrated to CRTThemeData
+    public static readonly Color PositiveBannerColor = new Color(CRTThemeData.TextHigh.r, CRTThemeData.TextHigh.g, CRTThemeData.TextHigh.b, 0.8f);
+    public static readonly Color NegativeBannerColor = new Color(CRTThemeData.Danger.r, CRTThemeData.Danger.g, CRTThemeData.Danger.b, 0.8f);
     public static readonly float BannerDuration = 3f;
     public static readonly float SlideSpeed = 400f;
     public static readonly float BannerHeight = 40f;

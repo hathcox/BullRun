@@ -9,11 +9,12 @@ using UnityEngine.UI;
 /// </summary>
 public class RunSummaryUI : MonoBehaviour
 {
-    private static readonly Color MarginCallColor = new Color(1f, 0.15f, 0.15f, 1f);
-    private static readonly Color RunCompleteColor = new Color(0f, 1f, 0.4f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static Color MarginCallColor => CRTThemeData.Danger;
+    private static Color RunCompleteColor => CRTThemeData.TextHigh;
     private static readonly Color VictoryGoldColor = new Color(1f, 0.85f, 0.2f, 1f);
-    private static readonly Color ProfitColor = new Color(0f, 1f, 0.4f, 1f);
-    private static readonly Color LossColor = new Color(1f, 0.3f, 0.3f, 1f);
+    private static Color ProfitColor => CRTThemeData.TextHigh;
+    private static Color LossColor => CRTThemeData.Danger;
     private static readonly Color StatsColor = new Color(0.8f, 0.8f, 0.8f, 1f);
     private static readonly Color PromptColor = new Color(0.6f, 0.6f, 0.6f, 1f);
 

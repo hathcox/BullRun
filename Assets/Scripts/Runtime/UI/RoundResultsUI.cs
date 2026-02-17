@@ -9,10 +9,11 @@ using UnityEngine.UI;
 /// </summary>
 public class RoundResultsUI : MonoBehaviour
 {
-    private static readonly Color HeaderColor = new Color(0f, 1f, 0.4f, 1f);
+    // Story 14.6: Color constants migrated to CRTThemeData
+    private static Color HeaderColor => CRTThemeData.TextHigh;
     private static readonly Color StatsColor = new Color(0.8f, 0.8f, 0.8f, 1f);
-    private static readonly Color CheckmarkColor = new Color(0f, 1f, 0.4f, 1f);
-    private static readonly Color FailCheckmarkColor = new Color(1f, 0.3f, 0.3f, 1f);
+    private static Color CheckmarkColor => CRTThemeData.TextHigh;
+    private static Color FailCheckmarkColor => CRTThemeData.Danger;
 
     private GameObject _panel;
     private Text _headerText;
