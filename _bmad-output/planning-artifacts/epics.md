@@ -1159,3 +1159,74 @@ As a developer, I want to cleanly remove the old 3-card draft shop and migrate r
 - Rarity-weighted selection replaced with uniform random
 - Old Trade Volume upgrade migrated to Trading Deck Expansions
 - All existing shop tests updated or replaced
+
+## Epic 14: Terminal 1999 — CRT Trading Cockpit UI
+
+**Description:** Complete visual rework of the trading-phase UI from scattered floating panels into a cohesive retro-futuristic CRT Trading Cockpit. Consolidates the top HUD bar, position overlay, and trade panel into a single bottom-docked "Control Deck." Frames the entire screen as a 1999 CRT monitor with scanlines, vignette, and phosphor-green text. Introduces a centralized theme system for consistent CRT aesthetic.
+**Phase:** Post-Epic 13, visual overhaul of the trading phase
+**Depends On:** Epic 13 (Store Rework — complete), FIX-16 (UI positioning — complete)
+
+### Story 14.1: CRT Theme Data System
+
+As a developer, I want a centralized CRT theme data class with all Terminal 1999 colors and a DashboardReferences struct, so that all UI stories share consistent colors and GameRunner has clean access to UI elements without GameObject.Find.
+
+**Acceptance Criteria:**
+- New CRTThemeData.cs with all Terminal 1999 color constants
+- New DashboardReferences.cs with public fields for all dashboard UI elements
+- Helper methods ApplyLabelStyle and ApplyPanelStyle for consistent styling
+- No existing code modified — additive only
+
+### Story 14.2: Control Deck Layout Shell
+
+As a developer, I want the bottom-docked Control Deck panel structure with three empty columns, so that subsequent stories can populate the Wallet, Actions, and Stats wings.
+
+**Acceptance Criteria:**
+- ExecuteControlDeck() creates bottom-center anchored panel with HorizontalLayoutGroup
+- Three child containers: Left_Wing, Center_Core, Right_Wing
+- CRT theme colors for panel background and border
+- Old top bar creation removed from UISetup.Execute()
+- TradingHUD.Initialize() updated for new DashboardReferences
+
+### Story 14.3: Wallet & Stats Wiring (Left/Right Wings)
+
+As a player, I want my Cash, Profit, and Target in the left column and Position, Time, and Rep in the right column of the Control Deck, so that all critical info is consolidated.
+
+**Acceptance Criteria:**
+- Left Wing: WALLET header, Cash/Profit/Target rows with CRT theme colors
+- Right Wing: POSITIONS header, Direction/P&L/Time/Rep rows
+- TradingHUD, PositionOverlay, RoundTimerUI rewired to new text refs
+- Old ExecutePositionOverlay() removed
+- All real-time updates continue working
+
+### Story 14.4: Action Buttons (Center Core)
+
+As a player, I want SELL, BUY, and SHORT buttons in the center column of the Control Deck, so that trading actions are consolidated with the dashboard.
+
+**Acceptance Criteria:**
+- Top row: SELL (red) + BUY (green); Bottom row: SHORT (amber)
+- Cooldown overlay covers Center Core
+- Short P&L panel inline below SHORT button
+- All button click wiring and keyboard shortcuts preserved
+- Old ExecuteTradePanel() removed
+
+### Story 14.5: Chart Repositioning & Event Ticker
+
+As a player, I want the price chart anchored above the Control Deck with an amber event ticker banner, so that the chart is framed within the CRT viewport and events are visible.
+
+**Acceptance Criteria:**
+- Chart bounds recalculated for above Control Deck
+- Stock label area with larger CRT-themed fonts
+- Amber event ticker banner between stock label and chart
+- Chart grid/background/label colors updated to CRT theme
+- NewsBanner redirected to event ticker
+
+### Story 14.6: CRT Bezel Overlay & Visual Polish
+
+As a player, I want the entire screen framed as a curved 1999 CRT monitor with scanline effects and phosphor glow, so that the cockpit has a cohesive retro-futuristic aesthetic.
+
+**Acceptance Criteria:**
+- Full-screen CRT overlay (vignette + scanlines, non-interactive)
+- All scattered color constants migrated to CRTThemeData
+- URP Bloom for phosphor glow effect
+- Tier themes layer over CRT base (accents only, base colors fixed)
+- No performance regressions
