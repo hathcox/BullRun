@@ -250,28 +250,7 @@ public static class UISetup
         targetValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
         refs.TargetText = targetValueGo.GetComponent<Text>();
 
-        // Target progress bar — filled horizontal bar below target text
-        var targetBarBg = new GameObject("TargetProgressBarBg");
-        targetBarBg.transform.SetParent(leftWingGo.transform, false);
-        targetBarBg.AddComponent<RectTransform>();
-        var targetBarBgLayout = targetBarBg.AddComponent<LayoutElement>();
-        targetBarBgLayout.preferredHeight = 6f;
-        var targetBarBgImage = targetBarBg.AddComponent<Image>();
-        targetBarBgImage.color = new Color(0.15f, 0.15f, 0.2f, 0.5f);
-
-        var targetBarFill = new GameObject("TargetProgressBarFill");
-        targetBarFill.transform.SetParent(targetBarBg.transform, false);
-        var targetBarFillRect = targetBarFill.AddComponent<RectTransform>();
-        targetBarFillRect.anchorMin = Vector2.zero;
-        targetBarFillRect.anchorMax = Vector2.one;
-        targetBarFillRect.offsetMin = Vector2.zero;
-        targetBarFillRect.offsetMax = Vector2.zero;
-        var targetBarFillImage = targetBarFill.AddComponent<Image>();
-        targetBarFillImage.color = CRTThemeData.TextHigh;
-        targetBarFillImage.type = Image.Type.Filled;
-        targetBarFillImage.fillMethod = Image.FillMethod.Horizontal;
-        targetBarFillImage.fillAmount = 0f;
-        refs.TargetProgressBar = targetBarFillImage;
+        // Target progress bar removed — target text already shows the numbers
 
         // ── Story 14.4: Populate Center Core (Action Buttons) ─────────────────
         centerVlg.spacing = 8f;
@@ -464,13 +443,6 @@ public static class UISetup
         refs.PositionEmptyText = emptyTextGo.GetComponent<Text>();
 
         // Timer + Rep rows moved to Center Core InfoBar (see above)
-
-        // panel-ui-bug: Add layout debug monitor to track panel widths at runtime
-        var debugMonitor = panelGo.AddComponent<LayoutDebugMonitor>();
-        debugMonitor.Initialize(leftWingGo.GetComponent<RectTransform>(),
-            centerCoreGo.GetComponent<RectTransform>(),
-            rightWingGo.GetComponent<RectTransform>(),
-            panelRect);
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log("[Setup] ControlDeck created: Left_Wing (Wallet), Center_Core (BUY/SELL/SHORT), Right_Wing (Positions/Stats)");
