@@ -77,7 +77,7 @@ public class TradingHUD : MonoBehaviour
             null, // portfolioChangeText — populated by future story
             dashRefs.ProfitText,
             dashRefs.TargetText,
-            null  // targetProgressBar — populated by future story
+            dashRefs.TargetProgressBar
         );
 
         if (dashRefs.RepText != null)

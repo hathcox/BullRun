@@ -12,6 +12,7 @@ public class DashboardReferences
     public Text CashText;
     public Text ProfitText;
     public Text TargetText;
+    public Image TargetProgressBar;
 
     // ── Center Core: Action Buttons ─────────────────────────────────────
     public Button BuyButton;
@@ -24,7 +25,10 @@ public class DashboardReferences
     public Text AvgPriceText;
     public Text PnLText;
     public Text TimerText;
+    public Image TimerProgressBar;
     public Text RepText;
+    public GameObject AvgPriceRow;
+    public GameObject PnlRow;
 
     // ── Container Transforms ────────────────────────────────────────────
     public RectTransform LeftWing;

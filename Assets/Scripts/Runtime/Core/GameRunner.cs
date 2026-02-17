@@ -98,13 +98,9 @@ public class GameRunner : MonoBehaviour
         // Create chart system (subscribes to PriceUpdatedEvent, RoundStartedEvent, etc.)
         ChartSetup.Execute();
 
-        // Create all UI systems with runtime data
-        UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
+        // Create all UI systems with runtime data — returns PositionOverlay for direct wiring
+        _positionOverlay = UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
-
-        // FIX-15: Stock sidebar removed — single stock per round is permanent
-        // FIX-7: Compact position overlay replaces old right-side PositionPanel
-        _positionOverlay = UISetup.ExecutePositionOverlay(_ctx.Portfolio);
 
         // Create item inventory bottom bar (subscribes to RoundStartedEvent/TradingPhaseEndedEvent)
         UISetup.ExecuteItemInventoryPanel(_ctx);

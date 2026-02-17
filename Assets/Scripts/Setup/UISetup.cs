@@ -37,7 +37,7 @@ public static class UISetup
         #endif
     }
 
-    public static void Execute(RunContext runContext, int currentRound, float roundDuration)
+    public static PositionOverlay Execute(RunContext runContext, int currentRound, float roundDuration)
     {
         // Ensure EventSystem exists for uGUI button interactions (shop, etc.)
         if (EventSystem.current == null)
@@ -55,13 +55,27 @@ public static class UISetup
         var tradingHUD = hudParent.AddComponent<TradingHUD>();
         tradingHUD.Initialize(dashRefs, runContext, currentRound, roundDuration);
 
-        // Initialize RoundTimerUI — timer text/progress populated by future stories
+        // Story 14.3: Initialize RoundTimerUI with Right Wing timer text
         var roundTimerUI = hudParent.AddComponent<RoundTimerUI>();
-        roundTimerUI.Initialize(dashRefs.TimerText, null, null);
+        roundTimerUI.Initialize(dashRefs.TimerText, dashRefs.TimerProgressBar, null);
+
+        // Story 14.3: Create PositionOverlay using Right Wing text references from Control Deck
+        var posOverlayGo = new GameObject("PositionOverlay");
+        var positionOverlay = posOverlayGo.AddComponent<PositionOverlay>();
+        positionOverlay.Initialize(
+            runContext.Portfolio,
+            dashRefs.DirectionText,
+            dashRefs.AvgPriceText,
+            dashRefs.PnLText,
+            dashRefs.AvgPriceRow,
+            dashRefs.PnlRow
+        );
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Setup] TradingHUD created: round={currentRound}, target=${MarginCallTargets.GetTarget(currentRound):F0}");
         #endif
+
+        return positionOverlay;
     }
 
     /// <summary>
@@ -147,8 +161,175 @@ public static class UISetup
 
         refs.RightWing = rightWingGo.GetComponent<RectTransform>();
 
+        // ── Story 14.3: Populate Left Wing (Wallet) ─────────────────────────
+        leftVlg.spacing = 4f;
+        leftVlg.padding = new RectOffset(8, 8, 8, 8);
+        leftVlg.childAlignment = TextAnchor.UpperLeft;
+
+        // "WALLET" header (CRTThemeData.TextLow, 10pt)
+        var walletHeaderGo = CreateLabel("WalletHeader", leftWingGo.transform, "WALLET", CRTThemeData.TextLow, 10);
+        walletHeaderGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        // Cash row
+        var cashRowGo = new GameObject("CashRow");
+        cashRowGo.transform.SetParent(leftWingGo.transform, false);
+        cashRowGo.AddComponent<RectTransform>();
+        var cashRowHlg = cashRowGo.AddComponent<HorizontalLayoutGroup>();
+        cashRowHlg.spacing = 4f;
+        cashRowHlg.childAlignment = TextAnchor.MiddleLeft;
+        cashRowHlg.childForceExpandWidth = false;
+        cashRowHlg.childForceExpandHeight = true;
+
+        var cashLabelGo = CreateLabel("CashLabel", cashRowGo.transform, "Cash:", CRTThemeData.TextLow, 12);
+        cashLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var cashValueGo = CreateLabel("CashValue", cashRowGo.transform, "$0.00", CRTThemeData.TextHigh, 16);
+        cashValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        cashValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.CashText = cashValueGo.GetComponent<Text>();
+
+        // Profit row
+        var profitRowGo = new GameObject("ProfitRow");
+        profitRowGo.transform.SetParent(leftWingGo.transform, false);
+        profitRowGo.AddComponent<RectTransform>();
+        var profitRowHlg = profitRowGo.AddComponent<HorizontalLayoutGroup>();
+        profitRowHlg.spacing = 4f;
+        profitRowHlg.childAlignment = TextAnchor.MiddleLeft;
+        profitRowHlg.childForceExpandWidth = false;
+        profitRowHlg.childForceExpandHeight = true;
+
+        var profitLabelGo = CreateLabel("ProfitLabel", profitRowGo.transform, "Round Profit:", CRTThemeData.TextLow, 12);
+        profitLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var profitValueGo = CreateLabel("ProfitValue", profitRowGo.transform, "+$0.00", CRTThemeData.TextHigh, 16);
+        profitValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        profitValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.ProfitText = profitValueGo.GetComponent<Text>();
+
+        // Target row
+        var targetRowGo = new GameObject("TargetRow");
+        targetRowGo.transform.SetParent(leftWingGo.transform, false);
+        targetRowGo.AddComponent<RectTransform>();
+        var targetRowHlg = targetRowGo.AddComponent<HorizontalLayoutGroup>();
+        targetRowHlg.spacing = 4f;
+        targetRowHlg.childAlignment = TextAnchor.MiddleLeft;
+        targetRowHlg.childForceExpandWidth = false;
+        targetRowHlg.childForceExpandHeight = true;
+
+        var targetLabelGo = CreateLabel("TargetLabel_LW", targetRowGo.transform, "Target:", CRTThemeData.TextLow, 12);
+        targetLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var targetValueGo = CreateLabel("TargetValue_LW", targetRowGo.transform, "$0.00 / $0.00", CRTThemeData.TextHigh, 14);
+        targetValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.TargetText = targetValueGo.GetComponent<Text>();
+
+        // Target progress bar — filled horizontal bar below target text
+        var targetBarBg = new GameObject("TargetProgressBarBg");
+        targetBarBg.transform.SetParent(leftWingGo.transform, false);
+        targetBarBg.AddComponent<RectTransform>();
+        var targetBarBgLayout = targetBarBg.AddComponent<LayoutElement>();
+        targetBarBgLayout.preferredHeight = 6f;
+        var targetBarBgImage = targetBarBg.AddComponent<Image>();
+        targetBarBgImage.color = new Color(0.15f, 0.15f, 0.2f, 0.5f);
+
+        var targetBarFill = new GameObject("TargetProgressBarFill");
+        targetBarFill.transform.SetParent(targetBarBg.transform, false);
+        var targetBarFillRect = targetBarFill.AddComponent<RectTransform>();
+        targetBarFillRect.anchorMin = Vector2.zero;
+        targetBarFillRect.anchorMax = Vector2.one;
+        targetBarFillRect.offsetMin = Vector2.zero;
+        targetBarFillRect.offsetMax = Vector2.zero;
+        var targetBarFillImage = targetBarFill.AddComponent<Image>();
+        targetBarFillImage.color = CRTThemeData.TextHigh;
+        targetBarFillImage.type = Image.Type.Filled;
+        targetBarFillImage.fillMethod = Image.FillMethod.Horizontal;
+        targetBarFillImage.fillAmount = 0f;
+        refs.TargetProgressBar = targetBarFillImage;
+
+        // ── Story 14.3: Populate Right Wing (Positions/Stats) ────────────────
+        rightVlg.spacing = 4f;
+        rightVlg.padding = new RectOffset(8, 8, 8, 8);
+        rightVlg.childAlignment = TextAnchor.UpperLeft;
+
+        // "POSITIONS" header (CRTThemeData.TextLow, 10pt)
+        var posHeaderGo = CreateLabel("PositionsHeader", rightWingGo.transform, "POSITIONS", CRTThemeData.TextLow, 10);
+        posHeaderGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        // Direction row — bold text for LONG/SHORT/FLAT
+        var directionGo = CreateLabel("DirectionText", rightWingGo.transform, "FLAT", PositionOverlay.FlatColor, 18);
+        directionGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        directionGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.DirectionText = directionGo.GetComponent<Text>();
+
+        // Avg price row — hidden when FLAT
+        var avgPriceRowGo = CreateLabel("AvgPriceText", rightWingGo.transform, "Avg: $0.00", CRTThemeData.TextLow, 13);
+        avgPriceRowGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.AvgPriceText = avgPriceRowGo.GetComponent<Text>();
+        refs.AvgPriceRow = avgPriceRowGo;
+
+        // P&L row — hidden when FLAT
+        var pnlRowGo = CreateLabel("PnLText", rightWingGo.transform, "P&L: +$0.00", Color.white, 15);
+        pnlRowGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        pnlRowGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.PnLText = pnlRowGo.GetComponent<Text>();
+        refs.PnlRow = pnlRowGo;
+
+        // Timer row
+        var timerRowGo = new GameObject("TimerRow");
+        timerRowGo.transform.SetParent(rightWingGo.transform, false);
+        timerRowGo.AddComponent<RectTransform>();
+        var timerRowHlg = timerRowGo.AddComponent<HorizontalLayoutGroup>();
+        timerRowHlg.spacing = 4f;
+        timerRowHlg.childAlignment = TextAnchor.MiddleLeft;
+        timerRowHlg.childForceExpandWidth = false;
+        timerRowHlg.childForceExpandHeight = true;
+
+        var timerLabelGo = CreateLabel("TimerLabel", timerRowGo.transform, "TIME:", CRTThemeData.TextLow, 12);
+        timerLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var timerValueGo = CreateLabel("TimerValue", timerRowGo.transform, "0:00", CRTThemeData.TextHigh, 16);
+        timerValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        timerValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.TimerText = timerValueGo.GetComponent<Text>();
+
+        // Timer progress bar — filled horizontal bar below timer row
+        var timerBarBg = new GameObject("TimerProgressBarBg");
+        timerBarBg.transform.SetParent(rightWingGo.transform, false);
+        timerBarBg.AddComponent<RectTransform>();
+        var timerBarBgLayout = timerBarBg.AddComponent<LayoutElement>();
+        timerBarBgLayout.preferredHeight = 6f;
+        var timerBarBgImage = timerBarBg.AddComponent<Image>();
+        timerBarBgImage.color = new Color(0.15f, 0.15f, 0.2f, 0.5f);
+
+        var timerBarFill = new GameObject("TimerProgressBarFill");
+        timerBarFill.transform.SetParent(timerBarBg.transform, false);
+        var timerBarFillRect = timerBarFill.AddComponent<RectTransform>();
+        timerBarFillRect.anchorMin = Vector2.zero;
+        timerBarFillRect.anchorMax = Vector2.one;
+        timerBarFillRect.offsetMin = Vector2.zero;
+        timerBarFillRect.offsetMax = Vector2.zero;
+        var timerBarFillImage = timerBarFill.AddComponent<Image>();
+        timerBarFillImage.color = CRTThemeData.TextHigh;
+        timerBarFillImage.type = Image.Type.Filled;
+        timerBarFillImage.fillMethod = Image.FillMethod.Horizontal;
+        timerBarFillImage.fillAmount = 1f;
+        refs.TimerProgressBar = timerBarFillImage;
+
+        // Rep row
+        var repRowGo = new GameObject("RepRow");
+        repRowGo.transform.SetParent(rightWingGo.transform, false);
+        repRowGo.AddComponent<RectTransform>();
+        var repRowHlg = repRowGo.AddComponent<HorizontalLayoutGroup>();
+        repRowHlg.spacing = 4f;
+        repRowHlg.childAlignment = TextAnchor.MiddleLeft;
+        repRowHlg.childForceExpandWidth = false;
+        repRowHlg.childForceExpandHeight = true;
+
+        var repLabelGo = CreateLabel("RepLabel", repRowGo.transform, "REP:", CRTThemeData.TextLow, 12);
+        repLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var repValueGo = CreateLabel("RepValue", repRowGo.transform, "\u2605 0", CRTThemeData.Warning, 16);
+        repValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        repValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        refs.RepText = repValueGo.GetComponent<Text>();
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] ControlDeck created: bottom-center panel with Left_Wing, Center_Core, Right_Wing");
+        Debug.Log("[Setup] ControlDeck created: bottom-center panel with Left_Wing (Wallet), Center_Core, Right_Wing (Positions/Stats)");
         #endif
 
         return refs;
@@ -319,84 +500,8 @@ public static class UISetup
         return view;
     }
 
-    /// <summary>
-    /// Generates the compact position overlay at bottom-left of screen.
-    /// Shows direction (LONG/SHORT/FLAT), share count, avg price, and real-time P&L.
-    /// FIX-16: Moved from bottom-center to bottom-left for persistent visibility.
-    /// </summary>
-    public static PositionOverlay ExecutePositionOverlay(Portfolio portfolio)
-    {
-        var overlayParent = new GameObject("PositionOverlay");
-
-        // Create Canvas — use ChartCanvas sorting order range
-        var canvasGo = new GameObject("PositionOverlayCanvas");
-        canvasGo.transform.SetParent(overlayParent.transform);
-        var canvas = canvasGo.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 24; // Same level as trade panel — visually stacked together
-
-        var scaler = canvasGo.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        // No GraphicRaycaster — overlay should not block input
-
-        // Overlay container — bottom-left, above trade panel area (FIX-16)
-        var containerGo = CreatePanel("OverlayContainer", canvasGo.transform);
-        var containerRect = containerGo.GetComponent<RectTransform>();
-        containerRect.anchorMin = new Vector2(0f, 0f);
-        containerRect.anchorMax = new Vector2(0f, 0f);
-        containerRect.pivot = new Vector2(0f, 0f);
-        containerRect.anchoredPosition = new Vector2(12f, 170f); // Left margin 12px, above Control Deck (160px + 10px gap)
-        containerRect.sizeDelta = new Vector2(280f, 112f);
-        containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.75f); // Higher opacity for contrast (FIX-16)
-
-        // Vertical layout for rows
-        var vlg = containerGo.AddComponent<VerticalLayoutGroup>();
-        vlg.spacing = 2f;
-        vlg.padding = new RectOffset(10, 10, 6, 6);
-        vlg.childAlignment = TextAnchor.MiddleCenter;
-        vlg.childForceExpandWidth = true;
-        vlg.childForceExpandHeight = false;
-
-        // Section header
-        var headerGo = CreateLabel("LongHeader", containerGo.transform, "LONG POSITION",
-            LabelColor, 10);
-        headerGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-
-        // Row 1: Direction — "15x LONG" or "FLAT" (FIX-16: 20pt for readability)
-        var directionGo = CreateLabel("DirectionText", containerGo.transform, "FLAT",
-            new Color(0.5f, 0.5f, 0.55f, 1f), 20);
-        directionGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        directionGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-
-        // Row 2: Avg price — "Avg: $2.45" (FIX-16: 15pt)
-        var avgPriceGo = CreateLabel("AvgPriceText", containerGo.transform, "Avg: $0.00",
-            LabelColor, 15);
-        avgPriceGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-
-        // Row 3: P&L — "P&L: +$3.75" (FIX-16: 18pt bold)
-        var pnlGo = CreateLabel("PnLText", containerGo.transform, "P&L: +$0.00",
-            Color.white, 18);
-        pnlGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        pnlGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
-
-        // Initialize PositionOverlay MonoBehaviour
-        var positionOverlay = overlayParent.AddComponent<PositionOverlay>();
-        positionOverlay.Initialize(
-            portfolio,
-            directionGo.GetComponent<Text>(),
-            avgPriceGo.GetComponent<Text>(),
-            pnlGo.GetComponent<Text>(),
-            avgPriceGo,
-            pnlGo
-        );
-
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Setup] PositionOverlay created: bottom-left (FIX-16)");
-        #endif
-
-        return positionOverlay;
-    }
+    // Story 14.3: ExecutePositionOverlay removed — PositionOverlay now created inside Execute()
+    // using Control Deck Right Wing text references from DashboardReferences.
 
     /// <summary>
     /// Generates the Market Open preview overlay panel.
