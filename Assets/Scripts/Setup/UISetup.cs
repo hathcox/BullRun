@@ -1147,13 +1147,13 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.95f);
+        bgGo.GetComponent<Image>().color = ColorPalette.Background;
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
         // ── Header: "STORE — ROUND X" ──
         var headerGo = CreateLabel("StoreHeader", bgGo.transform, "STORE",
-            CRTThemeData.TextHigh, 28);
+            ColorPalette.White, 28);
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         var headerRect = headerGo.GetComponent<RectTransform>();
         headerRect.anchorMin = new Vector2(0.5f, 1f);
@@ -1356,7 +1356,7 @@ public static class UISetup
         var btnLayoutElem = btnGo.AddComponent<LayoutElement>();
         btnLayoutElem.minHeight = 36f;
         btnLayoutElem.preferredHeight = 36f;
-        btnGo.GetComponent<Image>().color = ColorPalette.Dimmed(ColorPalette.Green, 0.5f);
+        btnGo.GetComponent<Image>().color = ShopUI.BuyButtonColor;
         view.PurchaseButton = btnGo.AddComponent<Button>();
 
         var btnLabel = CreateLabel($"BuyBtnText_{index}", btnGo.transform, "BUY",
@@ -1387,11 +1387,20 @@ public static class UISetup
 
         // Panel header label
         var headerGo = CreateLabel($"{name}Header", panelGo.transform, headerText,
-            ShopUI.PanelHeaderColor, 16);
+            ColorPalette.White, 16);
         headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         headerGo.GetComponent<Text>().raycastTarget = false;
         var headerLayout = headerGo.AddComponent<LayoutElement>();
-        headerLayout.preferredHeight = 28f;
+        headerLayout.preferredHeight = 22f;
+
+        // Underline separator
+        var underlineGo = new GameObject($"{name}Underline");
+        underlineGo.transform.SetParent(panelGo.transform, false);
+        var underlineImg = underlineGo.AddComponent<Image>();
+        underlineImg.color = ColorPalette.Border;
+        underlineImg.raycastTarget = false;
+        var underlineLayout = underlineGo.AddComponent<LayoutElement>();
+        underlineLayout.preferredHeight = 1f;
 
         // Placeholder content area
         var contentGo = CreateLabel($"{name}Content", panelGo.transform, "Coming soon...",

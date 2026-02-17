@@ -7,7 +7,7 @@ using System.Collections.Generic;
 /// Debug overlay manager. F1 toggles price engine overlay.
 /// F2 toggles god mode (infinite cash, skip margin calls).
 /// F3 opens skip-to-round selector for testing late-game rounds.
-/// F4 reserved for future debug tools (event trigger).
+/// F4 skips directly to the ShopState (liquidates open positions first).
 /// Wrapped in UNITY_EDITOR || DEVELOPMENT_BUILD — excluded from release builds.
 /// </summary>
 public class DebugManager : MonoBehaviour
@@ -100,10 +100,10 @@ public class DebugManager : MonoBehaviour
             _runContext.Portfolio.SetCash(999999999f);
         }
 
-        // F4: Event trigger (placeholder)
+        // F4: Skip to shop — liquidate positions and jump straight to ShopState
         if (keyboard.f4Key.wasPressedThisFrame)
         {
-            Debug.Log("[Debug] Event trigger not yet implemented");
+            SkipToShop();
         }
     }
 
@@ -155,6 +155,46 @@ public class DebugManager : MonoBehaviour
 
         Debug.Log($"[Debug] Jumped to Round {roundNumber} (Act {targetAct}, " +
                   $"Tier {RunContext.GetTierForAct(targetAct)}, Cash ${debugCash:F0})");
+    }
+
+    /// <summary>
+    /// Liquidates open positions and transitions directly to ShopState.
+    /// F4 debug shortcut for testing the store without waiting for the round to end.
+    /// </summary>
+    private void SkipToShop()
+    {
+        if (_runContext == null || _stateMachine == null)
+        {
+            Debug.LogWarning("[Debug] Cannot skip to shop — game context not set");
+            return;
+        }
+
+        // Liquidate any open positions at current prices
+        _runContext.Portfolio.LiquidateAllPositions(stockId =>
+        {
+            if (_priceGenerator != null && int.TryParse(stockId, out int parsedId))
+            {
+                for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
+                {
+                    if (_priceGenerator.ActiveStocks[i].StockId == parsedId)
+                        return _priceGenerator.ActiveStocks[i].CurrentPrice;
+                }
+            }
+            return 0f;
+        });
+
+        // Grant debug reputation so everything is purchasable
+        _runContext.Reputation.Add(99999);
+
+        ShopState.NextConfig = new ShopStateConfig
+        {
+            StateMachine = _stateMachine,
+            PriceGenerator = _priceGenerator,
+            TradeExecutor = _tradeExecutor
+        };
+        _stateMachine.TransitionTo<ShopState>();
+
+        Debug.Log($"[Debug] Skipped to ShopState (Round {_runContext.CurrentRound}, Rep={_runContext.Reputation.Current})");
     }
 
     private void InitStyles()

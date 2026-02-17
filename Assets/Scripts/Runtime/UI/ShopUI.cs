@@ -55,6 +55,17 @@ public class ShopUI : MonoBehaviour
     public const float BondPulseMaxAlpha = 1f;
     public const float BondPulseHoverBoost = 0.3f;
 
+    private static Font _cachedFont;
+    public static Font DefaultFont
+    {
+        get
+        {
+            if (_cachedFont == null)
+                _cachedFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            return _cachedFont;
+        }
+    }
+
     private GameObject _root;
     private Text _repText;
     private Text _cashText;
@@ -80,7 +91,7 @@ public class ShopUI : MonoBehaviour
     private int _focusedPanelIndex = -1;
 
     // Expansion card color (teal accent)
-    public static readonly Color ExpansionCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.4f), 0.9f);
+    public static readonly Color ExpansionCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2.5f), 0.95f);
     public static readonly Color OwnedOverlayColor = new Color(0.1f, 0.2f, 0.1f, 0.85f);
 
     // State — now uses RelicDef
@@ -102,11 +113,16 @@ public class ShopUI : MonoBehaviour
     private System.Action<int> _onTipPurchase;
 
     // Tip card colors (mystery theme — cyan-tinted)
-    public static readonly Color TipCardFaceDownColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.CyanDim, 0.3f), 0.9f);
-    public static readonly Color TipCardRevealedColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.9f);
+    public static readonly Color TipCardFaceDownColor = ColorPalette.WithAlpha(ColorPalette.CyanDim, 0.9f);
+    public static readonly Color TipCardRevealedColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2.5f), 0.95f);
+
+    // Button colors — clear affordability contrast
+    public static readonly Color BuyButtonColor = ColorPalette.Dimmed(ColorPalette.Green, 0.8f);
+    public static readonly Color CantAffordButtonColor = ColorPalette.Dimmed(ColorPalette.Border, 0.6f);
+    public static readonly Color SellButtonColor = ColorPalette.Dimmed(ColorPalette.Red, 0.6f);
 
     // Bond panel colors (green/cash theme — Story 13.6)
-    public static readonly Color BondCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.9f);
+    public static readonly Color BondCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2.5f), 0.95f);
 
     // Hover animation state (Story 13.8)
     private Coroutine[] _hoverCoroutines;
@@ -202,6 +218,7 @@ public class ShopUI : MonoBehaviour
 
     public void SetBottomPanels(GameObject expansionsPanel, GameObject tipsPanel, GameObject bondsPanel)
     {
+        Debug.Log($"[shop-not-showing-bug] SetBottomPanels: expansions={expansionsPanel != null}, tips={tipsPanel != null}, bonds={bondsPanel != null}");
         _expansionsPanel = expansionsPanel;
         _tipsPanel = tipsPanel;
         _bondsPanel = bondsPanel;
@@ -335,6 +352,7 @@ public class ShopUI : MonoBehaviour
     /// </summary>
     public void ShowExpansions(RunContext ctx, ExpansionDef[] offering, System.Action<int> onPurchase)
     {
+        Debug.Log($"[shop-not-showing-bug] ShowExpansions called — panel={_expansionsPanel != null}, offering={offering?.Length}, offeringNull={offering == null}");
         _ctx = ctx;
         _expansionOffering = offering;
         _onExpansionPurchase = onPurchase;
@@ -342,7 +360,11 @@ public class ShopUI : MonoBehaviour
         // Clear existing expansion card objects
         ClearExpansionCards();
 
-        if (_expansionsPanel == null || offering == null || offering.Length == 0) return;
+        if (_expansionsPanel == null || offering == null || offering.Length == 0)
+        {
+            Debug.LogWarning($"[shop-not-showing-bug] ShowExpansions EARLY RETURN — panel={_expansionsPanel != null}, offeringNull={offering == null}, offeringLen={offering?.Length}");
+            return;
+        }
 
         // Remove placeholder "Coming soon..." label if present
         var contentLabel = _expansionsPanel.transform.Find("ExpansionsPanelContent");
@@ -363,6 +385,7 @@ public class ShopUI : MonoBehaviour
                 _expansionCards[i].PurchaseButton.interactable = canAfford;
                 _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
                 _expansionCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
+                _expansionCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
             }
         }
     }
@@ -411,6 +434,7 @@ public class ShopUI : MonoBehaviour
             _expansionCards[i].PurchaseButton.interactable = canAfford;
             _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _expansionCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
+            _expansionCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
         }
     }
 
@@ -427,11 +451,11 @@ public class ShopUI : MonoBehaviour
 
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
-        cardLayout.preferredHeight = 80f;
+        cardLayout.preferredHeight = 95f;
 
         var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 2f;
-        vlg.padding = new RectOffset(8, 8, 4, 4);
+        vlg.padding = new RectOffset(8, 8, 6, 6);
         vlg.childAlignment = TextAnchor.UpperCenter;
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
@@ -440,6 +464,7 @@ public class ShopUI : MonoBehaviour
         var nameGo = new GameObject("Name");
         nameGo.transform.SetParent(cardGo.transform, false);
         view.NameText = nameGo.AddComponent<Text>();
+        view.NameText.font = DefaultFont;
         view.NameText.text = expansion.Name;
         view.NameText.fontSize = 14;
         view.NameText.fontStyle = FontStyle.Bold;
@@ -453,6 +478,7 @@ public class ShopUI : MonoBehaviour
         var descGo = new GameObject("Description");
         descGo.transform.SetParent(cardGo.transform, false);
         view.DescriptionText = descGo.AddComponent<Text>();
+        view.DescriptionText.font = DefaultFont;
         view.DescriptionText.text = expansion.Description;
         view.DescriptionText.fontSize = 11;
         view.DescriptionText.color = ColorPalette.WhiteDim;
@@ -466,6 +492,7 @@ public class ShopUI : MonoBehaviour
         var costGo = new GameObject("Cost");
         costGo.transform.SetParent(cardGo.transform, false);
         view.CostText = costGo.AddComponent<Text>();
+        view.CostText.font = DefaultFont;
         view.CostText.text = $"\u2605 {expansion.Cost}";
         view.CostText.fontSize = 13;
         view.CostText.color = ReputationColor;
@@ -478,7 +505,7 @@ public class ShopUI : MonoBehaviour
         var btnGo = new GameObject("BuyButton");
         btnGo.transform.SetParent(cardGo.transform, false);
         var btnImg = btnGo.AddComponent<Image>();
-        btnImg.color = ColorPalette.Dimmed(ColorPalette.Green, 0.3f);
+        btnImg.color = BuyButtonColor;
         view.PurchaseButton = btnGo.AddComponent<Button>();
         var btnLayout = btnGo.AddComponent<LayoutElement>();
         btnLayout.preferredHeight = 20f;
@@ -491,6 +518,7 @@ public class ShopUI : MonoBehaviour
         btnRect.offsetMin = Vector2.zero;
         btnRect.offsetMax = Vector2.zero;
         view.ButtonText = btnTextGo.AddComponent<Text>();
+        view.ButtonText.font = DefaultFont;
         view.ButtonText.text = "BUY";
         view.ButtonText.fontSize = 11;
         view.ButtonText.fontStyle = FontStyle.Bold;
@@ -510,17 +538,28 @@ public class ShopUI : MonoBehaviour
     /// </summary>
     public void ShowTips(RunContext ctx, InsiderTipGenerator.TipOffering[] offering, System.Action<int> onPurchase)
     {
+        Debug.Log($"[shop-not-showing-bug] ShowTips called — panel={_tipsPanel != null}, offering={offering?.Length}, offeringNull={offering == null}");
         _ctx = ctx;
         _tipOffering = offering;
         _onTipPurchase = onPurchase;
 
         ClearTipCards();
 
-        if (_tipsPanel == null || offering == null || offering.Length == 0) return;
+        if (_tipsPanel == null || offering == null || offering.Length == 0)
+        {
+            Debug.LogWarning($"[shop-not-showing-bug] ShowTips EARLY RETURN — panel={_tipsPanel != null}, offeringNull={offering == null}, offeringLen={offering?.Length}");
+            return;
+        }
 
         // Remove placeholder label if present
         var contentLabel = _tipsPanel.transform.Find("TipsPanelContent");
         if (contentLabel != null) contentLabel.gameObject.SetActive(false);
+
+        Debug.Log($"[shop-not-showing-bug] TipsPanel state before cards:" +
+            $" active={_tipsPanel.activeSelf}" +
+            $" childCount={_tipsPanel.transform.childCount}" +
+            $" hasVLG={_tipsPanel.GetComponent<VerticalLayoutGroup>() != null}" +
+            $" panelRect={_tipsPanel.GetComponent<RectTransform>()?.rect}");
 
         _tipCards = new TipCardView[offering.Length];
         for (int i = 0; i < offering.Length; i++)
@@ -530,6 +569,18 @@ public class ShopUI : MonoBehaviour
             _tipCards[i].PurchaseButton.interactable = canAfford;
             _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
+            _tipCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
+
+            var card = _tipCards[i];
+            var cardRT = card.Root.GetComponent<RectTransform>();
+            Debug.Log($"[shop-not-showing-bug] TipCard[{i}] created:" +
+                $" root.active={card.Root.activeSelf}" +
+                $" cardSize={cardRT.rect.width}x{cardRT.rect.height}" +
+                $" nameText='{card.NameText.text}' nameFont={card.NameText.font != null} nameColor={card.NameText.color}" +
+                $" descText='{card.DescriptionText.text}' descFont={card.DescriptionText.font != null}" +
+                $" costText='{card.CostText.text}' costFont={card.CostText.font != null}" +
+                $" childCount={card.Root.transform.childCount}" +
+                $" parent={card.Root.transform.parent.name}");
         }
     }
 
@@ -566,6 +617,7 @@ public class ShopUI : MonoBehaviour
             _tipCards[i].PurchaseButton.interactable = canAfford;
             _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
+            _tipCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
         }
     }
 
@@ -584,59 +636,62 @@ public class ShopUI : MonoBehaviour
 
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
-        cardLayout.preferredHeight = 80f;
+        cardLayout.preferredHeight = 100f;
 
         var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 2f;
-        vlg.padding = new RectOffset(8, 8, 4, 4);
+        vlg.padding = new RectOffset(8, 8, 6, 6);
         vlg.childAlignment = TextAnchor.UpperCenter;
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
-        // Name — face-down shows "INSIDER TIP" (Story 13.8, AC 4, 7)
+        // Name — shows the tip type (e.g., "PRICE FORECAST")
         var nameGo = new GameObject("Name");
         nameGo.transform.SetParent(cardGo.transform, false);
         view.NameText = nameGo.AddComponent<Text>();
-        view.NameText.text = "INSIDER TIP";
-        view.NameText.fontSize = 14;
+        view.NameText.font = DefaultFont;
+        view.NameText.text = FormatTipTypeName(offering.Definition.Type);
+        view.NameText.fontSize = 13;
         view.NameText.fontStyle = FontStyle.Bold;
-        view.NameText.color = ColorPalette.Cyan;
+        view.NameText.color = Color.white;
         view.NameText.alignment = TextAnchor.MiddleCenter;
         view.NameText.raycastTarget = false;
         var nameLayout = nameGo.AddComponent<LayoutElement>();
         nameLayout.preferredHeight = 18f;
 
-        // Description — face-down shows large "?" symbol (Story 13.8, AC 4, 7)
+        // Description — brief hint of what the tip reveals (value hidden until purchase)
         var descGo = new GameObject("Description");
         descGo.transform.SetParent(cardGo.transform, false);
         view.DescriptionText = descGo.AddComponent<Text>();
-        view.DescriptionText.text = "?";
-        view.DescriptionText.fontSize = 24;
-        view.DescriptionText.fontStyle = FontStyle.Bold;
-        view.DescriptionText.color = ColorPalette.WithAlpha(ColorPalette.CyanDim, 0.8f);
+        view.DescriptionText.font = DefaultFont;
+        view.DescriptionText.text = GetTipFaceDownHint(offering.Definition.Type);
+        view.DescriptionText.fontSize = 11;
+        view.DescriptionText.fontStyle = FontStyle.Normal;
+        view.DescriptionText.color = ColorPalette.WhiteDim;
         view.DescriptionText.alignment = TextAnchor.MiddleCenter;
         view.DescriptionText.raycastTarget = false;
         view.DescriptionText.lineSpacing = 1.1f;
         var descLayout = descGo.AddComponent<LayoutElement>();
-        descLayout.preferredHeight = 28f;
+        descLayout.preferredHeight = 18f;
 
         // Cost
         var costGo = new GameObject("Cost");
         costGo.transform.SetParent(cardGo.transform, false);
         view.CostText = costGo.AddComponent<Text>();
+        view.CostText.font = DefaultFont;
         view.CostText.text = $"\u2605 {offering.Definition.Cost}";
-        view.CostText.fontSize = 12;
+        view.CostText.fontSize = 13;
         view.CostText.color = ReputationColor;
         view.CostText.alignment = TextAnchor.MiddleCenter;
         view.CostText.raycastTarget = false;
         var costLayout = costGo.AddComponent<LayoutElement>();
-        costLayout.preferredHeight = 16f;
+        costLayout.preferredHeight = 18f;
 
         // Purchase button
         var btnGo = new GameObject("BuyButton");
         btnGo.transform.SetParent(cardGo.transform, false);
         var btnImg = btnGo.AddComponent<Image>();
-        btnImg.color = ColorPalette.Dimmed(ColorPalette.CyanDim, 0.5f);
+        btnImg.color = BuyButtonColor;
         view.PurchaseButton = btnGo.AddComponent<Button>();
         var btnLayout = btnGo.AddComponent<LayoutElement>();
         btnLayout.preferredHeight = 20f;
@@ -649,6 +704,7 @@ public class ShopUI : MonoBehaviour
         btnRect.offsetMin = Vector2.zero;
         btnRect.offsetMax = Vector2.zero;
         view.ButtonText = btnTextGo.AddComponent<Text>();
+        view.ButtonText.font = DefaultFont;
         view.ButtonText.text = "BUY";
         view.ButtonText.fontSize = 11;
         view.ButtonText.fontStyle = FontStyle.Bold;
@@ -692,28 +748,54 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns a brief face-down hint describing what this tip type reveals,
+    /// without giving away the actual value.
+    /// </summary>
+    public static string GetTipFaceDownHint(InsiderTipType type)
+    {
+        switch (type)
+        {
+            case InsiderTipType.PriceForecast: return "Predicts the average price";
+            case InsiderTipType.PriceFloor: return "Reveals the price floor";
+            case InsiderTipType.PriceCeiling: return "Reveals the price ceiling";
+            case InsiderTipType.TrendDirection: return "Shows the market trend";
+            case InsiderTipType.EventForecast: return "Previews upcoming events";
+            case InsiderTipType.EventCount: return "Reveals how many events";
+            case InsiderTipType.VolatilityWarning: return "Warns about volatility";
+            case InsiderTipType.OpeningPrice: return "Reveals the opening price";
+            default: return "Unknown intel";
+        }
+    }
+
+    /// <summary>
     /// Populates the bonds panel (Story 13.6, AC 1, 2, 8, 11, 13).
     /// Shows bond price, buy button, bonds owned info, sell button.
     /// </summary>
     public void ShowBonds(RunContext ctx, System.Action onPurchase, System.Action onSell)
     {
+        Debug.Log($"[shop-not-showing-bug] ShowBonds called — panel={_bondsPanel != null}");
         _ctx = ctx;
         _onBondPurchase = onPurchase;
         _onBondSell = onSell;
 
         ClearBondPanel();
 
-        if (_bondsPanel == null) return;
+        if (_bondsPanel == null)
+        {
+            Debug.LogWarning("[shop-not-showing-bug] ShowBonds EARLY RETURN — bondsPanel is NULL");
+            return;
+        }
 
         // Remove placeholder label if present
         var contentLabel = _bondsPanel.transform.Find("BondsPanelContent");
         if (contentLabel != null) contentLabel.gameObject.SetActive(false);
 
-        // Bond card container
+        // Bond card container — transparent bg, content lives directly in the panel
         var cardGo = new GameObject("BondCard");
         cardGo.transform.SetParent(_bondsPanel.transform, false);
         var cardBg = cardGo.AddComponent<Image>();
-        cardBg.color = BondCardColor;
+        cardBg.color = Color.clear;
+        cardBg.raycastTarget = true;
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
         cardLayout.flexibleHeight = 1f;
@@ -743,9 +825,6 @@ public class ShopUI : MonoBehaviour
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
-        // Title
-        var titleGo = CreateTextChild(cardGo.transform, "Title", "BONDS", 14, FontStyle.Bold, CashColor, 20f);
-
         // Price display — prominent with cash icon (Story 13.8, AC 5, 7)
         var priceGo = CreateTextChild(cardGo.transform, "Price", "", 16, FontStyle.Bold, CashColor, 22f);
         _bondPriceText = priceGo.GetComponent<Text>();
@@ -758,7 +837,7 @@ public class ShopUI : MonoBehaviour
         var buyBtnGo = new GameObject("BuyBondButton");
         buyBtnGo.transform.SetParent(cardGo.transform, false);
         var buyBtnImg = buyBtnGo.AddComponent<Image>();
-        buyBtnImg.color = ColorPalette.Dimmed(ColorPalette.Green, 0.3f);
+        buyBtnImg.color = BuyButtonColor;
         _bondBuyButton = buyBtnGo.AddComponent<Button>();
         var buyBtnLayout = buyBtnGo.AddComponent<LayoutElement>();
         buyBtnLayout.preferredHeight = 24f;
@@ -771,6 +850,7 @@ public class ShopUI : MonoBehaviour
         buyBtnRect.offsetMin = Vector2.zero;
         buyBtnRect.offsetMax = Vector2.zero;
         _bondBuyButtonText = buyBtnTextGo.AddComponent<Text>();
+        _bondBuyButtonText.font = DefaultFont;
         _bondBuyButtonText.text = "BUY BOND";
         _bondBuyButtonText.fontSize = 12;
         _bondBuyButtonText.fontStyle = FontStyle.Bold;
@@ -786,7 +866,7 @@ public class ShopUI : MonoBehaviour
         var sellBtnGo = new GameObject("SellBondButton");
         sellBtnGo.transform.SetParent(cardGo.transform, false);
         var sellBtnImg = sellBtnGo.AddComponent<Image>();
-        sellBtnImg.color = ColorPalette.Dimmed(ColorPalette.Red, 0.3f);
+        sellBtnImg.color = SellButtonColor;
         _bondSellButton = sellBtnGo.AddComponent<Button>();
         var sellBtnLayout = sellBtnGo.AddComponent<LayoutElement>();
         sellBtnLayout.preferredHeight = 22f;
@@ -799,6 +879,7 @@ public class ShopUI : MonoBehaviour
         sellBtnRect.offsetMin = Vector2.zero;
         sellBtnRect.offsetMax = Vector2.zero;
         _bondSellButtonText = sellBtnTextGo.AddComponent<Text>();
+        _bondSellButtonText.font = DefaultFont;
         _bondSellButtonText.text = "SELL BOND";
         _bondSellButtonText.fontSize = 11;
         _bondSellButtonText.fontStyle = FontStyle.Bold;
@@ -835,6 +916,7 @@ public class ShopUI : MonoBehaviour
             _bondPriceText.text = "NO BONDS AVAILABLE";
             _bondBuyButton.interactable = false;
             _bondBuyButtonText.text = "ROUND 8";
+            _bondBuyButton.GetComponent<Image>().color = CantAffordButtonColor;
         }
         else
         {
@@ -842,6 +924,7 @@ public class ShopUI : MonoBehaviour
             bool canAfford = ctx.Portfolio.CanAfford(price);
             _bondBuyButton.interactable = canAfford;
             _bondBuyButtonText.text = canAfford ? $"BUY BOND (${price})" : "CAN'T AFFORD";
+            _bondBuyButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
         }
 
         // Info display
@@ -914,7 +997,7 @@ public class ShopUI : MonoBehaviour
         var yesBtnGo = new GameObject("YesButton");
         yesBtnGo.transform.SetParent(overlayGo.transform, false);
         var yesBtnImg = yesBtnGo.AddComponent<Image>();
-        yesBtnImg.color = ColorPalette.Dimmed(ColorPalette.Red, 0.3f);
+        yesBtnImg.color = SellButtonColor;
         var yesBtn = yesBtnGo.AddComponent<Button>();
         var yesBtnLayout = yesBtnGo.AddComponent<LayoutElement>();
         yesBtnLayout.preferredHeight = 22f;
@@ -936,7 +1019,7 @@ public class ShopUI : MonoBehaviour
         var noBtnGo = new GameObject("NoButton");
         noBtnGo.transform.SetParent(overlayGo.transform, false);
         var noBtnImg = noBtnGo.AddComponent<Image>();
-        noBtnImg.color = ColorPalette.Dimmed(ColorPalette.Border, 0.5f);
+        noBtnImg.color = CantAffordButtonColor;
         var noBtn = noBtnGo.AddComponent<Button>();
         var noBtnLayout = noBtnGo.AddComponent<LayoutElement>();
         noBtnLayout.preferredHeight = 22f;
@@ -961,6 +1044,7 @@ public class ShopUI : MonoBehaviour
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
         var t = go.AddComponent<Text>();
+        t.font = DefaultFont;
         t.text = text;
         t.fontSize = fontSize;
         t.fontStyle = style;
@@ -1376,11 +1460,20 @@ public class ShopUI : MonoBehaviour
 
         slot.PurchaseButton.interactable = canBuy;
         if (atCapacity)
+        {
             slot.ButtonText.text = "FULL";
+            slot.PurchaseButton.GetComponent<Image>().color = CantAffordButtonColor;
+        }
         else if (!canAfford)
+        {
             slot.ButtonText.text = "CAN'T AFFORD";
+            slot.PurchaseButton.GetComponent<Image>().color = CantAffordButtonColor;
+        }
         else
+        {
             slot.ButtonText.text = "BUY";
+            slot.PurchaseButton.GetComponent<Image>().color = BuyButtonColor;
+        }
 
         slot.CostText.color = canAfford ? Color.white : ColorPalette.Red;
 
@@ -1434,6 +1527,7 @@ public class ShopUI : MonoBehaviour
             {
                 _relicSlots[i].PurchaseButton.interactable = false;
                 _relicSlots[i].ButtonText.text = "FULL";
+                _relicSlots[i].PurchaseButton.GetComponent<Image>().color = CantAffordButtonColor;
             }
             else
             {
@@ -1441,6 +1535,7 @@ public class ShopUI : MonoBehaviour
                 _relicSlots[i].PurchaseButton.interactable = canAfford;
                 _relicSlots[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
                 _relicSlots[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
+                _relicSlots[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
             }
         }
     }

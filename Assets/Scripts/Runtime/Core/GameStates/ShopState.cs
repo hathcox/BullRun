@@ -92,22 +92,31 @@ public class ShopState : IGameState
         #endif
 
         // Show store UI with purchase, close, and reroll callbacks
+        Debug.Log($"[shop-not-showing-bug] ShopUIInstance is {(ShopUIInstance == null ? "NULL" : "SET")}");
         if (ShopUIInstance != null)
         {
+            Debug.Log($"[shop-not-showing-bug] Calling ShowRelics — relicOffering.Length={_relicOffering?.Length}");
             ShopUIInstance.ShowRelics(ctx, _relicOffering, (cardIndex) => OnPurchaseRequested(ctx, cardIndex));
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
             ShopUIInstance.SetOnRerollCallback(() => OnRerollRequested(ctx));
 
             // Populate expansion panel (Story 13.4)
+            Debug.Log($"[shop-not-showing-bug] Calling ShowExpansions — expansionOffering.Length={_expansionOffering?.Length}, Rep={ctx.Reputation.Current}");
             ShopUIInstance.ShowExpansions(ctx, _expansionOffering, (cardIndex) => OnExpansionPurchaseRequested(ctx, cardIndex));
 
             // Populate insider tips panel (Story 13.5)
+            Debug.Log($"[shop-not-showing-bug] Calling ShowTips — tipOffering.Length={_tipOffering?.Length}, tipSlots={ctx.InsiderTipSlots}");
             ShopUIInstance.ShowTips(ctx, _tipOffering, (cardIndex) => OnTipPurchaseRequested(ctx, cardIndex));
 
             // Populate bonds panel (Story 13.6)
+            Debug.Log($"[shop-not-showing-bug] Calling ShowBonds — Round={ctx.CurrentRound}, BondsOwned={ctx.BondsOwned}, Cash={ctx.Portfolio.Cash}");
             ShopUIInstance.ShowBonds(ctx,
                 () => OnBondPurchaseRequested(ctx),
                 () => OnBondSellRequested(ctx));
+        }
+        else
+        {
+            Debug.LogError("[shop-not-showing-bug] ShopUIInstance is NULL — bottom panels will NOT populate!");
         }
 
         // Publish shop opened event — only include non-null relics
