@@ -31,6 +31,7 @@ public class DashboardReferences
     public RectTransform CenterCore;
     public RectTransform RightWing;
     public RectTransform ControlDeckPanel;
+    public Canvas ControlDeckCanvas;
 
     // ── Event Ticker & Stock Labels ─────────────────────────────────────
     public Text EventTickerText;

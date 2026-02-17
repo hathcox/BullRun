@@ -64,6 +64,27 @@ public class TradingHUD : MonoBehaviour
     }
 
     /// <summary>
+    /// Story 14.2: Initialize from DashboardReferences instead of individual fields.
+    /// Extracts text references from DashboardReferences into existing private fields.
+    /// Backward-compatible: null refs are handled gracefully by RefreshDisplay null checks.
+    /// </summary>
+    public void Initialize(DashboardReferences dashRefs, RunContext runContext, int currentRound, float roundDuration)
+    {
+        Initialize(
+            runContext, currentRound, roundDuration,
+            dashRefs.CashText,
+            null, // portfolioValueText — populated by future story
+            null, // portfolioChangeText — populated by future story
+            dashRefs.ProfitText,
+            dashRefs.TargetText,
+            null  // targetProgressBar — populated by future story
+        );
+
+        if (dashRefs.RepText != null)
+            SetReputationDisplay(dashRefs.RepText);
+    }
+
+    /// <summary>
     /// Sets the top bar background image reference for tier theme tinting.
     /// Called by UISetup after creating the HUD.
     /// </summary>

@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Setup class that generates UI Canvas hierarchies during F5 rebuild.
-/// Creates Trading HUD (top bar) and Round Timer.
+/// Creates Control Deck (bottom-docked dashboard), trading panels, and overlays.
 /// (FIX-5: Stock Sidebar removed — single stock per round, no selection needed)
 /// [SetupClass(SetupPhase.SceneComposition)] attribute to be enabled when SetupPipeline exists.
 /// </summary>
@@ -47,97 +47,111 @@ public static class UISetup
             eventSystemGo.AddComponent<InputSystemUIInputModule>();
         }
 
-        var hudParent = new GameObject("TradingHUD");
+        // Story 14.2: Create Control Deck (replaces old top bar)
+        var dashRefs = ExecuteControlDeck();
 
-        // Create Canvas
-        var canvasGo = new GameObject("HUDCanvas");
-        canvasGo.transform.SetParent(hudParent.transform);
+        // Create TradingHUD parent and initialize with DashboardReferences
+        var hudParent = new GameObject("TradingHUD");
+        var tradingHUD = hudParent.AddComponent<TradingHUD>();
+        tradingHUD.Initialize(dashRefs, runContext, currentRound, roundDuration);
+
+        // Initialize RoundTimerUI — timer text/progress populated by future stories
+        var roundTimerUI = hudParent.AddComponent<RoundTimerUI>();
+        roundTimerUI.Initialize(dashRefs.TimerText, null, null);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[Setup] TradingHUD created: round={currentRound}, target=${MarginCallTargets.GetTarget(currentRound):F0}");
+        #endif
+    }
+
+    /// <summary>
+    /// Creates the bottom-docked Control Deck panel with three empty wing containers.
+    /// Returns a populated DashboardReferences for downstream UI wiring.
+    /// Story 14.2: Replaces the old top bar HUD layout.
+    /// </summary>
+    public static DashboardReferences ExecuteControlDeck()
+    {
+        var refs = new DashboardReferences();
+
+        // 1.1: Create ControlDeckCanvas with ScreenSpaceOverlay, sortingOrder=20
+        var canvasGo = new GameObject("ControlDeckCanvas");
         var canvas = canvasGo.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 20; // Above chart UI
+        canvas.sortingOrder = 20; // Between chart (10) and feedback (23)
 
         var scaler = canvasGo.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1920f, 1080f);
         canvasGo.AddComponent<GraphicRaycaster>();
 
-        // Top bar background
-        var topBar = CreatePanel("TopBar", canvasGo.transform);
-        var topBarRect = topBar.GetComponent<RectTransform>();
-        topBarRect.anchorMin = new Vector2(0f, 1f);
-        topBarRect.anchorMax = new Vector2(1f, 1f);
-        topBarRect.pivot = new Vector2(0.5f, 1f);
-        topBarRect.anchoredPosition = Vector2.zero;
-        topBarRect.sizeDelta = new Vector2(0f, TopBarHeight);
-        topBar.GetComponent<Image>().color = BarBackgroundColor;
+        refs.ControlDeckCanvas = canvas;
 
-        // Horizontal layout group for sections
-        var layout = topBar.AddComponent<HorizontalLayoutGroup>();
-        layout.spacing = 40f;
-        layout.padding = new RectOffset(30, 30, 5, 5);
-        layout.childAlignment = TextAnchor.MiddleCenter;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = true;
+        // 1.2: Create Control_Deck_Panel with bottom-center anchoring, height 160px
+        var panelGo = CreatePanel("Control_Deck_Panel", canvasGo.transform);
+        var panelRect = panelGo.GetComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.05f, 0f);
+        panelRect.anchorMax = new Vector2(0.95f, 0f);
+        panelRect.pivot = new Vector2(0.5f, 0f);
+        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.sizeDelta = new Vector2(0f, 160f);
 
-        // Section 1: Cash
-        var cashSection = CreateHUDSection("CashSection", topBar.transform);
-        var cashLabel = CreateLabel("CashLabel", cashSection.transform, "CASH", LabelColor, 12);
-        var cashValue = CreateLabel("CashValue", cashSection.transform, "$0.00", ValueColor, 20);
+        refs.ControlDeckPanel = panelRect;
 
-        // Section 2: Portfolio Value
-        var portfolioSection = CreateHUDSection("PortfolioSection", topBar.transform);
-        var portfolioLabel = CreateLabel("PortfolioLabel", portfolioSection.transform, "PORTFOLIO", LabelColor, 12);
-        var portfolioValue = CreateLabel("PortfolioValue", portfolioSection.transform, "$0.00", ValueColor, 20);
-        var portfolioChange = CreateLabel("PortfolioChange", portfolioSection.transform, "+0.0%", TradingHUD.ProfitGreen, 14);
+        // 1.4: Apply CRTThemeData.Panel background and Border outline
+        CRTThemeData.ApplyPanelStyle(panelGo.GetComponent<Image>());
 
-        // Section 3: Round Profit
-        var profitSection = CreateHUDSection("ProfitSection", topBar.transform);
-        var profitLabel = CreateLabel("ProfitLabel", profitSection.transform, "ROUND PROFIT", LabelColor, 12);
-        var profitValue = CreateLabel("ProfitValue", profitSection.transform, "+$0.00", ValueColor, 20);
+        // 1.3: Add HorizontalLayoutGroup (padding=10, spacing=20)
+        var hlg = panelGo.AddComponent<HorizontalLayoutGroup>();
+        hlg.padding = new RectOffset(10, 10, 10, 10);
+        hlg.spacing = 20f;
+        hlg.childAlignment = TextAnchor.MiddleCenter;
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
 
-        // Section 4: Target
-        var targetSection = CreateHUDSection("TargetSection", topBar.transform);
-        var targetLabel = CreateLabel("TargetLabel", targetSection.transform, "TARGET", LabelColor, 12);
-        var targetValue = CreateLabel("TargetValue", targetSection.transform, "$0 / $0", ValueColor, 16);
-        var targetBar = CreateProgressBar("TargetBar", targetSection.transform);
+        // 1.5: Create Left_Wing container (~30% width via LayoutElement)
+        var leftWingGo = new GameObject("Left_Wing");
+        leftWingGo.transform.SetParent(panelGo.transform, false);
+        leftWingGo.AddComponent<RectTransform>();
+        var leftVlg = leftWingGo.AddComponent<VerticalLayoutGroup>();
+        leftVlg.childAlignment = TextAnchor.MiddleCenter;
+        leftVlg.childForceExpandWidth = true;
+        leftVlg.childForceExpandHeight = false;
+        var leftLayout = leftWingGo.AddComponent<LayoutElement>();
+        leftLayout.flexibleWidth = 0.3f;
 
-        // FIX-12: Section 5: Reputation (amber/gold, star icon)
-        var repSection = CreateHUDSection("ReputationSection", topBar.transform);
-        var repLabel = CreateLabel("RepLabel", repSection.transform, "REP", LabelColor, 12);
-        var repValue = CreateLabel("RepValue", repSection.transform, "\u2605 0",
-            ShopUI.ReputationColor, 20);
+        refs.LeftWing = leftWingGo.GetComponent<RectTransform>();
 
-        // Section 6: Round Timer — countdown + progress bar in top bar
-        var timerSection = CreateHUDSection("TimerSection", topBar.transform);
-        var timerLabel = CreateLabel("TimerLabel", timerSection.transform, "TIME", LabelColor, 12);
-        var timerValue = CreateLabel("TimerValue", timerSection.transform, "1:00",
-            new Color(0f, 1f, 0.533f, 1f), 20);
-        timerValue.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        var timerProgress = CreateProgressBar("TimerProgress", timerSection.transform);
-        timerProgress.fillAmount = 1f;
-        timerProgress.color = new Color(0f, 1f, 0.533f, 1f);
+        // 1.6: Create Center_Core container (~40% width via LayoutElement)
+        var centerCoreGo = new GameObject("Center_Core");
+        centerCoreGo.transform.SetParent(panelGo.transform, false);
+        centerCoreGo.AddComponent<RectTransform>();
+        var centerVlg = centerCoreGo.AddComponent<VerticalLayoutGroup>();
+        centerVlg.childAlignment = TextAnchor.MiddleCenter;
+        centerVlg.childForceExpandWidth = true;
+        centerVlg.childForceExpandHeight = false;
+        var centerLayout = centerCoreGo.AddComponent<LayoutElement>();
+        centerLayout.flexibleWidth = 0.4f;
 
-        // Initialize RoundTimerUI on the HUD parent
-        var roundTimerUI = hudParent.AddComponent<RoundTimerUI>();
-        roundTimerUI.Initialize(timerValue.GetComponent<Text>(), timerProgress, timerSection);
+        refs.CenterCore = centerCoreGo.GetComponent<RectTransform>();
 
-        // Initialize TradingHUD MonoBehaviour
-        var tradingHUD = hudParent.AddComponent<TradingHUD>();
-        tradingHUD.Initialize(
-            runContext, currentRound, roundDuration,
-            cashValue.GetComponent<Text>(),
-            portfolioValue.GetComponent<Text>(),
-            portfolioChange.GetComponent<Text>(),
-            profitValue.GetComponent<Text>(),
-            targetValue.GetComponent<Text>(),
-            targetBar
-        );
-        tradingHUD.SetTopBarBackground(topBar.GetComponent<Image>());
-        tradingHUD.SetReputationDisplay(repValue.GetComponent<Text>());
+        // 1.7: Create Right_Wing container (~30% width via LayoutElement)
+        var rightWingGo = new GameObject("Right_Wing");
+        rightWingGo.transform.SetParent(panelGo.transform, false);
+        rightWingGo.AddComponent<RectTransform>();
+        var rightVlg = rightWingGo.AddComponent<VerticalLayoutGroup>();
+        rightVlg.childAlignment = TextAnchor.MiddleCenter;
+        rightVlg.childForceExpandWidth = true;
+        rightVlg.childForceExpandHeight = false;
+        var rightLayout = rightWingGo.AddComponent<LayoutElement>();
+        rightLayout.flexibleWidth = 0.3f;
+
+        refs.RightWing = rightWingGo.GetComponent<RectTransform>();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[Setup] TradingHUD created: round={currentRound}, target=${MarginCallTargets.GetTarget(currentRound):F0}");
+        Debug.Log("[Setup] ControlDeck created: bottom-center panel with Left_Wing, Center_Core, Right_Wing");
         #endif
+
+        return refs;
     }
 
     /// <summary>
@@ -332,7 +346,7 @@ public static class UISetup
         containerRect.anchorMin = new Vector2(0f, 0f);
         containerRect.anchorMax = new Vector2(0f, 0f);
         containerRect.pivot = new Vector2(0f, 0f);
-        containerRect.anchoredPosition = new Vector2(12f, 144f); // Left margin 12px, same height above trade panel
+        containerRect.anchoredPosition = new Vector2(12f, 170f); // Left margin 12px, above Control Deck (160px + 10px gap)
         containerRect.sizeDelta = new Vector2(280f, 112f);
         containerGo.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.18f, 0.75f); // Higher opacity for contrast (FIX-16)
 
@@ -1675,19 +1689,6 @@ public static class UISetup
         return go;
     }
 
-    private static GameObject CreateHUDSection(string name, Transform parent)
-    {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        go.AddComponent<RectTransform>();
-        var vlg = go.AddComponent<VerticalLayoutGroup>();
-        vlg.childAlignment = TextAnchor.MiddleCenter;
-        vlg.spacing = 2f;
-        vlg.childForceExpandHeight = false;
-        vlg.childForceExpandWidth = true;
-        return go;
-    }
-
     private static GameObject CreateLabel(string name, Transform parent, string text, Color color, int fontSize)
     {
         var go = new GameObject(name);
@@ -1705,29 +1706,4 @@ public static class UISetup
         return go;
     }
 
-    private static Image CreateProgressBar(string name, Transform parent)
-    {
-        var bgGo = new GameObject(name + "Bg");
-        bgGo.transform.SetParent(parent, false);
-        var bgRect = bgGo.AddComponent<RectTransform>();
-        bgRect.sizeDelta = new Vector2(180f, 8f);
-        var bgImage = bgGo.AddComponent<Image>();
-        bgImage.color = new Color(0.15f, 0.15f, 0.2f, 0.5f);
-
-        var fillGo = new GameObject(name + "Fill");
-        fillGo.transform.SetParent(bgGo.transform, false);
-        var fillRect = fillGo.AddComponent<RectTransform>();
-        fillRect.anchorMin = Vector2.zero;
-        fillRect.anchorMax = Vector2.one;
-        fillRect.offsetMin = Vector2.zero;
-        fillRect.offsetMax = Vector2.zero;
-
-        var fillImage = fillGo.AddComponent<Image>();
-        fillImage.color = TradingHUD.ProfitGreen;
-        fillImage.type = Image.Type.Filled;
-        fillImage.fillMethod = Image.FillMethod.Horizontal;
-        fillImage.fillAmount = 0f;
-
-        return fillImage;
-    }
 }
