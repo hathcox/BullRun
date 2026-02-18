@@ -144,7 +144,7 @@ public class GameFeelManager : MonoBehaviour
                 PlayParticleBurst(_tradeParticles, (int)(36 * intensity) + 12, ColorPalette.Green);
                 PlayParticleBurst(_currencyParticles, (int)(24 * intensity) + 6, ColorPalette.Gold);
                 PunchDashboardElement("CashText", 0.25f * intensity + 0.1f);
-                PlayAccumulatorEffect(Mathf.Clamp((int)(12f * intensity), 2, 12), 0);
+                PlayAccumulatorEffect(Mathf.Clamp((int)(12f * intensity), 2, 12), 1);
             }
             else
             {
@@ -175,7 +175,7 @@ public class GameFeelManager : MonoBehaviour
                 PlayParticleBurst(_tradeParticles, (int)(45 * intensity) + 15, ColorPalette.Green);
                 PlayParticleBurst(_currencyParticles, (int)(30 * intensity) + 9, ColorPalette.Gold);
                 PunchDashboardElement("CashText", 0.3f * intensity + 0.1f);
-                PlayAccumulatorEffect(Mathf.Clamp((int)(12f * intensity), 2, 12), 0);
+                PlayAccumulatorEffect(Mathf.Clamp((int)(12f * intensity), 2, 12), 1);
             }
             else
             {
@@ -193,11 +193,9 @@ public class GameFeelManager : MonoBehaviour
     {
         if (!evt.IsSuccess)
         {
-            Log($"TRADE FAIL effect: '{evt.Message}'");
-            PositionTradeParticlesAtChartHead();
+            Log($"TRADE FAIL effect: '{evt.Message}' (no particles — action was invalid)");
             PlayScreenShake(0.1f, 2f, 40f);
             PlayScreenFlash(_redFlash, 0.1f, 0.04f);
-            PlayParticleBurst(_tradeParticles, 9, ColorPalette.Red);
         }
     }
 

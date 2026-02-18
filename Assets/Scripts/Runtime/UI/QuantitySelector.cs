@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -12,7 +13,15 @@ public class QuantitySelector : MonoBehaviour
     public static readonly Color ActiveButtonColor = new Color(CRTThemeData.TextHigh.r * 0.5f, CRTThemeData.TextHigh.g * 0.5f, CRTThemeData.TextHigh.b * 0.5f, 1f);
     public static readonly Color InactiveButtonColor = CRTThemeData.Panel;
 
+    // AC 16: Quantity punch animation constants
+    public static readonly float QuantityPunchDuration = 0.15f;
+    public static readonly float QuantityPunchStrength = 0.25f;
+
     private int _selectedQuantity;
+
+    // AC 16: RectTransform of the quantity display text and last known quantity
+    private RectTransform _quantityDisplayRect;
+    private int _lastQuantity = -1;
 
     /// <summary>Current selected quantity value.</summary>
     public int SelectedQuantity => _selectedQuantity;
@@ -49,6 +58,31 @@ public class QuantitySelector : MonoBehaviour
     public void ResetToDefault()
     {
         _selectedQuantity = GameConfig.DefaultTradeQuantity; // x1
+    }
+
+    /// <summary>
+    /// AC 16: Sets the RectTransform of the quantity display text. Called by UISetup.
+    /// </summary>
+    public void SetDisplayRect(RectTransform rect)
+    {
+        _quantityDisplayRect = rect;
+    }
+
+    /// <summary>
+    /// AC 16: Triggers quantity punch animation if value actually changed.
+    /// Called from UISetup's +/- button click callbacks.
+    /// </summary>
+    public void OnQuantityChanged(int newQuantity)
+    {
+        if (newQuantity == _lastQuantity) return;
+        _lastQuantity = newQuantity;
+
+        if (_quantityDisplayRect != null)
+        {
+            _quantityDisplayRect.DOKill();
+            _quantityDisplayRect.DOPunchScale(Vector3.one * QuantityPunchStrength, QuantityPunchDuration, 1, 0.5f)
+                .SetUpdate(false);
+        }
     }
 
     // --- Static calculation methods (testable without MonoBehaviour) ---

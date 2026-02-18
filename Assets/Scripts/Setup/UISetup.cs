@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -60,6 +61,59 @@ public static class UISetup
         var hudParent = new GameObject("TradingHUD");
         var tradingHUD = hudParent.AddComponent<TradingHUD>();
         tradingHUD.Initialize(dashRefs, runContext, currentRound, roundDuration);
+
+        // AC 3 & 9: Create FloatingTextService as full-stretch child of HUD canvas
+        var floatingTextGo = new GameObject("FloatingTextService");
+        floatingTextGo.transform.SetParent(dashRefs.ControlDeckCanvas.transform, false);
+        var floatingTextRect = floatingTextGo.AddComponent<RectTransform>();
+        floatingTextRect.anchorMin = Vector2.zero;
+        floatingTextRect.anchorMax = Vector2.one;
+        floatingTextRect.offsetMin = Vector2.zero;
+        floatingTextRect.offsetMax = Vector2.zero;
+        var floatingTextService = floatingTextGo.AddComponent<FloatingTextService>();
+        floatingTextService.Initialize(Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
+        tradingHUD.SetFloatingTextService(floatingTextService);
+        if (dashRefs.RepText != null)
+            tradingHUD.SetRepTextRect(dashRefs.RepText.GetComponent<RectTransform>());
+
+        // Wire ChartLineView so profit/loss popups spawn at the current price on the chart
+        // (ChartSetup.Execute runs before UISetup.Execute so the view already exists)
+        var chartLineViewRef = Object.FindFirstObjectByType<ChartLineView>();
+        if (chartLineViewRef != null)
+            tradingHUD.SetChartLineView(chartLineViewRef);
+
+        // AC 13: Create streak text near the target bar in left wing
+        if (dashRefs.LeftWing != null)
+        {
+            var streakGo = new GameObject("StreakText");
+            streakGo.transform.SetParent(dashRefs.LeftWing, false);
+            streakGo.AddComponent<RectTransform>();
+            var streakText = streakGo.AddComponent<Text>();
+            streakText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            streakText.fontSize = 16;
+            streakText.fontStyle = FontStyle.Bold;
+            streakText.color = ColorPalette.Gold;
+            streakText.alignment = TextAnchor.MiddleLeft;
+            streakText.raycastTarget = false;
+            var streakLayout = streakGo.AddComponent<LayoutElement>();
+            streakLayout.preferredHeight = 20f;
+            streakGo.SetActive(false);
+            tradingHUD.SetStreakDisplay(streakText);
+        }
+
+        // AC 15: BUY/SELL button punch micro-animation
+        if (dashRefs.BuyButton != null)
+        {
+            var buyRect = dashRefs.BuyButton.GetComponent<RectTransform>();
+            dashRefs.BuyButton.onClick.AddListener(() =>
+                buyRect.DOPunchScale(new Vector3(-0.08f, -0.08f, 0f), 0.15f, 1, 0f).SetUpdate(false));
+        }
+        if (dashRefs.SellButton != null)
+        {
+            var sellRect = dashRefs.SellButton.GetComponent<RectTransform>();
+            dashRefs.SellButton.onClick.AddListener(() =>
+                sellRect.DOPunchScale(new Vector3(-0.08f, -0.08f, 0f), 0.15f, 1, 0f).SetUpdate(false));
+        }
 
         // Story 14.3: Initialize RoundTimerUI with Right Wing timer text
         var roundTimerUI = hudParent.AddComponent<RoundTimerUI>();
@@ -210,12 +264,12 @@ public static class UISetup
         cashRowHlg.childForceExpandWidth = false;
         cashRowHlg.childForceExpandHeight = true;
 
-        var cashLabelGo = CreateLabel("CashLabel", cashRowGo.transform, "Cash:", CRTThemeData.TextLow, 16);
+        var cashLabelGo = CreateLabel("CashLabel", cashRowGo.transform, "Time:", CRTThemeData.TextLow, 16);
         cashLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
-        var cashValueGo = CreateLabel("CashValue", cashRowGo.transform, "$0.00", CRTThemeData.TextHigh, 22);
+        var cashValueGo = CreateLabel("CashValue", cashRowGo.transform, "0:00", CRTThemeData.TextHigh, 22);
         cashValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         cashValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
-        refs.CashText = cashValueGo.GetComponent<Text>();
+        refs.TimerText = cashValueGo.GetComponent<Text>();
 
         // Profit row
         var profitRowGo = new GameObject("ProfitRow");
@@ -270,13 +324,13 @@ public static class UISetup
         infoBarHlg.childForceExpandWidth = false;
         infoBarHlg.childForceExpandHeight = true;
 
-        // Left: "Time:" label + timer value
-        var infoTimerLabelGo = CreateLabel("TimerLabel", infoBarGo.transform, "Time:", CRTThemeData.TextLow, 16);
+        // Left: "Cash:" label + cash value
+        var infoTimerLabelGo = CreateLabel("TimerLabel", infoBarGo.transform, "Cash:", CRTThemeData.TextLow, 16);
         infoTimerLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
-        var infoTimerValueGo = CreateLabel("TimerValue", infoBarGo.transform, "0:00", CRTThemeData.TextHigh, 20);
+        var infoTimerValueGo = CreateLabel("TimerValue", infoBarGo.transform, "$0.00", CRTThemeData.TextHigh, 20);
         infoTimerValueGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
         infoTimerValueGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
-        refs.TimerText = infoTimerValueGo.GetComponent<Text>();
+        refs.CashText = infoTimerValueGo.GetComponent<Text>();
 
         // Spacer to push reputation to the right
         var infoSpacer = new GameObject("InfoSpacer");

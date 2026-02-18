@@ -40,6 +40,11 @@ public class ShopUI : MonoBehaviour
     public static readonly Color RelicCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.2f), 0.9f);
     public static readonly Color RelicCardHoverColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2f), 1f);
 
+    // AC 11: Shop cascade entry constants
+    public const float ShopCascadeStagger = 0.06f;
+    public const float ShopCascadeDuration = 0.2f;
+    public const float ShopCascadeOffset = 40f;
+
     // Animation timing constants
     public const float HoverScale = 1.05f;
     public const float HoverDuration = 0.15f;
@@ -309,6 +314,39 @@ public class ShopUI : MonoBehaviour
         }
 
         RefreshRelicCapacity();
+        StartCoroutine(AnimateShopEntry());
+    }
+
+    // AC 11: Cascade relic card slots in from below on shop open
+    private IEnumerator AnimateShopEntry()
+    {
+        for (int i = 0; i < _relicSlots.Length; i++)
+        {
+            var slot = _relicSlots[i];
+            if (slot.Root == null) continue;
+
+            var rect = slot.Root.GetComponent<RectTransform>();
+            if (rect == null) continue;
+
+            Vector2 targetPos = rect.anchoredPosition;
+            rect.anchoredPosition = targetPos + Vector2.down * ShopCascadeOffset;
+            if (slot.Group != null) slot.Group.alpha = 0f;
+
+            yield return new WaitForSecondsRealtime(i * ShopCascadeStagger);
+
+            float elapsed = 0f;
+            while (elapsed < ShopCascadeDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / ShopCascadeDuration);
+                rect.anchoredPosition = Vector2.Lerp(targetPos + Vector2.down * ShopCascadeOffset, targetPos, t);
+                if (slot.Group != null) slot.Group.alpha = t;
+                yield return null;
+            }
+
+            rect.anchoredPosition = targetPos;
+            if (slot.Group != null) slot.Group.alpha = 1f;
+        }
     }
 
     public void Hide()

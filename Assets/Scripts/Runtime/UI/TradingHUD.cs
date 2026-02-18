@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,6 +12,15 @@ public class TradingHUD : MonoBehaviour
     public static Color ProfitGreen => CRTThemeData.TextHigh;
     public static Color LossRed => CRTThemeData.Danger;
     public static Color WarningYellow => CRTThemeData.Warning;
+
+    // AC 2: Cash count-up tween constants
+    public static readonly float CashTweenDuration = 0.3f;
+
+    // AC 12: Progress bar tween constants
+    public static readonly float BarTweenDuration = 0.2f;
+
+    // AC 13: Streak minimum display count
+    public static readonly int StreakMinDisplay = 2;
 
     private RunContext _runContext;
     private int _currentRound;
@@ -38,6 +48,23 @@ public class TradingHUD : MonoBehaviour
     // Story 13.5: Insider tips display during trading
     private Text _tipsDisplayText;
 
+    // AC 2: Cash count-up animation state
+    private float _displayedCash;
+    private Tweener _cashTween;
+
+    // AC 12: Progress bar smooth tween state
+    private float _targetFillAmount;
+    private Tweener _barTween;
+
+    // AC 9 & 13: Floating text service + rep/streak references
+    private FloatingTextService _floatingTextService;
+    private RectTransform _repTextRect;
+    private ChartLineView _chartLineView;
+
+    // AC 13: Streak state
+    private int _streakCount;
+    private Text _streakText;
+
     public void Initialize(RunContext runContext, int currentRound, float roundDuration,
         Text cashText, Text portfolioValueText, Text portfolioChangeText,
         Text roundProfitText, Text targetText, Image targetProgressBar)
@@ -58,9 +85,14 @@ public class TradingHUD : MonoBehaviour
         _initialized = true;
         _dirty = true;
 
+        _displayedCash = 0f;
+        _targetFillAmount = 0f;
+        _streakCount = 0;
+
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<TradeExecutedEvent>(OnTradeExecuted);
         EventBus.Subscribe<ActTransitionEvent>(OnActTransition);
+        EventBus.Subscribe<RoundCompletedEvent>(OnRoundCompleted);
     }
 
     /// <summary>
@@ -109,11 +141,79 @@ public class TradingHUD : MonoBehaviour
         _tipsDisplayText = tipsDisplayText;
     }
 
+    /// <summary>
+    /// AC 9 & 13: Sets the FloatingTextService reference for rep popups. Called by UISetup.
+    /// </summary>
+    public void SetFloatingTextService(FloatingTextService service)
+    {
+        _floatingTextService = service;
+    }
+
+    /// <summary>
+    /// AC 9: Sets the reputation Text's RectTransform so popups spawn near it. Called by UISetup.
+    /// </summary>
+    public void SetRepTextRect(RectTransform repTextRect)
+    {
+        _repTextRect = repTextRect;
+    }
+
+    /// <summary>
+    /// Sets the ChartLineView so profit/loss popups spawn at the current price on the chart.
+    /// Called by UISetup after chart setup completes.
+    /// </summary>
+    public void SetChartLineView(ChartLineView chartLineView)
+    {
+        _chartLineView = chartLineView;
+    }
+
+    /// <summary>
+    /// AC 13: Sets the streak display text. Initially hidden. Called by UISetup.
+    /// </summary>
+    public void SetStreakDisplay(Text streakText)
+    {
+        _streakText = streakText;
+        if (_streakText != null)
+            _streakText.gameObject.SetActive(false);
+    }
+
+    private void OnRoundCompleted(RoundCompletedEvent evt)
+    {
+        // AC 13: Streak tracking
+        if (evt.TargetMet)
+            _streakCount++;
+        else
+            _streakCount = 0;
+
+        if (_streakText != null)
+        {
+            if (_streakCount >= StreakMinDisplay)
+            {
+                _streakText.gameObject.SetActive(true);
+                _streakText.text = $"STREAK \u00D7{_streakCount}";
+                _streakText.color = ColorPalette.Gold;
+            }
+            else
+            {
+                _streakText.gameObject.SetActive(false);
+            }
+        }
+
+        // AC 9: Floating "+X REP ⭐" popup
+        if (evt.RepEarned > 0 && _floatingTextService != null && _repTextRect != null)
+        {
+            _floatingTextService.Spawn(
+                $"+{evt.RepEarned} REP \u2605",
+                _repTextRect,
+                ColorPalette.Amber);
+        }
+    }
+
     private void OnDestroy()
     {
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Unsubscribe<TradeExecutedEvent>(OnTradeExecuted);
         EventBus.Unsubscribe<ActTransitionEvent>(OnActTransition);
+        EventBus.Unsubscribe<RoundCompletedEvent>(OnRoundCompleted);
     }
 
     /// <summary>
@@ -136,6 +236,38 @@ public class TradingHUD : MonoBehaviour
     private void OnTradeExecuted(TradeExecutedEvent evt)
     {
         _dirty = true;
+
+        // AC 2: Cash count-up animation
+        if (_cashText != null && _runContext != null)
+        {
+            float targetCash = _runContext.Portfolio.Cash;
+            _cashTween?.Kill();
+            _cashTween = DOTween.To(
+                () => _displayedCash,
+                x => _displayedCash = x,
+                targetCash,
+                CashTweenDuration)
+                .SetUpdate(false)
+                .OnUpdate(() =>
+                {
+                    _cashText.text = FormatCurrency(_displayedCash);
+                    _cashText.color = _displayedCash < 0f ? LossRed : CRTThemeData.TextHigh;
+                });
+        }
+
+        // AC 3: Floating profit/loss popup on sell (close long) or cover (close short)
+        bool isSell = !evt.IsBuy && !evt.IsShort;
+        bool isCover = evt.IsBuy && evt.IsShort;
+        if ((isSell || isCover) && _floatingTextService != null)
+        {
+            float profit = evt.TotalCost;
+            string popupText = FormatProfit(profit);
+            Color popupColor = profit >= 0f ? ProfitGreen : LossRed;
+            if (_chartLineView != null && _chartLineView.HasActiveChartHead)
+                _floatingTextService.SpawnAtWorldPos(popupText, _chartLineView.ChartHeadWorldPosition, popupColor);
+            else if (_cashText != null)
+                _floatingTextService.Spawn(popupText, _cashText.rectTransform, popupColor);
+        }
     }
 
     private void Update()
@@ -157,9 +289,10 @@ public class TradingHUD : MonoBehaviour
 
         var portfolio = _runContext.Portfolio;
 
-        // Cash
-        if (_cashText != null)
+        // Cash — only set directly if no active tween (AC 2 drives it via tween on trade)
+        if (_cashText != null && (_cashTween == null || !_cashTween.IsActive()))
         {
+            _displayedCash = portfolio.Cash;
             _cashText.text = FormatCurrency(portfolio.Cash);
             _cashText.color = portfolio.Cash < 0f ? LossRed : CRTThemeData.TextHigh;
         }
@@ -220,9 +353,16 @@ public class TradingHUD : MonoBehaviour
 
         if (_targetProgressBar != null)
         {
-            _targetProgressBar.fillAmount = targetProgress;
+            // AC 12: Smooth tween for progress bar, skip micro-jitter changes
             float timeProgress = _roundDuration > 0f ? Mathf.Clamp01(_elapsedTime / _roundDuration) : 0f;
             _targetProgressBar.color = GetTargetBarColor(targetProgress, timeProgress);
+
+            if (Mathf.Abs(targetProgress - _targetFillAmount) >= 0.005f)
+            {
+                _targetFillAmount = targetProgress;
+                _barTween?.Kill();
+                _barTween = _targetProgressBar.DOFillAmount(_targetFillAmount, BarTweenDuration).SetUpdate(false);
+            }
         }
     }
 

@@ -69,3 +69,8 @@ development_status:
   14-5-chart-repositioning-event-ticker: done
   14-6-crt-bezel-overlay-visual-polish: done
   epic-14-retrospective: optional
+
+  # === Epic 15: Game Feel Phase 2 — Micro-Animations & UI Juice ===
+  epic-15: in-progress
+  15-1-game-feel-phase-2: done
+  epic-15-retrospective: optional

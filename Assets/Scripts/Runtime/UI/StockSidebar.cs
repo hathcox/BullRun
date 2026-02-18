@@ -1,4 +1,6 @@
+using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -27,10 +29,25 @@ public class StockSidebar : MonoBehaviour
     public static readonly Color SectorLoseColor = ColorPalette.WithAlpha(ColorPalette.Red, 0.4f);
     public static readonly float VolumePulseFrequency = 4f;
 
+    // AC 1: Price tick flash constants
+    public static readonly float PriceFlashDuration = 0.25f;
+    public static readonly float PriceFlashThreshold = 0.001f;
+
+    // AC 6: Sidebar event cell flash constants
+    public static readonly float EventFlashInDuration = 0.05f;
+    public static readonly float EventFlashOutDuration = 0.15f;
+
+    // AC 14: Market open reveal cascade constants
+    public static readonly float RevealStagger = 0.15f;
+    public static readonly float RevealDuration = 0.12f;
+
     // Tier-themed colors (defaults to standard colors)
     private Color _selectedBgColor = DefaultSelectedBgColor;
     private Color _normalBgColor = DefaultNormalBgColor;
     private Image _sidebarBackground;
+
+    // AC 1: Cache of previous percent change per entry for flash threshold check
+    private float[] _prevPercentChange;
 
     // Active event indicators per stock (keyed by stock id)
     private Dictionary<int, ActiveIndicator> _activeIndicators = new Dictionary<int, ActiveIndicator>();
@@ -42,11 +59,13 @@ public class StockSidebar : MonoBehaviour
     {
         _data = data;
         _entryViews = entryViews;
+        _prevPercentChange = new float[entryViews.Length];
 
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<ActTransitionEvent>(OnActTransition);
         EventBus.Subscribe<MarketEventFiredEvent>(OnMarketEventFired);
         EventBus.Subscribe<MarketEventEndedEvent>(OnMarketEventEnded);
+        EventBus.Subscribe<MarketOpenEvent>(OnMarketOpen);
     }
 
     /// <summary>
@@ -64,6 +83,15 @@ public class StockSidebar : MonoBehaviour
         EventBus.Unsubscribe<ActTransitionEvent>(OnActTransition);
         EventBus.Unsubscribe<MarketEventFiredEvent>(OnMarketEventFired);
         EventBus.Unsubscribe<MarketEventEndedEvent>(OnMarketEventEnded);
+        EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpen);
+    }
+
+    // AC 14: Market open — flag pending reveal cascade, executed after entries are built
+    private bool _pendingRevealCascade;
+
+    private void OnMarketOpen(MarketOpenEvent evt)
+    {
+        _pendingRevealCascade = true;
     }
 
     private void OnActTransition(ActTransitionEvent evt)
@@ -146,17 +174,41 @@ public class StockSidebar : MonoBehaviour
         if (evt.AffectedStockIds == null) return;
 
         var indicatorType = GetIndicatorType(evt.EventType);
-        if (indicatorType == IndicatorType.None) return;
-
-        foreach (int stockId in evt.AffectedStockIds)
+        if (indicatorType != IndicatorType.None)
         {
-            _activeIndicators[stockId] = new ActiveIndicator
+            foreach (int stockId in evt.AffectedStockIds)
             {
-                Type = indicatorType,
-                EventType = evt.EventType,
-                IsPositive = evt.IsPositive
-            };
+                _activeIndicators[stockId] = new ActiveIndicator
+                {
+                    Type = indicatorType,
+                    EventType = evt.EventType,
+                    IsPositive = evt.IsPositive
+                };
+            }
         }
+
+        // AC 6: Flash the background of each affected stock entry
+        Color flashColor = evt.IsPositive ? EventPopup.PositiveColor : EventPopup.NegativeColor;
+        for (int i = 0; _entryViews != null && i < _entryViews.Length && i < _data.EntryCount; i++)
+        {
+            var entry = _data.GetEntry(i);
+            bool isAffected = false;
+            foreach (int sid in evt.AffectedStockIds)
+            {
+                if (sid == entry.StockId) { isAffected = true; break; }
+            }
+            if (!isAffected) continue;
+
+            var view = _entryViews[i];
+            if (view.Background == null) continue;
+            Color returnColor = entry.IsSelected ? _selectedBgColor : _normalBgColor;
+            view.Background.DOKill();
+            view.Background.DOColor(flashColor, EventFlashInDuration)
+                .SetUpdate(false)
+                .OnComplete(() =>
+                    view.Background.DOColor(returnColor, EventFlashOutDuration).SetUpdate(false));
+        }
+
         _dirty = true;
     }
 
@@ -218,7 +270,21 @@ public class StockSidebar : MonoBehaviour
                 view.TickerText.text = entry.TickerSymbol;
 
             if (view.PriceText != null)
+            {
                 view.PriceText.text = TradingHUD.FormatCurrency(entry.CurrentPrice);
+
+                // AC 1: Price tick flash — fire only when delta exceeds threshold
+                float delta = Mathf.Abs(entry.PercentChange - _prevPercentChange[i]);
+                if (delta >= PriceFlashThreshold)
+                {
+                    Color flashColor = entry.PercentChange > _prevPercentChange[i] ? ProfitGreen : LossRed;
+                    Color defaultColor = CRTThemeData.TextHigh;
+                    view.PriceText.DOKill();
+                    view.PriceText.color = flashColor;
+                    view.PriceText.DOColor(defaultColor, PriceFlashDuration).SetUpdate(false);
+                }
+                _prevPercentChange[i] = entry.PercentChange;
+            }
 
             if (view.ChangeText != null)
             {
@@ -290,6 +356,47 @@ public class StockSidebar : MonoBehaviour
                     view.GlowBorder.gameObject.SetActive(false);
                 }
             }
+        }
+
+        // AC 14: Trigger market open reveal cascade on first refresh after MarketOpenEvent
+        if (_pendingRevealCascade && _entryViews != null && _data.EntryCount > 0)
+        {
+            _pendingRevealCascade = false;
+            StartCoroutine(RevealCascadeCoroutine());
+        }
+    }
+
+    // AC 14: Coroutine that reveals each entry one-by-one with alpha + scaleX lerp
+    private System.Collections.IEnumerator RevealCascadeCoroutine()
+    {
+        for (int i = 0; i < _entryViews.Length && i < _data.EntryCount; i++)
+        {
+            var view = _entryViews[i];
+            if (view.Background == null) continue;
+
+            var canvasGroup = view.Background.gameObject.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = view.Background.gameObject.AddComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+
+            var rect = view.Background.GetComponent<RectTransform>();
+            if (rect != null)
+                rect.localScale = new Vector3(0.8f, 1f, 1f);
+
+            yield return new WaitForSeconds(RevealStagger * i);
+
+            float elapsed = 0f;
+            while (elapsed < RevealDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / RevealDuration);
+                canvasGroup.alpha = t;
+                if (rect != null)
+                    rect.localScale = new Vector3(Mathf.Lerp(0.8f, 1f, t), 1f, 1f);
+                yield return null;
+            }
+            canvasGroup.alpha = 1f;
+            if (rect != null)
+                rect.localScale = Vector3.one;
         }
     }
 

@@ -1,4 +1,6 @@
+using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +19,16 @@ public class PositionPanel : MonoBehaviour
 
     public static Color ShortSqueezeWarningColor => CRTThemeData.Danger;
     public static readonly float WarningPulseFrequency = 5f;
+
+    // AC 4: Position entry slide-in (alpha-only per Dev Notes — VLG manages position)
+    public static readonly float EntrySlideInDuration = 0.2f;
+
+    // AC 5: Auto-liquidation cascade constants
+    public static readonly float CascadeStagger = 0.08f;
+    public static readonly float CascadeExitDuration = 0.15f;
+
+    // AC 7: Short countdown urgency threshold
+    public static readonly float CountdownUrgencyThreshold = 3.0f;
 
     private static readonly Color DimTextColor = ColorPalette.WhiteDim;
 
@@ -41,6 +53,9 @@ public class PositionPanel : MonoBehaviour
     // Short countdown tracking (per-stock timer from GameRunner)
     private Dictionary<string, ShortCountdownEvent> _shortCountdowns = new Dictionary<string, ShortCountdownEvent>();
 
+    // AC 7: Track last integer second seen per stock for punch trigger
+    private Dictionary<string, int> _lastCountdownSecond = new Dictionary<string, int>();
+
     public PositionPanelData Data => _data;
 
     public void Initialize(Portfolio portfolio, Transform entryContainer, Text emptyText)
@@ -50,8 +65,6 @@ public class PositionPanel : MonoBehaviour
         _emptyText = emptyText;
         _data = new PositionPanelData();
 
-        Debug.Log($"[panel-ui-bug] Initialize: portfolio={portfolio != null}, container={entryContainer != null}, emptyText={emptyText != null}");
-
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<TradeExecutedEvent>(OnTradeExecuted);
         EventBus.Subscribe<RoundStartedEvent>(OnRoundStarted);
@@ -59,6 +72,7 @@ public class PositionPanel : MonoBehaviour
         EventBus.Subscribe<MarketEventFiredEvent>(OnMarketEventFired);
         EventBus.Subscribe<MarketEventEndedEvent>(OnMarketEventEnded);
         EventBus.Subscribe<MarketOpenEvent>(OnMarketOpen);
+        EventBus.Subscribe<TradingPhaseEndedEvent>(OnTradingPhaseEnded);
 
         RefreshPanel();
     }
@@ -72,6 +86,7 @@ public class PositionPanel : MonoBehaviour
         EventBus.Unsubscribe<MarketEventFiredEvent>(OnMarketEventFired);
         EventBus.Unsubscribe<MarketEventEndedEvent>(OnMarketEventEnded);
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpen);
+        EventBus.Unsubscribe<TradingPhaseEndedEvent>(OnTradingPhaseEnded);
     }
 
     private void OnMarketOpen(MarketOpenEvent evt)
@@ -84,7 +99,6 @@ public class PositionPanel : MonoBehaviour
                 _tickerLookup[evt.StockIds[i].ToString()] = evt.TickerSymbols[i];
             }
         }
-        Debug.Log($"[panel-ui-bug] OnMarketOpen: built ticker lookup with {_tickerLookup.Count} entries");
     }
 
     private void OnMarketEventFired(MarketEventFiredEvent evt)
@@ -119,7 +133,6 @@ public class PositionPanel : MonoBehaviour
 
     private void OnTradeExecuted(TradeExecutedEvent evt)
     {
-        Debug.Log($"[panel-ui-bug] OnTradeExecuted: stock={evt.StockId}, isBuy={evt.IsBuy}, isShort={evt.IsShort}, shares={evt.Shares}");
         _rebuildDirty = true;
     }
 
@@ -132,6 +145,44 @@ public class PositionPanel : MonoBehaviour
     private void OnShortCountdown(ShortCountdownEvent evt)
     {
         _shortCountdowns[evt.StockId] = evt;
+    }
+
+    // AC 5: Auto-liquidation cascade — animate entries out before they're destroyed
+    private void OnTradingPhaseEnded(TradingPhaseEndedEvent evt)
+    {
+        if (_entryViews.Count > 0)
+        {
+            var viewsToAnimate = new List<PositionEntryView>(_entryViews);
+            _entryViews.Clear();
+            StartCoroutine(CascadeOutEntries(viewsToAnimate));
+        }
+    }
+
+    private IEnumerator CascadeOutEntries(List<PositionEntryView> views)
+    {
+        foreach (var view in views)
+        {
+            if (view.Root == null) continue;
+            yield return new WaitForSeconds(CascadeStagger);
+
+            var rect = view.Root.GetComponent<RectTransform>();
+            if (rect != null)
+                rect.DOAnchorPosX(rect.anchoredPosition.x + 80f, CascadeExitDuration).SetUpdate(false);
+
+            var canvasGroup = view.Root.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = view.Root.AddComponent<CanvasGroup>();
+            canvasGroup.DOFade(0f, CascadeExitDuration).SetUpdate(false).OnComplete(() =>
+            {
+                if (view.Root != null)
+                    Destroy(view.Root);
+            });
+        }
+
+        // Wait only for the last entry's exit animation to complete (stagger was already consumed above)
+        yield return new WaitForSeconds(CascadeExitDuration);
+
+        if (_emptyText != null)
+            _emptyText.gameObject.SetActive(true);
     }
 
     private void Update()
@@ -163,19 +214,9 @@ public class PositionPanel : MonoBehaviour
 
     private void RefreshPanel()
     {
-        if (_portfolio == null)
-        {
-            Debug.LogWarning("[panel-ui-bug] RefreshPanel: _portfolio is null, skipping");
-            return;
-        }
+        if (_portfolio == null) return;
 
         _data.RefreshFromPortfolio(_portfolio);
-        Debug.Log($"[panel-ui-bug] RefreshPanel: entryCount={_data.EntryCount}, container={_entryContainer != null}");
-        for (int i = 0; i < _data.EntryCount; i++)
-        {
-            var e = _data.GetEntry(i);
-            Debug.Log($"[panel-ui-bug]   Entry[{i}]: stock={e.StockId}, ticker={ResolveTickerSymbol(e.StockId)}, shares={e.Shares}, isLong={e.IsLong}, avgPrice={e.AveragePrice}");
-        }
         RebuildEntryViews();
         UpdatePnLDisplay();
 
@@ -222,11 +263,33 @@ public class PositionPanel : MonoBehaviour
                         view.CountdownText.text = $"Auto-close: {countdown.TimeRemaining:F1}s";
                     else
                         view.CountdownText.text = $"Hold: {countdown.TimeRemaining:F1}s";
-                    view.CountdownText.color = countdown.IsCashOutWindow ? ShortSqueezeWarningColor : CRTThemeData.Warning;
+
+                    // AC 7: Urgency escalation — red color and punch shake at each whole-second boundary
+                    if (countdown.IsCashOutWindow && countdown.TimeRemaining <= CountdownUrgencyThreshold)
+                    {
+                        view.CountdownText.color = ShortSqueezeWarningColor;
+
+                        int currentSecond = Mathf.FloorToInt(countdown.TimeRemaining);
+                        if (!_lastCountdownSecond.TryGetValue(entry.StockId, out int lastSecond) || currentSecond != lastSecond)
+                        {
+                            _lastCountdownSecond[entry.StockId] = currentSecond;
+                            var countdownRect = view.CountdownText.GetComponent<RectTransform>();
+                            if (countdownRect != null)
+                            {
+                                countdownRect.DOKill();
+                                countdownRect.DOPunchPosition(new Vector3(3f, 0f, 0f), 0.2f, 5, 0.5f).SetUpdate(false);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        view.CountdownText.color = countdown.IsCashOutWindow ? ShortSqueezeWarningColor : CRTThemeData.Warning;
+                    }
                 }
                 else
                 {
                     view.CountdownText.gameObject.SetActive(false);
+                    _lastCountdownSecond.Remove(entry.StockId);
                 }
             }
         }
@@ -278,18 +341,20 @@ public class PositionPanel : MonoBehaviour
         }
         _entryViews.Clear();
 
-        if (_entryContainer == null)
-        {
-            Debug.LogWarning("[panel-ui-bug] RebuildEntryViews: _entryContainer is null, skipping");
-            return;
-        }
+        if (_entryContainer == null) return;
 
         for (int i = 0; i < _data.EntryCount; i++)
         {
             var entry = _data.GetEntry(i);
             var view = CreateEntryView(entry, _entryContainer);
             _entryViews.Add(view);
-            Debug.Log($"[panel-ui-bug] Created view[{i}]: root={view.Root.name}, ticker={ResolveTickerSymbol(entry.StockId)}");
+
+            // AC 4: Fade-in animation (alpha only — VLG manages position)
+            // Note: must use explicit null check — ?? uses C# reference equality, not Unity's overridden ==
+            var canvasGroup = view.Root.GetComponent<CanvasGroup>();
+            if (canvasGroup == null) canvasGroup = view.Root.AddComponent<CanvasGroup>();
+            canvasGroup.alpha = 0f;
+            canvasGroup.DOFade(1f, EntrySlideInDuration).SetUpdate(false);
         }
     }
 

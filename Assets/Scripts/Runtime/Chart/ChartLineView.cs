@@ -14,7 +14,12 @@ public class ChartLineView : MonoBehaviour
     private ChartMeshLine _mainMeshLine;
     private ChartMeshLine _glowMeshLine;
     private Transform _indicator;
+    private SpriteRenderer _indicatorRenderer; // AC 10: cached to avoid per-frame GetComponent
     private ChartVisualConfig _config;
+
+    // AC 10: Indicator pulse constants
+    public static readonly float IndicatorPulseFrequency = 4f;
+    public static readonly float IndicatorPulseMin = 0.4f;
 
     // Price gridlines (FIX-8)
     private LineRenderer[] _gridlines;
@@ -48,6 +53,7 @@ public class ChartLineView : MonoBehaviour
         _mainMeshFilter = mainMeshFilter;
         _glowMeshFilter = glowMeshFilter;
         _indicator = indicator;
+        _indicatorRenderer = indicator != null ? indicator.GetComponent<SpriteRenderer>() : null;
         _config = config;
 
         _chartLeft = chartBounds.xMin;
@@ -68,11 +74,8 @@ public class ChartLineView : MonoBehaviour
     public void ApplyTierTheme(ChartVisualConfig newConfig)
     {
         _config = newConfig;
-        if (_indicator != null)
-        {
-            var sr = _indicator.GetComponent<SpriteRenderer>();
-            if (sr != null) sr.color = newConfig.LineColor;
-        }
+        if (_indicatorRenderer != null)
+            _indicatorRenderer.color = newConfig.LineColor;
     }
 
     public void SetGridlines(LineRenderer[] gridlines)
@@ -173,6 +176,16 @@ public class ChartLineView : MonoBehaviour
         {
             _indicator.position = _positionBuffer[pointCount - 1];
             _indicator.gameObject.SetActive(true);
+
+            // AC 10: Sinusoidal alpha pulse on the indicator SpriteRenderer
+            if (_indicatorRenderer != null && _indicator.gameObject.activeSelf)
+            {
+                float alpha = IndicatorPulseMin + (1f - IndicatorPulseMin) *
+                    ((Mathf.Sin(Time.time * Mathf.PI * IndicatorPulseFrequency) + 1f) * 0.5f);
+                var c = _indicatorRenderer.color;
+                c.a = alpha;
+                _indicatorRenderer.color = c;
+            }
         }
 
         // Update trade markers, break-even line, and short position line

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +10,10 @@ using UnityEngine.UI;
 /// </summary>
 public class RunSummaryUI : MonoBehaviour
 {
+    // AC 8: Margin call slam-in constants
+    public static readonly float MarginCallSlamDuration = 0.4f;
+    public static readonly float MarginCallSlamStartScale = 2.5f;
+
     // Story 14.6: Color constants migrated to CRTThemeData
     private static Color MarginCallColor => CRTThemeData.Danger;
     private static Color RunCompleteColor => CRTThemeData.TextHigh;
@@ -98,6 +103,20 @@ public class RunSummaryUI : MonoBehaviour
         _visible = true;
         if (_panel != null) _panel.SetActive(true);
         if (_canvasGroup != null) _canvasGroup.alpha = 1f;
+
+        // AC 8: Margin call slam-in animation
+        if (evt.WasMarginCalled && _headerText != null)
+        {
+            var rect = _headerText.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.localScale = new Vector3(MarginCallSlamStartScale, MarginCallSlamStartScale, 1f);
+                rect.DOPunchScale(
+                    new Vector3(-(MarginCallSlamStartScale - 1f), -(MarginCallSlamStartScale - 1f), 0f),
+                    MarginCallSlamDuration, 2, 0.5f)
+                    .SetUpdate(false);
+            }
+        }
 
         // Create victory sparkle effects
         if (isVictory && _panel != null)
