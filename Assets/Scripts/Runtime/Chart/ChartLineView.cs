@@ -32,6 +32,12 @@ public class ChartLineView : MonoBehaviour
     private float _chartBottom;
     private float _chartTop;
 
+    /// <summary>
+    /// World-space position of the chart head (latest price point). Valid only when HasActiveChartHead is true.
+    /// </summary>
+    public Vector3 ChartHeadWorldPosition => _indicator != null ? _indicator.position : Vector3.zero;
+    public bool HasActiveChartHead => _indicator != null && _indicator.gameObject.activeSelf;
+
     // Reusable position list to avoid allocations
     private readonly List<Vector3> _positionBuffer = new List<Vector3>();
 

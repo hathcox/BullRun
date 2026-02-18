@@ -4,7 +4,10 @@
     "references": [
         "Unity.InputSystem",
         "Unity.RenderPipelines.Core.Runtime",
-        "Unity.RenderPipelines.Universal.Runtime"
+        "Unity.RenderPipelines.Universal.Runtime",
+        "GUID:4a1cb1490dc4df8409b2580d6b44e75e",
+        "GUID:4ffe3249bc841464abc6ec7cdd53b4f4",
+        "GUID:676e93bfe0a965a40bda11e3c4c3dae8"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -15,7 +15,8 @@
       "Bash(dotnet test:*)",
       "Bash(\"D:/UnityHub/Editor/6000.3.4f1/Editor/Unity.exe\" -runTests -batchmode -nographics -projectPath \"E:/BullRun\" -testPlatform EditMode -testResults \"E:/BullRun/TestResults.xml\" -logFile \"E:/BullRun/unity-test.log\")",
       "Bash(git status:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(find:*)"
     ]
   }
 }

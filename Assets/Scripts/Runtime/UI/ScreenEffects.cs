@@ -11,10 +11,10 @@ public class ScreenEffects : MonoBehaviour
     public static readonly Color CrashRedPulse = ColorPalette.WithAlpha(ColorPalette.Red, 0.3f);
     public static readonly Color BullGreenTint = ColorPalette.WithAlpha(ColorPalette.Green, 0.15f);
     public static readonly Color FlashRed = ColorPalette.WithAlpha(ColorPalette.Red, 0.5f);
-    public static readonly float ShakeDuration = 1.5f;
-    public static readonly float ShakeIntensity = 8f;
-    public static readonly float RedPulseDuration = 2f;
-    public static readonly float FlashDuration = 0.2f;
+    public static readonly float ShakeDuration = 3f;
+    public static readonly float ShakeIntensity = 40f;
+    public static readonly float RedPulseDuration = 5f;
+    public static readonly float FlashDuration = 0.5f;
 
     private Image _redPulseImage;
     private Image _greenTintImage;

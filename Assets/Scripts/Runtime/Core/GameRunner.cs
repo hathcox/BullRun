@@ -157,10 +157,13 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteTierTransitionUI();
         UISetup.ExecuteStoreUI();
 
+        // Game Feel system: screen shake, flash overlays, particles, scale punches
+        GameFeelSetup.Execute();
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring
         ChartRenderer chartRendererRef = null;
-        var holder = Object.FindObjectOfType<ChartDataHolder>();
+        var holder = Object.FindFirstObjectByType<ChartDataHolder>();
         if (holder != null) chartRendererRef = holder.Renderer;
         DebugSetup.Execute(_priceGenerator, chartRendererRef, _ctx, _stateMachine, _tradeExecutor);
         #endif

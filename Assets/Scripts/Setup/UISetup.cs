@@ -1520,7 +1520,7 @@ public static class UISetup
         var canvasGroup = containerGo.AddComponent<CanvasGroup>();
 
         var feedbackTextGo = CreateLabel("FeedbackText", containerGo.transform, "",
-            Color.white, 24);
+            Color.white, 32);
         feedbackTextGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
         var tradeFeedback = feedbackParent.AddComponent<TradeFeedback>();

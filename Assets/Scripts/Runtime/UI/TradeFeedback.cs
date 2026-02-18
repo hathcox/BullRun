@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using DG.Tweening;
 
 /// <summary>
 /// Displays brief trade feedback text (success/failure) that fades out after 1.5s.
@@ -55,6 +56,18 @@ public class TradeFeedback : MonoBehaviour
         _feedbackText.color = color;
         _canvasGroup.alpha = 1f;
         _displayTimer = DisplayDuration + FadeDuration;
+
+        // DOTween scale punch: text pops in large then settles
+        var rect = _feedbackText.GetComponent<RectTransform>();
+        if (rect != null)
+        {
+            rect.DOKill();
+            rect.localScale = Vector3.one;
+            rect.DOPunchScale(Vector3.one * 0.3f, 0.3f, 10, 1f);
+
+            // Subtle position punch: text jumps up slightly on appear
+            rect.DOPunchPosition(new Vector3(0f, 12f, 0f), 0.3f, 8, 0.5f);
+        }
     }
 
     private void Update()
