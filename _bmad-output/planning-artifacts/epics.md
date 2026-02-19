@@ -930,51 +930,47 @@ As a player, I want a light guided experience on my first run, so that I learn t
 
 ---
 
-## Epic 11: Audio
+## Epic 11: Audio System — 8-Bit Retro Sound & Music
 
-**Description:** Music integration, SFX, dynamic audio system, ambient
-**Phase:** Phase 3 (Weeks 11-12)
+**Description:** Complete audio implementation — infrastructure, 65+ SFX wired to EventBus, dynamic music with act-specific tracks and urgency layers, ambient atmosphere beds. Uses MMSoundManager (Feel package) as playback engine. 8-bit retro, crunchy lo-fi chiptune style with modern punch.
+**Phase:** Post-Epic 15, audio layer on top of visual juice
+**Depends On:** Epic 13 (done), Epic 14 (done), Epic 15 (done)
+**Epic File:** `planning-artifacts/epic-11-audio-system.md`
 
-### Story 11.1: Dynamic Music System
+### Story 11.1: Audio Infrastructure & SFX Wiring
 
-As a player, I want a synthwave soundtrack that responds to market state, so that the audio enhances the gameplay tension.
-
-**Acceptance Criteria:**
-- Calm ambient during stable periods
-- Driving beat during high volatility
-- Distorted/tense during crashes
-- Triumphant flourish when hitting profit target
-- Distinct boss-fight-energy track for Act 4
-
-### Story 11.2: Trading Sound Effects
-
-As a player, I want satisfying mechanical sounds for all trading actions, so that the interface feels tactile.
+As a player, I want every trading action, market event, UI interaction, and game state change to play a satisfying 8-bit sound effect, so that the game feels alive and responsive.
 
 **Acceptance Criteria:**
-- Cash register click / stamp thud for trade execution
-- Digital blips for price changes
-- Alarm sounds for events
-- Distinctive margin-call phone ring
-- Champagne cork for big wins
+- AudioManager + AudioSetup + AudioClipLibrary created (mirrors GameFeelManager pattern)
+- MMSoundManager initialized as playback engine
+- All 65+ existing SFX at Assets/Audio/ wired to EventBus events
+- Trade intensity scaling, 3-tier market events, short lifecycle sounds, timer urgency, shop/UI/overlay sounds
+- GameConfig extended with audio volume constants
 
-### Story 11.3: Ambient Soundscapes
+### Story 11.2: Music System & Dynamic Layering
 
-As a player, I want unique ambient audio for each office tier, so that the meta-hub reflects my progression.
-
-**Acceptance Criteria:**
-- Cubicle: office chatter, keyboard clacking, distant phones
-- Desk: trading floor noise, stock ticker sounds
-- Office: muffled floor, personal phone line, soft jazz
-- Trading phase has subtle trading-floor ambience beneath music
-
-### Story 11.4: Event Audio Cues
-
-As a player, I want distinct audio cues for different market events, so that I can react by sound even when focused on the chart.
+As a player, I want a dynamic music system with act-specific tracks, urgency layers, event overrides, and smooth phase crossfades, so that the soundtrack escalates tension naturally.
 
 **Acceptance Criteria:**
-- Unique sound per event category (earnings, crash, sector rotation, etc.)
-- Sounds are distinct and learnable
-- Volume balanced to not overwhelm music
+- MusicManager with act-specific trading music (4 tracks) and 2s crossfade
+- Urgency layer at 15s, critical layer at 5s (additive)
+- Crash/bull run overrides duck act music to 30%
+- Shop, victory, defeat music crossfades
+- Title screen music with ambient bed
+
+### Story 11.3: Ambient Loops, Atmosphere & Missing Audio Assets
+
+As a player, I want subtle ambient atmosphere beds, looping effects for sustained events, and CRT hum, so that the audio landscape is rich and immersive.
+
+**Status:** Blocked — 43 audio assets need generation
+
+**Acceptance Criteria:**
+- Per-act ambient beds at 10-15% volume
+- Tension drone, CRT scanline hum (3-5%), chart dust particle sound
+- Victory sparkle, bond pulse hum loops
+- News banner and screen effect sounds
+- 43 missing assets generated and placed on disk
 
 ---
 

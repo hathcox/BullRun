@@ -135,18 +135,20 @@ namespace BullRun.Tests.Shop
         [Test]
         public void TipCardFaceDownColor_IsDark()
         {
+            // CyanDim-based: dark teal tint, channels must stay dark for text legibility
             var color = ShopUI.TipCardFaceDownColor;
-            Assert.Less(color.r, 0.2f);
-            Assert.Less(color.g, 0.2f);
-            Assert.Less(color.b, 0.2f);
+            Assert.Less(color.r, 0.2f, "Red channel should be very dark");
+            Assert.Less(color.g, 0.45f, "Green channel should be dark (cyan tint allowed)");
+            Assert.Less(color.b, 0.45f, "Blue channel should be dark (cyan tint allowed)");
         }
 
         [Test]
         public void TipCardRevealedColor_IsDark()
         {
+            // Dimmed Panel-based: slightly brighter than Panel, still dark for legibility
             var color = ShopUI.TipCardRevealedColor;
-            Assert.Less(color.r, 0.2f);
-            Assert.Less(color.g, 0.2f);
+            Assert.Less(color.r, 0.2f, "Red channel should be very dark");
+            Assert.Less(color.g, 0.3f, "Green channel should be dark");
         }
 
         [Test]

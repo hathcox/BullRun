@@ -70,6 +70,11 @@ public struct TradeExecutedEvent
     /// Short: margin collateral held. Cover: buy-back cost (shares * price).
     /// </summary>
     public float TotalCost;
+    /// <summary>
+    /// Realized profit/loss for closing trades (sell, cover). Positive = profit, negative = loss.
+    /// Zero for opening trades (buy, short open). Used by AudioManager for profit/loss SFX routing.
+    /// </summary>
+    public float ProfitLoss;
 }
 
 /// <summary>
@@ -342,4 +347,14 @@ public struct ShortCountdownEvent
     public string StockId;
     public float TimeRemaining;
     public bool IsCashOutWindow;
+}
+
+/// <summary>
+/// Fired when the player rerolls the relic offering in the shop.
+/// Added in Story 11.1 for audio triggers. AudioManager subscribes for the shop_reroll sound.
+/// </summary>
+public struct ShopRerollEvent
+{
+    public int RerollCount;
+    public int Cost;
 }

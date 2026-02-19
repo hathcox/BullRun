@@ -42,7 +42,8 @@ namespace BullRun.Tests.Trading
                 Price = 10.00f,
                 IsBuy = false,
                 IsShort = true,
-                TotalCost = 50.00f
+                TotalCost = 50.00f,
+                ProfitLoss = 12.50f
             };
             Assert.AreEqual("TEST", evt.StockId);
             Assert.AreEqual(5, evt.Shares);
@@ -50,6 +51,7 @@ namespace BullRun.Tests.Trading
             Assert.IsFalse(evt.IsBuy);
             Assert.IsTrue(evt.IsShort);
             Assert.AreEqual(50.00f, evt.TotalCost, 0.001f);
+            Assert.AreEqual(12.50f, evt.ProfitLoss, 0.001f);
         }
 
         [Test]

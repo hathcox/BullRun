@@ -41,7 +41,8 @@ public class TradeExecutor
                 Price = currentPrice,
                 IsBuy = true,
                 IsShort = false,
-                TotalCost = cost
+                TotalCost = cost,
+                ProfitLoss = 0f
             });
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -91,7 +92,8 @@ public class TradeExecutor
                 Price = currentPrice,
                 IsBuy = false,
                 IsShort = false,
-                TotalCost = totalProceeds
+                TotalCost = totalProceeds,
+                ProfitLoss = pnl
             });
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -134,7 +136,8 @@ public class TradeExecutor
                 Price = currentPrice,
                 IsBuy = false,
                 IsShort = true,
-                TotalCost = margin
+                TotalCost = margin,
+                ProfitLoss = 0f
             });
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -183,7 +186,8 @@ public class TradeExecutor
                 Price = currentPrice,
                 IsBuy = true,
                 IsShort = true,
-                TotalCost = shares * currentPrice
+                TotalCost = shares * currentPrice,
+                ProfitLoss = pnl
             });
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD

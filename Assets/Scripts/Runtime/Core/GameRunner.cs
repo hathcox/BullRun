@@ -160,6 +160,9 @@ public class GameRunner : MonoBehaviour
         // Game Feel system: screen shake, flash overlays, particles, scale punches
         GameFeelSetup.Execute();
 
+        // Audio system: SFX playback via MMSoundManager, EventBus-driven
+        AudioSetup.Execute();
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring
         ChartRenderer chartRendererRef = null;

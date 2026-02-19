@@ -93,6 +93,16 @@ public static class GameConfig
     // Reputation earned per profitable trade (successful long sell or short cover with positive P&L)
     public static readonly int RepPerProfitableTrade = 1;
 
+    // Audio (Story 11.1)
+    public static readonly float MasterVolume = 1.0f;
+    public static readonly float MusicVolume = 0.7f;
+    public static readonly float SfxVolume = 1.0f;
+    public static readonly float UiSfxVolume = 0.8f;
+    public static readonly float AmbientVolume = 0.15f;
+    public static readonly float TimerWarningThreshold = 15f;
+    public static readonly float TimerCriticalThreshold = 5f;
+    public static readonly float TradeSfxCooldown = 0.05f; // prevent sound stacking
+
     // Seconds at round start where price holds flat (no movement)
     public static readonly float PriceFreezeSeconds = 1.0f;
 
