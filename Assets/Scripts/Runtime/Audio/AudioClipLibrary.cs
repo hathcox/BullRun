@@ -45,6 +45,16 @@ public class AudioClipLibrary
     public AudioClip MarketClosedStamp, MarginCallSlam;
     public AudioClip VictoryHeaderAppear, StatsCountUp, ResultsDismiss;
 
+    // Music (Story 11.2)
+    public AudioClip MusicTitleScreen, MusicTitleAmbientBed;
+    public AudioClip MusicAct1Penny, MusicAct2LowValue, MusicAct3MidValue, MusicAct4BlueChip;
+    public AudioClip MusicUrgencyLayer, MusicCriticalLayer;
+    public AudioClip MusicMarketCrashOverride, MusicBullRunOverride;
+    public AudioClip MusicShop, MusicShopBrowse;
+    public AudioClip MusicActTransition, MusicRoundVictory, MusicRoundStats;
+    public AudioClip MusicVictoryFanfare, MusicVictoryScreen;
+    public AudioClip MusicDefeat, MusicDefeatScreen, MusicMarginCall;
+
     // Lookup dictionary for graceful name-based access
     private Dictionary<string, AudioClip> _clipsByName;
 
@@ -87,7 +97,11 @@ public class AudioClipLibrary
         var nameOverrides = new Dictionary<string, string>
         {
             { "short_cashout_window", "ShortCashoutWindowOpen" },
-            { "event_popup_dismiss__down", "EventPopupDismissDown" }
+            { "event_popup_dismiss__down", "EventPopupDismissDown" },
+            // Music file names with compound words (Story 11.2)
+            { "music_act2_lowvalue", "MusicAct2LowValue" },
+            { "music_act3_midvalue", "MusicAct3MidValue" },
+            { "music_act4_bluechip", "MusicAct4BlueChip" }
         };
 
         var type = GetType();

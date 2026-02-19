@@ -103,6 +103,18 @@ public static class GameConfig
     public static readonly float TimerCriticalThreshold = 5f;
     public static readonly float TradeSfxCooldown = 0.05f; // prevent sound stacking
 
+    // Music System (Story 11.2)
+    public static readonly float MusicCrossfadeDuration = 2.0f;
+    public static readonly float MusicUrgencyFadeIn = 1.0f;
+    public static readonly float MusicCriticalFadeIn = 0.3f;
+    public static readonly float MusicEventDuckVolume = 0.3f;
+    public static readonly float MusicEventDuckFade = 0.5f;
+    public static readonly float MusicEventRestoreFade = 1.0f;
+    public static readonly float MusicShopCrossfade = 1.5f;
+    public static readonly float MusicUrgencyVolume = 0.5f;
+    public static readonly float MusicCriticalVolume = 0.6f;
+    public static readonly float MusicTitleAmbientVolume = 0.15f;
+
     // Seconds at round start where price holds flat (no movement)
     public static readonly float PriceFreezeSeconds = 1.0f;
 

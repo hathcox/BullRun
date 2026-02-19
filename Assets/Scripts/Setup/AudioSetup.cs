@@ -42,8 +42,13 @@ public static class AudioSetup
         var audioManager = audioGo.AddComponent<AudioManager>();
         audioManager.Initialize(clipLibrary);
 
+        // 6. Create MusicManager MonoBehaviour (Story 11.2)
+        var musicGo = new GameObject("MusicManager");
+        var musicManager = musicGo.AddComponent<MusicManager>();
+        musicManager.Initialize(clipLibrary);
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[Audio] Setup complete: {holder.Clips.Length} clips loaded, AudioManager initialized");
+        Debug.Log($"[Audio] Setup complete: {holder.Clips.Length} clips loaded, AudioManager + MusicManager initialized");
         #endif
     }
 
