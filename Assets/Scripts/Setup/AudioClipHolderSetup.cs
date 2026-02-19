@@ -16,19 +16,17 @@ public static class AudioClipHolderSetup
         var holderGo = new GameObject("AudioClipHolder");
         var holder = holderGo.AddComponent<AudioClipHolder>();
 
-        // Find all audio clips in Assets/Audio/ (SFX) and Assets/Audio/Music/ (music tracks)
+        // Find all audio clips under Assets/Audio/ (SFX, music, and any subdirectories)
         var guids = AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Audio" });
         var entries = new List<AudioClipHolder.AudioClipEntry>();
-
-        // Allowed directories for audio clips
-        var allowedDirs = new HashSet<string> { "Assets/Audio", "Assets/Audio/Music" };
 
         foreach (var guid in guids)
         {
             string path = AssetDatabase.GUIDToAssetPath(guid);
 
+            // Accept any clip under Assets/Audio/ (including subdirectories like Music/, SFX/, etc.)
             string dir = System.IO.Path.GetDirectoryName(path).Replace("\\", "/");
-            if (!allowedDirs.Contains(dir)) continue;
+            if (!dir.StartsWith("Assets/Audio")) continue;
 
             var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
             if (clip == null) continue;

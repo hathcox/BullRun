@@ -114,6 +114,8 @@ public static class GameConfig
     public static readonly float MusicUrgencyVolume = 0.5f;
     public static readonly float MusicCriticalVolume = 0.6f;
     public static readonly float MusicTitleAmbientVolume = 0.15f;
+    public static readonly float MusicActTransitionStingerVolume = 0.8f;
+    public static readonly float MusicRoundVictoryStingerVolume = 0.9f;
 
     // Seconds at round start where price holds flat (no movement)
     public static readonly float PriceFreezeSeconds = 1.0f;

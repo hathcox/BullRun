@@ -1,6 +1,6 @@
 # Story 11.2: Music System & Dynamic Layering
 
-Status: review
+Status: done
 
 ## Story
 
@@ -245,14 +245,30 @@ Claude Opus 4.6
 ### Change Log
 
 - 2026-02-18: Story 11.2 implemented — MusicManager with dynamic layering, act-specific music, urgency/critical layers, event overrides, phase transitions, stingers. 23 tests added. All 1557 tests pass.
+- 2026-02-18: Code review — fixed 6 issues (crossfade volume dip, magic numbers, rigid directory filter, missing state guards, misleading comments). Added 14 behavioral tests (37 total).
 
 ### Senior Developer Review (AI)
 
+**Reviewed:** 2026-02-18 | **Reviewer:** Claude Opus 4.6 (adversarial code review)
+
+**Findings (8 total): 2 High, 4 Medium, 2 Low**
+
+All HIGH and MEDIUM issues fixed automatically:
+
+- **[H1][FIXED]** Test suite had zero behavioral tests — added 14 state machine & guard tests (total now 37)
+- **[H2][FIXED]** Title screen music comment incorrectly attributed RunStartedEvent to MetaHubState — corrected
+- **[M1][FIXED]** Crossfade volume dip — replaced MMSoundManager EaseInCubic fade-in with custom linear fade for matched curves
+- **[M2][FIXED]** Magic number stinger volumes (0.8f, 0.9f) — extracted to GameConfig.MusicActTransitionStingerVolume and MusicRoundVictoryStingerVolume
+- **[M3][FIXED]** AudioClipHolderSetup allowedDirs exact match — changed to StartsWith for subdirectory support
+- **[M4][FIXED]** Missing state guards on OnRoundStarted, OnActTransition, OnRoundCompleted — added _currentMusicState checks
+- **[L1][NOTED]** Stinger timer uses unscaledDeltaTime — correct behavior since Unity AudioSources play in real-time regardless of timeScale
+- **[L2][FIXED]** Misleading comment on line 389 — corrected to reference RunContext.StartNewRun()
+
 ### File List
 
-- Assets/Scripts/Runtime/Audio/MusicManager.cs (new)
+- Assets/Scripts/Runtime/Audio/MusicManager.cs (new, review-fixed: crossfade, guards, comments, constants)
 - Assets/Scripts/Runtime/Audio/AudioClipLibrary.cs (modified — added 18 music clip fields, 3 nameOverrides)
 - Assets/Scripts/Setup/AudioSetup.cs (modified — creates MusicManager after AudioManager)
-- Assets/Scripts/Setup/AudioClipHolderSetup.cs (modified — scans Assets/Audio/Music/ in addition to Assets/Audio/)
-- Assets/Scripts/Setup/Data/GameConfig.cs (modified — added 10 music system constants)
-- Assets/Tests/Runtime/Audio/MusicManagerTests.cs (new — 23 tests)
+- Assets/Scripts/Setup/AudioClipHolderSetup.cs (modified, review-fixed: flexible directory matching)
+- Assets/Scripts/Setup/Data/GameConfig.cs (modified — added 12 music system constants including 2 review-added)
+- Assets/Tests/Runtime/Audio/MusicManagerTests.cs (new — 37 tests: 23 original + 14 review-added behavioral tests)

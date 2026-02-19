@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEngine;
 
 namespace BullRun.Tests.Audio
 {
@@ -122,6 +123,45 @@ namespace BullRun.Tests.Audio
             Assert.LessOrEqual(GameConfig.MusicVolume, 1f, "MusicVolume should not exceed 1");
         }
 
+        [Test]
+        public void GameConfig_MusicActTransitionStingerVolume_Is80Percent()
+        {
+            Assert.AreEqual(0.8f, GameConfig.MusicActTransitionStingerVolume);
+        }
+
+        [Test]
+        public void GameConfig_MusicRoundVictoryStingerVolume_Is90Percent()
+        {
+            Assert.AreEqual(0.9f, GameConfig.MusicRoundVictoryStingerVolume);
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // GameConfig Volume Relationships (AC 4, 5, 7, 16)
+        // ════════════════════════════════════════════════════════════════
+
+        [Test]
+        public void GameConfig_UrgencyVolumeLessThanCritical()
+        {
+            Assert.Less(GameConfig.MusicUrgencyVolume, GameConfig.MusicCriticalVolume,
+                "Urgency layer should be quieter than critical layer (escalation)");
+        }
+
+        [Test]
+        public void GameConfig_DuckVolumeLessThanFullVolume()
+        {
+            Assert.Less(GameConfig.MusicEventDuckVolume, 1f,
+                "Event duck volume should reduce act music");
+        }
+
+        [Test]
+        public void GameConfig_StingerVolumes_BetweenZeroAndOne()
+        {
+            Assert.Greater(GameConfig.MusicActTransitionStingerVolume, 0f);
+            Assert.LessOrEqual(GameConfig.MusicActTransitionStingerVolume, 1f);
+            Assert.Greater(GameConfig.MusicRoundVictoryStingerVolume, 0f);
+            Assert.LessOrEqual(GameConfig.MusicRoundVictoryStingerVolume, 1f);
+        }
+
         // ════════════════════════════════════════════════════════════════
         // MusicState Enum Values
         // ════════════════════════════════════════════════════════════════
@@ -212,6 +252,177 @@ namespace BullRun.Tests.Audio
                 Assert.GreaterOrEqual(act, 1, $"Round {round} should map to act >= 1");
                 Assert.LessOrEqual(act, 4, $"Round {round} should map to act <= 4");
             }
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // State Machine Behavioral Tests (AC 1, 10, 11, 12, 13, 15)
+        // Uses real MusicManager with empty AudioClipLibrary (all clips null).
+        // PlayMusicLoop/PlayMusicOneShot return null on null clips, so
+        // state transitions execute without requiring MMSoundManager.
+        // ════════════════════════════════════════════════════════════════
+
+        private GameObject _go;
+        private MusicManager _mm;
+        private AudioClipLibrary _clips;
+
+        private void CreateMusicManager()
+        {
+            EventBus.Clear();
+            _clips = new AudioClipLibrary();
+            _go = new GameObject("TestMusicManager");
+            _mm = _go.AddComponent<MusicManager>();
+            _mm.Initialize(_clips);
+        }
+
+        private void DestroyMusicManager()
+        {
+            if (_go != null) Object.DestroyImmediate(_go);
+            EventBus.Clear();
+        }
+
+        [Test]
+        public void InitialState_IsNone()
+        {
+            CreateMusicManager();
+            Assert.AreEqual(MusicManager.MusicState.None, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void RunStarted_SetsStateTitleScreen()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            Assert.AreEqual(MusicManager.MusicState.TitleScreen, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void ShopOpened_SetsStateShop()
+        {
+            CreateMusicManager();
+            // Set up a valid starting state first
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new ShopOpenedEvent { RoundNumber = 1 });
+            Assert.AreEqual(MusicManager.MusicState.Shop, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void ShopClosed_SetsStateNone()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new ShopOpenedEvent { RoundNumber = 1 });
+            EventBus.Publish(new ShopClosedEvent { RoundNumber = 1 });
+            Assert.AreEqual(MusicManager.MusicState.None, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void RunEnded_Victory_SetsStateVictory()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new RunEndedEvent { IsVictory = true });
+            Assert.AreEqual(MusicManager.MusicState.Victory, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void RunEnded_Defeat_SetsStateDefeat()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new RunEndedEvent { IsVictory = false });
+            Assert.AreEqual(MusicManager.MusicState.Defeat, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void RunEnded_MarginCall_SetsStateDefeat()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new RunEndedEvent { IsVictory = false, WasMarginCalled = true });
+            Assert.AreEqual(MusicManager.MusicState.Defeat, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void StopAllMusic_ResetsStateToNone()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            Assert.AreEqual(MusicManager.MusicState.TitleScreen, _mm.CurrentState);
+            _mm.StopAllMusic();
+            Assert.AreEqual(MusicManager.MusicState.None, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void StopAllMusic_ResetsUrgencyAndCriticalFlags()
+        {
+            CreateMusicManager();
+            _mm.StopAllMusic();
+            Assert.IsFalse(_mm.IsUrgencyActive, "Urgency should be inactive after StopAllMusic");
+            Assert.IsFalse(_mm.IsCriticalActive, "Critical should be inactive after StopAllMusic");
+            Assert.IsFalse(_mm.IsOverrideActive, "Override should be inactive after StopAllMusic");
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void StopAllMusic_ResetsCurrentAct()
+        {
+            CreateMusicManager();
+            _mm.StopAllMusic();
+            Assert.AreEqual(0, _mm.CurrentAct, "Current act should be reset to 0");
+            DestroyMusicManager();
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        // State Guard Tests (review fix M4)
+        // Verify handlers with guards don't execute in wrong states.
+        // ════════════════════════════════════════════════════════════════
+
+        [Test]
+        public void RoundCompleted_InNoneState_DoesNotCrash()
+        {
+            CreateMusicManager();
+            Assert.AreEqual(MusicManager.MusicState.None, _mm.CurrentState);
+            // Should be guarded — no crash, no state change
+            Assert.DoesNotThrow(() =>
+                EventBus.Publish(new RoundCompletedEvent { RoundNumber = 1 }));
+            Assert.AreEqual(MusicManager.MusicState.None, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void ActTransition_InShopState_DoesNotCrash()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new ShopOpenedEvent { RoundNumber = 1 });
+            Assert.AreEqual(MusicManager.MusicState.Shop, _mm.CurrentState);
+            // Should be guarded — no crash
+            Assert.DoesNotThrow(() =>
+                EventBus.Publish(new ActTransitionEvent { NewAct = 2, PreviousAct = 1 }));
+            Assert.AreEqual(MusicManager.MusicState.Shop, _mm.CurrentState);
+            DestroyMusicManager();
+        }
+
+        [Test]
+        public void RoundStarted_InDefeatState_DoesNotCrash()
+        {
+            CreateMusicManager();
+            EventBus.Publish(new RunStartedEvent { StartingCapital = 10f });
+            EventBus.Publish(new RunEndedEvent { IsVictory = false });
+            Assert.AreEqual(MusicManager.MusicState.Defeat, _mm.CurrentState);
+            // Should be guarded — no crash
+            Assert.DoesNotThrow(() =>
+                EventBus.Publish(new RoundStartedEvent { RoundNumber = 1, Act = 1 }));
+            Assert.AreEqual(MusicManager.MusicState.Defeat, _mm.CurrentState);
+            DestroyMusicManager();
         }
     }
 }

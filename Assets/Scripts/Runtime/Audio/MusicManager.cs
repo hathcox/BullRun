@@ -246,6 +246,8 @@ public class MusicManager : MonoBehaviour
 
     private void OnRoundStarted(RoundStartedEvent evt)
     {
+        if (_currentMusicState != MusicState.Trading && _currentMusicState != MusicState.TitleScreen) return;
+
         // Reset urgency/critical state at round start
         FadeOutAndStop(ref _urgencyLayer, 0.3f);
         FadeOutAndStop(ref _criticalLayer, 0.3f);
@@ -386,7 +388,8 @@ public class MusicManager : MonoBehaviour
 
     private void OnRunStarted(RunStartedEvent evt)
     {
-        // Title screen music — MetaHubState publishes RunStartedEvent
+        // Title screen music — plays at run start (published by RunContext.StartNewRun).
+        // Plays until first MarketOpenEvent fades it out and starts act music.
         // Stop any previous music and play title screen
         StopAllMusic(0.3f);
 
@@ -486,10 +489,13 @@ public class MusicManager : MonoBehaviour
 
     private void OnActTransition(ActTransitionEvent evt)
     {
+        if (_currentMusicState != MusicState.Trading) return;
+
         // Play act transition stinger as one-shot over current music (don't stop act music)
         if (_clips.MusicActTransition != null)
         {
-            PlayMusicOneShot(_clips.MusicActTransition, GameConfig.MusicVolume * 0.8f);
+            PlayMusicOneShot(_clips.MusicActTransition,
+                GameConfig.MusicVolume * GameConfig.MusicActTransitionStingerVolume);
         }
     }
 
@@ -499,10 +505,13 @@ public class MusicManager : MonoBehaviour
 
     private void OnRoundCompleted(RoundCompletedEvent evt)
     {
+        if (_currentMusicState != MusicState.Trading) return;
+
         // Play round victory stinger as one-shot over act music
         if (_clips.MusicRoundVictory != null)
         {
-            PlayMusicOneShot(_clips.MusicRoundVictory, GameConfig.MusicVolume * 0.9f);
+            PlayMusicOneShot(_clips.MusicRoundVictory,
+                GameConfig.MusicVolume * GameConfig.MusicRoundVictoryStingerVolume);
         }
     }
 
@@ -518,20 +527,24 @@ public class MusicManager : MonoBehaviour
     {
         if (clip == null) return null;
 
+        float targetVolume = volume * GameConfig.MasterVolume;
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.Music;
         options.Loop = true;
-        options.Volume = volume * GameConfig.MasterVolume;
 
-        if (fadeDuration > 0f)
+        // Start at 0 and use custom linear fade for consistent crossfade curves.
+        // Both fade-in and fade-out use the same linear interpolation, preventing
+        // volume dips during crossfades (previously EaseInCubic caused a hole).
+        options.Volume = fadeDuration > 0f ? 0f : targetVolume;
+
+        var source = MMSoundManagerSoundPlayEvent.Trigger(clip, options);
+
+        if (fadeDuration > 0f && source != null)
         {
-            options.Fade = true;
-            options.FadeInitialVolume = 0f;
-            options.FadeDuration = fadeDuration;
-            options.FadeTween = new MMTweenType(MMTween.MMTweenCurve.EaseInCubic);
+            FadeSourceTo(source, targetVolume, fadeDuration);
         }
 
-        return MMSoundManagerSoundPlayEvent.Trigger(clip, options);
+        return source;
     }
 
     /// <summary>
