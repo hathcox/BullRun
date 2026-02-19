@@ -83,30 +83,61 @@ namespace BullRun.Tests.Events
 
             float force = evt.GetCurrentForce();
 
-            Assert.AreEqual(0f, force, 0.01f, "Force should be 0 at end (faded out)");
+            Assert.AreEqual(0f, force, 0.01f, "Force should be 0 at end (expired)");
         }
 
         [Test]
-        public void GetCurrentForce_RampsUpThenFades()
+        public void GetCurrentForce_RampsUpThenSoftRelease()
         {
+            // FIX-17: Tail-off is now 5% of duration, fading to 0.85 (not 0)
             var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 10f);
 
             // Early ramp phase (t=0.075, halfway through the 15% ramp)
             evt.ElapsedTime = 0.75f;
             float forceRamp = evt.GetCurrentForce();
 
-            // Hold phase (t=0.5, well within the 15%-85% hold zone)
+            // Hold phase (t=0.5, well within the 15%-95% hold zone)
             evt.ElapsedTime = 5f;
             float forceHold = evt.GetCurrentForce();
 
-            // Tail-off phase (t=0.925, halfway through the final 15%)
-            evt.ElapsedTime = 9.25f;
+            // Tail-off phase (t=0.975, halfway through the final 5%)
+            evt.ElapsedTime = 9.75f;
             float forceTail = evt.GetCurrentForce();
 
+            Assert.AreEqual(1f, forceHold, 0.01f, "Hold force should be 1.0");
             Assert.Greater(forceHold, forceRamp, "Hold force should be greater than ramp-up");
             Assert.Greater(forceHold, forceTail, "Hold force should be greater than tail-off");
             Assert.Greater(forceRamp, 0f, "Ramp-up should be > 0");
-            Assert.Greater(forceTail, 0f, "Tail-off should be > 0");
+            Assert.GreaterOrEqual(forceTail, 0.85f, "Tail-off should not drop below 0.85");
+            Assert.Less(forceTail, 1f, "Tail-off should be less than 1.0");
+        }
+
+        [Test]
+        public void GetCurrentForce_TailOff_NeverDropsBelowPointEightFive()
+        {
+            // FIX-17: Force during tail-off stays between 0.85 and 1.0
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 10f);
+
+            // Right at the end of the tail-off (t=0.999)
+            evt.ElapsedTime = 9.99f;
+            float forceAtEnd = evt.GetCurrentForce();
+
+            Assert.GreaterOrEqual(forceAtEnd, 0.85f,
+                "Force at end of tail-off should be >= 0.85");
+        }
+
+        [Test]
+        public void GetCurrentForce_HoldPhaseExtendedTo95Percent()
+        {
+            // FIX-17: Hold zone now extends from 15% to 95% (was 85%)
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 10f);
+
+            // At 90% through duration — was in tail-off before, now in hold
+            evt.ElapsedTime = 9f;
+            float force = evt.GetCurrentForce();
+
+            Assert.AreEqual(1f, force, 0.01f,
+                "At 90% of duration, force should be 1.0 (hold zone extended to 95%)");
         }
 
         [Test]

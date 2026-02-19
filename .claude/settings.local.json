@@ -18,7 +18,8 @@
       "WebSearch",
       "Bash(find:*)",
       "Bash(dotnet build:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(/Applications/Unity/Hub/Editor/6000.3.8f1/Unity.app/Contents/MacOS/Unity:*)"
     ]
   }
 }

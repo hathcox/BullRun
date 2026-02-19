@@ -120,6 +120,10 @@ public static class GameConfig
     // Seconds at round start where price holds flat (no movement)
     public static readonly float PriceFreezeSeconds = 1.0f;
 
+    // FIX-17: Noise ramp-up duration after price freeze ends (seconds)
+    // Prevents jarring teleport by easing noise amplitude from 0% to 100%
+    public static readonly float NoiseRampUpSeconds = 2.0f;
+
     // Market Open preview duration before trading begins
     public static readonly float MarketOpenDurationSeconds = 3f;
 

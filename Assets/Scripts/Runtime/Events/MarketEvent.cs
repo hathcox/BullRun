@@ -171,13 +171,16 @@ public class MarketEvent
         {
             return t / 0.15f;
         }
-        else if (t <= 0.85f)
+        else if (t <= 0.95f)
         {
             return 1f;
         }
         else
         {
-            return 1f - (t - 0.85f) / 0.15f;
+            // FIX-17: Brief 5% tail-off fading from 1.0 to 0.85 (not 0).
+            // Creates soft release without reverting to start price.
+            float tailProgress = (t - 0.95f) / 0.05f;
+            return 1f - tailProgress * 0.15f;
         }
     }
 }

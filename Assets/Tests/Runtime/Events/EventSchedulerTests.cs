@@ -472,10 +472,11 @@ namespace BullRun.Tests.Events
                 var scheduler = new EventScheduler(_eventEffects, rng);
                 scheduler.FireEvent(EventDefinitions.EarningsBeat, _activeStocks);
 
-                Assert.GreaterOrEqual(received.PriceEffectPercent, 0.35f,
-                    $"EarningsBeat price effect should be >= 35%, got {received.PriceEffectPercent}");
-                Assert.LessOrEqual(received.PriceEffectPercent, 0.75f,
-                    $"EarningsBeat price effect should be <= 75%, got {received.PriceEffectPercent}");
+                // FIX-18: Increased from +20-45% to +25-50%
+                Assert.GreaterOrEqual(received.PriceEffectPercent, 0.25f,
+                    $"EarningsBeat price effect should be >= 25%, got {received.PriceEffectPercent}");
+                Assert.LessOrEqual(received.PriceEffectPercent, 0.50f,
+                    $"EarningsBeat price effect should be <= 50%, got {received.PriceEffectPercent}");
             }
         }
 
@@ -491,10 +492,11 @@ namespace BullRun.Tests.Events
                 var scheduler = new EventScheduler(_eventEffects, rng);
                 scheduler.FireEvent(EventDefinitions.EarningsMiss, _activeStocks);
 
-                Assert.LessOrEqual(received.PriceEffectPercent, -0.35f,
-                    $"EarningsMiss price effect should be <= -35%, got {received.PriceEffectPercent}");
-                Assert.GreaterOrEqual(received.PriceEffectPercent, -0.75f,
-                    $"EarningsMiss price effect should be >= -75%, got {received.PriceEffectPercent}");
+                // FIX-18: Reduced from -20-45% to -15-30%
+                Assert.LessOrEqual(received.PriceEffectPercent, -0.15f,
+                    $"EarningsMiss price effect should be <= -15%, got {received.PriceEffectPercent}");
+                Assert.GreaterOrEqual(received.PriceEffectPercent, -0.30f,
+                    $"EarningsMiss price effect should be >= -30%, got {received.PriceEffectPercent}");
             }
         }
 
@@ -760,8 +762,9 @@ namespace BullRun.Tests.Events
             }
 
             // V-shape: price should have dropped significantly during crash phase
-            Assert.Less(lowestPrice, startPrice * 0.80f,
-                $"Price should have crashed at least 20% during flash crash. Lowest={lowestPrice}, Start={startPrice}");
+            // FIX-18: FlashCrash reduced to -15-30%, so check for at least 10% drop
+            Assert.Less(lowestPrice, startPrice * 0.90f,
+                $"Price should have crashed at least 10% during flash crash. Lowest={lowestPrice}, Start={startPrice}");
 
             // Final price should recover near original (within 15%)
             Assert.Greater(stock.CurrentPrice, startPrice * 0.80f,

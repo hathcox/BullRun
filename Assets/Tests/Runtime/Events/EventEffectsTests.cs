@@ -496,6 +496,7 @@ namespace BullRun.Tests.Events
         public void ApplyEventEffect_MarketCrash_AppliesPercentToTargetStock()
         {
             // FIX-9: MarketCrash targets a specific stock
+            // FIX-17: Magnitude reduced from -0.40 to -0.30 (using new range)
             var stock = new StockInstance();
             stock.Initialize(0, "STK1", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
 
@@ -520,6 +521,116 @@ namespace BullRun.Tests.Events
             float result = _effects.ApplyEventEffect(stock, evt, 0.016f);
 
             Assert.Greater(result, 100f, "BullRun should increase stock price");
+        }
+
+        // --- FIX-17: Event persistence and trend line shift tests ---
+
+        [Test]
+        public void EventPersistence_PriceStaysNearTarget_AfterEventExpires()
+        {
+            // FIX-17: Full event lifecycle — price should NOT revert to start after event ends
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 4f);
+            _effects.StartEvent(evt);
+
+            float startPrice = stock.CurrentPrice;
+            float dt = 0.05f;
+            float time = 0f;
+
+            // Simulate the full event lifecycle frame by frame
+            while (time < evt.Duration - dt)
+            {
+                time += dt;
+                _effects.UpdateActiveEvents(dt);
+                var activeEvents = _effects.GetActiveEventsForStock(0);
+                if (activeEvents.Count > 0)
+                {
+                    stock.CurrentPrice = _effects.ApplyEventEffect(stock, activeEvents[0], dt);
+                }
+            }
+
+            // Price should be near the target (+25% of 100 = 125), not reverted to 100
+            float expectedTarget = startPrice * 1.25f;
+            Assert.Greater(stock.CurrentPrice, startPrice * 1.10f,
+                $"Price should be well above start after event. Got {stock.CurrentPrice}, start was {startPrice}");
+            Assert.AreEqual(expectedTarget, stock.CurrentPrice, expectedTarget * 0.05f,
+                $"Price should be within 5% of target ({expectedTarget}). Got {stock.CurrentPrice}");
+        }
+
+        [Test]
+        public void UpdateActiveEvents_ShiftsTrendLine_OnEventExpiry()
+        {
+            // FIX-17: When an event expires, TrendLinePrice should be set to CurrentPrice
+            var stocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock);
+            _effects.SetActiveStocks(stocks);
+
+            float originalTrendLine = stock.TrendLinePrice;
+            Assert.AreEqual(100f, originalTrendLine, 0.01f);
+
+            // Set stock price to simulate event-driven price change
+            stock.CurrentPrice = 125f;
+
+            // Create and start an event that will expire
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 1f);
+            _effects.StartEvent(evt);
+
+            // Advance past event duration to trigger expiry
+            _effects.UpdateActiveEvents(1.5f);
+
+            // Trend line should now match the current price (125), not the original (100)
+            Assert.AreEqual(125f, stock.TrendLinePrice, 0.01f,
+                "Trend line should shift to current price on event expiry");
+        }
+
+        [Test]
+        public void UpdateActiveEvents_TrendLineShift_DoesNotAffectOtherStocks()
+        {
+            var stocks = new List<StockInstance>();
+            var stock0 = new StockInstance();
+            stock0.Initialize(0, "STK0", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            var stock1 = new StockInstance();
+            stock1.Initialize(1, "STK1", StockTier.MidValue, 200f, TrendDirection.Neutral, 0f);
+            stocks.Add(stock0);
+            stocks.Add(stock1);
+            _effects.SetActiveStocks(stocks);
+
+            stock0.CurrentPrice = 130f;
+
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.30f, 1f);
+            _effects.StartEvent(evt);
+            _effects.UpdateActiveEvents(1.5f);
+
+            // Stock 0's trend line should shift
+            Assert.AreEqual(130f, stock0.TrendLinePrice, 0.01f);
+            // Stock 1's trend line should be unchanged
+            Assert.AreEqual(200f, stock1.TrendLinePrice, 0.01f);
+        }
+
+        [Test]
+        public void ApplyEventEffect_DuringTailOff_PriceStaysNearTarget()
+        {
+            // FIX-17: During the soft tail-off, price should blend toward target
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 10f);
+
+            // First, establish the start/target capture at full force
+            evt.ElapsedTime = 5f; // Hold phase
+            _effects.ApplyEventEffect(stock, evt, 0.016f);
+
+            // Now test during tail-off (t=0.975, force ~0.925 — between 0.85 and 1.0)
+            evt.ElapsedTime = 9.75f;
+            float result = _effects.ApplyEventEffect(stock, evt, 0.016f);
+
+            float target = 100f * 1.25f; // 125
+            Assert.AreEqual(target, result, target * 0.03f,
+                $"During tail-off, price should stay within 3% of target. Got {result}, target {target}");
         }
 
         [Test]

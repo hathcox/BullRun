@@ -75,101 +75,105 @@ public static class EventDefinitions
         StockTier.LowValue, StockTier.MidValue
     };
 
-    // Earnings Beat: +35-75%, All tiers
+    // FIX-17: Magnitudes reduced for event persistence.
+    // FIX-18: Positive events made stronger, negative events made weaker to counteract
+    // multiplicative percentage asymmetry (a -30% drop needs +43% to recover).
+
+    // Earnings Beat: +25-50%, All tiers (FIX-18: up from +20-45%)
     public static readonly MarketEventConfig EarningsBeat = new MarketEventConfig(
         eventType: MarketEventType.EarningsBeat,
-        minPriceEffect: 0.35f,
-        maxPriceEffect: 0.75f,
+        minPriceEffect: 0.25f,
+        maxPriceEffect: 0.50f,
         duration: 4f,
         tierAvailability: AllTiers,
         rarity: 0.5f
     );
 
-    // Earnings Miss: -35-75%, All tiers
+    // Earnings Miss: -15-30%, All tiers (FIX-18: down from -20-45%)
     public static readonly MarketEventConfig EarningsMiss = new MarketEventConfig(
         eventType: MarketEventType.EarningsMiss,
-        minPriceEffect: -0.35f,
-        maxPriceEffect: -0.75f,
+        minPriceEffect: -0.15f,
+        maxPriceEffect: -0.30f,
         duration: 4f,
         tierAvailability: AllTiers,
         rarity: 0.5f
     );
 
-    // Pump & Dump: Rapid rise then crash, Penny only
+    // Pump & Dump: +45-90% pump phase, Penny only (was +75-150%)
     public static readonly MarketEventConfig PumpAndDump = new MarketEventConfig(
         eventType: MarketEventType.PumpAndDump,
-        minPriceEffect: 0.75f,
-        maxPriceEffect: 1.50f,
+        minPriceEffect: 0.45f,
+        maxPriceEffect: 0.90f,
         duration: 6f,
         tierAvailability: PennyOnly,
         rarity: 0.3f
     );
 
-    // SEC Investigation: -50-90%, Penny and Low
+    // SEC Investigation: -20-40%, Penny and Low (FIX-18: down from -30-55%)
     public static readonly MarketEventConfig SECInvestigation = new MarketEventConfig(
         eventType: MarketEventType.SECInvestigation,
-        minPriceEffect: -0.50f,
-        maxPriceEffect: -0.90f,
+        minPriceEffect: -0.20f,
+        maxPriceEffect: -0.40f,
         duration: 6f,
         tierAvailability: PennyAndLow,
         rarity: 0.3f
     );
 
-    // Sector Rotation: +/- mixed, Mid and Blue
+    // Sector Rotation: ±18%, Mid and Blue (was ±30%)
     public static readonly MarketEventConfig SectorRotation = new MarketEventConfig(
         eventType: MarketEventType.SectorRotation,
-        minPriceEffect: -0.30f,
-        maxPriceEffect: 0.30f,
+        minPriceEffect: -0.18f,
+        maxPriceEffect: 0.18f,
         duration: 5f,
         tierAvailability: MidAndBlue,
         rarity: 0.4f
     );
 
-    // Merger Rumor: Surge on target, Mid and Blue
+    // Merger Rumor: +30-60%, Mid and Blue (FIX-18: up from +25-55%)
     public static readonly MarketEventConfig MergerRumor = new MarketEventConfig(
         eventType: MarketEventType.MergerRumor,
-        minPriceEffect: 0.40f,
-        maxPriceEffect: 0.90f,
+        minPriceEffect: 0.30f,
+        maxPriceEffect: 0.60f,
         duration: 5f,
         tierAvailability: MidAndBlue,
         rarity: 0.3f
     );
 
-    // Market Crash: Sharp drop all stocks, All tiers (rare)
+    // Market Crash: -20-40%, All tiers (FIX-18: down from -30-60%)
     public static readonly MarketEventConfig MarketCrash = new MarketEventConfig(
         eventType: MarketEventType.MarketCrash,
-        minPriceEffect: -0.50f,
-        maxPriceEffect: -1.00f,
+        minPriceEffect: -0.20f,
+        maxPriceEffect: -0.40f,
         duration: 6f,
         tierAvailability: AllTiers,
         rarity: 0.15f
     );
 
-    // Bull Run: Steady rise all stocks, All tiers (rare)
+    // Bull Run: +35-65%, All tiers (FIX-18: up from +25-55%)
     public static readonly MarketEventConfig BullRunEvent = new MarketEventConfig(
         eventType: MarketEventType.BullRun,
-        minPriceEffect: 0.40f,
-        maxPriceEffect: 0.90f,
+        minPriceEffect: 0.35f,
+        maxPriceEffect: 0.65f,
         duration: 6f,
         tierAvailability: AllTiers,
         rarity: 0.15f
     );
 
-    // Flash Crash: Drop then recover, Low and Mid
+    // Flash Crash: -15-30%, Low and Mid (FIX-18: down from -25-45%)
     public static readonly MarketEventConfig FlashCrash = new MarketEventConfig(
         eventType: MarketEventType.FlashCrash,
-        minPriceEffect: -0.40f,
-        maxPriceEffect: -0.75f,
+        minPriceEffect: -0.15f,
+        maxPriceEffect: -0.30f,
         duration: 3f,
         tierAvailability: LowAndMid,
         rarity: 0.25f
     );
 
-    // Short Squeeze: Violent spike, All tiers
+    // Short Squeeze: +45-100%, All tiers (FIX-18: up from +35-90%)
     public static readonly MarketEventConfig ShortSqueeze = new MarketEventConfig(
         eventType: MarketEventType.ShortSqueeze,
-        minPriceEffect: 0.60f,
-        maxPriceEffect: 1.50f,
+        minPriceEffect: 0.45f,
+        maxPriceEffect: 1.00f,
         duration: 3f,
         tierAvailability: AllTiers,
         rarity: 0.25f

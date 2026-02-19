@@ -206,8 +206,9 @@ namespace BullRun.Tests.PriceEngine
         [Test]
         public void GetTierConfig_Penny_HasExpectedNoiseAmplitude()
         {
+            // FIX-17: Reduced from 0.15 to 0.08
             var config = StockTierData.GetTierConfig(StockTier.Penny);
-            Assert.AreEqual(0.15f, config.NoiseAmplitude, 0.001f);
+            Assert.AreEqual(0.08f, config.NoiseAmplitude, 0.001f);
         }
 
         [Test]

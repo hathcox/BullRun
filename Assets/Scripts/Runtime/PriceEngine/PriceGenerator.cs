@@ -31,21 +31,29 @@ public class PriceGenerator
     {
         float previousPrice = stock.CurrentPrice;
 
+        // FIX-17: Track actual trading time for noise ramp-up
+        stock.TimeIntoTrading += deltaTime;
+
         // Update trend line reference point (Story 1.4)
         stock.UpdateTrendLine(deltaTime);
 
         // Step 1: Trend layer (Story 1.1)
-        stock.CurrentPrice += stock.TrendPerSecond * deltaTime;
+        // FIX-18: Compound growth — percentage-based trend scales with current price.
+        // Bull stocks compound upward; recovery from crashes is proportional.
+        stock.CurrentPrice *= (1f + stock.TrendRate * deltaTime);
 
         // Step 2: Segment-based choppy noise (Story 1.2)
         if (stock.SegmentTimeRemaining <= 0f)
         {
-            // Pick new segment (short max duration for responsiveness)
-            stock.SegmentDuration = RandomRange(0.3f, 0.8f);
+            // FIX-17: Increased min from 0.3s to 0.5s, max from 0.8s to 1.0s for smoother movement
+            stock.SegmentDuration = RandomRange(0.5f, 1.0f);
             stock.SegmentTimeRemaining = stock.SegmentDuration;
 
-            // Random slope: scaled by noise amplitude and current price
-            float baseSlope = ((float)_random.NextDouble() * 2f - 1f) * stock.NoiseAmplitude * stock.CurrentPrice;
+            // FIX-17: Ramp noise amplitude from 0% to 100% over NoiseRampUpSeconds
+            float noiseRamp = System.Math.Min(1f, stock.TimeIntoTrading / GameConfig.NoiseRampUpSeconds);
+
+            // Random slope: scaled by noise amplitude (with ramp) and current price
+            float baseSlope = ((float)_random.NextDouble() * 2f - 1f) * stock.NoiseAmplitude * noiseRamp * stock.CurrentPrice;
 
             // Trend bias: slight pull toward trend direction
             float trendBias = stock.TrendPerSecond * 0.5f;
@@ -101,6 +109,8 @@ public class PriceGenerator
         if (stock.CurrentPrice < 0.01f)
         {
             stock.CurrentPrice = 0.01f;
+            // FIX-17: Reset trend line to floor price so mean reversion doesn't fight the bounce
+            stock.TrendLinePrice = 0.01f;
             // Minimum bounce slope: overcome the trend + add strong visible upward movement.
             // Uses 2x the trend magnitude so the stock visibly rebounds off the floor
             // rather than hovering at $0.01 with imperceptible drift.
@@ -234,10 +244,11 @@ public class PriceGenerator
 
     private TrendDirection PickRandomTrendDirection()
     {
-        // Roughly equal distribution: 40% bull, 40% bear, 20% neutral
+        // FIX-18: Bull-biased distribution: 60% bull, 25% bear, 15% neutral.
+        // Game wants prices to generally trend up; bear stocks are the exception.
         int roll = _random.Next(100);
-        if (roll < 40) return TrendDirection.Bull;
-        if (roll < 80) return TrendDirection.Bear;
+        if (roll < 60) return TrendDirection.Bull;
+        if (roll < 85) return TrendDirection.Bear;
         return TrendDirection.Neutral;
     }
 
@@ -256,6 +267,7 @@ public class PriceGenerator
                 CurrentPrice = stock.CurrentPrice,
                 TrendLinePrice = stock.TrendLinePrice,
                 TrendDirection = stock.TrendDirection,
+                TrendRate = stock.TrendRate,
                 TrendPerSecond = stock.TrendPerSecond,
                 NoiseAmplitude = stock.NoiseAmplitude,
                 SegmentSlope = stock.SegmentSlope,
@@ -295,6 +307,7 @@ public struct StockDebugInfo
     public float CurrentPrice;
     public float TrendLinePrice;
     public TrendDirection TrendDirection;
+    public float TrendRate;
     public float TrendPerSecond;
     public float NoiseAmplitude;
     public float SegmentSlope;

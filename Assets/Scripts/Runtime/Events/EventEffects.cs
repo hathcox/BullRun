@@ -146,7 +146,17 @@ public class EventEffects
         float targetPrice = _eventTargetPrices[key];
 
         // Direct Lerp from start to target based on force curve
-        return Mathf.Lerp(startPrice, targetPrice, force);
+        float lerpResult = Mathf.Lerp(startPrice, targetPrice, force);
+
+        // FIX-17: During tail-off (force 0.85-1.0), blend toward target price
+        // so the price "lands" near the target when the event expires.
+        if (force >= 0.85f && force < 1f)
+        {
+            float tailProgress = (1f - force) / 0.15f;
+            return Mathf.Lerp(lerpResult, targetPrice, 1f - tailProgress * 0.5f);
+        }
+
+        return lerpResult;
     }
 
     /// <summary>
@@ -186,6 +196,21 @@ public class EventEffects
                     if (_activeStocks[j].StockId == expired.TargetStockId.Value)
                     {
                         endedTicker = _activeStocks[j].TickerSymbol;
+                        break;
+                    }
+                }
+            }
+
+            // FIX-17: Shift trend line to current price on event end.
+            // This re-anchors mean reversion to the post-event baseline.
+            // For multi-phase events, this happens once when the entire event expires.
+            if (_activeStocks != null)
+            {
+                for (int j = 0; j < _activeStocks.Count; j++)
+                {
+                    if (_activeStocks[j].StockId == expired.TargetStockId.Value)
+                    {
+                        _activeStocks[j].TrendLinePrice = _activeStocks[j].CurrentPrice;
                         break;
                     }
                 }

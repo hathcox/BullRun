@@ -119,6 +119,27 @@ namespace BullRun.Tests.PriceEngine
             Assert.AreEqual(0f, stock.SegmentTimeRemaining);
         }
 
+        // --- FIX-17: TimeIntoTrading field ---
+
+        [Test]
+        public void Initialize_TimeIntoTrading_DefaultsToZero()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 2.50f, TrendDirection.Bull, 0.10f);
+            Assert.AreEqual(0f, stock.TimeIntoTrading, 0.001f);
+        }
+
+        [Test]
+        public void TrendLinePrice_CanBeSetExternally()
+        {
+            // FIX-17: TrendLinePrice setter needed for EventEffects trend line shift
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+
+            stock.TrendLinePrice = 125f;
+            Assert.AreEqual(125f, stock.TrendLinePrice, 0.001f);
+        }
+
         // --- Event Tracking Tests (Story 1.3) ---
 
         [Test]
@@ -240,10 +261,54 @@ namespace BullRun.Tests.PriceEngine
             for (int i = 0; i < 60; i++)
                 stock.UpdateTrendLine(0.016f);
 
-            // TrendPerSecond = 100 * 0.05 = 5.0/s. Over ~0.96s that's ~4.8
-            float expectedApprox = 100f + (stock.TrendPerSecond * 60 * 0.016f);
-            Assert.AreEqual(expectedApprox, stock.TrendLinePrice, 0.01f,
-                "Trend line should accumulate correctly over multiple frames");
+            // FIX-18: Compound growth. TrendRate = 0.05, dt = 0.016, 60 frames.
+            // TrendLinePrice = 100 * (1 + 0.05 * 0.016)^60
+            float expectedApprox = 100f * (float)System.Math.Pow(1.0 + 0.05 * 0.016, 60);
+            Assert.AreEqual(expectedApprox, stock.TrendLinePrice, 0.1f,
+                "Trend line should compound correctly over multiple frames");
+        }
+
+        // --- FIX-18: TrendRate tests ---
+
+        [Test]
+        public void Initialize_BullTrend_TrendRateIsPositive()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 2.50f, TrendDirection.Bull, 0.10f);
+            Assert.AreEqual(0.10f, stock.TrendRate, 0.001f,
+                "Bull TrendRate should equal the trendStrength parameter");
+        }
+
+        [Test]
+        public void Initialize_BearTrend_TrendRateIsNegative()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 2.50f, TrendDirection.Bear, 0.10f);
+            Assert.AreEqual(-0.10f, stock.TrendRate, 0.001f,
+                "Bear TrendRate should be negative trendStrength");
+        }
+
+        [Test]
+        public void Initialize_NeutralTrend_TrendRateIsZero()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 2.50f, TrendDirection.Neutral, 0.10f);
+            Assert.AreEqual(0f, stock.TrendRate, 0.001f);
+        }
+
+        [Test]
+        public void TrendPerSecond_ScalesWithCurrentPrice()
+        {
+            // FIX-18: TrendPerSecond is now computed as TrendRate * CurrentPrice
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 10f, TrendDirection.Bull, 0.05f);
+
+            Assert.AreEqual(0.50f, stock.TrendPerSecond, 0.001f,
+                "TrendPerSecond at $10 should be 0.05 * 10 = 0.50");
+
+            stock.CurrentPrice = 5f;
+            Assert.AreEqual(0.25f, stock.TrendPerSecond, 0.001f,
+                "TrendPerSecond at $5 should be 0.05 * 5 = 0.25");
         }
     }
 }

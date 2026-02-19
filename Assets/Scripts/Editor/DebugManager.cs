@@ -296,7 +296,7 @@ public class DebugManager : MonoBehaviour
                 string arrow = info.TrendDirection == TrendDirection.Bull ? "\u25B2" :
                                info.TrendDirection == TrendDirection.Bear ? "\u25BC" : "\u25C6";
 
-                GUILayout.Label($"{arrow} {info.Ticker} ${info.CurrentPrice:F2} | {info.TrendDirection} | Trend: {info.TrendPerSecond:F3}/s", _stockStyle);
+                GUILayout.Label($"{arrow} {info.Ticker} ${info.CurrentPrice:F2} | {info.TrendDirection} | Trend: {info.TrendRate:P1}/s (${info.TrendPerSecond:F3}/s)", _stockStyle);
                 GUILayout.Label($"  TrendLine: ${info.TrendLinePrice:F2} | Noise: {info.NoiseAmplitude:F3} | Seg: {info.SegmentSlope:F3} ({info.SegmentTimeRemaining:F2}s) | Revert: {info.ReversionSpeed:F2}", _stockStyle);
 
                 if (info.HasActiveEvent)

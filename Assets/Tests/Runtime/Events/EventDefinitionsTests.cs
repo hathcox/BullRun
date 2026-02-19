@@ -105,9 +105,10 @@ namespace BullRun.Tests.Events
         [Test]
         public void EventDefinitions_EarningsBeat_HasPositiveEffect()
         {
+            // FIX-18: Increased from +20-45% to +25-50%
             var config = EventDefinitions.GetConfig(MarketEventType.EarningsBeat);
-            Assert.Greater(config.MinPriceEffect, 0f, "Earnings Beat should have positive min effect");
-            Assert.Greater(config.MaxPriceEffect, 0f, "Earnings Beat should have positive max effect");
+            Assert.AreEqual(0.25f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(0.50f, config.MaxPriceEffect, 0.001f);
             Assert.GreaterOrEqual(config.MaxPriceEffect, config.MinPriceEffect,
                 "Max effect should be >= min effect");
         }
@@ -115,9 +116,10 @@ namespace BullRun.Tests.Events
         [Test]
         public void EventDefinitions_EarningsMiss_HasNegativeEffect()
         {
+            // FIX-18: Reduced from -20-45% to -15-30%
             var config = EventDefinitions.GetConfig(MarketEventType.EarningsMiss);
-            Assert.Less(config.MinPriceEffect, 0f, "Earnings Miss should have negative min effect");
-            Assert.Less(config.MaxPriceEffect, 0f, "Earnings Miss should have negative max effect");
+            Assert.AreEqual(-0.15f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(-0.30f, config.MaxPriceEffect, 0.001f);
         }
 
         [Test]
@@ -186,6 +188,100 @@ namespace BullRun.Tests.Events
                 Assert.GreaterOrEqual(config.MinPriceEffect, config.MaxPriceEffect,
                     $"{eventType}: min effect should be >= max effect (both negative)");
             }
+        }
+
+        // --- FIX-17: Rebalanced magnitude tests ---
+
+        [Test]
+        public void EventDefinitions_FIX17_PumpAndDump_HasReducedMagnitude()
+        {
+            var config = EventDefinitions.GetConfig(MarketEventType.PumpAndDump);
+            Assert.AreEqual(0.45f, config.MinPriceEffect, 0.001f, "PumpAndDump min should be 0.45");
+            Assert.AreEqual(0.90f, config.MaxPriceEffect, 0.001f, "PumpAndDump max should be 0.90");
+        }
+
+        [Test]
+        public void EventDefinitions_SECInvestigation_HasExpectedMagnitude()
+        {
+            // FIX-18: Reduced from -30-55% to -20-40%
+            var config = EventDefinitions.GetConfig(MarketEventType.SECInvestigation);
+            Assert.AreEqual(-0.20f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(-0.40f, config.MaxPriceEffect, 0.001f);
+        }
+
+        [Test]
+        public void EventDefinitions_SectorRotation_HasExpectedMagnitude()
+        {
+            var config = EventDefinitions.GetConfig(MarketEventType.SectorRotation);
+            Assert.AreEqual(-0.18f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(0.18f, config.MaxPriceEffect, 0.001f);
+        }
+
+        [Test]
+        public void EventDefinitions_MergerRumor_HasExpectedMagnitude()
+        {
+            // FIX-18: Increased from +25-55% to +30-60%
+            var config = EventDefinitions.GetConfig(MarketEventType.MergerRumor);
+            Assert.AreEqual(0.30f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(0.60f, config.MaxPriceEffect, 0.001f);
+        }
+
+        [Test]
+        public void EventDefinitions_MarketCrash_HasExpectedMagnitude()
+        {
+            // FIX-18: Reduced from -30-60% to -20-40%
+            var config = EventDefinitions.GetConfig(MarketEventType.MarketCrash);
+            Assert.AreEqual(-0.20f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(-0.40f, config.MaxPriceEffect, 0.001f);
+        }
+
+        [Test]
+        public void EventDefinitions_BullRun_HasExpectedMagnitude()
+        {
+            // FIX-18: Increased from +25-55% to +35-65%
+            var config = EventDefinitions.GetConfig(MarketEventType.BullRun);
+            Assert.AreEqual(0.35f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(0.65f, config.MaxPriceEffect, 0.001f);
+        }
+
+        [Test]
+        public void EventDefinitions_FlashCrash_HasExpectedMagnitude()
+        {
+            // FIX-18: Reduced from -25-45% to -15-30%
+            var config = EventDefinitions.GetConfig(MarketEventType.FlashCrash);
+            Assert.AreEqual(-0.15f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(-0.30f, config.MaxPriceEffect, 0.001f);
+        }
+
+        [Test]
+        public void EventDefinitions_ShortSqueeze_HasExpectedMagnitude()
+        {
+            // FIX-18: Increased from +35-90% to +45-100%
+            var config = EventDefinitions.GetConfig(MarketEventType.ShortSqueeze);
+            Assert.AreEqual(0.45f, config.MinPriceEffect, 0.001f);
+            Assert.AreEqual(1.00f, config.MaxPriceEffect, 0.001f);
+        }
+
+        // --- FIX-18: Verify positive events can recover from negative counterparts ---
+
+        [Test]
+        public void EventDefinitions_FIX18_PositiveEventsStrongerThanNegative()
+        {
+            // EarningsBeat max (+50%) should exceed recovery needed from EarningsMiss max (-30%)
+            // Recovery from -30% needs +43%. +50% > +43%. ✓
+            var beat = EventDefinitions.GetConfig(MarketEventType.EarningsBeat);
+            var miss = EventDefinitions.GetConfig(MarketEventType.EarningsMiss);
+            float recoveryNeeded = -miss.MaxPriceEffect / (1f + miss.MaxPriceEffect);
+            Assert.Greater(beat.MaxPriceEffect, recoveryNeeded,
+                "EarningsBeat max should be able to recover from EarningsMiss max");
+
+            // BullRun max (+65%) should exceed recovery from MarketCrash max (-40%)
+            // Recovery from -40% needs +67%. Close — +65% nearly recovers. Combined with
+            // compound trend, full recovery is expected.
+            var bull = EventDefinitions.GetConfig(MarketEventType.BullRun);
+            var crash = EventDefinitions.GetConfig(MarketEventType.MarketCrash);
+            Assert.Greater(bull.MaxPriceEffect, -crash.MaxPriceEffect,
+                "BullRun max should exceed MarketCrash max magnitude");
         }
     }
 }

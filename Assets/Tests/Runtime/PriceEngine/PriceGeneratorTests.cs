@@ -711,5 +711,137 @@ namespace BullRun.Tests.PriceEngine
             var debugInfos = _generator.GetDebugInfo();
             Assert.AreEqual(0, debugInfos.Count);
         }
+
+        // --- FIX-17: Noise ramp-up tests ---
+
+        [Test]
+        public void UpdatePrice_NoiseRampUp_NearZeroMovementInFirstPointOneSeconds()
+        {
+            // FIX-17: After freeze ends, noise should ramp up gradually
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 5f, TrendDirection.Neutral, 0f);
+
+            // TimeIntoTrading starts at 0 — noise ramp should suppress amplitude
+            float initialPrice = stock.CurrentPrice;
+            float maxDeviation = 0f;
+
+            // Run 6 frames at 60fps (~0.1 seconds)
+            for (int i = 0; i < 6; i++)
+            {
+                _generator.UpdatePrice(stock, 0.016f);
+                float deviation = System.Math.Abs(stock.CurrentPrice - initialPrice) / initialPrice;
+                if (deviation > maxDeviation)
+                    maxDeviation = deviation;
+            }
+
+            // At 0.1s into NoiseRampUpSeconds (2.0s), ramp factor is 0.05 (5%).
+            // Noise amplitude 0.08 * 0.05 = 0.004 effective.
+            // Movement should be very small compared to full amplitude.
+            Assert.Less(maxDeviation, 0.02f,
+                $"Noise should be heavily suppressed in first 0.1s. Max deviation: {maxDeviation:P2}");
+        }
+
+        [Test]
+        public void UpdatePrice_NoiseRampUp_FullAmplitudeByTwoSeconds()
+        {
+            // FIX-17: After 2 seconds, noise should be at full amplitude
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 5f, TrendDirection.Neutral, 0f);
+
+            // Fast-forward TimeIntoTrading past the ramp period
+            stock.TimeIntoTrading = 3f; // Well past 2s ramp
+
+            float totalVariation = 0f;
+            float lastPrice = stock.CurrentPrice;
+
+            for (int i = 0; i < 300; i++)
+            {
+                _generator.UpdatePrice(stock, 0.016f);
+                totalVariation += System.Math.Abs(stock.CurrentPrice - lastPrice) / lastPrice;
+                lastPrice = stock.CurrentPrice;
+            }
+
+            // After ramp, we should see full noise amplitude movement
+            Assert.Greater(totalVariation, 0.05f,
+                "After ramp-up period, noise should be at full amplitude");
+        }
+
+        [Test]
+        public void UpdatePrice_TimeIntoTrading_IncreasesEachFrame()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+
+            Assert.AreEqual(0f, stock.TimeIntoTrading, 0.001f);
+
+            _generator.UpdatePrice(stock, 0.016f);
+            Assert.AreEqual(0.016f, stock.TimeIntoTrading, 0.001f);
+
+            _generator.UpdatePrice(stock, 0.016f);
+            Assert.AreEqual(0.032f, stock.TimeIntoTrading, 0.001f);
+        }
+
+        // --- FIX-17: Price floor trend line reset ---
+
+        [Test]
+        public void UpdatePrice_PriceFloor_ResetsTrendLine()
+        {
+            // FIX-17: When price hits $0.01 floor, trend line should also reset.
+            // Start price below the floor so the floor check fires on the first frame.
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 0.005f, TrendDirection.Bear, 0.50f);
+            stock.TimeIntoTrading = 5f;
+
+            // Initial trend line is at 0.005 (starting price)
+            Assert.AreEqual(0.005f, stock.TrendLinePrice, 0.001f);
+
+            // One frame — price is below floor, floor check will fire
+            _generator.UpdatePrice(stock, 0.016f);
+
+            // Price should be clamped to floor
+            Assert.AreEqual(0.01f, stock.CurrentPrice, 0.001f,
+                "Price should be clamped to $0.01 floor");
+
+            // Trend line should have been reset to floor price (not left at original 0.005)
+            Assert.AreEqual(0.01f, stock.TrendLinePrice, 0.001f,
+                "Trend line should be reset to floor price when stock hits $0.01");
+        }
+
+        // --- FIX-17: Full event lifecycle integration test ---
+
+        [Test]
+        public void UpdatePrice_FullEventLifecycle_PricePeristsNearTarget()
+        {
+            // FIX-17: Fire event → active → expires → verify price stays near target
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+            stock.TimeIntoTrading = 5f; // Past noise ramp
+
+            var eventEffects = new EventEffects();
+            var stocks = new List<StockInstance> { stock };
+            eventEffects.SetActiveStocks(stocks);
+            _generator.SetEventEffects(eventEffects);
+
+            // Start a +25% event
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 4f);
+            eventEffects.StartEvent(evt);
+
+            float dt = 0.05f;
+
+            // Run through the entire event duration
+            for (float t = 0f; t < 4.5f; t += dt)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                _generator.UpdatePrice(stock, dt);
+            }
+
+            // Event has now expired. Price should be near 125 (not reverted to 100)
+            Assert.Greater(stock.CurrentPrice, 110f,
+                $"After event expires, price should persist near target. Got {stock.CurrentPrice}");
+
+            // Trend line should have been shifted on event expiry
+            Assert.Greater(stock.TrendLinePrice, 100f,
+                $"Trend line should have shifted to post-event price. Got {stock.TrendLinePrice}");
+        }
     }
 }
