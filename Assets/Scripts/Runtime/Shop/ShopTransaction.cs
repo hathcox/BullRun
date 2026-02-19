@@ -230,6 +230,64 @@ public class ShopTransaction
     }
 
     /// <summary>
+    /// Sells an owned relic. Refunds 50% of original cost (integer division = floor).
+    /// Removes relic from OwnedRelics, adds Reputation refund, fires ShopItemSoldEvent.
+    /// Returns NotOwned if relic is not in inventory or not found in RelicPool.
+    /// Story 13.10, AC 6, 15.
+    /// </summary>
+    public ShopPurchaseResult SellRelic(RunContext ctx, string relicId)
+    {
+        if (!ctx.OwnedRelics.Contains(relicId))
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[ShopTransaction] Sell rejected: {relicId} not owned");
+            #endif
+            return ShopPurchaseResult.NotOwned;
+        }
+
+        var relicDef = ItemLookup.GetRelicById(relicId);
+        if (!relicDef.HasValue)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogWarning($"[ShopTransaction] Sell rejected: {relicId} not found in RelicPool");
+            #endif
+            return ShopPurchaseResult.NotOwned;
+        }
+
+        int refund = relicDef.Value.Cost / 2;
+        bool relicRemoved = false;
+
+        try
+        {
+            ctx.OwnedRelics.Remove(relicId);
+            relicRemoved = true;
+            ctx.Reputation.Add(refund);
+
+            EventBus.Publish(new ShopItemSoldEvent
+            {
+                RelicId = relicId,
+                RefundAmount = refund,
+                RemainingReputation = ctx.Reputation.Current
+            });
+
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[ShopTransaction] Relic sold: {relicDef.Value.Name} for {refund} Rep refund (remaining: {ctx.Reputation.Current} Rep)");
+            #endif
+
+            return ShopPurchaseResult.Success;
+        }
+        catch (System.Exception ex)
+        {
+            if (relicRemoved) ctx?.OwnedRelics.Add(relicId);
+            ctx?.Reputation.Spend(refund);
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.LogWarning($"[ShopTransaction] Relic sell failed for {relicId}: {ex.Message}");
+            #endif
+            return ShopPurchaseResult.Error;
+        }
+    }
+
+    /// <summary>
     /// Purchases a bond. Delegates to BondManager.Purchase for atomic buy logic.
     /// Deducts Cash (not Reputation). Fires BondPurchasedEvent (Story 13.6, AC 3, 15).
     /// </summary>
@@ -257,5 +315,6 @@ public enum ShopPurchaseResult
     InsufficientFunds,
     AlreadyOwned,
     SlotsFull,
+    NotOwned,
     Error
 }

@@ -1239,12 +1239,35 @@ public static class UISetup
             ShopUI.CashColor, 22);
         cashGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
 
+        // ── OWNED RELICS BAR: Shows player's current relic inventory (Story 13.10) ──
+        var ownedRelicsBar = new GameObject("OwnedRelicsBar");
+        ownedRelicsBar.transform.SetParent(bgGo.transform, false);
+        var ownedBarRect = ownedRelicsBar.AddComponent<RectTransform>();
+        ownedBarRect.anchorMin = new Vector2(0.03f, 0.85f);
+        ownedBarRect.anchorMax = new Vector2(0.97f, 0.93f);
+        ownedBarRect.offsetMin = Vector2.zero;
+        ownedBarRect.offsetMax = Vector2.zero;
+
+        var ownedBarHlg = ownedRelicsBar.AddComponent<HorizontalLayoutGroup>();
+        ownedBarHlg.spacing = 8f;
+        ownedBarHlg.padding = new RectOffset(8, 8, 4, 4);
+        ownedBarHlg.childAlignment = TextAnchor.MiddleCenter;
+        ownedBarHlg.childForceExpandWidth = true;
+        ownedBarHlg.childForceExpandHeight = true;
+
+        // Create max possible slots (7 — base 5 + 2 from Expanded Inventory)
+        var ownedSlots = new ShopUI.OwnedRelicSlotView[ShopUI.MaxPossibleOwnedSlots];
+        for (int i = 0; i < ownedSlots.Length; i++)
+        {
+            ownedSlots[i] = CreateOwnedRelicSlot(i, ownedRelicsBar.transform);
+        }
+
         // ── TOP SECTION: Control panel (left) + 3 Relic slots (right) ──
         var topSection = new GameObject("TopSection");
         topSection.transform.SetParent(bgGo.transform, false);
         var topRect = topSection.AddComponent<RectTransform>();
         topRect.anchorMin = new Vector2(0.03f, 0.45f);
-        topRect.anchorMax = new Vector2(0.97f, 0.93f);
+        topRect.anchorMax = new Vector2(0.97f, 0.84f);
         topRect.offsetMin = Vector2.zero;
         topRect.offsetMax = Vector2.zero;
 
@@ -1338,6 +1361,7 @@ public static class UISetup
         shopUI.SetNextRoundButton(nextRoundButton);
         shopUI.SetRerollButton(rerollButton, rerollCostGo.GetComponent<Text>());
         shopUI.SetBottomPanels(expansionsPanel, tipsPanel, bondsPanel);
+        shopUI.SetOwnedRelicSlots(ownedSlots); // Sell callback wired by ShopState
 
         // Wire to ShopState
         ShopState.ShopUIInstance = shopUI;
@@ -1403,21 +1427,71 @@ public static class UISetup
         view.CostText = costGo.GetComponent<Text>();
         view.CostText.raycastTarget = false;
 
-        // Purchase button
-        var btnGo = CreatePanel($"BuyBtn_{index}", cardGo.transform);
-        var btnRect = btnGo.GetComponent<RectTransform>();
-        btnRect.sizeDelta = new Vector2(180f, 36f);
-        var btnLayoutElem = btnGo.AddComponent<LayoutElement>();
-        btnLayoutElem.minHeight = 36f;
-        btnLayoutElem.preferredHeight = 36f;
-        btnGo.GetComponent<Image>().color = ShopUI.BuyButtonColor;
-        view.PurchaseButton = btnGo.AddComponent<Button>();
+        // Story 13.10: Click-to-buy — Button on card root, no separate buy button (AC 8)
+        view.PurchaseButton = cardGo.AddComponent<Button>();
+        // Feedback overlay text — centered on card, hidden by default
+        var feedbackGo = CreateLabel($"Feedback_{index}", cardGo.transform, "",
+            Color.white, 16);
+        feedbackGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        feedbackGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        feedbackGo.GetComponent<Text>().raycastTarget = false;
+        feedbackGo.SetActive(false);
+        view.ButtonText = feedbackGo.GetComponent<Text>();
 
-        var btnLabel = CreateLabel($"BuyBtnText_{index}", btnGo.transform, "BUY",
-            Color.white, 14);
-        btnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
-        view.ButtonText = btnLabel.GetComponent<Text>();
-        view.ButtonText.raycastTarget = false;
+        return view;
+    }
+
+    /// <summary>
+    /// Creates an owned relic slot for the top bar (Story 13.10).
+    /// Each slot shows relic name + small sell button, or "Empty" outline when vacant.
+    /// </summary>
+    private static ShopUI.OwnedRelicSlotView CreateOwnedRelicSlot(int index, Transform parent)
+    {
+        var view = new ShopUI.OwnedRelicSlotView();
+
+        // Slot background with outline border
+        var slotGo = CreatePanel($"OwnedSlot_{index}", parent);
+        var slotImg = slotGo.GetComponent<Image>();
+        slotImg.color = ShopUI.OwnedRelicEmptyColor;
+        view.Root = slotGo;
+        view.Background = slotImg;
+        view.Group = slotGo.AddComponent<CanvasGroup>();
+
+        var outline = slotGo.AddComponent<Outline>();
+        outline.effectColor = ShopUI.PanelBorderColor;
+        outline.effectDistance = new Vector2(1f, 1f);
+
+        var vlg = slotGo.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 2f;
+        vlg.padding = new RectOffset(6, 6, 4, 4);
+        vlg.childAlignment = TextAnchor.MiddleCenter;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = false;
+
+        // Relic name label (shown when populated)
+        var nameGo = CreateLabel($"OwnedName_{index}", slotGo.transform, "",
+            Color.white, 11);
+        nameGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        nameGo.GetComponent<Text>().raycastTarget = false;
+        view.NameLabel = nameGo.GetComponent<Text>();
+
+        // Sell button — small, at bottom, intentionally placed to avoid accidents
+        var sellBtnGo = CreatePanel($"SellBtn_{index}", slotGo.transform);
+        sellBtnGo.GetComponent<Image>().color = ShopUI.OwnedRelicSellColor;
+        var sellBtnLayout = sellBtnGo.AddComponent<LayoutElement>();
+        sellBtnLayout.preferredHeight = 18f;
+        view.SellButton = sellBtnGo.AddComponent<Button>();
+
+        var sellLabel = CreateLabel($"SellBtnText_{index}", sellBtnGo.transform, "SELL",
+            Color.white, 9);
+        sellLabel.GetComponent<Text>().raycastTarget = false;
+        view.SellButtonText = sellLabel.GetComponent<Text>();
+
+        // Empty label (shown when vacant)
+        var emptyGo = CreateLabel($"OwnedEmpty_{index}", slotGo.transform, "Empty",
+            ColorPalette.WithAlpha(ColorPalette.WhiteDim, 0.5f), 10);
+        emptyGo.GetComponent<Text>().raycastTarget = false;
+        view.EmptyLabel = emptyGo.GetComponent<Text>();
 
         return view;
     }

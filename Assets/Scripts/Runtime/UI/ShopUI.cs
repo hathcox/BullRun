@@ -138,6 +138,19 @@ public class ShopUI : MonoBehaviour
     private Outline _bondCardOutline;
     private bool _bondHovered;
 
+    // Flash feedback coroutine tracking (Story 13.10 — prevent stacking)
+    private Coroutine[] _relicFlashCoroutines;
+    private Coroutine[] _expansionFlashCoroutines;
+    private Coroutine[] _tipFlashCoroutines;
+
+    // Owned relics bar (Story 13.10)
+    private OwnedRelicSlotView[] _ownedRelicSlots;
+    private System.Action<int> _onSellRelic;
+    public static readonly Color OwnedRelicSlotColor = ColorPalette.WithAlpha(ColorPalette.Panel, 0.7f);
+    public static readonly Color OwnedRelicEmptyColor = ColorPalette.WithAlpha(ColorPalette.Panel, 0.3f);
+    public static readonly Color OwnedRelicSellColor = ColorPalette.Dimmed(ColorPalette.Red, 0.5f);
+    public const float InventoryFullFlashDuration = 1.5f;
+
     // Bond panel state (Story 13.6)
     private Text _bondPriceText;
     private Text _bondInfoText;
@@ -184,6 +197,20 @@ public class ShopUI : MonoBehaviour
         public Text ButtonText;
         public Image CardBackground;
         public CanvasGroup Group;
+    }
+
+    /// <summary>
+    /// View data for an owned relic slot in the top bar (Story 13.10).
+    /// </summary>
+    public struct OwnedRelicSlotView
+    {
+        public GameObject Root;
+        public Text NameLabel;
+        public Button SellButton;
+        public Text SellButtonText;
+        public Text EmptyLabel;
+        public CanvasGroup Group;
+        public Image Background;
     }
 
     public void Initialize(
@@ -299,6 +326,7 @@ public class ShopUI : MonoBehaviour
         _relicOffering = relicOffering;
         _onPurchase = onPurchase;
         _soldFlags = new bool[relicOffering.Length];
+        _relicFlashCoroutines = new Coroutine[relicOffering.Length];
         _root.SetActive(true);
         _focusedPanelIndex = -1;
 
@@ -319,12 +347,16 @@ public class ShopUI : MonoBehaviour
         }
 
         RefreshRelicCapacity();
+        RefreshOwnedRelicsBar();
         StartCoroutine(AnimateShopEntry());
     }
 
     // AC 11: Cascade relic card slots in from below on shop open
     private IEnumerator AnimateShopEntry()
     {
+        // Force layout rebuild so anchoredPosition values are correct before animating
+        Canvas.ForceUpdateCanvases();
+
         for (int i = 0; i < _relicSlots.Length; i++)
         {
             var slot = _relicSlots[i];
@@ -390,6 +422,19 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Refreshes all store displays after a relic is sold from the owned bar (Story 13.10, AC 6).
+    /// Updates currency, relic card states (capacity may have freed up), and other panels.
+    /// </summary>
+    public void RefreshAfterSell()
+    {
+        UpdateCurrencyDisplays();
+        RefreshRelicAffordability();
+        RefreshExpansionAffordability();
+        RefreshTipAffordability();
+        UpdateRerollDisplay();
+    }
+
+    /// <summary>
     /// Populates the expansions panel with available expansion cards (Story 13.4, AC 1, 2, 7).
     /// Called by ShopState after generating the expansion offering.
     /// </summary>
@@ -414,6 +459,7 @@ public class ShopUI : MonoBehaviour
         if (contentLabel != null) contentLabel.gameObject.SetActive(false);
 
         _expansionCards = new ExpansionCardView[offering.Length];
+        _expansionFlashCoroutines = new Coroutine[offering.Length];
         for (int i = 0; i < offering.Length; i++)
         {
             _expansionCards[i] = CreateExpansionCard(i, offering[i], _expansionsPanel.transform);
@@ -425,10 +471,9 @@ public class ShopUI : MonoBehaviour
             else
             {
                 bool canAfford = ctx.Reputation.CanAfford(offering[i].Cost);
-                _expansionCards[i].PurchaseButton.interactable = canAfford;
-                _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+                _expansionCards[i].PurchaseButton.interactable = true;
+                _expansionCards[i].ButtonText.gameObject.SetActive(false);
                 _expansionCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
-                _expansionCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
             }
         }
     }
@@ -456,6 +501,8 @@ public class ShopUI : MonoBehaviour
         if (_expansionCards == null || index < 0 || index >= _expansionCards.Length) return;
         _expansionCards[index].PurchaseButton.interactable = false;
         _expansionCards[index].ButtonText.text = "OWNED";
+        _expansionCards[index].ButtonText.color = Color.white;
+        _expansionCards[index].ButtonText.gameObject.SetActive(true);
         _expansionCards[index].CardBackground.color = OwnedOverlayColor;
 
         // Animate OWNED watermark on purchase (Story 13.8, AC 6)
@@ -474,10 +521,7 @@ public class ShopUI : MonoBehaviour
             if (_ctx.OwnedExpansions.Contains(_expansionOffering[i].Id)) continue;
 
             bool canAfford = _ctx.Reputation.CanAfford(_expansionOffering[i].Cost);
-            _expansionCards[i].PurchaseButton.interactable = canAfford;
-            _expansionCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _expansionCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
-            _expansionCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
         }
     }
 
@@ -544,37 +588,68 @@ public class ShopUI : MonoBehaviour
         var costLayout = costGo.AddComponent<LayoutElement>();
         costLayout.preferredHeight = 16f;
 
-        // Purchase button
-        var btnGo = new GameObject("BuyButton");
-        btnGo.transform.SetParent(cardGo.transform, false);
-        var btnImg = btnGo.AddComponent<Image>();
-        btnImg.color = BuyButtonColor;
-        view.PurchaseButton = btnGo.AddComponent<Button>();
-        var btnLayout = btnGo.AddComponent<LayoutElement>();
-        btnLayout.preferredHeight = 20f;
+        // Story 13.10: Click-to-buy — Button on card root, no separate buy button (AC 9)
+        view.PurchaseButton = cardGo.AddComponent<Button>();
 
-        var btnTextGo = new GameObject("ButtonText");
-        btnTextGo.transform.SetParent(btnGo.transform, false);
-        var btnRect = btnTextGo.AddComponent<RectTransform>();
-        btnRect.anchorMin = Vector2.zero;
-        btnRect.anchorMax = Vector2.one;
-        btnRect.offsetMin = Vector2.zero;
-        btnRect.offsetMax = Vector2.zero;
-        view.ButtonText = btnTextGo.AddComponent<Text>();
+        // Feedback overlay text — hidden by default, shown for "CAN'T AFFORD" / "OWNED"
+        var feedbackGo = new GameObject("Feedback");
+        feedbackGo.transform.SetParent(cardGo.transform, false);
+        view.ButtonText = feedbackGo.AddComponent<Text>();
         view.ButtonText.font = DefaultFont;
-        view.ButtonText.text = "BUY";
-        view.ButtonText.fontSize = 11;
+        view.ButtonText.text = "";
+        view.ButtonText.fontSize = 12;
         view.ButtonText.fontStyle = FontStyle.Bold;
         view.ButtonText.color = Color.white;
         view.ButtonText.alignment = TextAnchor.MiddleCenter;
         view.ButtonText.raycastTarget = false;
+        feedbackGo.SetActive(false);
+        var feedbackLayout = feedbackGo.AddComponent<LayoutElement>();
+        feedbackLayout.preferredHeight = 16f;
 
         int capturedIndex = index;
-        view.PurchaseButton.onClick.AddListener(() => _onExpansionPurchase?.Invoke(capturedIndex));
+        view.PurchaseButton.onClick.AddListener(() => OnExpansionCardClicked(capturedIndex));
         AddButtonClickFeel(view.PurchaseButton);
         AddButtonHoverFeel(view.PurchaseButton);
 
         return view;
+    }
+
+    /// <summary>
+    /// Handles expansion card click for click-to-buy (Story 13.10, AC 9).
+    /// </summary>
+    private void OnExpansionCardClicked(int index)
+    {
+        if (_ctx == null) return;
+        if (_expansionOffering == null || index >= _expansionOffering.Length) return;
+
+        var expansion = _expansionOffering[index];
+
+        // Already owned — do nothing
+        if (_ctx.OwnedExpansions.Contains(expansion.Id)) return;
+
+        if (!_ctx.Reputation.CanAfford(expansion.Cost))
+        {
+            if (_expansionFlashCoroutines[index] != null) StopCoroutine(_expansionFlashCoroutines[index]);
+            _expansionFlashCoroutines[index] = StartCoroutine(FlashExpansionFeedback(index, "CAN'T AFFORD", ColorPalette.Red));
+            return;
+        }
+
+        _onExpansionPurchase?.Invoke(index);
+    }
+
+    private IEnumerator FlashExpansionFeedback(int index, string message, Color color)
+    {
+        if (_expansionCards == null || index >= _expansionCards.Length) yield break;
+        var card = _expansionCards[index];
+
+        card.ButtonText.text = message;
+        card.ButtonText.color = color;
+        card.ButtonText.gameObject.SetActive(true);
+
+        yield return new WaitForSecondsRealtime(InventoryFullFlashDuration);
+
+        card.ButtonText.gameObject.SetActive(false);
+        _expansionFlashCoroutines[index] = null;
     }
 
     /// <summary>
@@ -607,14 +682,14 @@ public class ShopUI : MonoBehaviour
             $" panelRect={_tipsPanel.GetComponent<RectTransform>()?.rect}");
 
         _tipCards = new TipCardView[offering.Length];
+        _tipFlashCoroutines = new Coroutine[offering.Length];
         for (int i = 0; i < offering.Length; i++)
         {
             _tipCards[i] = CreateTipCard(i, offering[i], _tipsPanel.transform);
             bool canAfford = ctx.Reputation.CanAfford(offering[i].Definition.Cost);
-            _tipCards[i].PurchaseButton.interactable = canAfford;
-            _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
+            _tipCards[i].PurchaseButton.interactable = true;
+            _tipCards[i].ButtonText.gameObject.SetActive(false);
             _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
-            _tipCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
 
             var card = _tipCards[i];
             var cardRT = card.Root.GetComponent<RectTransform>();
@@ -659,10 +734,7 @@ public class ShopUI : MonoBehaviour
             if (_tipCards[i].IsRevealed) continue;
 
             bool canAfford = _ctx.Reputation.CanAfford(_tipOffering[i].Definition.Cost);
-            _tipCards[i].PurchaseButton.interactable = canAfford;
-            _tipCards[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
             _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
-            _tipCards[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
         }
     }
 
@@ -732,37 +804,67 @@ public class ShopUI : MonoBehaviour
         var costLayout = costGo.AddComponent<LayoutElement>();
         costLayout.preferredHeight = 18f;
 
-        // Purchase button
-        var btnGo = new GameObject("BuyButton");
-        btnGo.transform.SetParent(cardGo.transform, false);
-        var btnImg = btnGo.AddComponent<Image>();
-        btnImg.color = BuyButtonColor;
-        view.PurchaseButton = btnGo.AddComponent<Button>();
-        var btnLayout = btnGo.AddComponent<LayoutElement>();
-        btnLayout.preferredHeight = 20f;
+        // Story 13.10: Click-to-buy — Button on card root, no separate buy button (AC 10)
+        view.PurchaseButton = cardGo.AddComponent<Button>();
 
-        var btnTextGo = new GameObject("ButtonText");
-        btnTextGo.transform.SetParent(btnGo.transform, false);
-        var btnRect = btnTextGo.AddComponent<RectTransform>();
-        btnRect.anchorMin = Vector2.zero;
-        btnRect.anchorMax = Vector2.one;
-        btnRect.offsetMin = Vector2.zero;
-        btnRect.offsetMax = Vector2.zero;
-        view.ButtonText = btnTextGo.AddComponent<Text>();
+        // Feedback overlay text — hidden by default
+        var feedbackGo = new GameObject("Feedback");
+        feedbackGo.transform.SetParent(cardGo.transform, false);
+        view.ButtonText = feedbackGo.AddComponent<Text>();
         view.ButtonText.font = DefaultFont;
-        view.ButtonText.text = "BUY";
-        view.ButtonText.fontSize = 11;
+        view.ButtonText.text = "";
+        view.ButtonText.fontSize = 12;
         view.ButtonText.fontStyle = FontStyle.Bold;
         view.ButtonText.color = Color.white;
         view.ButtonText.alignment = TextAnchor.MiddleCenter;
         view.ButtonText.raycastTarget = false;
+        feedbackGo.SetActive(false);
+        var feedbackLayout = feedbackGo.AddComponent<LayoutElement>();
+        feedbackLayout.preferredHeight = 16f;
 
         int capturedIndex = index;
-        view.PurchaseButton.onClick.AddListener(() => _onTipPurchase?.Invoke(capturedIndex));
+        view.PurchaseButton.onClick.AddListener(() => OnTipCardClicked(capturedIndex));
         AddButtonClickFeel(view.PurchaseButton);
         AddButtonHoverFeel(view.PurchaseButton);
 
         return view;
+    }
+
+    /// <summary>
+    /// Handles tip card click for click-to-buy (Story 13.10, AC 10).
+    /// </summary>
+    private void OnTipCardClicked(int index)
+    {
+        if (_ctx == null) return;
+        if (_tipCards == null || index >= _tipCards.Length) return;
+        if (_tipCards[index].IsRevealed) return;
+
+        if (_tipOffering == null || index >= _tipOffering.Length) return;
+        int cost = _tipOffering[index].Definition.Cost;
+
+        if (!_ctx.Reputation.CanAfford(cost))
+        {
+            if (_tipFlashCoroutines[index] != null) StopCoroutine(_tipFlashCoroutines[index]);
+            _tipFlashCoroutines[index] = StartCoroutine(FlashTipFeedback(index, "CAN'T AFFORD", ColorPalette.Red));
+            return;
+        }
+
+        _onTipPurchase?.Invoke(index);
+    }
+
+    private IEnumerator FlashTipFeedback(int index, string message, Color color)
+    {
+        if (_tipCards == null || index >= _tipCards.Length) yield break;
+        var card = _tipCards[index];
+
+        card.ButtonText.text = message;
+        card.ButtonText.color = color;
+        card.ButtonText.gameObject.SetActive(true);
+
+        yield return new WaitForSecondsRealtime(InventoryFullFlashDuration);
+
+        card.ButtonText.gameObject.SetActive(false);
+        _tipFlashCoroutines[index] = null;
     }
 
     private void ClearTipCards()
@@ -1551,11 +1653,15 @@ public class ShopUI : MonoBehaviour
         slot.DescriptionText.text = "No relic available";
         slot.CostText.text = "";
         slot.PurchaseButton.interactable = false;
-        slot.ButtonText.text = "SOLD OUT";
+        slot.ButtonText.gameObject.SetActive(false);
         slot.CardBackground.color = SoldOutCardColor;
         slot.PurchaseButton.onClick.RemoveAllListeners();
     }
 
+    /// <summary>
+    /// Sets up a relic card for click-to-buy (Story 13.10, AC 8, 12, 13).
+    /// Card is always interactable. Click attempts purchase; on failure flashes feedback.
+    /// </summary>
     private void SetupRelicSlot(int index, RelicDef relic)
     {
         var slot = _relicSlots[index];
@@ -1565,33 +1671,64 @@ public class ShopUI : MonoBehaviour
         slot.CostText.text = $"\u2605 {relic.Cost}";
 
         bool canAfford = _ctx.Reputation.CanAfford(relic.Cost);
-        bool atCapacity = IsAtRelicCapacity();
-        bool canBuy = canAfford && !atCapacity;
-
-        slot.PurchaseButton.interactable = canBuy;
-        if (atCapacity)
-        {
-            slot.ButtonText.text = "FULL";
-            slot.PurchaseButton.GetComponent<Image>().color = CantAffordButtonColor;
-        }
-        else if (!canAfford)
-        {
-            slot.ButtonText.text = "CAN'T AFFORD";
-            slot.PurchaseButton.GetComponent<Image>().color = CantAffordButtonColor;
-        }
-        else
-        {
-            slot.ButtonText.text = "BUY";
-            slot.PurchaseButton.GetComponent<Image>().color = BuyButtonColor;
-        }
-
         slot.CostText.color = canAfford ? Color.white : ColorPalette.Red;
+
+        // Card always clickable — feedback flash handles error states (AC 8)
+        slot.PurchaseButton.interactable = true;
+        slot.ButtonText.gameObject.SetActive(false);
 
         slot.PurchaseButton.onClick.RemoveAllListeners();
         int capturedIndex = index;
-        slot.PurchaseButton.onClick.AddListener(() => _onPurchase?.Invoke(capturedIndex));
+        slot.PurchaseButton.onClick.AddListener(() => OnRelicCardClicked(capturedIndex));
         AddButtonClickFeel(slot.PurchaseButton);
         AddButtonHoverFeel(slot.PurchaseButton);
+    }
+
+    /// <summary>
+    /// Handles relic card click for click-to-buy (Story 13.10, AC 8, 12, 13).
+    /// Checks capacity and affordability, shows flash feedback if can't buy.
+    /// </summary>
+    private void OnRelicCardClicked(int index)
+    {
+        if (_ctx == null) return;
+        if (_soldFlags != null && index < _soldFlags.Length && _soldFlags[index]) return;
+        if (!_relicOffering[index].HasValue) return;
+
+        var relic = _relicOffering[index].Value;
+
+        if (IsAtRelicCapacity())
+        {
+            if (_relicFlashCoroutines[index] != null) StopCoroutine(_relicFlashCoroutines[index]);
+            _relicFlashCoroutines[index] = StartCoroutine(FlashCardFeedback(index, "INVENTORY FULL", ColorPalette.Red));
+            return;
+        }
+
+        if (!_ctx.Reputation.CanAfford(relic.Cost))
+        {
+            if (_relicFlashCoroutines[index] != null) StopCoroutine(_relicFlashCoroutines[index]);
+            _relicFlashCoroutines[index] = StartCoroutine(FlashCardFeedback(index, "CAN'T AFFORD", ColorPalette.Red));
+            return;
+        }
+
+        _onPurchase?.Invoke(index);
+    }
+
+    /// <summary>
+    /// Flashes a brief feedback message on a relic card (Story 13.10).
+    /// </summary>
+    private IEnumerator FlashCardFeedback(int index, string message, Color color)
+    {
+        if (index >= _relicSlots.Length) yield break;
+        var slot = _relicSlots[index];
+
+        slot.ButtonText.text = message;
+        slot.ButtonText.color = color;
+        slot.ButtonText.gameObject.SetActive(true);
+
+        yield return new WaitForSecondsRealtime(InventoryFullFlashDuration);
+
+        slot.ButtonText.gameObject.SetActive(false);
+        _relicFlashCoroutines[index] = null;
     }
 
     /// <summary>
@@ -1604,51 +1741,25 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Refreshes all non-sold relic slots for capacity check (AC 12).
-    /// If at capacity, all purchase buttons disabled with "FULL".
+    /// Refreshes all non-sold relic slots for capacity and affordability (AC 12, 13).
+    /// Story 13.10: Click-to-buy — card always interactable, cost color indicates affordability.
     /// </summary>
     private void RefreshRelicCapacity()
     {
-        if (_relicOffering == null) return;
-        bool atCapacity = IsAtRelicCapacity();
-
-        for (int i = 0; i < _relicSlots.Length && i < _relicOffering.Length; i++)
-        {
-            if (!_relicOffering[i].HasValue) continue;
-            if (_soldFlags != null && i < _soldFlags.Length && _soldFlags[i]) continue;
-
-            if (atCapacity)
-            {
-                _relicSlots[i].PurchaseButton.interactable = false;
-                _relicSlots[i].ButtonText.text = "FULL";
-            }
-        }
+        RefreshRelicAffordability();
     }
 
     private void RefreshRelicAffordability()
     {
         if (_relicOffering == null) return;
-        bool atCapacity = IsAtRelicCapacity();
 
         for (int i = 0; i < _relicSlots.Length && i < _relicOffering.Length; i++)
         {
             if (!_relicOffering[i].HasValue) continue;
             if (_soldFlags != null && i < _soldFlags.Length && _soldFlags[i]) continue;
 
-            if (atCapacity)
-            {
-                _relicSlots[i].PurchaseButton.interactable = false;
-                _relicSlots[i].ButtonText.text = "FULL";
-                _relicSlots[i].PurchaseButton.GetComponent<Image>().color = CantAffordButtonColor;
-            }
-            else
-            {
-                bool canAfford = _ctx.Reputation.CanAfford(_relicOffering[i].Value.Cost);
-                _relicSlots[i].PurchaseButton.interactable = canAfford;
-                _relicSlots[i].ButtonText.text = canAfford ? "BUY" : "CAN'T AFFORD";
-                _relicSlots[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
-                _relicSlots[i].PurchaseButton.GetComponent<Image>().color = canAfford ? BuyButtonColor : CantAffordButtonColor;
-            }
+            bool canAfford = _ctx.Reputation.CanAfford(_relicOffering[i].Value.Cost);
+            _relicSlots[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
         }
     }
 
@@ -1676,5 +1787,89 @@ public class ShopUI : MonoBehaviour
             _cashText.color = _ctx.Portfolio.Cash < 0f ? TradingHUD.LossRed : CRTThemeData.TextHigh;
         }
     }
+
+    // ── Owned Relics Bar (Story 13.10) ──
+
+    /// <summary>
+    /// Sets owned relic slot views. Called by UISetup during store construction.
+    /// </summary>
+    public void SetOwnedRelicSlots(OwnedRelicSlotView[] slots)
+    {
+        _ownedRelicSlots = slots;
+    }
+
+    /// <summary>
+    /// Sets the sell callback for owned relics bar. Called by ShopState during Enter.
+    /// </summary>
+    public void SetSellRelicCallback(System.Action<int> onSellRelic)
+    {
+        _onSellRelic = onSellRelic;
+    }
+
+    /// <summary>
+    /// Refreshes the owned relics bar to reflect current RunContext.OwnedRelics (AC: 3, 4, 5, 7).
+    /// Shows relic name + sell button for owned slots, "Empty" for vacant slots.
+    /// Handles dynamic slot count (5 base, 7 with Expanded Inventory).
+    /// </summary>
+    public void RefreshOwnedRelicsBar()
+    {
+        if (_ownedRelicSlots == null || _ctx == null) return;
+
+        int maxSlots = ShopTransaction.GetEffectiveMaxRelicSlots(_ctx);
+
+        for (int i = 0; i < _ownedRelicSlots.Length; i++)
+        {
+            var slot = _ownedRelicSlots[i];
+            if (slot.Root == null) continue;
+
+            // Show/hide extra slots based on Expanded Inventory
+            if (i >= maxSlots)
+            {
+                slot.Root.SetActive(false);
+                continue;
+            }
+            slot.Root.SetActive(true);
+
+            if (i < _ctx.OwnedRelics.Count)
+            {
+                // Populated slot: show relic name and sell button
+                string relicId = _ctx.OwnedRelics[i];
+                var relicDef = ItemLookup.GetRelicById(relicId);
+
+                string displayName = relicDef.HasValue ? relicDef.Value.Name : relicId;
+                int refund = relicDef.HasValue ? relicDef.Value.Cost / 2 : 0;
+
+                slot.NameLabel.text = displayName;
+                slot.NameLabel.gameObject.SetActive(true);
+                slot.SellButton.gameObject.SetActive(true);
+                slot.SellButtonText.text = $"SELL \u2605{refund}";
+                slot.EmptyLabel.gameObject.SetActive(false);
+
+                slot.SellButton.onClick.RemoveAllListeners();
+                int capturedIndex = i;
+                slot.SellButton.onClick.AddListener(() => _onSellRelic?.Invoke(capturedIndex));
+                AddButtonClickFeel(slot.SellButton);
+                AddButtonHoverFeel(slot.SellButton);
+
+                slot.Background.color = OwnedRelicSlotColor;
+            }
+            else
+            {
+                // Empty slot
+                slot.NameLabel.gameObject.SetActive(false);
+                slot.SellButton.gameObject.SetActive(false);
+                slot.EmptyLabel.gameObject.SetActive(true);
+                slot.EmptyLabel.text = "Empty";
+
+                slot.Background.color = OwnedRelicEmptyColor;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the maximum possible owned relic slots (7 with Expanded Inventory).
+    /// Used by UISetup to create the right number of slot views.
+    /// </summary>
+    public static int MaxPossibleOwnedSlots => GameConfig.MaxRelicSlots + 2;
 
 }

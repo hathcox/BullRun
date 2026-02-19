@@ -350,6 +350,17 @@ public struct ShortCountdownEvent
 }
 
 /// <summary>
+/// Fired when the player sells an owned relic from the owned relics bar (Story 13.10, AC 15).
+/// Refund amount is 50% of original cost (integer division = floor).
+/// </summary>
+public struct ShopItemSoldEvent
+{
+    public string RelicId;
+    public int RefundAmount;
+    public int RemainingReputation;
+}
+
+/// <summary>
 /// Fired when the player rerolls the relic offering in the shop.
 /// Added in Story 11.1 for audio triggers. AudioManager subscribes for the shop_reroll sound.
 /// </summary>

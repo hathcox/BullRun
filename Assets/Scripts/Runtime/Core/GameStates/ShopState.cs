@@ -98,6 +98,9 @@ public class ShopState : IGameState
             ShopUIInstance.SetOnCloseCallback(() => CloseShop(ctx));
             ShopUIInstance.SetOnRerollCallback(() => OnRerollRequested(ctx));
 
+            // Story 13.10: Wire sell callback for owned relics bar
+            ShopUIInstance.SetSellRelicCallback((slotIndex) => OnSellRequested(ctx, slotIndex));
+
             // Populate expansion panel (Story 13.4)
             ShopUIInstance.ShowExpansions(ctx, _expansionOffering, (cardIndex) => OnExpansionPurchaseRequested(ctx, cardIndex));
 
@@ -206,10 +209,38 @@ public class ShopState : IGameState
             _purchased[cardIndex] = true;
             _purchasedItemIds.Add(relic.Id);
 
-            // Update UI: mark purchased and refresh affordability
+            // Update UI: mark purchased, refresh affordability, and update owned relics bar (Story 13.10 AC 7)
             if (ShopUIInstance != null)
             {
                 ShopUIInstance.RefreshAfterPurchase(cardIndex);
+                ShopUIInstance.RefreshOwnedRelicsBar();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when player clicks sell on an owned relic (Story 13.10, AC 6, 7, 14, 15).
+    /// Delegates to ShopTransaction.SellRelic for atomic sell logic.
+    /// On success: refreshes owned bar, currency displays, and re-enables previously "FULL" relic cards.
+    /// </summary>
+    public void OnSellRequested(RunContext ctx, int ownedSlotIndex)
+    {
+        if (!_shopActive) return;
+        if (ownedSlotIndex < 0 || ownedSlotIndex >= ctx.OwnedRelics.Count) return;
+
+        string relicId = ctx.OwnedRelics[ownedSlotIndex];
+        var result = _shopTransaction.SellRelic(ctx, relicId);
+
+        if (result == ShopPurchaseResult.Success)
+        {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[ShopState] Relic sold: {relicId} (slot {ownedSlotIndex})");
+            #endif
+
+            if (ShopUIInstance != null)
+            {
+                ShopUIInstance.RefreshOwnedRelicsBar();
+                ShopUIInstance.RefreshAfterSell();
             }
         }
     }
@@ -287,6 +318,8 @@ public class ShopState : IGameState
             if (ShopUIInstance != null)
             {
                 ShopUIInstance.RefreshExpansionAfterPurchase(cardIndex);
+                // Story 13.10: Expanded Inventory may change owned bar slot count
+                ShopUIInstance.RefreshOwnedRelicsBar();
             }
         }
     }
