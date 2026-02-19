@@ -86,5 +86,5 @@ development_status:
   # === Epic 16: Main Menu & Pause System ===
   epic-16: in-progress
   16-1-main-menu-ui: done                                    # Main menu overlay, settings panel, SettingsManager, SFX default 80%
-  16-2-pause-menu: ready-for-dev                            # ESC pause popup, return to menu, music duck — blocked by 16-1
+  16-2-pause-menu: done                                      # ESC pause popup, return to menu, music duck — code review: 6 fixes applied
   epic-16-retrospective: optional

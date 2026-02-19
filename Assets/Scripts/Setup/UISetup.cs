@@ -101,19 +101,12 @@ public static class UISetup
             tradingHUD.SetStreakDisplay(streakText);
         }
 
-        // AC 15: BUY/SELL button punch micro-animation
-        if (dashRefs.BuyButton != null)
-        {
-            var buyRect = dashRefs.BuyButton.GetComponent<RectTransform>();
-            dashRefs.BuyButton.onClick.AddListener(() =>
-                buyRect.DOPunchScale(new Vector3(-0.08f, -0.08f, 0f), 0.15f, 1, 0f).SetUpdate(false));
-        }
-        if (dashRefs.SellButton != null)
-        {
-            var sellRect = dashRefs.SellButton.GetComponent<RectTransform>();
-            dashRefs.SellButton.onClick.AddListener(() =>
-                sellRect.DOPunchScale(new Vector3(-0.08f, -0.08f, 0f), 0.15f, 1, 0f).SetUpdate(false));
-        }
+        // AC 15: BUY/SELL/SHORT button hover + click feel
+        AddTradingButtonFeel(dashRefs.BuyButton);
+        AddTradingButtonFeel(dashRefs.SellButton);
+        AddTradingButtonFeel(dashRefs.ShortButton);
+        if (dashRefs.Short2ButtonImage != null)
+            AddTradingButtonFeel(dashRefs.Short2ButtonImage.GetComponent<Button>());
 
         // Story 14.3: Initialize RoundTimerUI with Right Wing timer text
         var roundTimerUI = hudParent.AddComponent<RoundTimerUI>();
@@ -2372,6 +2365,204 @@ public static class UISetup
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // STORY 16.2: PAUSE MENU UI
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>Last PauseMenuReferences created by ExecutePauseMenuUI().</summary>
+    public static PauseMenuReferences PauseRefs { get; private set; }
+
+    /// <summary>
+    /// Creates the pause menu overlay canvas with PAUSED header, 4 buttons, and confirmation popup.
+    /// Story 16.2, Task 1: PauseMenuCanvas sortingOrder=155.
+    /// </summary>
+    public static PauseMenuReferences ExecutePauseMenuUI()
+    {
+        var refs = new PauseMenuReferences();
+        PauseRefs = refs;
+
+        // Create PauseMenuCanvas (ScreenSpaceOverlay, sortingOrder=155)
+        var canvasGo = new GameObject("PauseMenuCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 155;
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        refs.PauseMenuCanvas = canvas;
+
+        // Full-screen semi-transparent background (ColorPalette.Background at 80% alpha)
+        var bgGo = new GameObject("PauseBackground");
+        bgGo.transform.SetParent(canvasGo.transform, false);
+        var bgRect = bgGo.AddComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        var bgImg = bgGo.AddComponent<Image>();
+        bgImg.color = ColorPalette.WithAlpha(ColorPalette.Background, 0.8f);
+        bgImg.raycastTarget = true;
+
+        // Content container (centered vertical layout)
+        var contentGo = new GameObject("PauseContent");
+        contentGo.transform.SetParent(bgGo.transform, false);
+        var contentRect = contentGo.AddComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0.3f, 0.2f);
+        contentRect.anchorMax = new Vector2(0.7f, 0.8f);
+        contentRect.offsetMin = Vector2.zero;
+        contentRect.offsetMax = Vector2.zero;
+        var contentVlg = contentGo.AddComponent<VerticalLayoutGroup>();
+        contentVlg.spacing = 16f;
+        contentVlg.childAlignment = TextAnchor.UpperCenter;
+        contentVlg.childForceExpandWidth = true;
+        contentVlg.childForceExpandHeight = false;
+        contentVlg.padding = new RectOffset(20, 20, 20, 20);
+
+        refs.PausePanel = bgGo;
+
+        // "PAUSED" header in White, large font (44px), centered
+        var headerGo = CreateLabel("PausedHeader", contentGo.transform, "PAUSED", ColorPalette.White, 44);
+        headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var headerLayout = headerGo.AddComponent<LayoutElement>();
+        headerLayout.preferredHeight = 70f;
+        refs.HeaderText = headerGo.GetComponent<Text>();
+
+        // Spacer
+        var spacerGo = new GameObject("Spacer");
+        spacerGo.transform.SetParent(contentGo.transform, false);
+        spacerGo.AddComponent<RectTransform>();
+        var spacerLayout = spacerGo.AddComponent<LayoutElement>();
+        spacerLayout.preferredHeight = 20f;
+
+        // Button factory (reuses main menu pattern)
+        System.Func<string, string, Color, Button> createPauseButton = (name, label, color) =>
+        {
+            var btnGo = new GameObject(name);
+            btnGo.transform.SetParent(contentGo.transform, false);
+            btnGo.AddComponent<RectTransform>();
+            var btnImg = btnGo.AddComponent<Image>();
+            btnImg.color = color;
+            CRTThemeData.ApplyPanelStyle(btnImg);
+            btnImg.color = color;
+            var btn = btnGo.AddComponent<Button>();
+            var btnLayout = btnGo.AddComponent<LayoutElement>();
+            btnLayout.preferredHeight = 52f;
+
+            var btnLabel = CreateLabel(name + "Label", btnGo.transform, label, Color.white, 22);
+            btnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+            btnLabel.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+            btnLabel.GetComponent<Text>().raycastTarget = false;
+            var labelRect = btnLabel.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+            labelRect.sizeDelta = Vector2.zero;
+
+            return btn;
+        };
+
+        // Four pause menu buttons: CONTINUE (Green), SETTINGS (Cyan), RETURN TO MENU (Amber), EXIT (Red)
+        refs.ContinueButton = createPauseButton("ContinueButton", "CONTINUE", ColorPalette.Green);
+        refs.SettingsButton = createPauseButton("SettingsButton", "SETTINGS", ColorPalette.Cyan);
+        refs.ReturnToMenuButton = createPauseButton("ReturnToMenuButton", "RETURN TO MENU", ColorPalette.Amber);
+        refs.ExitButton = createPauseButton("ExitButton", "EXIT", ColorPalette.Red);
+
+        // Confirmation popup (initially hidden): "Abandon current run?" with YES/NO
+        var confirmGo = new GameObject("ConfirmationPopup");
+        confirmGo.transform.SetParent(canvasGo.transform, false);
+        var confirmRect = confirmGo.AddComponent<RectTransform>();
+        confirmRect.anchorMin = new Vector2(0.3f, 0.35f);
+        confirmRect.anchorMax = new Vector2(0.7f, 0.65f);
+        confirmRect.offsetMin = Vector2.zero;
+        confirmRect.offsetMax = Vector2.zero;
+        var confirmImg = confirmGo.AddComponent<Image>();
+        CRTThemeData.ApplyPanelStyle(confirmImg);
+
+        var confirmVlg = confirmGo.AddComponent<VerticalLayoutGroup>();
+        confirmVlg.spacing = 16f;
+        confirmVlg.childAlignment = TextAnchor.MiddleCenter;
+        confirmVlg.childForceExpandWidth = true;
+        confirmVlg.childForceExpandHeight = false;
+        confirmVlg.padding = new RectOffset(20, 20, 20, 20);
+
+        var confirmLabel = CreateLabel("ConfirmText", confirmGo.transform, "Abandon current run?", ColorPalette.Amber, 24);
+        confirmLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var confirmLabelLayout = confirmLabel.AddComponent<LayoutElement>();
+        confirmLabelLayout.preferredHeight = 40f;
+
+        // YES/NO buttons row
+        var btnRowGo = new GameObject("ButtonRow");
+        btnRowGo.transform.SetParent(confirmGo.transform, false);
+        btnRowGo.AddComponent<RectTransform>();
+        var btnRowHlg = btnRowGo.AddComponent<HorizontalLayoutGroup>();
+        btnRowHlg.spacing = 20f;
+        btnRowHlg.childAlignment = TextAnchor.MiddleCenter;
+        btnRowHlg.childForceExpandWidth = true;
+        btnRowHlg.childForceExpandHeight = true;
+        var btnRowLayout = btnRowGo.AddComponent<LayoutElement>();
+        btnRowLayout.preferredHeight = 48f;
+
+        // YES button (Red — destructive action)
+        var yesBtnGo = new GameObject("YesButton");
+        yesBtnGo.transform.SetParent(btnRowGo.transform, false);
+        yesBtnGo.AddComponent<RectTransform>();
+        var yesBtnImg = yesBtnGo.AddComponent<Image>();
+        yesBtnImg.color = ColorPalette.Red;
+        CRTThemeData.ApplyPanelStyle(yesBtnImg);
+        yesBtnImg.color = ColorPalette.Red;
+        refs.ConfirmYesButton = yesBtnGo.AddComponent<Button>();
+        var yesLayout = yesBtnGo.AddComponent<LayoutElement>();
+        yesLayout.flexibleWidth = 1f;
+
+        var yesLabel = CreateLabel("YesLabel", yesBtnGo.transform, "YES", Color.white, 20);
+        yesLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        yesLabel.GetComponent<Text>().raycastTarget = false;
+        var yesLabelRect = yesLabel.GetComponent<RectTransform>();
+        yesLabelRect.anchorMin = Vector2.zero;
+        yesLabelRect.anchorMax = Vector2.one;
+        yesLabelRect.offsetMin = Vector2.zero;
+        yesLabelRect.offsetMax = Vector2.zero;
+        yesLabelRect.sizeDelta = Vector2.zero;
+
+        // NO button (Green — safe action)
+        var noBtnGo = new GameObject("NoButton");
+        noBtnGo.transform.SetParent(btnRowGo.transform, false);
+        noBtnGo.AddComponent<RectTransform>();
+        var noBtnImg = noBtnGo.AddComponent<Image>();
+        noBtnImg.color = ColorPalette.Green;
+        CRTThemeData.ApplyPanelStyle(noBtnImg);
+        noBtnImg.color = ColorPalette.Green;
+        refs.ConfirmNoButton = noBtnGo.AddComponent<Button>();
+        var noLayout = noBtnGo.AddComponent<LayoutElement>();
+        noLayout.flexibleWidth = 1f;
+
+        var noLabel = CreateLabel("NoLabel", noBtnGo.transform, "NO", Color.white, 20);
+        noLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        noLabel.GetComponent<Text>().raycastTarget = false;
+        var noLabelRect = noLabel.GetComponent<RectTransform>();
+        noLabelRect.anchorMin = Vector2.zero;
+        noLabelRect.anchorMax = Vector2.one;
+        noLabelRect.offsetMin = Vector2.zero;
+        noLabelRect.offsetMax = Vector2.zero;
+        noLabelRect.sizeDelta = Vector2.zero;
+
+        refs.ConfirmationPopup = confirmGo;
+        confirmGo.SetActive(false);
+
+        // Start hidden
+        canvasGo.SetActive(false);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] PauseMenuUI created: canvas sortingOrder=155, 4 buttons + confirmation popup");
+        #endif
+
+        return refs;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // HELPER STRUCTS
     // ════════════════════════════════════════════════════════════════════
 
@@ -2380,6 +2571,40 @@ public static class UISetup
     {
         public Slider Slider;
         public Text ValueText;
+    }
+
+    /// <summary>
+    /// Adds hover scale + hover SFX + click punch to a trading button.
+    /// </summary>
+    private static void AddTradingButtonFeel(Button btn)
+    {
+        if (btn == null) return;
+
+        var trigger = btn.gameObject.GetComponent<EventTrigger>()
+                   ?? btn.gameObject.AddComponent<EventTrigger>();
+
+        var enterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        enterEntry.callback.AddListener(_ =>
+        {
+            btn.transform.DOKill();
+            btn.transform.DOScale(1.05f, 0.1f);
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonHover();
+        });
+        trigger.triggers.Add(enterEntry);
+
+        var exitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        exitEntry.callback.AddListener(_ =>
+        {
+            btn.transform.DOKill();
+            btn.transform.DOScale(1f, 0.08f);
+        });
+        trigger.triggers.Add(exitEntry);
+
+        btn.onClick.AddListener(() =>
+        {
+            btn.transform.DOKill();
+            btn.transform.DOPunchScale(new Vector3(-0.08f, -0.08f, 0f), 0.15f, 1, 0f);
+        });
     }
 
     private static GameObject CreatePanel(string name, Transform parent)

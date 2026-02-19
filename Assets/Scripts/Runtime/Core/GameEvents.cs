@@ -375,3 +375,21 @@ public struct ShopRerollEvent
 /// Story 16.1: Triggers transition from MainMenuState to MarketOpenState.
 /// </summary>
 public struct StartGameRequestedEvent { }
+
+/// <summary>
+/// Fired when the game is paused via ESC key.
+/// Story 16.2: MusicManager subscribes to duck volume.
+/// </summary>
+public struct GamePausedEvent { }
+
+/// <summary>
+/// Fired when the game resumes from pause (continue, ESC toggle).
+/// Story 16.2: MusicManager subscribes to restore volume.
+/// </summary>
+public struct GameResumedEvent { }
+
+/// <summary>
+/// Fired when the player confirms "Return to Menu" from the pause menu.
+/// Story 16.2: GameRunner subscribes to clean up gameplay state and transition to MainMenuState.
+/// </summary>
+public struct ReturnToMenuEvent { }

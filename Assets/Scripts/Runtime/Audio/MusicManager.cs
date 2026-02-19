@@ -89,8 +89,12 @@ public class MusicManager : MonoBehaviour
         // Task 6: Round victory stinger
         EventBus.Subscribe<RoundCompletedEvent>(OnRoundCompleted);
 
+        // Story 16.2: Pause music ducking
+        EventBus.Subscribe<GamePausedEvent>(OnGamePaused);
+        EventBus.Subscribe<GameResumedEvent>(OnGameResumed);
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[Music] MusicManager initialized — 14 event subscriptions active");
+        Debug.Log("[Music] MusicManager initialized — 16 event subscriptions active");
         #endif
     }
 
@@ -111,6 +115,8 @@ public class MusicManager : MonoBehaviour
         EventBus.Unsubscribe<RunEndedEvent>(OnRunEnded);
         EventBus.Unsubscribe<ActTransitionEvent>(OnActTransition);
         EventBus.Unsubscribe<RoundCompletedEvent>(OnRoundCompleted);
+        EventBus.Unsubscribe<GamePausedEvent>(OnGamePaused);
+        EventBus.Unsubscribe<GameResumedEvent>(OnGameResumed);
 
         StopAllMusic();
     }
@@ -658,6 +664,74 @@ public class MusicManager : MonoBehaviour
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // STORY 16.2: PAUSE MUSIC DUCKING (AC: 17, 18)
+    // ════════════════════════════════════════════════════════════════════
+
+    // Volume ratios at pause time — preserves event ducking state across pause/resume
+    // while still respecting any settings changes the player makes while paused.
+    private float _prePauseActRatio;
+    private float _prePauseAmbientRatio;
+    private float _prePauseAmbientBedRatio;
+    private float _prePauseOverrideRatio;
+    private bool _isPauseDucked;
+
+    private void OnGamePaused(GamePausedEvent evt)
+    {
+        if (_isPauseDucked) return;
+        _isPauseDucked = true;
+
+        // Save each track's volume as a ratio of its expected settings volume.
+        // Ratio < 1 means event ducking was active; ratio ~1 means normal playback.
+        // On resume we multiply the ratio by the CURRENT settings volume, so:
+        //   - Event ducking is preserved (ratio stays < 1)
+        //   - Settings changes made during pause take effect (uses current settings)
+        float musicVol = SettingsManager.MusicVolume * SettingsManager.MasterVolume;
+        float ambientBedVol = GameConfig.MusicTitleAmbientVolume * SettingsManager.MasterVolume;
+        float duckTarget = 0.5f;
+
+        if (_currentActTrack != null)
+        {
+            _prePauseActRatio = musicVol > 0f ? _currentActTrack.volume / musicVol : 1f;
+            FadeSourceTo(_currentActTrack, _currentActTrack.volume * duckTarget, 0.3f);
+        }
+        if (_ambientTrack != null)
+        {
+            _prePauseAmbientRatio = musicVol > 0f ? _ambientTrack.volume / musicVol : 1f;
+            FadeSourceTo(_ambientTrack, _ambientTrack.volume * duckTarget, 0.3f);
+        }
+        if (_ambientBedTrack != null)
+        {
+            _prePauseAmbientBedRatio = ambientBedVol > 0f ? _ambientBedTrack.volume / ambientBedVol : 1f;
+            FadeSourceTo(_ambientBedTrack, _ambientBedTrack.volume * duckTarget, 0.3f);
+        }
+        if (_overrideTrack != null)
+        {
+            _prePauseOverrideRatio = musicVol > 0f ? _overrideTrack.volume / musicVol : 1f;
+            FadeSourceTo(_overrideTrack, _overrideTrack.volume * duckTarget, 0.3f);
+        }
+    }
+
+    private void OnGameResumed(GameResumedEvent evt)
+    {
+        if (!_isPauseDucked) return;
+        _isPauseDucked = false;
+
+        // Restore volumes using saved ratios against CURRENT settings values.
+        // This respects both event ducking (ratio < 1) and settings changes during pause.
+        float musicVol = SettingsManager.MusicVolume * SettingsManager.MasterVolume;
+        float ambientBedVol = GameConfig.MusicTitleAmbientVolume * SettingsManager.MasterVolume;
+
+        if (_currentActTrack != null)
+            FadeSourceTo(_currentActTrack, musicVol * _prePauseActRatio, 0.3f);
+        if (_ambientTrack != null)
+            FadeSourceTo(_ambientTrack, musicVol * _prePauseAmbientRatio, 0.3f);
+        if (_ambientBedTrack != null)
+            FadeSourceTo(_ambientBedTrack, ambientBedVol * _prePauseAmbientBedRatio, 0.3f);
+        if (_overrideTrack != null)
+            FadeSourceTo(_overrideTrack, musicVol * _prePauseOverrideRatio, 0.3f);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // INTERNAL ACCESSORS (for testing)
     // ════════════════════════════════════════════════════════════════════
 
@@ -666,4 +740,5 @@ public class MusicManager : MonoBehaviour
     internal bool IsCriticalActive => _criticalActive;
     internal bool IsOverrideActive => _overrideActive;
     internal int CurrentAct => _currentAct;
+    internal bool IsPauseDucked => _isPauseDucked;
 }

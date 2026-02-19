@@ -25,6 +25,7 @@ public class GameRunner : MonoBehaviour
     private TradeExecutor _tradeExecutor;
     private EventScheduler _eventScheduler;
     private QuantitySelector _quantitySelector;
+    private PauseMenuUI _pauseMenuUI;
     private bool _firstFrameSkipped;
 
     // Post-trade cooldown (FIX-10 v2): instant trade, then lock out both buttons
@@ -150,6 +151,9 @@ public class GameRunner : MonoBehaviour
         // Story 16.1: Subscribe to StartGameRequestedEvent from MainMenuUI
         EventBus.Subscribe<StartGameRequestedEvent>(OnStartGameRequested);
 
+        // Story 16.2: Subscribe to ReturnToMenuEvent from PauseMenuUI
+        EventBus.Subscribe<ReturnToMenuEvent>(OnReturnToMenu);
+
         // Create event display systems (subscribe to MarketEventFiredEvent)
         // Story 14.5: NewsBanner replaced by EventTickerBanner (created in ChartSetup).
         // NewsTicker removed — covered by Control Deck.
@@ -173,18 +177,25 @@ public class GameRunner : MonoBehaviour
         var mainMenuUI = menuUiGo.AddComponent<MainMenuUI>();
         mainMenuUI.Initialize(menuRefs, settingsRefs);
 
+        // Story 16.2: Create pause menu UI and controller
+        var pauseRefs = UISetup.ExecutePauseMenuUI();
+        var pauseUiGo = new GameObject("PauseMenuUI");
+        _pauseMenuUI = pauseUiGo.AddComponent<PauseMenuUI>();
+        _pauseMenuUI.Initialize(pauseRefs, settingsRefs);
+
         // Story 16.1: Wire MainMenuState canvas references for show/hide control
         MainMenuState.MainMenuCanvasGo = menuRefs.MainMenuCanvas.gameObject;
         MainMenuState.SettingsCanvasGo = settingsRefs.SettingsCanvas.gameObject;
 
         // Collect ALL gameplay canvases that should be hidden during main menu.
-        // Exclude MainMenu, Settings, and CRTOverlay canvases (they are overlay-managed).
+        // Exclude MainMenu, Settings, PauseMenu, and CRTOverlay canvases (they are overlay-managed).
         var gameplayCanvasList = new System.Collections.Generic.List<GameObject>();
         var allCanvases = Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
         foreach (var c in allCanvases)
         {
             if (c == menuRefs.MainMenuCanvas) continue;
             if (c == settingsRefs.SettingsCanvas) continue;
+            if (c == pauseRefs.PauseMenuCanvas) continue;
             // CRTOverlay is sortingOrder 200 — always on top, never hidden
             if (c.sortingOrder >= 200) continue;
             gameplayCanvasList.Add(c.gameObject);
@@ -218,6 +229,12 @@ public class GameRunner : MonoBehaviour
         }
 
         _stateMachine.Update();
+
+        // Story 16.2: ESC key handling for pause menu
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        {
+            HandleEscapeInput();
+        }
 
         // Story 14.4: Action buttons are now part of Control Deck (always visible).
         // Button clicks are gated by TradingState.IsActive checks in OnTradeButtonPressed / HandleShortInput.
@@ -278,6 +295,73 @@ public class GameRunner : MonoBehaviour
         #endif
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // Story 16.2: ESC INPUT & PAUSE MENU
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Story 16.2: Handles ESC key press. Ignored during MainMenuState.
+    /// Forwards to PauseMenuUI for layered ESC logic.
+    /// </summary>
+    private void HandleEscapeInput()
+    {
+        // AC 15: ESC ignored during main menu
+        if (MainMenuState.IsActive) return;
+
+        // AC 19: ESC ignored while "Coming Soon" popup is visible
+        if (UISetup.MenuRefs?.ComingSoonPopup != null && UISetup.MenuRefs.ComingSoonPopup.activeSelf) return;
+
+        if (_pauseMenuUI != null)
+            _pauseMenuUI.HandleEscapePressed();
+    }
+
+    /// <summary>
+    /// Story 16.2: Handles return-to-menu from pause menu.
+    /// Cleans up gameplay state and transitions to MainMenuState.
+    /// </summary>
+    private void OnReturnToMenu(ReturnToMenuEvent evt)
+    {
+        // Ensure timeScale is restored
+        Time.timeScale = 1f;
+
+        // Reset short state machines
+        ResetShortOnRoundEnd();
+
+        // Cancel post-trade cooldown
+        if (_isPostTradeCooldownActive)
+        {
+            _isPostTradeCooldownActive = false;
+            _postTradeCooldownTimer = 0f;
+            HideCooldownOverlay();
+        }
+
+        // Hide all gameplay overlays
+        HideAllGameplayOverlays();
+
+        // Transition to MainMenuState (shows menu, plays title music)
+        _stateMachine.TransitionTo<MainMenuState>();
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[GameRunner] Return to menu — gameplay state cleaned up, transitioning to MainMenuState");
+        #endif
+    }
+
+    /// <summary>
+    /// Story 16.2: Hides all gameplay overlay UIs for return-to-menu cleanup.
+    /// Uses the cached GameplayCanvases array (built in Start) instead of per-type scene searches.
+    /// MainMenuState.Enter() also hides these canvases, but we do it early as a defensive measure
+    /// before the state transition to ensure no overlay flickers during cleanup.
+    /// </summary>
+    private void HideAllGameplayOverlays()
+    {
+        if (MainMenuState.GameplayCanvases == null) return;
+        for (int i = 0; i < MainMenuState.GameplayCanvases.Length; i++)
+        {
+            if (MainMenuState.GameplayCanvases[i] != null)
+                MainMenuState.GameplayCanvases[i].SetActive(false);
+        }
+    }
+
     private void OnDestroy()
     {
         EventBus.Unsubscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
@@ -285,6 +369,7 @@ public class GameRunner : MonoBehaviour
         EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStartedForShort);
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpenForExpansions);
         EventBus.Unsubscribe<StartGameRequestedEvent>(OnStartGameRequested);
+        EventBus.Unsubscribe<ReturnToMenuEvent>(OnReturnToMenu);
     }
 
     /// <summary>
