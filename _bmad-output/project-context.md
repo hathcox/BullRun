@@ -160,7 +160,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Unity Test Framework 1.6.0 — supports both Edit Mode and Play Mode tests
 - **Running Tests:** AI agents can and should run Unity EditMode tests via the CLI to verify changes:
   ```
-  "D:/UnityHub/Editor/6000.3.4f1/Editor/Unity.exe" -runTests -batchmode -nographics -projectPath "E:/BullRun" -testPlatform EditMode -testResults "E:/BullRun/TestResults.xml" -logFile "E:/BullRun/unity-test.log"
+  "D:/UnityHub/Editor/6000.3.8f1/Editor/Unity.exe" -runTests -batchmode -nographics -projectPath "E:/BullRun" -testPlatform EditMode -testResults "E:/BullRun/TestResults.xml" -logFile "E:/BullRun/unity-test.log"
   ```
   - Exit code 0 = all tests passed; results written to `TestResults.xml` (NUnit format)
   - Run in background — Unity takes ~90s to load the project and execute tests

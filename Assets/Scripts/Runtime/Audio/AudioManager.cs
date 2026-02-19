@@ -493,6 +493,8 @@ public class AudioManager : MonoBehaviour
     // PUBLIC UI AUDIO HELPERS — called directly by UI scripts
     // ════════════════════════════════════════════════════════════════════
 
+    public void PlayPanelOpen()      => PlayUI(_clips?.UiPanelOpen);
+    public void PlayPanelClose()     => PlayUI(_clips?.UiPanelClose);
     public void PlayButtonHover()    => PlayUI(_clips?.UiButtonHover, 0.7f);
     public void PlayRelicHover()     => PlayUI(_clips?.RelicHover, 0.8f);
     public void PlayTabSwitch()      => PlayUI(_clips?.UiTabSwitch);
@@ -528,7 +530,7 @@ public class AudioManager : MonoBehaviour
 
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.Sfx;
-        options.Volume = volume * GameConfig.SfxVolume * GameConfig.MasterVolume;
+        options.Volume = volume * SettingsManager.SfxVolume * SettingsManager.MasterVolume;
         options.Pitch = pitch;
         MMSoundManagerSoundPlayEvent.Trigger(clip, options);
     }
@@ -548,7 +550,7 @@ public class AudioManager : MonoBehaviour
 
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.UI;
-        options.Volume = volume * GameConfig.UiSfxVolume * GameConfig.MasterVolume;
+        options.Volume = volume * SettingsManager.SfxVolume * SettingsManager.MasterVolume;
         MMSoundManagerSoundPlayEvent.Trigger(clip, options);
     }
 
@@ -567,7 +569,7 @@ public class AudioManager : MonoBehaviour
 
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.Sfx;
-        options.Volume = volume * GameConfig.SfxVolume * GameConfig.MasterVolume;
+        options.Volume = volume * SettingsManager.SfxVolume * SettingsManager.MasterVolume;
         options.Loop = true;
         return MMSoundManagerSoundPlayEvent.Trigger(clip, options);
     }

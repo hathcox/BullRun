@@ -82,3 +82,9 @@ development_status:
   11-2-music-system-and-dynamic-layers: done                 # Code review complete — 6 fixes applied, 37 tests
   11-3-ambient-loops-and-atmosphere: blocked               # blocked on 43 missing audio assets
   epic-11-retrospective: optional
+
+  # === Epic 16: Main Menu & Pause System ===
+  epic-16: in-progress
+  16-1-main-menu-ui: done                                    # Main menu overlay, settings panel, SettingsManager, SFX default 80%
+  16-2-pause-menu: ready-for-dev                            # ESC pause popup, return to menu, music duck — blocked by 16-1
+  epic-16-retrospective: optional

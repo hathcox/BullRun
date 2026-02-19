@@ -13,6 +13,8 @@ public class MusicManager : MonoBehaviour
     // STATE
     // ════════════════════════════════════════════════════════════════════
 
+    public static MusicManager Instance { get; private set; }
+
     internal enum MusicState { None, TitleScreen, Trading, Shop, Victory, Defeat, ActTransition }
 
     private AudioClipLibrary _clips;
@@ -61,6 +63,7 @@ public class MusicManager : MonoBehaviour
 
     public void Initialize(AudioClipLibrary clips)
     {
+        Instance = this;
         _clips = clips;
 
         // Task 2: Act-specific trading music
@@ -93,6 +96,8 @@ public class MusicManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this) Instance = null;
+
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpen);
         EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStarted);
         EventBus.Unsubscribe<PriceUpdatedEvent>(OnPriceUpdatedForMusic);
@@ -129,6 +134,46 @@ public class MusicManager : MonoBehaviour
         _waitingForStinger = false;
         _currentMusicState = MusicState.None;
         _currentAct = 0;
+    }
+
+    /// <summary>
+    /// Plays title screen music and ambient bed. Called by MainMenuState.Enter.
+    /// Story 16.1: Separated from OnRunStarted so title music plays on main menu display.
+    /// </summary>
+    public void PlayTitleMusic()
+    {
+        StopAllMusic(0.3f);
+        _currentMusicState = MusicState.TitleScreen;
+
+        if (_clips.MusicTitleScreen != null)
+        {
+            _ambientTrack = PlayMusicLoop(_clips.MusicTitleScreen, SettingsManager.MusicVolume, 0.5f);
+        }
+
+        if (_clips.MusicTitleAmbientBed != null)
+        {
+            _ambientBedTrack = PlayMusicLoop(_clips.MusicTitleAmbientBed,
+                GameConfig.MusicTitleAmbientVolume, 0.5f);
+        }
+    }
+
+    /// <summary>
+    /// Updates the volume of all currently-playing music AudioSources to reflect
+    /// current SettingsManager values. Called by settings sliders for real-time preview
+    /// without restarting tracks.
+    /// </summary>
+    public void UpdateVolumes()
+    {
+        float musicVol = SettingsManager.MusicVolume * SettingsManager.MasterVolume;
+
+        if (_ambientTrack != null)
+            _ambientTrack.volume = musicVol;
+        if (_ambientBedTrack != null)
+            _ambientBedTrack.volume = GameConfig.MusicTitleAmbientVolume * SettingsManager.MasterVolume;
+        if (_currentActTrack != null)
+            _currentActTrack.volume = musicVol;
+        if (_overrideTrack != null)
+            _overrideTrack.volume = musicVol;
     }
 
     private void Update()
@@ -175,7 +220,7 @@ public class MusicManager : MonoBehaviour
                 if (_pendingPostStingerClip != null)
                 {
                     FadeOutAndStop(ref _ambientTrack, 0.3f);
-                    _ambientTrack = PlayMusicLoop(_pendingPostStingerClip, GameConfig.MusicVolume, 1.0f);
+                    _ambientTrack = PlayMusicLoop(_pendingPostStingerClip, SettingsManager.MusicVolume, 1.0f);
                     _pendingPostStingerClip = null;
                 }
             }
@@ -238,7 +283,7 @@ public class MusicManager : MonoBehaviour
         else
         {
             // First track of the run — fade in from silence
-            _currentActTrack = PlayMusicLoop(clip, GameConfig.MusicVolume, GameConfig.MusicCrossfadeDuration);
+            _currentActTrack = PlayMusicLoop(clip, SettingsManager.MusicVolume, GameConfig.MusicCrossfadeDuration);
         }
 
         _currentAct = act;
@@ -264,7 +309,7 @@ public class MusicManager : MonoBehaviour
         FadeOutAndStop(ref _currentActTrack, duration);
 
         // Fade in new
-        _currentActTrack = PlayMusicLoop(newClip, GameConfig.MusicVolume, duration);
+        _currentActTrack = PlayMusicLoop(newClip, SettingsManager.MusicVolume, duration);
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -354,12 +399,12 @@ public class MusicManager : MonoBehaviour
         // Duck act music to 30% volume
         if (_currentActTrack != null)
         {
-            FadeSourceTo(_currentActTrack, GameConfig.MusicEventDuckVolume * GameConfig.MusicVolume * GameConfig.MasterVolume,
+            FadeSourceTo(_currentActTrack, GameConfig.MusicEventDuckVolume * SettingsManager.MusicVolume * SettingsManager.MasterVolume,
                 GameConfig.MusicEventDuckFade);
         }
 
         // Play override at full music volume
-        _overrideTrack = PlayMusicLoop(overrideClip, GameConfig.MusicVolume, 0f);
+        _overrideTrack = PlayMusicLoop(overrideClip, SettingsManager.MusicVolume, 0f);
         _overrideActive = true;
         _activeOverrideEvent = evt.EventType;
     }
@@ -375,7 +420,7 @@ public class MusicManager : MonoBehaviour
         // Restore act music to full volume
         if (_currentActTrack != null)
         {
-            FadeSourceTo(_currentActTrack, GameConfig.MusicVolume * GameConfig.MasterVolume,
+            FadeSourceTo(_currentActTrack, SettingsManager.MusicVolume * SettingsManager.MasterVolume,
                 GameConfig.MusicEventRestoreFade);
         }
 
@@ -388,24 +433,13 @@ public class MusicManager : MonoBehaviour
 
     private void OnRunStarted(RunStartedEvent evt)
     {
+        // Story 16.1: If title music is already playing (from MainMenuState.Enter),
+        // skip to avoid stopping and restarting the same tracks wastefully.
+        if (_currentMusicState == MusicState.TitleScreen) return;
+
         // Title screen music — plays at run start (published by RunContext.StartNewRun).
         // Plays until first MarketOpenEvent fades it out and starts act music.
-        // Stop any previous music and play title screen
-        StopAllMusic(0.3f);
-
-        _currentMusicState = MusicState.TitleScreen;
-
-        if (_clips.MusicTitleScreen != null)
-        {
-            _ambientTrack = PlayMusicLoop(_clips.MusicTitleScreen, GameConfig.MusicVolume, 0.5f);
-        }
-
-        // Layer ambient bed at 15% volume
-        if (_clips.MusicTitleAmbientBed != null)
-        {
-            _ambientBedTrack = PlayMusicLoop(_clips.MusicTitleAmbientBed,
-                GameConfig.MusicTitleAmbientVolume, 0.5f);
-        }
+        PlayTitleMusic();
     }
 
     private void OnShopOpened(ShopOpenedEvent evt)
@@ -426,7 +460,7 @@ public class MusicManager : MonoBehaviour
         {
             // Crossfade from act music to shop music
             FadeOutAndStop(ref _currentActTrack, GameConfig.MusicShopCrossfade);
-            _ambientTrack = PlayMusicLoop(_clips.MusicShop, GameConfig.MusicVolume, GameConfig.MusicShopCrossfade);
+            _ambientTrack = PlayMusicLoop(_clips.MusicShop, SettingsManager.MusicVolume, GameConfig.MusicShopCrossfade);
         }
     }
 
@@ -449,7 +483,7 @@ public class MusicManager : MonoBehaviour
             if (_clips.MusicVictoryFanfare != null)
             {
                 // Play fanfare stinger, then crossfade to victory screen music
-                _stingerSource = PlayMusicOneShot(_clips.MusicVictoryFanfare, GameConfig.MusicVolume);
+                _stingerSource = PlayMusicOneShot(_clips.MusicVictoryFanfare, SettingsManager.MusicVolume);
                 _pendingPostStingerClip = _clips.MusicVictoryScreen;
                 _stingerTimer = _clips.MusicVictoryFanfare.length;
                 _waitingForStinger = true;
@@ -457,7 +491,7 @@ public class MusicManager : MonoBehaviour
             else if (_clips.MusicVictoryScreen != null)
             {
                 // No fanfare — crossfade directly to victory screen music
-                _ambientTrack = PlayMusicLoop(_clips.MusicVictoryScreen, GameConfig.MusicVolume, 1.0f);
+                _ambientTrack = PlayMusicLoop(_clips.MusicVictoryScreen, SettingsManager.MusicVolume, 1.0f);
             }
         }
         else
@@ -474,7 +508,7 @@ public class MusicManager : MonoBehaviour
 
             if (stingerClip != null)
             {
-                _stingerSource = PlayMusicOneShot(stingerClip, GameConfig.MusicVolume);
+                _stingerSource = PlayMusicOneShot(stingerClip, SettingsManager.MusicVolume);
                 _pendingPostStingerClip = _clips.MusicDefeatScreen;
                 _stingerTimer = stingerClip.length;
                 _waitingForStinger = true;
@@ -482,7 +516,7 @@ public class MusicManager : MonoBehaviour
             else if (_clips.MusicDefeatScreen != null)
             {
                 // No stinger — go directly to defeat screen music
-                _ambientTrack = PlayMusicLoop(_clips.MusicDefeatScreen, GameConfig.MusicVolume, 1.0f);
+                _ambientTrack = PlayMusicLoop(_clips.MusicDefeatScreen, SettingsManager.MusicVolume, 1.0f);
             }
         }
     }
@@ -495,7 +529,7 @@ public class MusicManager : MonoBehaviour
         if (_clips.MusicActTransition != null)
         {
             PlayMusicOneShot(_clips.MusicActTransition,
-                GameConfig.MusicVolume * GameConfig.MusicActTransitionStingerVolume);
+                SettingsManager.MusicVolume * GameConfig.MusicActTransitionStingerVolume);
         }
     }
 
@@ -511,7 +545,7 @@ public class MusicManager : MonoBehaviour
         if (_clips.MusicRoundVictory != null)
         {
             PlayMusicOneShot(_clips.MusicRoundVictory,
-                GameConfig.MusicVolume * GameConfig.MusicRoundVictoryStingerVolume);
+                SettingsManager.MusicVolume * GameConfig.MusicRoundVictoryStingerVolume);
         }
     }
 
@@ -527,7 +561,7 @@ public class MusicManager : MonoBehaviour
     {
         if (clip == null) return null;
 
-        float targetVolume = volume * GameConfig.MasterVolume;
+        float targetVolume = volume * SettingsManager.MasterVolume;
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.Music;
         options.Loop = true;
@@ -558,7 +592,7 @@ public class MusicManager : MonoBehaviour
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.Music;
         options.Loop = false;
-        options.Volume = volume * GameConfig.MasterVolume;
+        options.Volume = volume * SettingsManager.MasterVolume;
         return MMSoundManagerSoundPlayEvent.Trigger(clip, options);
     }
 

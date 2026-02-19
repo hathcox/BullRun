@@ -369,3 +369,9 @@ public struct ShopRerollEvent
     public int RerollCount;
     public int Cost;
 }
+
+/// <summary>
+/// Fired when the player clicks START GAME on the main menu.
+/// Story 16.1: Triggers transition from MainMenuState to MarketOpenState.
+/// </summary>
+public struct StartGameRequestedEvent { }

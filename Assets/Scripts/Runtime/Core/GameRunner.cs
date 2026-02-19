@@ -64,10 +64,15 @@ public class GameRunner : MonoBehaviour
     {
         Instance = this;
 
+        // Story 16.1: Load saved settings before any audio plays
+        SettingsManager.Load();
+
         // Clear stale EventBus subscriptions from previous play sessions
         EventBus.Clear();
 
-        _ctx = RunContext.StartNewRun();
+        // Story 16.1: Create lightweight RunContext without publishing RunStartedEvent.
+        // The real run initialization happens when START GAME is clicked.
+        _ctx = new RunContext(1, 1, new Portfolio(GameConfig.StartingCapital));
         _priceGenerator = new PriceGenerator();
         _tradeExecutor = new TradeExecutor();
         _stateMachine = new GameStateMachine(_ctx);
@@ -77,14 +82,8 @@ public class GameRunner : MonoBehaviour
         _priceGenerator.SetEventEffects(eventEffects);
         _eventScheduler = new EventScheduler(eventEffects);
 
-        // Subscribe portfolio to price updates so GetTotalValue/GetRoundProfit work
-        _ctx.Portfolio.SubscribeToPriceUpdates();
-
-        // Set round start baseline so round profit starts at $0 (not starting capital)
-        _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
-
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[GameRunner] Awake: RunContext created, starting capital ${GameConfig.StartingCapital}");
+        Debug.Log($"[GameRunner] Awake: Systems created, starting capital ${GameConfig.StartingCapital}");
         #endif
     }
 
@@ -97,12 +96,15 @@ public class GameRunner : MonoBehaviour
         UISetup.Execute(_ctx, _ctx.CurrentRound, GameConfig.RoundDurationSeconds);
         UISetup.ExecuteMarketOpenUI();
 
+        // Story 16.1: Create main menu and settings panel UI
+        var menuRefs = UISetup.ExecuteMainMenuUI();
+        var settingsRefs = UISetup.ExecuteSettingsUI();
+
         // Story 14.6: CRT bezel overlay (vignette + scanlines on top of everything)
         UISetup.ExecuteCRTOverlay();
 
         // Story 14.6: URP Bloom post-processing for phosphor glow
         UISetup.ExecuteBloomSetup();
-
 
         // Create trade feedback overlay
         UISetup.ExecuteTradeFeedback();
@@ -145,6 +147,9 @@ public class GameRunner : MonoBehaviour
         // FIX-7: Wire position overlay to track the active stock
         EventBus.Subscribe<MarketOpenEvent>(OnMarketOpenForExpansions);
 
+        // Story 16.1: Subscribe to StartGameRequestedEvent from MainMenuUI
+        EventBus.Subscribe<StartGameRequestedEvent>(OnStartGameRequested);
+
         // Create event display systems (subscribe to MarketEventFiredEvent)
         // Story 14.5: NewsBanner replaced by EventTickerBanner (created in ChartSetup).
         // NewsTicker removed — covered by Control Deck.
@@ -163,6 +168,29 @@ public class GameRunner : MonoBehaviour
         // Audio system: SFX playback via MMSoundManager, EventBus-driven
         AudioSetup.Execute();
 
+        // Story 16.1: Create MainMenuUI controller and wire references
+        var menuUiGo = new GameObject("MainMenuUI");
+        var mainMenuUI = menuUiGo.AddComponent<MainMenuUI>();
+        mainMenuUI.Initialize(menuRefs, settingsRefs);
+
+        // Story 16.1: Wire MainMenuState canvas references for show/hide control
+        MainMenuState.MainMenuCanvasGo = menuRefs.MainMenuCanvas.gameObject;
+        MainMenuState.SettingsCanvasGo = settingsRefs.SettingsCanvas.gameObject;
+
+        // Collect ALL gameplay canvases that should be hidden during main menu.
+        // Exclude MainMenu, Settings, and CRTOverlay canvases (they are overlay-managed).
+        var gameplayCanvasList = new System.Collections.Generic.List<GameObject>();
+        var allCanvases = Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        foreach (var c in allCanvases)
+        {
+            if (c == menuRefs.MainMenuCanvas) continue;
+            if (c == settingsRefs.SettingsCanvas) continue;
+            // CRTOverlay is sortingOrder 200 — always on top, never hidden
+            if (c.sortingOrder >= 200) continue;
+            gameplayCanvasList.Add(c.gameObject);
+        }
+        MainMenuState.GameplayCanvases = gameplayCanvasList.ToArray();
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         // Find ChartRenderer from ChartDataHolder for debug wiring
         ChartRenderer chartRendererRef = null;
@@ -171,18 +199,11 @@ public class GameRunner : MonoBehaviour
         DebugSetup.Execute(_priceGenerator, chartRendererRef, _ctx, _stateMachine, _tradeExecutor);
         #endif
 
-        // Kick off the game loop — skip MetaHub placeholder
-        MarketOpenState.NextConfig = new MarketOpenStateConfig
-        {
-            StateMachine = _stateMachine,
-            PriceGenerator = _priceGenerator,
-            TradeExecutor = _tradeExecutor,
-            EventScheduler = _eventScheduler
-        };
-        _stateMachine.TransitionTo<MarketOpenState>();
+        // Story 16.1: Start at main menu instead of jumping directly into gameplay
+        _stateMachine.TransitionTo<MainMenuState>();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log("[GameRunner] Start: All runtime systems created, game loop started");
+        Debug.Log("[GameRunner] Start: All runtime systems created, main menu displayed");
         #endif
     }
 
@@ -228,12 +249,42 @@ public class GameRunner : MonoBehaviour
         HandleTradingInput();
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // Story 16.1: START GAME from Main Menu
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Handles START GAME button click from the main menu.
+    /// Initializes a fresh run and transitions to MarketOpenState.
+    /// </summary>
+    private void OnStartGameRequested(StartGameRequestedEvent evt)
+    {
+        // Initialize fresh run context (publishes RunStartedEvent for audio/music).
+        // ResetForNewRun handles portfolio subscription, round start, and all state reset.
+        _ctx.ResetForNewRun();
+
+        // Configure and transition to MarketOpenState
+        MarketOpenState.NextConfig = new MarketOpenStateConfig
+        {
+            StateMachine = _stateMachine,
+            PriceGenerator = _priceGenerator,
+            TradeExecutor = _tradeExecutor,
+            EventScheduler = _eventScheduler
+        };
+        _stateMachine.TransitionTo<MarketOpenState>();
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[GameRunner] START GAME: Fresh run started, capital ${GameConfig.StartingCapital}");
+        #endif
+    }
+
     private void OnDestroy()
     {
         EventBus.Unsubscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
         EventBus.Unsubscribe<TradingPhaseEndedEvent>(OnTradingPhaseEnded);
         EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStartedForShort);
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpenForExpansions);
+        EventBus.Unsubscribe<StartGameRequestedEvent>(OnStartGameRequested);
     }
 
     /// <summary>

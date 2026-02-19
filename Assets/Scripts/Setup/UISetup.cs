@@ -1817,6 +1817,571 @@ public static class UISetup
             new Vector2(0.5f, 0.5f), 1f); // 1 pixel per unit for tiling
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // STORY 16.1: MAIN MENU UI
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>Last MainMenuReferences created by ExecuteMainMenuUI().</summary>
+    public static MainMenuReferences MenuRefs { get; private set; }
+
+    /// <summary>Last SettingsPanelReferences created by ExecuteSettingsUI().</summary>
+    public static SettingsPanelReferences SettingsRefs { get; private set; }
+
+    /// <summary>
+    /// Creates the main menu overlay canvas with title, buttons, and "coming soon" popup.
+    /// Story 16.1, Task 4: MainMenuCanvas sortingOrder=150.
+    /// </summary>
+    public static MainMenuReferences ExecuteMainMenuUI()
+    {
+        var refs = new MainMenuReferences();
+        MenuRefs = refs;
+
+        // Create MainMenuCanvas (ScreenSpaceOverlay, sortingOrder=150)
+        var canvasGo = new GameObject("MainMenuCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 150;
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        refs.MainMenuCanvas = canvas;
+
+        // Full-screen background panel
+        var bgGo = new GameObject("Background");
+        bgGo.transform.SetParent(canvasGo.transform, false);
+        var bgRect = bgGo.AddComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        var bgImg = bgGo.AddComponent<Image>();
+        bgImg.color = ColorPalette.Background;
+        bgImg.raycastTarget = true;
+
+        // Content container (centered vertical layout)
+        var contentGo = new GameObject("Content");
+        contentGo.transform.SetParent(bgGo.transform, false);
+        var contentRect = contentGo.AddComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0.3f, 0.15f);
+        contentRect.anchorMax = new Vector2(0.7f, 0.85f);
+        contentRect.offsetMin = Vector2.zero;
+        contentRect.offsetMax = Vector2.zero;
+        var contentVlg = contentGo.AddComponent<VerticalLayoutGroup>();
+        contentVlg.spacing = 16f;
+        contentVlg.childAlignment = TextAnchor.UpperCenter;
+        contentVlg.childForceExpandWidth = true;
+        contentVlg.childForceExpandHeight = false;
+        contentVlg.padding = new RectOffset(20, 20, 20, 20);
+
+        // Title: "BULL RUN" in Gold, large font
+        var titleGo = CreateLabel("Title", contentGo.transform, "BULL RUN", ColorPalette.Gold, 56);
+        titleGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        titleGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        var titleLayout = titleGo.AddComponent<LayoutElement>();
+        titleLayout.preferredHeight = 80f;
+
+        // Subtitle/tagline in GreenDim
+        var subtitleGo = CreateLabel("Subtitle", contentGo.transform, "Terminal Trading", ColorPalette.GreenDim, 20);
+        subtitleGo.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+        var subtitleLayout = subtitleGo.AddComponent<LayoutElement>();
+        subtitleLayout.preferredHeight = 30f;
+
+        // Spacer
+        var spacerGo = new GameObject("Spacer");
+        spacerGo.transform.SetParent(contentGo.transform, false);
+        spacerGo.AddComponent<RectTransform>();
+        var spacerLayout = spacerGo.AddComponent<LayoutElement>();
+        spacerLayout.preferredHeight = 40f;
+
+        // Button factory helper
+        System.Func<string, string, Color, Button> createMenuButton = (name, label, color) =>
+        {
+            var btnGo = new GameObject(name);
+            btnGo.transform.SetParent(contentGo.transform, false);
+            btnGo.AddComponent<RectTransform>();
+            var btnImg = btnGo.AddComponent<Image>();
+            btnImg.color = color;
+            CRTThemeData.ApplyPanelStyle(btnImg);
+            // Override with button color after panel style sets Panel color
+            btnImg.color = color;
+            var btn = btnGo.AddComponent<Button>();
+            var btnLayout = btnGo.AddComponent<LayoutElement>();
+            btnLayout.preferredHeight = 52f;
+
+            var btnLabel = CreateLabel(name + "Label", btnGo.transform, label, Color.white, 22);
+            btnLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+            btnLabel.GetComponent<Text>().alignment = TextAnchor.MiddleCenter;
+            btnLabel.GetComponent<Text>().raycastTarget = false;
+            // Fill parent
+            var labelRect = btnLabel.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+            labelRect.sizeDelta = Vector2.zero;
+
+            return btn;
+        };
+
+        // Four menu buttons
+        refs.StartGameButton = createMenuButton("StartGameButton", "START GAME", ColorPalette.Green);
+        refs.UnlocksButton = createMenuButton("UnlocksButton", "UNLOCKS", ColorPalette.Amber);
+        refs.SettingsButton = createMenuButton("SettingsButton", "SETTINGS", ColorPalette.Cyan);
+        refs.ExitButton = createMenuButton("ExitButton", "EXIT", ColorPalette.Red);
+
+        // "Coming Soon" popup (hidden by default)
+        var popupGo = new GameObject("ComingSoonPopup");
+        popupGo.transform.SetParent(canvasGo.transform, false);
+        var popupRect = popupGo.AddComponent<RectTransform>();
+        popupRect.anchorMin = new Vector2(0.3f, 0.35f);
+        popupRect.anchorMax = new Vector2(0.7f, 0.65f);
+        popupRect.offsetMin = Vector2.zero;
+        popupRect.offsetMax = Vector2.zero;
+        var popupImg = popupGo.AddComponent<Image>();
+        CRTThemeData.ApplyPanelStyle(popupImg);
+
+        var popupVlg = popupGo.AddComponent<VerticalLayoutGroup>();
+        popupVlg.spacing = 16f;
+        popupVlg.childAlignment = TextAnchor.MiddleCenter;
+        popupVlg.childForceExpandWidth = true;
+        popupVlg.childForceExpandHeight = false;
+        popupVlg.padding = new RectOffset(20, 20, 20, 20);
+
+        var comingSoonText = CreateLabel("ComingSoonText", popupGo.transform, "COMING SOON", ColorPalette.Amber, 28);
+        comingSoonText.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var csLayout = comingSoonText.AddComponent<LayoutElement>();
+        csLayout.preferredHeight = 40f;
+
+        var backBtnGo = new GameObject("PopupBackButton");
+        backBtnGo.transform.SetParent(popupGo.transform, false);
+        backBtnGo.AddComponent<RectTransform>();
+        var backBtnImg = backBtnGo.AddComponent<Image>();
+        backBtnImg.color = ColorPalette.Cyan;
+        CRTThemeData.ApplyPanelStyle(backBtnImg);
+        backBtnImg.color = ColorPalette.Cyan;
+        refs.PopupBackButton = backBtnGo.AddComponent<Button>();
+        var backBtnLayout = backBtnGo.AddComponent<LayoutElement>();
+        backBtnLayout.preferredHeight = 40f;
+
+        var backLabel = CreateLabel("BackLabel", backBtnGo.transform, "BACK", Color.white, 18);
+        backLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        backLabel.GetComponent<Text>().raycastTarget = false;
+        var backLabelRect = backLabel.GetComponent<RectTransform>();
+        backLabelRect.anchorMin = Vector2.zero;
+        backLabelRect.anchorMax = Vector2.one;
+        backLabelRect.offsetMin = Vector2.zero;
+        backLabelRect.offsetMax = Vector2.zero;
+        backLabelRect.sizeDelta = Vector2.zero;
+
+        refs.ComingSoonPopup = popupGo;
+        popupGo.SetActive(false);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] MainMenuUI created: canvas sortingOrder=150, 4 buttons + coming soon popup");
+        #endif
+
+        return refs;
+    }
+
+    /// <summary>
+    /// Creates the settings panel overlay with volume sliders, display toggle, resolution dropdown.
+    /// Story 16.1, Task 5: SettingsCanvas sortingOrder=160, shared between main menu and pause menu.
+    /// </summary>
+    public static SettingsPanelReferences ExecuteSettingsUI()
+    {
+        var refs = new SettingsPanelReferences();
+        SettingsRefs = refs;
+
+        // Create SettingsCanvas (above main menu and pause menu)
+        var canvasGo = new GameObject("SettingsCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 160;
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        refs.SettingsCanvas = canvas;
+
+        // Dimmed overlay background (click-blocker)
+        var dimGo = new GameObject("DimBackground");
+        dimGo.transform.SetParent(canvasGo.transform, false);
+        var dimRect = dimGo.AddComponent<RectTransform>();
+        dimRect.anchorMin = Vector2.zero;
+        dimRect.anchorMax = Vector2.one;
+        dimRect.offsetMin = Vector2.zero;
+        dimRect.offsetMax = Vector2.zero;
+        var dimImg = dimGo.AddComponent<Image>();
+        dimImg.color = new Color(0f, 0f, 0f, 0.6f);
+        dimImg.raycastTarget = true;
+
+        // Settings panel (centered)
+        var panelGo = new GameObject("SettingsPanel");
+        panelGo.transform.SetParent(canvasGo.transform, false);
+        var panelRect = panelGo.AddComponent<RectTransform>();
+        panelRect.anchorMin = new Vector2(0.25f, 0.15f);
+        panelRect.anchorMax = new Vector2(0.75f, 0.85f);
+        panelRect.offsetMin = Vector2.zero;
+        panelRect.offsetMax = Vector2.zero;
+        var panelImg = panelGo.AddComponent<Image>();
+        CRTThemeData.ApplyPanelStyle(panelImg);
+
+        var panelVlg = panelGo.AddComponent<VerticalLayoutGroup>();
+        panelVlg.spacing = 12f;
+        panelVlg.childAlignment = TextAnchor.UpperCenter;
+        panelVlg.childForceExpandWidth = true;
+        panelVlg.childForceExpandHeight = false;
+        panelVlg.padding = new RectOffset(30, 30, 20, 20);
+
+        // "SETTINGS" header
+        var headerGo = CreateLabel("Header", panelGo.transform, "SETTINGS", ColorPalette.White, 28);
+        headerGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        var headerLayout = headerGo.AddComponent<LayoutElement>();
+        headerLayout.preferredHeight = 40f;
+
+        // ── AUDIO section ──
+        var audioLabel = CreateLabel("AudioLabel", panelGo.transform, "AUDIO", ColorPalette.GreenDim, 18);
+        audioLabel.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var audioLabelLayout = audioLabel.AddComponent<LayoutElement>();
+        audioLabelLayout.preferredHeight = 24f;
+
+        // Slider factory helper
+        System.Func<string, string, float, SliderRow> createSlider = (name, label, defaultValue) =>
+        {
+            var rowGo = new GameObject(name + "Row");
+            rowGo.transform.SetParent(panelGo.transform, false);
+            rowGo.AddComponent<RectTransform>();
+            var rowLayout = rowGo.AddComponent<LayoutElement>();
+            rowLayout.preferredHeight = 36f;
+            var rowHlg = rowGo.AddComponent<HorizontalLayoutGroup>();
+            rowHlg.spacing = 10f;
+            rowHlg.childAlignment = TextAnchor.MiddleCenter;
+            rowHlg.childForceExpandWidth = false;
+            rowHlg.childForceExpandHeight = true;
+
+            // Label
+            var labelGo = CreateLabel(name + "Label", rowGo.transform, label, CRTThemeData.TextLow, 16);
+            labelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+            var labelLayout = labelGo.AddComponent<LayoutElement>();
+            labelLayout.preferredWidth = 160f;
+
+            // Slider
+            var sliderGo = new GameObject(name + "Slider");
+            sliderGo.transform.SetParent(rowGo.transform, false);
+            sliderGo.AddComponent<RectTransform>();
+            var sliderLayout = sliderGo.AddComponent<LayoutElement>();
+            sliderLayout.flexibleWidth = 1f;
+            sliderLayout.preferredHeight = 24f;
+
+            // Background track
+            var bgTrack = new GameObject("Background");
+            bgTrack.transform.SetParent(sliderGo.transform, false);
+            var bgTrackRect = bgTrack.AddComponent<RectTransform>();
+            bgTrackRect.anchorMin = new Vector2(0f, 0.35f);
+            bgTrackRect.anchorMax = new Vector2(1f, 0.65f);
+            bgTrackRect.offsetMin = Vector2.zero;
+            bgTrackRect.offsetMax = Vector2.zero;
+            var bgTrackImg = bgTrack.AddComponent<Image>();
+            bgTrackImg.color = ColorPalette.Background;
+
+            // Fill area
+            var fillAreaGo = new GameObject("Fill Area");
+            fillAreaGo.transform.SetParent(sliderGo.transform, false);
+            var fillAreaRect = fillAreaGo.AddComponent<RectTransform>();
+            fillAreaRect.anchorMin = new Vector2(0f, 0.35f);
+            fillAreaRect.anchorMax = new Vector2(1f, 0.65f);
+            fillAreaRect.offsetMin = Vector2.zero;
+            fillAreaRect.offsetMax = Vector2.zero;
+
+            var fillGo = new GameObject("Fill");
+            fillGo.transform.SetParent(fillAreaGo.transform, false);
+            var fillRect = fillGo.AddComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
+            var fillImg = fillGo.AddComponent<Image>();
+            fillImg.color = ColorPalette.Green;
+
+            // Handle slide area
+            var handleAreaGo = new GameObject("Handle Slide Area");
+            handleAreaGo.transform.SetParent(sliderGo.transform, false);
+            var handleAreaRect = handleAreaGo.AddComponent<RectTransform>();
+            handleAreaRect.anchorMin = Vector2.zero;
+            handleAreaRect.anchorMax = Vector2.one;
+            handleAreaRect.offsetMin = Vector2.zero;
+            handleAreaRect.offsetMax = Vector2.zero;
+
+            var handleGo = new GameObject("Handle");
+            handleGo.transform.SetParent(handleAreaGo.transform, false);
+            var handleRect = handleGo.AddComponent<RectTransform>();
+            handleRect.sizeDelta = new Vector2(16f, 24f);
+            var handleImg = handleGo.AddComponent<Image>();
+            handleImg.color = ColorPalette.White;
+
+            var slider = sliderGo.AddComponent<Slider>();
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = defaultValue;
+            slider.wholeNumbers = false;
+            slider.targetGraphic = handleImg;
+            slider.fillRect = fillRect;
+            slider.handleRect = handleRect;
+
+            // Percentage text
+            var pctGo = CreateLabel(name + "Pct", rowGo.transform, $"{Mathf.RoundToInt(defaultValue * 100)}%", CRTThemeData.TextHigh, 16);
+            var pctLayout = pctGo.AddComponent<LayoutElement>();
+            pctLayout.preferredWidth = 50f;
+
+            return new SliderRow { Slider = slider, ValueText = pctGo.GetComponent<Text>() };
+        };
+
+        var masterRow = createSlider("MasterVolume", "Master Volume", SettingsManager.MasterVolume);
+        var musicRow = createSlider("MusicVolume", "Music Volume", SettingsManager.MusicVolume);
+        var sfxRow = createSlider("SfxVolume", "SFX Volume", SettingsManager.SfxVolume);
+
+        refs.MasterVolumeSlider = masterRow.Slider;
+        refs.MasterVolumeText = masterRow.ValueText;
+        refs.MusicVolumeSlider = musicRow.Slider;
+        refs.MusicVolumeText = musicRow.ValueText;
+        refs.SfxVolumeSlider = sfxRow.Slider;
+        refs.SfxVolumeText = sfxRow.ValueText;
+
+        // ── DISPLAY section ──
+        var displayLabel = CreateLabel("DisplayLabel", panelGo.transform, "DISPLAY", ColorPalette.GreenDim, 18);
+        displayLabel.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var displayLabelLayout = displayLabel.AddComponent<LayoutElement>();
+        displayLabelLayout.preferredHeight = 24f;
+
+        // Fullscreen toggle row
+        var fsRowGo = new GameObject("FullscreenRow");
+        fsRowGo.transform.SetParent(panelGo.transform, false);
+        fsRowGo.AddComponent<RectTransform>();
+        var fsRowLayout = fsRowGo.AddComponent<LayoutElement>();
+        fsRowLayout.preferredHeight = 36f;
+        var fsRowHlg = fsRowGo.AddComponent<HorizontalLayoutGroup>();
+        fsRowHlg.spacing = 10f;
+        fsRowHlg.childAlignment = TextAnchor.MiddleCenter;
+        fsRowHlg.childForceExpandWidth = false;
+        fsRowHlg.childForceExpandHeight = true;
+
+        var fsLabelGo = CreateLabel("FullscreenLabel", fsRowGo.transform, "Fullscreen", CRTThemeData.TextLow, 16);
+        fsLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var fsLabelLayout = fsLabelGo.AddComponent<LayoutElement>();
+        fsLabelLayout.preferredWidth = 160f;
+
+        var toggleGo = new GameObject("FullscreenToggle");
+        toggleGo.transform.SetParent(fsRowGo.transform, false);
+        toggleGo.AddComponent<RectTransform>();
+        var toggleLayout = toggleGo.AddComponent<LayoutElement>();
+        toggleLayout.preferredWidth = 30f;
+        toggleLayout.preferredHeight = 30f;
+
+        // Toggle background
+        var toggleBgGo = new GameObject("ToggleBackground");
+        toggleBgGo.transform.SetParent(toggleGo.transform, false);
+        var toggleBgRect = toggleBgGo.AddComponent<RectTransform>();
+        toggleBgRect.anchorMin = Vector2.zero;
+        toggleBgRect.anchorMax = Vector2.one;
+        toggleBgRect.offsetMin = Vector2.zero;
+        toggleBgRect.offsetMax = Vector2.zero;
+        var toggleBgImg = toggleBgGo.AddComponent<Image>();
+        toggleBgImg.color = ColorPalette.Background;
+
+        // Toggle checkmark
+        var checkGo = new GameObject("Checkmark");
+        checkGo.transform.SetParent(toggleBgGo.transform, false);
+        var checkRect = checkGo.AddComponent<RectTransform>();
+        checkRect.anchorMin = new Vector2(0.15f, 0.15f);
+        checkRect.anchorMax = new Vector2(0.85f, 0.85f);
+        checkRect.offsetMin = Vector2.zero;
+        checkRect.offsetMax = Vector2.zero;
+        var checkImg = checkGo.AddComponent<Image>();
+        checkImg.color = ColorPalette.Green;
+
+        var toggle = toggleGo.AddComponent<Toggle>();
+        toggle.targetGraphic = toggleBgImg;
+        toggle.graphic = checkImg;
+        toggle.isOn = SettingsManager.Fullscreen;
+
+        refs.FullscreenToggle = toggle;
+
+        // Resolution dropdown row
+        var resRowGo = new GameObject("ResolutionRow");
+        resRowGo.transform.SetParent(panelGo.transform, false);
+        resRowGo.AddComponent<RectTransform>();
+        var resRowLayout = resRowGo.AddComponent<LayoutElement>();
+        resRowLayout.preferredHeight = 36f;
+        var resRowHlg = resRowGo.AddComponent<HorizontalLayoutGroup>();
+        resRowHlg.spacing = 10f;
+        resRowHlg.childAlignment = TextAnchor.MiddleCenter;
+        resRowHlg.childForceExpandWidth = false;
+        resRowHlg.childForceExpandHeight = true;
+
+        var resLabelGo = CreateLabel("ResolutionLabel", resRowGo.transform, "Resolution", CRTThemeData.TextLow, 16);
+        resLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+        var resLabelLayout = resLabelGo.AddComponent<LayoutElement>();
+        resLabelLayout.preferredWidth = 160f;
+
+        var dropdownGo = new GameObject("ResolutionDropdown");
+        dropdownGo.transform.SetParent(resRowGo.transform, false);
+        var dropdownRect = dropdownGo.AddComponent<RectTransform>();
+        var dropdownLayout = dropdownGo.AddComponent<LayoutElement>();
+        dropdownLayout.flexibleWidth = 1f;
+        dropdownLayout.preferredHeight = 30f;
+
+        // Dropdown visual setup
+        var ddImg = dropdownGo.AddComponent<Image>();
+        ddImg.color = ColorPalette.Background;
+
+        var ddLabelGo = CreateLabel("DropdownLabel", dropdownGo.transform, "Current", CRTThemeData.TextHigh, 14);
+        var ddLabelRect = ddLabelGo.GetComponent<RectTransform>();
+        ddLabelRect.anchorMin = new Vector2(0.05f, 0f);
+        ddLabelRect.anchorMax = new Vector2(0.95f, 1f);
+        ddLabelRect.offsetMin = Vector2.zero;
+        ddLabelRect.offsetMax = Vector2.zero;
+        ddLabelRect.sizeDelta = Vector2.zero;
+        ddLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        // Template for dropdown (required by Unity Dropdown)
+        var templateGo = new GameObject("Template");
+        templateGo.transform.SetParent(dropdownGo.transform, false);
+        var templateRect = templateGo.AddComponent<RectTransform>();
+        templateRect.anchorMin = new Vector2(0f, 0f);
+        templateRect.anchorMax = new Vector2(1f, 0f);
+        templateRect.pivot = new Vector2(0.5f, 1f);
+        templateRect.sizeDelta = new Vector2(0f, 200f);
+        var templateImg = templateGo.AddComponent<Image>();
+        templateImg.color = ColorPalette.Panel;
+        templateGo.AddComponent<UnityEngine.UI.ScrollRect>();
+
+        var viewportGo = new GameObject("Viewport");
+        viewportGo.transform.SetParent(templateGo.transform, false);
+        var viewportRect = viewportGo.AddComponent<RectTransform>();
+        viewportRect.anchorMin = Vector2.zero;
+        viewportRect.anchorMax = Vector2.one;
+        viewportRect.offsetMin = Vector2.zero;
+        viewportRect.offsetMax = Vector2.zero;
+        viewportGo.AddComponent<Image>().color = Color.clear;
+        viewportGo.AddComponent<Mask>().showMaskGraphic = false;
+
+        var contentItemsGo = new GameObject("Content");
+        contentItemsGo.transform.SetParent(viewportGo.transform, false);
+        var contentItemsRect = contentItemsGo.AddComponent<RectTransform>();
+        contentItemsRect.anchorMin = new Vector2(0f, 1f);
+        contentItemsRect.anchorMax = Vector2.one;
+        contentItemsRect.pivot = new Vector2(0.5f, 1f);
+        contentItemsRect.sizeDelta = new Vector2(0f, 28f);
+
+        // Item template
+        var itemGo = new GameObject("Item");
+        itemGo.transform.SetParent(contentItemsGo.transform, false);
+        var itemRect = itemGo.AddComponent<RectTransform>();
+        itemRect.anchorMin = new Vector2(0f, 0.5f);
+        itemRect.anchorMax = new Vector2(1f, 0.5f);
+        itemRect.sizeDelta = new Vector2(0f, 28f);
+        var itemToggle = itemGo.AddComponent<Toggle>();
+
+        var itemBgGo = new GameObject("Item Background");
+        itemBgGo.transform.SetParent(itemGo.transform, false);
+        var itemBgRect = itemBgGo.AddComponent<RectTransform>();
+        itemBgRect.anchorMin = Vector2.zero;
+        itemBgRect.anchorMax = Vector2.one;
+        itemBgRect.offsetMin = Vector2.zero;
+        itemBgRect.offsetMax = Vector2.zero;
+        var itemBgImg = itemBgGo.AddComponent<Image>();
+        itemBgImg.color = ColorPalette.Panel;
+
+        var itemCheckGo = new GameObject("Item Checkmark");
+        itemCheckGo.transform.SetParent(itemBgGo.transform, false);
+        var itemCheckRect = itemCheckGo.AddComponent<RectTransform>();
+        itemCheckRect.anchorMin = Vector2.zero;
+        itemCheckRect.anchorMax = Vector2.one;
+        itemCheckRect.offsetMin = Vector2.zero;
+        itemCheckRect.offsetMax = Vector2.zero;
+        var itemCheckImg = itemCheckGo.AddComponent<Image>();
+        itemCheckImg.color = ColorPalette.GreenDim;
+
+        var itemLabelGo = CreateLabel("Item Label", itemGo.transform, "", CRTThemeData.TextHigh, 14);
+        var itemLabelRect = itemLabelGo.GetComponent<RectTransform>();
+        itemLabelRect.anchorMin = new Vector2(0.05f, 0f);
+        itemLabelRect.anchorMax = new Vector2(0.95f, 1f);
+        itemLabelRect.offsetMin = Vector2.zero;
+        itemLabelRect.offsetMax = Vector2.zero;
+        itemLabelRect.sizeDelta = Vector2.zero;
+        itemLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+        itemToggle.targetGraphic = itemBgImg;
+        itemToggle.graphic = itemCheckImg;
+
+        var scrollRect = templateGo.GetComponent<UnityEngine.UI.ScrollRect>();
+        scrollRect.content = contentItemsRect;
+        scrollRect.viewport = viewportRect;
+
+        var dropdown = dropdownGo.AddComponent<Dropdown>();
+        dropdown.template = templateRect;
+        dropdown.captionText = ddLabelGo.GetComponent<Text>();
+        dropdown.itemText = itemLabelGo.GetComponent<Text>();
+
+        templateGo.SetActive(false);
+
+        refs.ResolutionDropdown = dropdown;
+
+        // Spacer before BACK button
+        var settingsSpacer = new GameObject("SettingsSpacer");
+        settingsSpacer.transform.SetParent(panelGo.transform, false);
+        settingsSpacer.AddComponent<RectTransform>();
+        var settingsSpacerLayout = settingsSpacer.AddComponent<LayoutElement>();
+        settingsSpacerLayout.flexibleHeight = 1f;
+
+        // BACK button
+        var backGo = new GameObject("SettingsBackButton");
+        backGo.transform.SetParent(panelGo.transform, false);
+        backGo.AddComponent<RectTransform>();
+        var backImg = backGo.AddComponent<Image>();
+        backImg.color = ColorPalette.Cyan;
+        CRTThemeData.ApplyPanelStyle(backImg);
+        backImg.color = ColorPalette.Cyan;
+        refs.BackButton = backGo.AddComponent<Button>();
+        var backLayout = backGo.AddComponent<LayoutElement>();
+        backLayout.preferredHeight = 44f;
+
+        var backLabel = CreateLabel("BackLabel", backGo.transform, "BACK", Color.white, 20);
+        backLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        backLabel.GetComponent<Text>().raycastTarget = false;
+        var backLabelRect = backLabel.GetComponent<RectTransform>();
+        backLabelRect.anchorMin = Vector2.zero;
+        backLabelRect.anchorMax = Vector2.one;
+        backLabelRect.offsetMin = Vector2.zero;
+        backLabelRect.offsetMax = Vector2.zero;
+        backLabelRect.sizeDelta = Vector2.zero;
+
+        // Start hidden
+        canvasGo.SetActive(false);
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log("[Setup] SettingsUI created: canvas sortingOrder=160, 3 sliders + toggle + dropdown");
+        #endif
+
+        return refs;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // HELPER STRUCTS
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>Temporary struct for slider creation.</summary>
+    private struct SliderRow
+    {
+        public Slider Slider;
+        public Text ValueText;
+    }
+
     private static GameObject CreatePanel(string name, Transform parent)
     {
         var go = new GameObject(name);

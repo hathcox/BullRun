@@ -96,7 +96,7 @@ public static class GameConfig
     // Audio (Story 11.1)
     public static readonly float MasterVolume = 1.0f;
     public static readonly float MusicVolume = 0.7f;
-    public static readonly float SfxVolume = 1.0f;
+    public static readonly float SfxVolume = 0.8f;
     public static readonly float UiSfxVolume = 0.8f;
     public static readonly float AmbientVolume = 0.15f;
     public static readonly float TimerWarningThreshold = 15f;
