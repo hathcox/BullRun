@@ -95,6 +95,7 @@ public class RoundResultsUI : MonoBehaviour
         // Auto-dismiss after display duration or on any key press
         if (_displayTimer >= DisplayDuration || (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame))
         {
+            AudioManager.Instance?.PlayResultsDismiss();
             _visible = false;
             IsShowing = false;
             if (_panel != null) _panel.SetActive(false);

@@ -117,7 +117,7 @@ public class GameFeelManager : MonoBehaviour
     private void OnTradeExecuted(TradeExecutedEvent evt)
     {
         float baseline = GameConfig.StartingCapital;
-        float tradeValue = evt.TotalCost;
+        float tradeValue = evt.ProfitLoss;
 
         // Position trade particles at the chart head so the burst appears where the trade dot is.
         // Also caches _lastChartHeadCanvasPos for the accumulator effect.
@@ -672,6 +672,8 @@ public class GameFeelManager : MonoBehaviour
 
     private void SpawnAccumulatorTokens(string symbol, Color color, int count, Vector2 from, Vector2 to, string punchTarget)
     {
+        AudioManager.Instance?.PlayTokenLaunch();
+
         for (int i = 0; i < count; i++)
         {
             int idx = (_accumulatorIndex + i) % _accumulatorPool.Length;
@@ -711,7 +713,11 @@ public class GameFeelManager : MonoBehaviour
                 {
                     capturedCg.DOFade(0f, 0.1f).SetUpdate(true).OnComplete(() => capturedGo.SetActive(false));
                     if (isLast)
+                    {
                         PunchDashboardElement(capturedTarget, 0.35f);
+                        AudioManager.Instance?.PlayTokenLand();
+                        AudioManager.Instance?.PlayTokenBurst();
+                    }
                 });
         }
 

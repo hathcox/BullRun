@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -60,6 +61,17 @@ public class StockSidebar : MonoBehaviour
         _data = data;
         _entryViews = entryViews;
         _prevPercentChange = new float[entryViews.Length];
+
+        // Add hover sound to each stock entry
+        for (int i = 0; i < entryViews.Length; i++)
+        {
+            if (entryViews[i].Background == null) continue;
+            var trigger = entryViews[i].Background.gameObject.GetComponent<EventTrigger>()
+                       ?? entryViews[i].Background.gameObject.AddComponent<EventTrigger>();
+            var enterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+            enterEntry.callback.AddListener((_) => AudioManager.Instance?.PlayButtonHover());
+            trigger.triggers.Add(enterEntry);
+        }
 
         EventBus.Subscribe<PriceUpdatedEvent>(OnPriceUpdated);
         EventBus.Subscribe<ActTransitionEvent>(OnActTransition);
@@ -135,10 +147,10 @@ public class StockSidebar : MonoBehaviour
         // Keyboard shortcuts: 1-4 select stocks
         var keyboard = Keyboard.current;
         if (keyboard == null) return;
-        if (keyboard.digit1Key.wasPressedThisFrame) { _data.SelectStock(0); _dirty = true; }
-        else if (keyboard.digit2Key.wasPressedThisFrame) { _data.SelectStock(1); _dirty = true; }
-        else if (keyboard.digit3Key.wasPressedThisFrame) { _data.SelectStock(2); _dirty = true; }
-        else if (keyboard.digit4Key.wasPressedThisFrame) { _data.SelectStock(3); _dirty = true; }
+        if (keyboard.digit1Key.wasPressedThisFrame) { _data.SelectStock(0); _dirty = true; AudioManager.Instance?.PlayNavigate(); }
+        else if (keyboard.digit2Key.wasPressedThisFrame) { _data.SelectStock(1); _dirty = true; AudioManager.Instance?.PlayNavigate(); }
+        else if (keyboard.digit3Key.wasPressedThisFrame) { _data.SelectStock(2); _dirty = true; AudioManager.Instance?.PlayNavigate(); }
+        else if (keyboard.digit4Key.wasPressedThisFrame) { _data.SelectStock(3); _dirty = true; AudioManager.Instance?.PlayNavigate(); }
 
         // Pulse animation for event indicators
         if (_activeIndicators.Count > 0)
@@ -167,6 +179,15 @@ public class StockSidebar : MonoBehaviour
     {
         _data.SelectStock(index);
         RefreshEntryVisuals();
+
+        // Click scale punch feel
+        if (_entryViews != null && index >= 0 && index < _entryViews.Length
+            && _entryViews[index].Background != null)
+        {
+            _entryViews[index].Background.transform.DOKill();
+            _entryViews[index].Background.transform
+                .DOPunchScale(Vector3.one * 0.08f, 0.18f, 6, 0.5f).SetUpdate(true);
+        }
     }
 
     private void OnMarketEventFired(MarketEventFiredEvent evt)

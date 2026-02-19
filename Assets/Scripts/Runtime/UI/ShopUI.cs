@@ -1,4 +1,5 @@
 using System.Collections;
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -257,12 +258,14 @@ public class ShopUI : MonoBehaviour
             _nextRoundButton.onClick.RemoveAllListeners();
             _nextRoundButton.onClick.AddListener(() => _onClose?.Invoke());
         }
+        AddButtonHoverFeel(_nextRoundButton);
     }
 
     public void SetRerollButton(Button rerollButton, Text costText)
     {
         _rerollButton = rerollButton;
         _rerollCostText = costText;
+        AddButtonHoverFeel(_rerollButton);
     }
 
     public void SetOnCloseCallback(System.Action callback)
@@ -272,6 +275,7 @@ public class ShopUI : MonoBehaviour
         {
             _nextRoundButton.onClick.RemoveAllListeners();
             _nextRoundButton.onClick.AddListener(() => _onClose?.Invoke());
+            AddButtonClickFeel(_nextRoundButton);
         }
     }
 
@@ -282,6 +286,7 @@ public class ShopUI : MonoBehaviour
         {
             _rerollButton.onClick.RemoveAllListeners();
             _rerollButton.onClick.AddListener(() => _onReroll?.Invoke());
+            AddButtonClickFeel(_rerollButton);
         }
     }
 
@@ -566,6 +571,8 @@ public class ShopUI : MonoBehaviour
 
         int capturedIndex = index;
         view.PurchaseButton.onClick.AddListener(() => _onExpansionPurchase?.Invoke(capturedIndex));
+        AddButtonClickFeel(view.PurchaseButton);
+        AddButtonHoverFeel(view.PurchaseButton);
 
         return view;
     }
@@ -752,6 +759,8 @@ public class ShopUI : MonoBehaviour
 
         int capturedIndex = index;
         view.PurchaseButton.onClick.AddListener(() => _onTipPurchase?.Invoke(capturedIndex));
+        AddButtonClickFeel(view.PurchaseButton);
+        AddButtonHoverFeel(view.PurchaseButton);
 
         return view;
     }
@@ -896,6 +905,8 @@ public class ShopUI : MonoBehaviour
         _bondBuyButtonText.alignment = TextAnchor.MiddleCenter;
         _bondBuyButtonText.raycastTarget = false;
         _bondBuyButton.onClick.AddListener(() => _onBondPurchase?.Invoke());
+        AddButtonClickFeel(_bondBuyButton);
+        AddButtonHoverFeel(_bondBuyButton);
 
         // Sell button
         var sellGo = CreateTextChild(cardGo.transform, "SellPrice", "", 10, FontStyle.Normal, ColorPalette.WhiteDim, 16f);
@@ -927,6 +938,8 @@ public class ShopUI : MonoBehaviour
 
         // Sell uses confirmation (AC 12)
         _bondSellButton.onClick.AddListener(() => ShowBondSellConfirmation(ctx));
+        AddButtonClickFeel(_bondSellButton);
+        AddButtonHoverFeel(_bondSellButton);
 
         // Confirmation overlay (initially hidden)
         _bondConfirmOverlay = CreateBondConfirmOverlay(cardGo.transform);
@@ -1052,6 +1065,8 @@ public class ShopUI : MonoBehaviour
             _bondConfirmOverlay.SetActive(false);
             _onBondSell?.Invoke();
         });
+        AddButtonClickFeel(yesBtn);
+        AddButtonHoverFeel(yesBtn);
 
         // No button
         var noBtnGo = new GameObject("NoButton");
@@ -1071,8 +1086,11 @@ public class ShopUI : MonoBehaviour
 
         noBtn.onClick.AddListener(() =>
         {
+            AudioManager.Instance?.PlayCancel();
             _bondConfirmOverlay.SetActive(false);
         });
+        AddButtonClickFeel(noBtn);
+        AddButtonHoverFeel(noBtn);
 
         return overlayGo;
     }
@@ -1139,6 +1157,7 @@ public class ShopUI : MonoBehaviour
         if (_soldFlags != null && index < _soldFlags.Length && _soldFlags[index]) return;
         if (_relicOffering == null || !_relicOffering[index].HasValue) return;
 
+        AudioManager.Instance?.PlayRelicHover();
         if (_hoverCoroutines[index] != null) StopCoroutine(_hoverCoroutines[index]);
         _hoverCoroutines[index] = StartCoroutine(AnimateHover(index, true));
     }
@@ -1402,6 +1421,57 @@ public class ShopUI : MonoBehaviour
         watermarkText.color = new Color(1f, 1f, 1f, 0.4f);
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // BUTTON FEEL — hover sound + scale + click punch
+    // ═══════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Attaches hover sound + scale animation to a Button via EventTrigger.
+    /// Does NOT touch onClick — safe to call before RemoveAllListeners is used on the button.
+    /// Call AddButtonClickFeel separately after the final onClick.AddListener.
+    /// </summary>
+    private static void AddButtonHoverFeel(Button btn)
+    {
+        if (btn == null) return;
+        var trigger = btn.gameObject.GetComponent<EventTrigger>()
+                   ?? btn.gameObject.AddComponent<EventTrigger>();
+
+        // Prevent entry accumulation on repeated calls (e.g. reroll re-setup)
+        trigger.triggers.RemoveAll(e => e.eventID == EventTriggerType.PointerEnter
+                                      || e.eventID == EventTriggerType.PointerExit);
+
+        var enterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        enterEntry.callback.AddListener((_) =>
+        {
+            AudioManager.Instance?.PlayButtonHover();
+            btn.transform.DOKill();
+            btn.transform.DOScale(1.07f, 0.1f).SetUpdate(true);
+        });
+        trigger.triggers.Add(enterEntry);
+
+        var exitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        exitEntry.callback.AddListener((_) =>
+        {
+            btn.transform.DOKill();
+            btn.transform.DOScale(1f, 0.1f).SetUpdate(true);
+        });
+        trigger.triggers.Add(exitEntry);
+    }
+
+    /// <summary>
+    /// Adds a click punch scale to a Button's onClick. Call this AFTER the final
+    /// onClick.AddListener so it isn't wiped by a subsequent RemoveAllListeners.
+    /// </summary>
+    private static void AddButtonClickFeel(Button btn)
+    {
+        if (btn == null) return;
+        btn.onClick.AddListener(() =>
+        {
+            btn.transform.DOKill();
+            btn.transform.DOPunchScale(Vector3.one * 0.12f, 0.18f, 6, 0.5f).SetUpdate(true);
+        });
+    }
+
     private void Update()
     {
         if (_root == null || !_root.activeSelf) return;
@@ -1449,6 +1519,8 @@ public class ShopUI : MonoBehaviour
         {
             _panelFocusIndicators[_focusedPanelIndex].gameObject.SetActive(true);
         }
+
+        AudioManager.Instance?.PlayTabSwitch();
     }
 
     // === Bond Pulsing Glow (Story 13.8, Task 5, AC 5) ===
@@ -1518,6 +1590,8 @@ public class ShopUI : MonoBehaviour
         slot.PurchaseButton.onClick.RemoveAllListeners();
         int capturedIndex = index;
         slot.PurchaseButton.onClick.AddListener(() => _onPurchase?.Invoke(capturedIndex));
+        AddButtonClickFeel(slot.PurchaseButton);
+        AddButtonHoverFeel(slot.PurchaseButton);
     }
 
     /// <summary>

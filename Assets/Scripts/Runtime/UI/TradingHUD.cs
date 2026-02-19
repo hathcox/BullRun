@@ -205,7 +205,12 @@ public class TradingHUD : MonoBehaviour
                 $"+{evt.RepEarned} REP \u2605",
                 _repTextRect,
                 ColorPalette.Amber);
+            AudioManager.Instance?.PlayRepEarned();
         }
+
+        // Streak milestone sound
+        if (_streakCount >= StreakMinDisplay && evt.TargetMet)
+            AudioManager.Instance?.PlayStreakMilestone();
     }
 
     private void OnDestroy()
@@ -260,13 +265,18 @@ public class TradingHUD : MonoBehaviour
         bool isCover = evt.IsBuy && evt.IsShort;
         if ((isSell || isCover) && _floatingTextService != null)
         {
-            float profit = evt.TotalCost;
+            float profit = evt.ProfitLoss;
             string popupText = FormatProfit(profit);
             Color popupColor = profit >= 0f ? ProfitGreen : LossRed;
             if (_chartLineView != null && _chartLineView.HasActiveChartHead)
                 _floatingTextService.SpawnAtWorldPos(popupText, _chartLineView.ChartHeadWorldPosition, popupColor);
             else if (_cashText != null)
                 _floatingTextService.Spawn(popupText, _cashText.rectTransform, popupColor);
+
+            if (profit >= 0f)
+                AudioManager.Instance?.PlayProfitPopup();
+            else
+                AudioManager.Instance?.PlayLossPopup();
         }
     }
 

@@ -85,6 +85,7 @@ public class RunSummaryUI : MonoBehaviour
                 _isVictoryCountUp = true;
                 _countUpTimer = 0f;
                 _statsText.text = BuildVictoryStatsTextAnimated(evt, 0f);
+                AudioManager.Instance?.PlayStatsCountUp();
             }
             else
             {
@@ -132,6 +133,7 @@ public class RunSummaryUI : MonoBehaviour
         // Hide when RunSummaryState is no longer active
         if (!RunSummaryState.IsActive)
         {
+            AudioManager.Instance?.PlayResultsDismiss();
             _visible = false;
             _isVictoryCountUp = false;
             if (_panel != null) _panel.SetActive(false);

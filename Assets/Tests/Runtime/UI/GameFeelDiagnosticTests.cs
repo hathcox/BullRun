@@ -244,6 +244,26 @@ namespace BullRun.Tests.UI
             Assert.AreEqual(0.5f, result, 0.001f, "Trade at half baseline should return 0.5 intensity");
         }
 
+        [Test]
+        public void CalculateIntensity_NegativeValue_UsesAbsoluteValue()
+        {
+            // F1 regression guard: GameFeelManager now receives evt.ProfitLoss which can
+            // be negative for losing trades. CalculateIntensity must use Abs() so negative
+            // values produce the same intensity as their positive counterparts.
+            float positive = CalculateIntensity(5000f, 10000f);
+            float negative = CalculateIntensity(-5000f, 10000f);
+            Assert.AreEqual(positive, negative, 0.001f,
+                "Negative ProfitLoss must produce same intensity as positive (uses Abs)");
+        }
+
+        [Test]
+        public void CalculateIntensity_NegativeValue_DoesNotReturnZero()
+        {
+            float result = CalculateIntensity(-3000f, 10000f);
+            Assert.Greater(result, 0.2f - 0.001f,
+                "Negative value should still produce at least minimum intensity (0.2)");
+        }
+
         // Mirror of GameFeelManager.CalculateIntensity (private static)
         private static float CalculateIntensity(float value, float baseline)
         {

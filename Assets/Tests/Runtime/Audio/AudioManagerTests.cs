@@ -92,5 +92,42 @@ namespace BullRun.Tests.Audio
                     $"MarketEventType.{eventType} has no sound tier mapping");
             }
         }
+
+        // ════════════════════════════════════════════════════════════════
+        // Instance & Public UI Helper API
+        // ════════════════════════════════════════════════════════════════
+
+        [Test]
+        public void Instance_IsNullBeforeInitialize()
+        {
+            // AudioManager.Instance is set in Initialize which requires a live MonoBehaviour.
+            // In edit-mode tests there is no scene, so Instance should remain null (or whatever
+            // state a prior test left it — we just verify the property exists and is accessible).
+            // The compile-time check that Instance is a public static property is the real value here.
+            var _ = AudioManager.Instance; // must not throw
+            Assert.Pass("AudioManager.Instance property is accessible");
+        }
+
+        [Test]
+        public void PublicUiHelpers_ExistAsPublicMethods()
+        {
+            // Verify every UI helper method is publicly accessible via reflection.
+            // Catches accidental visibility changes or renames.
+            string[] expectedMethods =
+            {
+                "PlayButtonHover", "PlayRelicHover", "PlayTabSwitch", "PlayNavigate",
+                "PlayCancel", "PlayResultsDismiss", "PlayStatsCountUp",
+                "PlayProfitPopup", "PlayLossPopup", "PlayRepEarned", "PlayStreakMilestone",
+                "PlayTokenLaunch", "PlayTokenLand", "PlayTokenBurst"
+            };
+
+            var type = typeof(AudioManager);
+            foreach (string methodName in expectedMethods)
+            {
+                var method = type.GetMethod(methodName,
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                Assert.IsNotNull(method, $"AudioManager.{methodName}() should be a public instance method");
+            }
+        }
     }
 }

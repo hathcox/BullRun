@@ -7,6 +7,8 @@ using MoreMountains.Tools;
 /// </summary>
 public class AudioManager : MonoBehaviour
 {
+    public static AudioManager Instance { get; private set; }
+
     private AudioClipLibrary _clips;
 
     // Active loop handles for stopping
@@ -20,7 +22,6 @@ public class AudioManager : MonoBehaviour
 
     // Short cashout window tracking (Task 4 — play once on transition)
     private bool _shortCashoutWindowSoundPlayed;
-    private bool _short2CashoutWindowSoundPlayed;
 
     // SFX cooldown to prevent sound stacking (Task 4)
     private float _lastTradeSfxTime;
@@ -31,6 +32,7 @@ public class AudioManager : MonoBehaviour
 
     public void Initialize(AudioClipLibrary clips)
     {
+        Instance = this;
         _clips = clips;
 
         // ── Trading Events (Task 4) ──
@@ -77,6 +79,8 @@ public class AudioManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (Instance == this) Instance = null;
+
         EventBus.Unsubscribe<TradeExecutedEvent>(OnTradeExecuted);
         EventBus.Unsubscribe<TradeFeedbackEvent>(OnTradeFeedback);
         EventBus.Unsubscribe<ShortCountdownEvent>(OnShortCountdown);
@@ -246,7 +250,6 @@ public class AudioManager : MonoBehaviour
         _lastTimerCriticalTickSecond = -1;
         _lastShortTickSecond = -1;
         _shortCashoutWindowSoundPlayed = false;
-        _short2CashoutWindowSoundPlayed = false;
     }
 
     private void OnMarketClosed(MarketClosedEvent evt)
@@ -485,6 +488,25 @@ public class AudioManager : MonoBehaviour
     {
         PlayUI(_clips.UiConfirm);
     }
+
+    // ════════════════════════════════════════════════════════════════════
+    // PUBLIC UI AUDIO HELPERS — called directly by UI scripts
+    // ════════════════════════════════════════════════════════════════════
+
+    public void PlayButtonHover()    => PlayUI(_clips?.UiButtonHover, 0.7f);
+    public void PlayRelicHover()     => PlayUI(_clips?.RelicHover, 0.8f);
+    public void PlayTabSwitch()      => PlayUI(_clips?.UiTabSwitch);
+    public void PlayNavigate()       => PlayUI(_clips?.UiNavigate, 0.8f);
+    public void PlayCancel()         => PlayUI(_clips?.UiCancel);
+    public void PlayResultsDismiss() => PlayUI(_clips?.ResultsDismiss);
+    public void PlayStatsCountUp()   => PlayUI(_clips?.StatsCountUp);
+    public void PlayProfitPopup()    => PlaySfx(_clips?.ProfitPopup);
+    public void PlayLossPopup()      => PlaySfx(_clips?.LossPopup);
+    public void PlayRepEarned()      => PlayUI(_clips?.RepEarned);
+    public void PlayStreakMilestone() => PlayUI(_clips?.StreakMilestone);
+    public void PlayTokenLaunch()    => PlaySfx(_clips?.TokenLaunch, 0.6f);
+    public void PlayTokenLand()      => PlaySfx(_clips?.TokenLand, 0.7f);
+    public void PlayTokenBurst()     => PlaySfx(_clips?.TokenBurst);
 
     // ════════════════════════════════════════════════════════════════════
     // CORE PLAYBACK METHODS
