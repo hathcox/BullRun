@@ -20,6 +20,7 @@ public static class SceneSetup
         camGo.tag = "MainCamera";
         camGo.transform.position = new Vector3(0f, 0f, -10f); // Pull back so z=0 objects are visible
         var cam = camGo.AddComponent<Camera>();
+        camGo.AddComponent<AudioListener>();
         cam.orthographic = true;
         cam.orthographicSize = 5f;
         cam.backgroundColor = CRTThemeData.Background; // Story 14.6: CRT dark background

@@ -17,7 +17,8 @@
       "Bash(git status:*)",
       "WebSearch",
       "Bash(find:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dir:*)"
     ]
   }
 }
