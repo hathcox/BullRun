@@ -171,6 +171,49 @@ namespace BullRun.Tests.Items
             }
         }
 
+        [Test]
+        public void AllRelicIds_CoveredByExactlyOneCategory()
+        {
+            // Every relic ID in the pool must appear in exactly one category group
+            var allCategoryIds = new HashSet<string>();
+            var categoryLists = new[]
+            {
+                // Trade (green)
+                new[] { "relic_short_multiplier", "relic_market_manipulator", "relic_double_dealer",
+                        "relic_quick_draw", "relic_skimmer", "relic_short_profiteer" },
+                // Event (amber)
+                new[] { "relic_event_trigger", "relic_event_storm", "relic_loss_liquidator",
+                        "relic_profit_refresh", "relic_bull_believer" },
+                // Economy (gold)
+                new[] { "relic_rep_doubler", "relic_fail_forward", "relic_bond_bonus",
+                        "relic_compound_rep", "relic_rep_interest", "relic_rep_dividend" },
+                // Mechanic (cyan)
+                new[] { "relic_time_buyer", "relic_diamond_hands", "relic_free_intel",
+                        "relic_extra_expansion" },
+                // Special (magenta)
+                new[] { "relic_relic_expansion", "relic_event_catalyst" },
+            };
+
+            foreach (var list in categoryLists)
+            {
+                foreach (var id in list)
+                {
+                    Assert.IsTrue(allCategoryIds.Add(id),
+                        $"Relic '{id}' appears in multiple category lists");
+                }
+            }
+
+            var pool = ShopItemDefinitions.RelicPool;
+            for (int i = 0; i < pool.Length; i++)
+            {
+                Assert.IsTrue(allCategoryIds.Contains(pool[i].Id),
+                    $"Relic '{pool[i].Name}' (ID: {pool[i].Id}) is not in any category test list");
+            }
+
+            Assert.AreEqual(pool.Length, allCategoryIds.Count,
+                "Category lists contain IDs not present in RelicPool");
+        }
+
         // ═══════════════════════════════════════════════════════════════
         // RelicIconHelper Tests (AC 7)
         // ═══════════════════════════════════════════════════════════════

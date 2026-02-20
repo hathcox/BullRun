@@ -99,6 +99,6 @@ development_status:
   17-6-mechanic-timer-relics: done                             # Code review: 7 findings, 4 fixes applied — Time Buyer, Diamond Hands, Market Manipulator, Free Intel, Extra Expansion
   17-7-special-relics: done                                     # Code review: 6 findings, 5 fixes applied — Event Catalyst, Relic Expansion
   17-8-trading-phase-relic-display: done                        # Code review: 7 findings, 6 fixes applied — relic bar UI, tooltips, glow, 27 tests
-  17-9-relic-reordering: review                               # Click-to-select-and-place reordering in shop
-  17-10-relic-icons: review                                    # Text icons with CRT theme colors for all 23 relics
+  17-9-relic-reordering: in-progress                           # Code implemented in 17.10 commit but Task 9 tests missing — open gap
+  17-10-relic-icons: done                                      # Code review: 7 findings (2H/3M/2L), 5 fixes applied
   epic-17-retrospective: optional

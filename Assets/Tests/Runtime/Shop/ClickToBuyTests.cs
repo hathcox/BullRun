@@ -38,7 +38,7 @@ namespace BullRun.Tests.Shop
         private RelicDef MakeTestRelic(string id, string name, string desc, int cost)
         {
             RelicFactory.Register(id, () => new StubRelic(id));
-            return new RelicDef(id, name, desc, "", cost);
+            return new RelicDef(id, name, desc, "", cost, "T", "#FFFFFF");
         }
 
         // === Click-to-buy relic: purchase succeeds, relic added to inventory (AC 7, 8) ===

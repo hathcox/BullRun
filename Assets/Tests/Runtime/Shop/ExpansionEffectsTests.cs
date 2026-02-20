@@ -127,14 +127,14 @@ namespace BullRun.Tests.Shop
                 _ctx.OwnedRelics.Add($"relic_{i}");
 
             // Can't buy more (at max 5)
-            var result = transaction.PurchaseRelic(_ctx, new RelicDef("relic_new", "New", "desc", "", 10));
+            var result = transaction.PurchaseRelic(_ctx, new RelicDef("relic_new", "New", "desc", "", 10, "T", "#FFFFFF"));
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
 
             // Buy expanded inventory expansion
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
 
             // Now can buy (max is 7, have 5)
-            result = transaction.PurchaseRelic(_ctx, new RelicDef("relic_new", "New", "desc", "", 10));
+            result = transaction.PurchaseRelic(_ctx, new RelicDef("relic_new", "New", "desc", "", 10, "T", "#FFFFFF"));
             Assert.AreEqual(ShopPurchaseResult.Success, result);
         }
 

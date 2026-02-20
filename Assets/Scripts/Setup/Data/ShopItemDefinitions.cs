@@ -14,7 +14,7 @@ public struct RelicDef
     public string IconColorHex;
 
     public RelicDef(string id, string name, string description, string effectDescription, int cost,
-        string iconChar = "", string iconColorHex = "")
+        string iconChar, string iconColorHex)
     {
         Id = id;
         Name = name;

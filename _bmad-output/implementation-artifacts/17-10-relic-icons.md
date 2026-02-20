@@ -1,6 +1,6 @@
 # Story 17.10: Relic Icons
 
-Status: review
+Status: done
 
 ## Story
 
@@ -52,7 +52,7 @@ so that I can identify relics at a glance in the shop, owned bar, and trading HU
     - Event Catalyst: `"R!"`, `"#FF00FF"` (Magenta)
     - Rep Interest: `"R%"`, `"#FFD700"` (Gold)
     - Rep Dividend: `"R$"`, `"#FFD700"` (Gold)
-  - [x] Verify hex colors match the CRT theme palette (adjust to match `ColorPalette` values if they differ)
+  - [x] Verify hex colors vs the CRT theme palette — intentionally chose brighter neon hex values (`#00FF41`, `#FFB000`, `#FFD700`, `#00FFFF`, `#FF00FF`) over muted `ColorPalette` values for icon text legibility at small sizes
   - [x] File: `Scripts/Setup/Data/ShopItemDefinitions.cs`
 
 - [x] Task 3: Create runtime color parsing helper (AC: 7)
@@ -105,6 +105,10 @@ so that I can identify relics at a glance in the shop, owned bar, and trading HU
 - **Programmatic uGUI:** All icon Text elements created in `UISetup.cs`. No prefabs, no Inspector configuration.
 - **Existing font reuse:** Uses the project's existing monospace terminal font (already loaded in UISetup). No new font assets imported.
 - **No .meta file changes:** Only modifying existing `.cs` files and creating one new `.cs` file. Unity auto-generates the `.meta` for the new file.
+
+### Known Limitation: Proportional Font
+
+AC 3 specifies "monospace terminal font" but the project uses Unity's built-in `LegacyRuntime.ttf` (proportional) for all text. Multi-character icons like `III`, `x2`, `>>`, `[+]` render with variable widths. This is a pre-existing project-wide pattern — no custom monospace font has been imported. Importing a monospace font is out of scope for this story but would improve icon consistency.
 
 ### Icon Design Rationale
 
@@ -182,13 +186,20 @@ N/A — no runtime debugging required for this data/UI story.
 
 ### File List
 
-- `Scripts/Setup/Data/ShopItemDefinitions.cs` — Modified: added IconChar/IconColorHex fields to RelicDef, assigned values to all 23 relics
+- `Scripts/Setup/Data/ShopItemDefinitions.cs` — Modified: added IconChar/IconColorHex fields to RelicDef (now required params), assigned values to all 23 relics
 - `Scripts/Runtime/UI/RelicIconHelper.cs` — New: static helper for hex-to-Color parsing
-- `Scripts/Runtime/UI/ShopUI.cs` — Modified: added IconLabel to RelicSlotView and OwnedRelicSlotView structs, icon rendering in SetupRelicSlot/SetupSoldOutRelicSlot/RefreshOwnedRelicsBar
-- `Scripts/Setup/UISetup.cs` — Modified: added icon Text elements to CreateRelicSlot and CreateOwnedRelicSlot
+- `Scripts/Runtime/UI/ShopUI.cs` — Modified: added IconLabel to RelicSlotView and OwnedRelicSlotView structs, icon rendering in SetupRelicSlot/SetupSoldOutRelicSlot/RefreshOwnedRelicsBar. Also includes Story 17.9 relic reordering code (InsertionIndicator field, selection state, reorder logic, escape key handling, reorder click wiring)
+- `Scripts/Setup/UISetup.cs` — Modified: added icon Text elements to CreateRelicSlot and CreateOwnedRelicSlot. Also includes Story 17.9 insertion indicators and "Relics execute left to right" reminder label
 - `Scripts/Runtime/UI/RelicBar.cs` — Modified: CreateIconSlot uses IconChar/IconColorHex, font size 16
-- `Tests/Runtime/Items/RelicIconTests.cs` — New: 16 tests for icon data validation and RelicIconHelper
+- `Tests/Runtime/Items/RelicIconTests.cs` — New: 17 tests for icon data validation, category coverage, and RelicIconHelper
+- `Tests/Runtime/Shop/StoreDataModelTests.cs` — Modified: updated RelicDef constructor call (review fix — required icon params)
+- `Tests/Runtime/Shop/ShopTransactionTests.cs` — Modified: updated RelicDef constructor call (review fix)
+- `Tests/Runtime/Shop/RelicPurchaseTests.cs` — Modified: updated RelicDef constructor call (review fix)
+- `Tests/Runtime/Shop/ExpansionEffectsTests.cs` — Modified: updated RelicDef constructor calls (review fix)
+- `Tests/Runtime/Shop/ClickToBuyTests.cs` — Modified: updated RelicDef constructor call (review fix)
+- `Tests/Runtime/Core/ReputationManagerTests.cs` — Modified: updated RelicDef constructor call (review fix)
 
 ## Change Log
 
 - 2026-02-20: Story 17.10 implemented — added text icon characters and CRT category colors to all 23 relics, displayed in shop cards, owned bar, and trading HUD RelicBar. Created RelicIconHelper for hex-to-Color parsing. 16 new tests.
+- 2026-02-20: Code review (7 findings: 2H/3M/2L). Fixes applied: (H1) Documented 17.9 cross-story contamination — 17.9 code bundled in this commit without tracking, 17.9 status set to in-progress with missing tests flagged. (H2) Updated Task 2 subtask to document intentional color deviation from ColorPalette. (M1) Added AllRelicIds_CoveredByExactlyOneCategory test. (M2) Made RelicDef iconChar/iconColorHex required params, updated 6 test files. (M3) Documented proportional font limitation in dev notes. (L1, L2) Acknowledged — low priority.
