@@ -138,20 +138,21 @@ public class RelicBar : MonoBehaviour
 
         var text = textGo.AddComponent<Text>();
         text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        text.fontSize = 18;
+        text.fontSize = 16;
         text.alignment = TextAnchor.MiddleCenter;
-        text.color = CRTThemeData.TextHigh;
         text.raycastTarget = false;
 
-        // Get icon character from relic def
+        // Story 17.10: Use IconChar and IconColorHex from RelicDef
         var def = ItemLookup.GetRelicById(relicId);
-        if (def.HasValue)
+        if (def.HasValue && !string.IsNullOrEmpty(def.Value.IconChar))
         {
-            text.text = GetRelicIconChar(def.Value.Name);
+            text.text = def.Value.IconChar;
+            text.color = RelicIconHelper.GetIconColor(def.Value);
         }
         else
         {
-            text.text = "?";
+            text.text = GetRelicIconChar(def.HasValue ? def.Value.Name : relicId);
+            text.color = CRTThemeData.TextHigh;
         }
 
         // Add hover handler for tooltip

@@ -1252,6 +1252,22 @@ public static class UISetup
         ownedBarHlg.childForceExpandWidth = true;
         ownedBarHlg.childForceExpandHeight = true;
 
+        // Story 17.9: Reminder label below owned relics bar (AC 10)
+        var reminderGo = new GameObject("RelicOrderReminder");
+        reminderGo.transform.SetParent(bgGo.transform, false);
+        var reminderRect = reminderGo.AddComponent<RectTransform>();
+        reminderRect.anchorMin = new Vector2(0.03f, 0.82f);
+        reminderRect.anchorMax = new Vector2(0.97f, 0.855f);
+        reminderRect.offsetMin = Vector2.zero;
+        reminderRect.offsetMax = Vector2.zero;
+        var reminderText = reminderGo.AddComponent<Text>();
+        reminderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        reminderText.text = "Relics execute left to right";
+        reminderText.fontSize = 9;
+        reminderText.color = ColorPalette.Dimmed(ColorPalette.WhiteDim, 0.5f);
+        reminderText.alignment = TextAnchor.MiddleCenter;
+        reminderText.raycastTarget = false;
+
         // Create max possible slots (7 — base 5 + 2 from Expanded Inventory)
         var ownedSlots = new ShopUI.OwnedRelicSlotView[ShopUI.MaxPossibleOwnedSlots];
         for (int i = 0; i < ownedSlots.Length; i++)
@@ -1401,6 +1417,15 @@ public static class UISetup
         accentGo.GetComponent<Image>().color = ShopUI.ReputationColor;
         accentGo.GetComponent<Image>().raycastTarget = false;
 
+        // Story 17.10: Icon character label — bold, sized for ~60x60 display
+        var iconGo = CreateLabel($"Icon_{index}", cardGo.transform, "",
+            Color.white, 22);
+        iconGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        iconGo.GetComponent<Text>().raycastTarget = false;
+        var iconLayout = iconGo.AddComponent<LayoutElement>();
+        iconLayout.preferredHeight = 28f;
+        view.IconLabel = iconGo.GetComponent<Text>();
+
         // Item name — bold/larger font for legibility (Story 13.8, AC 7)
         var nameGo = CreateLabel($"Name_{index}", cardGo.transform, "Empty",
             Color.white, 18);
@@ -1465,6 +1490,15 @@ public static class UISetup
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
+        // Story 17.10: Icon character label (shown when populated)
+        var iconGo = CreateLabel($"OwnedIcon_{index}", slotGo.transform, "",
+            Color.white, 14);
+        iconGo.GetComponent<Text>().fontStyle = FontStyle.Bold;
+        iconGo.GetComponent<Text>().raycastTarget = false;
+        var iconLayout = iconGo.AddComponent<LayoutElement>();
+        iconLayout.preferredHeight = 18f;
+        view.IconLabel = iconGo.GetComponent<Text>();
+
         // Relic name label (shown when populated)
         var nameGo = CreateLabel($"OwnedName_{index}", slotGo.transform, "",
             Color.white, 11);
@@ -1489,6 +1523,21 @@ public static class UISetup
             ColorPalette.WithAlpha(ColorPalette.WhiteDim, 0.5f), 10);
         emptyGo.GetComponent<Text>().raycastTarget = false;
         view.EmptyLabel = emptyGo.GetComponent<Text>();
+
+        // Story 17.9: Insertion indicator — thin vertical line for reorder drop position (AC 2)
+        var indicatorGo = new GameObject($"InsertionIndicator_{index}");
+        indicatorGo.transform.SetParent(slotGo.transform, false);
+        var indicatorRect = indicatorGo.AddComponent<RectTransform>();
+        indicatorRect.anchorMin = new Vector2(0f, 0.1f);
+        indicatorRect.anchorMax = new Vector2(0f, 0.9f);
+        indicatorRect.offsetMin = new Vector2(-2f, 0f);
+        indicatorRect.offsetMax = new Vector2(2f, 0f);
+        indicatorRect.anchoredPosition = new Vector2(-4f, 0f);
+        var indicatorImg = indicatorGo.AddComponent<Image>();
+        indicatorImg.color = ColorPalette.WithAlpha(ColorPalette.Cyan, 0.6f);
+        indicatorImg.raycastTarget = false;
+        indicatorGo.SetActive(false);
+        view.InsertionIndicator = indicatorGo;
 
         return view;
     }

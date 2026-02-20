@@ -152,6 +152,12 @@ public class ShopUI : MonoBehaviour
     public static readonly Color OwnedRelicSellColor = ColorPalette.Dimmed(ColorPalette.Red, 0.5f);
     public const float InventoryFullFlashDuration = 1.5f;
 
+    // Relic reordering state (Story 17.9)
+    private int _selectedRelicIndex = -1;
+    private bool _isRelicReorderMode;
+    public static readonly Color SelectedRelicBorderColor = ColorPalette.Cyan;
+    public const float SelectedRelicScale = 1.08f;
+
     // Bond panel state (Story 13.6)
     private Text _bondPriceText;
     private Text _bondInfoText;
@@ -198,20 +204,24 @@ public class ShopUI : MonoBehaviour
         public Text ButtonText;
         public Image CardBackground;
         public CanvasGroup Group;
+        public Text IconLabel;
     }
 
     /// <summary>
     /// View data for an owned relic slot in the top bar (Story 13.10).
+    /// Story 17.9: Added InsertionIndicator for reorder drop position.
     /// </summary>
     public struct OwnedRelicSlotView
     {
         public GameObject Root;
         public Text NameLabel;
+        public Text IconLabel;
         public Button SellButton;
         public Text SellButtonText;
         public Text EmptyLabel;
         public CanvasGroup Group;
         public Image Background;
+        public GameObject InsertionIndicator;
     }
 
     public void Initialize(
@@ -1584,6 +1594,18 @@ public class ShopUI : MonoBehaviour
     private void Update()
     {
         if (_root == null || !_root.activeSelf) return;
+
+        // Story 17.9: Escape key cancels relic reorder selection (AC 6)
+        if (_isRelicReorderMode)
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+            {
+                CancelRelicSelection();
+                return; // Don't process other keyboard input this frame
+            }
+        }
+
         HandleKeyboardNavigation();
         UpdateBondPulse();
     }
@@ -1663,6 +1685,10 @@ public class ShopUI : MonoBehaviour
         slot.ButtonText.gameObject.SetActive(false);
         slot.CardBackground.color = SoldOutCardColor;
         slot.PurchaseButton.onClick.RemoveAllListeners();
+
+        // Story 17.10: Hide icon on empty/sold slot
+        if (slot.IconLabel != null)
+            slot.IconLabel.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -1676,6 +1702,14 @@ public class ShopUI : MonoBehaviour
         slot.NameText.text = relic.Name;
         slot.DescriptionText.text = relic.Description;
         slot.CostText.text = $"\u2605 {relic.Cost}";
+
+        // Story 17.10: Set icon character and color
+        if (slot.IconLabel != null)
+        {
+            slot.IconLabel.text = relic.IconChar ?? "";
+            slot.IconLabel.color = RelicIconHelper.GetIconColor(relic);
+            slot.IconLabel.gameObject.SetActive(true);
+        }
 
         bool canAfford = _ctx.Reputation.CanAfford(relic.Cost);
         slot.CostText.color = canAfford ? Color.white : ColorPalette.Red;
@@ -1852,11 +1886,33 @@ public class ShopUI : MonoBehaviour
                 slot.SellButtonText.text = $"SELL \u2605{refund}";
                 slot.EmptyLabel.gameObject.SetActive(false);
 
+                // Story 17.10: Show icon character with color
+                if (slot.IconLabel != null)
+                {
+                    if (relicDef.HasValue)
+                    {
+                        slot.IconLabel.text = relicDef.Value.IconChar ?? "";
+                        slot.IconLabel.color = RelicIconHelper.GetIconColor(relicDef.Value);
+                        slot.IconLabel.gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        slot.IconLabel.gameObject.SetActive(false);
+                    }
+                }
+
                 slot.SellButton.onClick.RemoveAllListeners();
                 int capturedIndex = i;
                 slot.SellButton.onClick.AddListener(() => _onSellRelic?.Invoke(capturedIndex));
                 AddButtonClickFeel(slot.SellButton);
                 AddButtonHoverFeel(slot.SellButton);
+
+                // Story 17.9: Wire reorder click on slot root (separate from sell button)
+                var slotButton = slot.Root.GetComponent<Button>();
+                if (slotButton == null) slotButton = slot.Root.AddComponent<Button>();
+                slotButton.onClick.RemoveAllListeners();
+                int reorderIdx = i;
+                slotButton.onClick.AddListener(() => SelectRelicForReorder(reorderIdx));
 
                 slot.Background.color = OwnedRelicSlotColor;
             }
@@ -1868,8 +1924,143 @@ public class ShopUI : MonoBehaviour
                 slot.EmptyLabel.gameObject.SetActive(true);
                 slot.EmptyLabel.text = "Empty";
 
+                // Story 17.10: Hide icon on empty slot
+                if (slot.IconLabel != null)
+                    slot.IconLabel.gameObject.SetActive(false);
+
                 slot.Background.color = OwnedRelicEmptyColor;
             }
+        }
+    }
+
+    // ── Relic Reordering (Story 17.9) ──
+
+    /// <summary>
+    /// Test accessor: current selected relic index (-1 = no selection).
+    /// </summary>
+    public int SelectedRelicIndex => _selectedRelicIndex;
+
+    /// <summary>
+    /// Test accessor: whether reorder mode is active.
+    /// </summary>
+    public bool IsRelicReorderMode => _isRelicReorderMode;
+
+    /// <summary>
+    /// Selects an owned relic slot for reordering (AC 1, 6).
+    /// If the same slot is clicked again, cancels selection.
+    /// </summary>
+    public void SelectRelicForReorder(int slotIndex)
+    {
+        if (_ctx == null || _ownedRelicSlots == null) return;
+        if (slotIndex < 0 || slotIndex >= _ctx.OwnedRelics.Count) return;
+
+        // AC 6: clicking the same relic again cancels selection
+        if (_isRelicReorderMode && _selectedRelicIndex == slotIndex)
+        {
+            CancelRelicSelection();
+            return;
+        }
+
+        // If already in reorder mode with a different slot selected, perform reorder
+        if (_isRelicReorderMode && _selectedRelicIndex != slotIndex)
+        {
+            PerformRelicReorder(slotIndex);
+            return;
+        }
+
+        // Enter reorder mode
+        _selectedRelicIndex = slotIndex;
+        _isRelicReorderMode = true;
+
+        // Apply visual highlight (AC 1)
+        ApplySelectionVisuals(slotIndex);
+        ShowInsertionIndicators(slotIndex);
+    }
+
+    /// <summary>
+    /// Cancels the current relic selection and restores visuals (AC 6).
+    /// </summary>
+    public void CancelRelicSelection()
+    {
+        if (!_isRelicReorderMode) return;
+
+        int previousIndex = _selectedRelicIndex;
+        _selectedRelicIndex = -1;
+        _isRelicReorderMode = false;
+
+        // Restore visuals
+        RestoreSelectionVisuals(previousIndex);
+        HideInsertionIndicators();
+    }
+
+    /// <summary>
+    /// Performs the reorder: moves selected relic to target position (AC 3, 4, 5, 11).
+    /// </summary>
+    public void PerformRelicReorder(int targetIndex)
+    {
+        if (!_isRelicReorderMode) return;
+        if (_ctx == null) return;
+        if (_selectedRelicIndex < 0 || _selectedRelicIndex >= _ctx.OwnedRelics.Count) return;
+        if (targetIndex < 0 || targetIndex >= _ctx.OwnedRelics.Count) return;
+
+        int fromIndex = _selectedRelicIndex;
+
+        // Clear selection state first
+        _selectedRelicIndex = -1;
+        _isRelicReorderMode = false;
+
+        if (fromIndex == targetIndex) return;
+
+        // AC 5: Call RelicManager.ReorderRelic
+        _ctx.RelicManager.ReorderRelic(fromIndex, targetIndex);
+
+        // AC 11: RunContext.OwnedRelics is already synced by RelicManager.ReorderRelic
+
+        // Update visuals
+        HideInsertionIndicators();
+        RefreshOwnedRelicsBar();
+    }
+
+    private void ApplySelectionVisuals(int slotIndex)
+    {
+        if (_ownedRelicSlots == null || slotIndex < 0 || slotIndex >= _ownedRelicSlots.Length) return;
+        var slot = _ownedRelicSlots[slotIndex];
+        if (slot.Background != null)
+            slot.Background.color = SelectedRelicBorderColor;
+        if (slot.Root != null)
+            slot.Root.transform.localScale = new Vector3(SelectedRelicScale, SelectedRelicScale, 1f);
+    }
+
+    private void RestoreSelectionVisuals(int slotIndex)
+    {
+        if (_ownedRelicSlots == null || slotIndex < 0 || slotIndex >= _ownedRelicSlots.Length) return;
+        var slot = _ownedRelicSlots[slotIndex];
+        if (slot.Background != null)
+            slot.Background.color = OwnedRelicSlotColor;
+        if (slot.Root != null)
+            slot.Root.transform.localScale = Vector3.one;
+    }
+
+    private void ShowInsertionIndicators(int selectedIndex)
+    {
+        if (_ownedRelicSlots == null || _ctx == null) return;
+        int relicCount = _ctx.OwnedRelics.Count;
+        for (int i = 0; i < _ownedRelicSlots.Length; i++)
+        {
+            if (_ownedRelicSlots[i].InsertionIndicator == null) continue;
+            // Show indicators at all valid drop positions except the selected relic's position
+            bool show = i < relicCount && i != selectedIndex;
+            _ownedRelicSlots[i].InsertionIndicator.SetActive(show);
+        }
+    }
+
+    private void HideInsertionIndicators()
+    {
+        if (_ownedRelicSlots == null) return;
+        for (int i = 0; i < _ownedRelicSlots.Length; i++)
+        {
+            if (_ownedRelicSlots[i].InsertionIndicator != null)
+                _ownedRelicSlots[i].InsertionIndicator.SetActive(false);
         }
     }
 
