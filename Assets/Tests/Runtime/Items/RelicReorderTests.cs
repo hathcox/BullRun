@@ -41,20 +41,8 @@ namespace BullRun.Tests.Items
 
         // ════════════════════════════════════════════════════════════════════
         // Insert semantics — shift, not swap (AC 3, 4)
+        // (Basic move + sync + invalid indices already covered in RelicManagerTests)
         // ════════════════════════════════════════════════════════════════════
-
-        [Test]
-        public void ReorderRelic_MoveFirstToLast_ShiftsOthersLeft()
-        {
-            AddStubRelics("A", "B", "C", "D");
-
-            _mgr.ReorderRelic(0, 3);
-
-            Assert.AreEqual("B", _mgr.OrderedRelics[0].Id);
-            Assert.AreEqual("C", _mgr.OrderedRelics[1].Id);
-            Assert.AreEqual("D", _mgr.OrderedRelics[2].Id);
-            Assert.AreEqual("A", _mgr.OrderedRelics[3].Id);
-        }
 
         [Test]
         public void ReorderRelic_MoveLastToFirst_ShiftsOthersRight()
@@ -139,22 +127,8 @@ namespace BullRun.Tests.Items
 
         // ════════════════════════════════════════════════════════════════════
         // OwnedRelics sync after reorder (AC 11)
+        // (Basic sync already covered in RelicManagerTests.ReorderRelic_SyncsOwnedRelics)
         // ════════════════════════════════════════════════════════════════════
-
-        [Test]
-        public void ReorderRelic_OwnedRelicsMatchesOrderedRelics()
-        {
-            AddStubRelics("A", "B", "C", "D");
-
-            _mgr.ReorderRelic(0, 3);
-
-            Assert.AreEqual(_mgr.OrderedRelics.Count, _ctx.OwnedRelics.Count);
-            for (int i = 0; i < _mgr.OrderedRelics.Count; i++)
-            {
-                Assert.AreEqual(_mgr.OrderedRelics[i].Id, _ctx.OwnedRelics[i],
-                    $"Mismatch at index {i}");
-            }
-        }
 
         [Test]
         public void MultipleReorders_OwnedRelicsAlwaysInSync()
@@ -248,25 +222,8 @@ namespace BullRun.Tests.Items
 
         // ════════════════════════════════════════════════════════════════════
         // Out-of-bounds safety
+        // (Negative/beyond-count already covered in RelicManagerTests.ReorderRelic_InvalidIndices)
         // ════════════════════════════════════════════════════════════════════
-
-        [Test]
-        public void ReorderRelic_NegativeFrom_DoesNothing()
-        {
-            AddStubRelics("A", "B");
-            _mgr.ReorderRelic(-1, 1);
-            Assert.AreEqual("A", _mgr.OrderedRelics[0].Id);
-            Assert.AreEqual("B", _mgr.OrderedRelics[1].Id);
-        }
-
-        [Test]
-        public void ReorderRelic_ToIndexBeyondCount_DoesNothing()
-        {
-            AddStubRelics("A", "B");
-            _mgr.ReorderRelic(0, 5);
-            Assert.AreEqual("A", _mgr.OrderedRelics[0].Id);
-            Assert.AreEqual("B", _mgr.OrderedRelics[1].Id);
-        }
 
         [Test]
         public void ReorderRelic_EmptyList_DoesNothing()

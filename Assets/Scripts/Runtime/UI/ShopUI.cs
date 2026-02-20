@@ -1856,6 +1856,11 @@ public class ShopUI : MonoBehaviour
     {
         if (_ownedRelicSlots == null || _ctx == null) return;
 
+        // Story 17.9: Cancel any active reorder selection before rebuilding slots.
+        // Prevents stale _selectedRelicIndex after sell/purchase changes the relic list.
+        if (_isRelicReorderMode)
+            CancelRelicSelection();
+
         int maxSlots = ShopTransaction.GetEffectiveMaxRelicSlots(_ctx);
 
         for (int i = 0; i < _ownedRelicSlots.Length; i++)
@@ -2005,9 +2010,11 @@ public class ShopUI : MonoBehaviour
 
         int fromIndex = _selectedRelicIndex;
 
-        // Clear selection state first
+        // Clear selection state and restore visuals unconditionally
         _selectedRelicIndex = -1;
         _isRelicReorderMode = false;
+        RestoreSelectionVisuals(fromIndex);
+        HideInsertionIndicators();
 
         if (fromIndex == targetIndex) return;
 
@@ -2015,9 +2022,6 @@ public class ShopUI : MonoBehaviour
         _ctx.RelicManager.ReorderRelic(fromIndex, targetIndex);
 
         // AC 11: RunContext.OwnedRelics is already synced by RelicManager.ReorderRelic
-
-        // Update visuals
-        HideInsertionIndicators();
         RefreshOwnedRelicsBar();
     }
 

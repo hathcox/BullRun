@@ -102,6 +102,11 @@ namespace BullRun.Tests.UI
                 var emptyText = emptyGo.AddComponent<Text>();
                 emptyText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
+                var indicatorGo = new GameObject($"Indicator_{i}");
+                indicatorGo.transform.SetParent(slotGo.transform, false);
+                indicatorGo.AddComponent<Image>();
+                indicatorGo.SetActive(false);
+
                 _ownedSlots[i] = new ShopUI.OwnedRelicSlotView
                 {
                     Root = slotGo,
@@ -111,6 +116,7 @@ namespace BullRun.Tests.UI
                     EmptyLabel = emptyText,
                     Group = slotGo.AddComponent<CanvasGroup>(),
                     Background = bg,
+                    InsertionIndicator = indicatorGo,
                 };
             }
 
@@ -312,6 +318,69 @@ namespace BullRun.Tests.UI
 
             Assert.AreEqual(1f, _ownedSlots[0].Root.transform.localScale.x, 0.01f);
             Assert.AreEqual(1f, _ownedSlots[0].Root.transform.localScale.y, 0.01f);
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // Insertion indicators (AC 2)
+        // ════════════════════════════════════════════════════════════════════
+
+        [Test]
+        public void SelectRelicForReorder_ShowsInsertionIndicators()
+        {
+            _shopUI.SelectRelicForReorder(1);
+
+            // Indicators shown at all populated positions except the selected slot
+            Assert.IsTrue(_ownedSlots[0].InsertionIndicator.activeSelf);
+            Assert.IsFalse(_ownedSlots[1].InsertionIndicator.activeSelf); // selected slot
+            Assert.IsTrue(_ownedSlots[2].InsertionIndicator.activeSelf);
+        }
+
+        [Test]
+        public void CancelRelicSelection_HidesInsertionIndicators()
+        {
+            _shopUI.SelectRelicForReorder(1);
+            _shopUI.CancelRelicSelection();
+
+            Assert.IsFalse(_ownedSlots[0].InsertionIndicator.activeSelf);
+            Assert.IsFalse(_ownedSlots[1].InsertionIndicator.activeSelf);
+            Assert.IsFalse(_ownedSlots[2].InsertionIndicator.activeSelf);
+        }
+
+        [Test]
+        public void PerformRelicReorder_HidesInsertionIndicators()
+        {
+            _shopUI.SelectRelicForReorder(0);
+            _shopUI.SelectRelicForReorder(2); // triggers reorder
+
+            Assert.IsFalse(_ownedSlots[0].InsertionIndicator.activeSelf);
+            Assert.IsFalse(_ownedSlots[1].InsertionIndicator.activeSelf);
+            Assert.IsFalse(_ownedSlots[2].InsertionIndicator.activeSelf);
+        }
+
+        [Test]
+        public void InsertionIndicators_EmptySlots_NotShown()
+        {
+            // Slots 3 and 4 are empty (only 3 relics owned)
+            _shopUI.SelectRelicForReorder(0);
+
+            Assert.IsFalse(_ownedSlots[3].InsertionIndicator.activeSelf);
+            Assert.IsFalse(_ownedSlots[4].InsertionIndicator.activeSelf);
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // Reorder state cancelled on refresh (H1 bug fix)
+        // ════════════════════════════════════════════════════════════════════
+
+        [Test]
+        public void RefreshOwnedRelicsBar_CancelsReorderMode()
+        {
+            _shopUI.SelectRelicForReorder(1);
+            Assert.IsTrue(_shopUI.IsRelicReorderMode);
+
+            _shopUI.RefreshOwnedRelicsBar();
+
+            Assert.IsFalse(_shopUI.IsRelicReorderMode);
+            Assert.AreEqual(-1, _shopUI.SelectedRelicIndex);
         }
     }
 }
