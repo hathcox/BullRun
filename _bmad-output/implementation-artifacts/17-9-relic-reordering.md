@@ -1,6 +1,6 @@
 # Story 17.9: Relic Reordering
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -84,7 +84,7 @@ so that I can control the execution order for strategic effect (relics execute l
   - [x] Verify that `RunContext.OwnedRelics` persists the new order across round transitions (shop → trading → shop)
   - [x] This is primarily a test task — see Task 9
 
-- [ ] Task 9: Write tests (All AC)
+- [x] Task 9: Write tests (All AC)
   - [x] Test: `ReorderRelic` moves relic and shifts others correctly (insert, not swap) — verify resulting list for multiple from/to combinations
   - [x] Test: `ReorderRelic` with fromIndex == toIndex is a no-op
   - [x] Test: `RunContext.OwnedRelics` order matches `RelicManager.OrderedRelics` after reorder
@@ -148,13 +148,16 @@ N/A
 - Task 1-6: Selection state, visual highlight, insertion indicators, click handlers, OwnedRelics sync, and Escape cancellation all implemented in `ShopUI.cs`.
 - Task 7: "Relics execute left to right" reminder label added in `UISetup.cs`.
 - Task 8: Execution order verified via `RelicManager.OrderedRelics` which is the canonical source of truth used by dispatch.
-- Task 9: **No dedicated tests written** for Story 17.9 reorder logic. The reorder tests listed in the task (RelicReorderTests.cs, RelicReorderUITests.cs) were NOT created. This is an open gap.
+- Task 9: Tests written — 16 core reorder tests in `RelicReorderTests.cs` and 13 UI state tests in `RelicReorderUITests.cs`. All 29 tests pass (2037 total, 0 failed).
 
 ### File List
 
 - `Scripts/Runtime/UI/ShopUI.cs` — Modified: added reorder state fields, SelectRelicForReorder, CancelRelicSelection, PerformRelicReorder, selection/insertion visual helpers, Escape key handling in Update, reorder click wiring in RefreshOwnedRelicsBar
 - `Scripts/Setup/UISetup.cs` — Modified: added insertion indicator GameObjects in CreateOwnedRelicSlot, "Relics execute left to right" reminder label in owned relics bar construction
+- `Tests/Runtime/Items/RelicReorderTests.cs` — New: 16 tests for RelicManager.ReorderRelic core logic (insert semantics, OwnedRelics sync, dispatch order, round persistence, boundary safety)
+- `Tests/Runtime/UI/RelicReorderUITests.cs` — New: 13 tests for ShopUI reorder state (selection, cancellation, reorder execution, visual highlight/scale reset)
 
 ## Change Log
 
 - 2026-02-20: Story 17.9 implemented (bundled in commit b57dee6 with Story 17.10). Relic reordering via click-to-select-and-place in shop owned relics bar. No dedicated tests written — open gap identified during 17.10 code review.
+- 2026-02-20: Task 9 tests written — 29 tests across RelicReorderTests.cs (16 core) and RelicReorderUITests.cs (13 UI state). All pass (2037 total, 0 failed).
