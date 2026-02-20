@@ -54,12 +54,14 @@ public class ScreenEffects : MonoBehaviour
         // flies away and timeScale resumes (not during the popup pause)
         EventBus.Subscribe<EventPopupCompletedEvent>(OnEventPopupCompleted);
         EventBus.Subscribe<MarketEventEndedEvent>(OnMarketEventEnded);
+        EventBus.Subscribe<MarketClosedEvent>(OnMarketClosed);
     }
 
     private void OnDestroy()
     {
         EventBus.Unsubscribe<EventPopupCompletedEvent>(OnEventPopupCompleted);
         EventBus.Unsubscribe<MarketEventEndedEvent>(OnMarketEventEnded);
+        EventBus.Unsubscribe<MarketClosedEvent>(OnMarketClosed);
     }
 
     private void OnEventPopupCompleted(EventPopupCompletedEvent evt)
@@ -94,6 +96,19 @@ public class ScreenEffects : MonoBehaviour
                 StopFlash();
                 break;
         }
+    }
+
+    /// <summary>
+    /// Stop all active screen effects when the market closes.
+    /// EventEffects.UpdateActiveEvents() only runs during TradingState, so events
+    /// that outlast the round timer never expire — this prevents orphaned effects.
+    /// </summary>
+    private void OnMarketClosed(MarketClosedEvent evt)
+    {
+        StopShake();
+        StopRedPulse();
+        StopGreenTint();
+        StopFlash();
     }
 
     private void Update()

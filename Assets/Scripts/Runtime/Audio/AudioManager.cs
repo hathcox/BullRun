@@ -259,6 +259,11 @@ public class AudioManager : MonoBehaviour
         PlaySfx(_clips.MarketClosed);
         // Task 9: Overlay stamp sound
         PlaySfx(_clips.MarketClosedStamp);
+
+        // Stop any active event loops — EventEffects.UpdateActiveEvents() is only called
+        // during TradingState, so events that outlast the round timer never expire and
+        // MarketEventEndedEvent never fires, leaving loops playing forever.
+        StopAllLoops();
     }
 
     private void OnMarginCallTriggered(MarginCallTriggeredEvent evt)

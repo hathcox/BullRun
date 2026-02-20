@@ -42,7 +42,7 @@ public static class ExpansionDefinitions
             "+2 relic slots (5 \u2192 7 max)",
             GameConfig.ExpansionCostExpandedInventory),
         new ExpansionDef(DualShort, "Dual Short",
-            "Open a second short position simultaneously",
+            "Shorts execute 2 shares instead of 1",
             GameConfig.ExpansionCostDualShort),
         new ExpansionDef(IntelExpansion, "Intel Expansion",
             "+1 Insider Tip slot per shop visit (2 \u2192 3)",

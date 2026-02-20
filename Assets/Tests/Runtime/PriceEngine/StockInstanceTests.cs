@@ -30,6 +30,25 @@ namespace BullRun.Tests.PriceEngine
         }
 
         [Test]
+        public void Initialize_SetsStartingPrice()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 2.50f, TrendDirection.Bull, 0.10f);
+            Assert.AreEqual(2.50f, stock.StartingPrice, 0.001f);
+        }
+
+        [Test]
+        public void StartingPrice_DoesNotChangeWhenCurrentPriceChanges()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 6f, TrendDirection.Bull, 0.10f);
+
+            stock.CurrentPrice = 100f;
+            Assert.AreEqual(6f, stock.StartingPrice, 0.001f,
+                "StartingPrice should remain at initialization value");
+        }
+
+        [Test]
         public void Initialize_SetsTrendDirection()
         {
             var stock = new StockInstance();

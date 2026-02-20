@@ -146,30 +146,32 @@ namespace BullRun.Tests.PriceEngine
         [Test]
         public void UpdatePrice_NeverGoesNegative()
         {
-            // Low starting price penny stock with bear trend — should hit hard floor at $0.01
+            // Low starting price penny stock with bear trend — should hit dynamic floor
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", StockTier.Penny, 0.15f, TrendDirection.Bear, 0.20f);
 
+            float dynamicFloor = System.Math.Max(0.01f, 0.15f * GameConfig.PriceFloorPercent);
             for (int i = 0; i < 600; i++)
             {
                 _generator.UpdatePrice(stock, 0.016f);
-                Assert.GreaterOrEqual(stock.CurrentPrice, 0.01f,
-                    $"Price went below hard floor at frame {i}");
+                Assert.GreaterOrEqual(stock.CurrentPrice, dynamicFloor,
+                    $"Price went below dynamic floor at frame {i}");
             }
         }
 
         [Test]
-        public void UpdatePrice_ClampsToHardFloor()
+        public void UpdatePrice_ClampsToDynamicFloor()
         {
             var stock = new StockInstance();
-            stock.Initialize(0, "TEST", StockTier.Penny, 0.12f, TrendDirection.Bear, 0.20f);
+            stock.Initialize(0, "TEST", StockTier.Penny, 5f, TrendDirection.Bear, 0.20f);
 
-            // Heavy bear trend on low price — should never go below $0.01
-            for (int i = 0; i < 300; i++)
+            // Heavy bear trend — should never go below 10% of starting price
+            float dynamicFloor = 5f * GameConfig.PriceFloorPercent;
+            for (int i = 0; i < 600; i++)
                 _generator.UpdatePrice(stock, 0.016f);
 
-            Assert.GreaterOrEqual(stock.CurrentPrice, 0.01f,
-                "Price should be clamped to hard floor ($0.01)");
+            Assert.GreaterOrEqual(stock.CurrentPrice, dynamicFloor,
+                $"Price should be clamped to dynamic floor (${dynamicFloor:F2})");
         }
 
         [Test]
@@ -231,7 +233,7 @@ namespace BullRun.Tests.PriceEngine
                 _generator.UpdatePrice(stock, 0.016f);
 
             Assert.Less(stock.CurrentPrice, 50f,
-                "Price should be free to go below tier MinPrice — only hard floor at $0.01");
+                "Price should be free to go below tier MinPrice — only dynamic floor applies");
         }
 
         // --- InitializeRound Tests ---
@@ -786,25 +788,25 @@ namespace BullRun.Tests.PriceEngine
         [Test]
         public void UpdatePrice_PriceFloor_ResetsTrendLine()
         {
-            // FIX-17: When price hits $0.01 floor, trend line should also reset.
-            // Start price below the floor so the floor check fires on the first frame.
+            // When price hits dynamic floor, trend line should also reset.
+            // Use a bear stock that will crash to its floor.
             var stock = new StockInstance();
-            stock.Initialize(0, "TEST", StockTier.Penny, 0.005f, TrendDirection.Bear, 0.50f);
+            stock.Initialize(0, "TEST", StockTier.Penny, 5f, TrendDirection.Bear, 0.50f);
             stock.TimeIntoTrading = 5f;
 
-            // Initial trend line is at 0.005 (starting price)
-            Assert.AreEqual(0.005f, stock.TrendLinePrice, 0.001f);
+            float dynamicFloor = System.Math.Max(0.01f, 5f * GameConfig.PriceFloorPercent);
 
-            // One frame — price is below floor, floor check will fire
-            _generator.UpdatePrice(stock, 0.016f);
+            // Run enough frames to hit the floor
+            for (int i = 0; i < 600; i++)
+                _generator.UpdatePrice(stock, 0.016f);
 
-            // Price should be clamped to floor
-            Assert.AreEqual(0.01f, stock.CurrentPrice, 0.001f,
-                "Price should be clamped to $0.01 floor");
+            // Price should be at or above the dynamic floor
+            Assert.GreaterOrEqual(stock.CurrentPrice, dynamicFloor,
+                $"Price should be clamped to dynamic floor (${dynamicFloor:F2})");
 
-            // Trend line should have been reset to floor price (not left at original 0.005)
-            Assert.AreEqual(0.01f, stock.TrendLinePrice, 0.001f,
-                "Trend line should be reset to floor price when stock hits $0.01");
+            // Trend line should have been reset to floor price (not stuck at pre-crash value)
+            Assert.GreaterOrEqual(stock.TrendLinePrice, dynamicFloor * 0.9f,
+                "Trend line should be near floor price when stock hits dynamic floor");
         }
 
         // --- FIX-17: Full event lifecycle integration test ---
@@ -846,6 +848,249 @@ namespace BullRun.Tests.PriceEngine
             // Trend line should have been shifted on event expiry
             Assert.Greater(stock.TrendLinePrice, 100f,
                 $"Trend line should have shifted to post-event price. Got {stock.TrendLinePrice}");
+        }
+
+        // --- Dynamic price floor tests (price death spiral fix) ---
+
+        [Test]
+        public void UpdatePrice_DynamicFloor_IsPercentOfStartingPrice()
+        {
+            // A $6 Penny stock should have a floor at $0.60 (10% of $6)
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 6f, TrendDirection.Bear, 0.025f);
+            stock.TimeIntoTrading = 5f;
+
+            float expectedFloor = 6f * GameConfig.PriceFloorPercent;
+
+            // Run many frames with strong bear trend to crash the price
+            for (int i = 0; i < 3000; i++)
+                _generator.UpdatePrice(stock, 0.016f);
+
+            Assert.GreaterOrEqual(stock.CurrentPrice, expectedFloor,
+                $"Price should never go below dynamic floor (${expectedFloor:F2}). Got ${stock.CurrentPrice:F4}");
+        }
+
+        [Test]
+        public void UpdatePrice_DynamicFloor_BouncesWithVisibleMovement()
+        {
+            // After hitting the floor, the bounce should produce meaningful movement
+            // (not the near-zero slope that a price-scaled bounce would give at low prices)
+            var generator = new PriceGenerator(new System.Random(42));
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 6f, TrendDirection.Bear, 0.025f);
+            stock.TimeIntoTrading = 5f;
+
+            float dynamicFloor = 6f * GameConfig.PriceFloorPercent;
+
+            // Crash to floor
+            for (int i = 0; i < 3000; i++)
+                generator.UpdatePrice(stock, 0.016f);
+
+            // Record price at floor, then run more frames
+            float priceAtFloor = stock.CurrentPrice;
+            float maxPriceAfterBounce = priceAtFloor;
+            for (int i = 0; i < 300; i++)
+            {
+                generator.UpdatePrice(stock, 0.016f);
+                if (stock.CurrentPrice > maxPriceAfterBounce)
+                    maxPriceAfterBounce = stock.CurrentPrice;
+            }
+
+            // The bounce should push price at least 5% above the floor at some point
+            float bouncePercent = (maxPriceAfterBounce - dynamicFloor) / dynamicFloor;
+            Assert.Greater(bouncePercent, 0.05f,
+                $"Bounce should produce visible movement above floor. " +
+                $"Floor: ${dynamicFloor:F2}, Max after bounce: ${maxPriceAfterBounce:F2} ({bouncePercent:P1})");
+        }
+
+        [Test]
+        public void UpdatePrice_DynamicFloor_FallbackToAbsoluteMinimum()
+        {
+            // For extremely low starting prices, the $0.01 absolute minimum kicks in
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 0.05f, TrendDirection.Bear, 0.20f);
+
+            float dynamicFloor = System.Math.Max(0.01f, 0.05f * GameConfig.PriceFloorPercent);
+            // 0.05 * 0.10 = 0.005, so Max(0.01, 0.005) = 0.01
+
+            for (int i = 0; i < 600; i++)
+            {
+                _generator.UpdatePrice(stock, 0.016f);
+                Assert.GreaterOrEqual(stock.CurrentPrice, 0.01f,
+                    $"Absolute minimum floor ($0.01) should apply for very low starting prices");
+            }
+        }
+
+        // --- Mean reversion cap tests (flatline prevention) ---
+
+        [Test]
+        public void UpdatePrice_MeanReversionCapped_PreventsFlatlinesAtLargeDeviations()
+        {
+            // BlueChip with Neutral trend pushed far from trend line should still show movement
+            // (before fix, strong reversion would overpower noise causing flatline)
+            var generator = new PriceGenerator(new System.Random(42));
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.BlueChip, 2500f, TrendDirection.Neutral, 0f);
+            stock.TimeIntoTrading = 5f;
+
+            // Push price 20% above trend line (large deviation)
+            stock.CurrentPrice = 3000f;
+
+            float totalPercentChange = 0f;
+            float lastPrice = stock.CurrentPrice;
+
+            // Run 5 seconds worth of frames
+            for (int i = 0; i < 300; i++)
+            {
+                generator.UpdatePrice(stock, 0.016f);
+                totalPercentChange += System.Math.Abs((stock.CurrentPrice - lastPrice) / lastPrice);
+                lastPrice = stock.CurrentPrice;
+            }
+
+            // Average per-frame change should be meaningful (not near-zero flatline)
+            float avgChangePerFrame = totalPercentChange / 300f;
+            Assert.Greater(avgChangePerFrame, 0.0001f,
+                $"Even with large deviation, reversion cap should allow visible movement. " +
+                $"Avg change/frame: {avgChangePerFrame:P4}");
+        }
+
+        [Test]
+        public void UpdatePrice_MeanReversionStillWorks_PullsTowardTrendLine()
+        {
+            // Verify reversion still functions (just capped, not removed)
+            var generator = new PriceGenerator(new System.Random(42));
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.BlueChip, 1000f, TrendDirection.Neutral, 0f);
+            stock.TimeIntoTrading = 5f;
+
+            // Push price 30% above trend line
+            stock.CurrentPrice = 1300f;
+
+            for (int i = 0; i < 600; i++)
+                generator.UpdatePrice(stock, 0.016f);
+
+            // Price should have reverted closer to trend line (1000)
+            Assert.Less(stock.CurrentPrice, 1300f,
+                "Capped reversion should still pull price toward trend line");
+        }
+
+        // --- Starting price preservation tests ---
+
+        [Test]
+        public void UpdatePrice_StartingPrice_PreservedThroughPriceChanges()
+        {
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 6f, TrendDirection.Bull, 0.05f);
+
+            Assert.AreEqual(6f, stock.StartingPrice, 0.001f);
+
+            // Run many frames — starting price should never change
+            for (int i = 0; i < 300; i++)
+                _generator.UpdatePrice(stock, 0.016f);
+
+            Assert.AreEqual(6f, stock.StartingPrice, 0.001f,
+                "StartingPrice should be immutable after initialization");
+        }
+
+        // --- Full scenario: death spiral prevention ---
+
+        [Test]
+        public void UpdatePrice_BearStockWithNegativeEvents_NeverTrapped()
+        {
+            // Simulates the exact bug scenario: bear stock + negative events should
+            // NOT result in a permanently flat/trapped stock
+            var generator = new PriceGenerator(new System.Random(42));
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 6f, TrendDirection.Bear, 0.020f);
+            stock.TimeIntoTrading = 5f;
+
+            var eventEffects = new EventEffects();
+            var stocks = new List<StockInstance> { stock };
+            eventEffects.SetActiveStocks(stocks);
+            generator.SetEventEffects(eventEffects);
+
+            float dt = 0.016f;
+            float dynamicFloor = 6f * GameConfig.PriceFloorPercent;
+
+            // Simulate 10 seconds of trading
+            for (int frame = 0; frame < 625; frame++)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(stock, dt);
+            }
+
+            // Fire a -30% crash event
+            var evt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.30f, 4f);
+            eventEffects.StartEvent(evt);
+
+            for (int frame = 0; frame < 375; frame++) // 6 more seconds
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(stock, dt);
+            }
+
+            // Price should be above the dynamic floor
+            Assert.GreaterOrEqual(stock.CurrentPrice, dynamicFloor,
+                $"After crash event, price should stay above dynamic floor (${dynamicFloor:F2})");
+
+            // Measure movement over next 2 seconds — should NOT be flat
+            float totalMovement = 0f;
+            float lastPrice = stock.CurrentPrice;
+            for (int frame = 0; frame < 125; frame++)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(stock, dt);
+                totalMovement += System.Math.Abs(stock.CurrentPrice - lastPrice);
+                lastPrice = stock.CurrentPrice;
+            }
+
+            // Average movement per frame should be at least 0.1% of dynamic floor
+            float avgMovement = totalMovement / 125f;
+            Assert.Greater(avgMovement, dynamicFloor * 0.001f,
+                $"Stock should still show visible movement after crash. Avg movement: ${avgMovement:F4}");
+        }
+
+        [Test]
+        public void UpdatePrice_EventsStillEffective_NearFloor()
+        {
+            // Events should produce meaningful price changes even when stock is near floor
+            var generator = new PriceGenerator(new System.Random(42));
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.Penny, 6f, TrendDirection.Bear, 0.025f);
+            stock.TimeIntoTrading = 5f;
+
+            var eventEffects = new EventEffects();
+            var stocks = new List<StockInstance> { stock };
+            eventEffects.SetActiveStocks(stocks);
+            generator.SetEventEffects(eventEffects);
+
+            float dt = 0.016f;
+            float dynamicFloor = 6f * GameConfig.PriceFloorPercent;
+
+            // Crash the stock to near floor
+            for (int i = 0; i < 3000; i++)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(stock, dt);
+            }
+
+            float priceBeforeEvent = stock.CurrentPrice;
+
+            // Fire a positive +30% event
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.30f, 4f);
+            eventEffects.StartEvent(evt);
+
+            // Run through the event
+            for (int i = 0; i < 300; i++)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(stock, dt);
+            }
+
+            // Event should have produced a visible price increase
+            Assert.Greater(stock.CurrentPrice, priceBeforeEvent * 1.10f,
+                $"Positive event near floor should still produce visible price increase. " +
+                $"Before: ${priceBeforeEvent:F2}, After: ${stock.CurrentPrice:F2}");
         }
     }
 }

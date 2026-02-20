@@ -107,13 +107,16 @@ public class PriceGenerator
             float trendBias = stock.TrendPerSecond * 0.5f;
 
             // Mean reversion bias: if price is above trend line, favor negative slopes.
-            // Uses price deviation directly (not scaled by NoiseAmplitude) so the bias
-            // is strong enough to reliably pull price back toward trend.
+            // Capped at 2x noise amplitude to prevent reversion from completely overpowering
+            // noise, which causes visible flatline behavior on the chart.
             float reversionBias = 0f;
             if (stock.TrendLinePrice > 0f)
             {
                 float deviation = (stock.CurrentPrice - stock.TrendLinePrice) / stock.TrendLinePrice;
                 reversionBias = -deviation * stock.CurrentPrice * stock.TierConfig.MeanReversionSpeed;
+                float maxReversion = stock.NoiseAmplitude * stock.CurrentPrice * 2f;
+                if (reversionBias > maxReversion) reversionBias = maxReversion;
+                else if (reversionBias < -maxReversion) reversionBias = -maxReversion;
             }
 
             stock.SegmentSlope = baseSlope + trendBias + reversionBias;
@@ -121,8 +124,10 @@ public class PriceGenerator
             // Minimum NET movement guarantee: check slope + trend combined,
             // not just slope alone. Prevents the common case where a large negative
             // slope nearly cancels the positive trend, producing near-zero net movement.
+            // Uses Max of percentage-based and absolute floor (starting-price-scaled)
+            // so movement stays visible even when current price is very low.
             float netMovement = stock.SegmentSlope + stock.TrendPerSecond;
-            float minNet = stock.CurrentPrice * 0.005f;
+            float minNet = System.Math.Max(stock.CurrentPrice * 0.005f, stock.StartingPrice * 0.002f);
             if (netMovement > -minNet && netMovement < minNet)
             {
                 // Nudge slope so the net movement reaches the minimum threshold
@@ -151,18 +156,19 @@ public class PriceGenerator
             }
         }
 
-        // Hard floor — stocks can never go to zero or negative.
-        // Bounce slope must be strong enough to overcome negative trend,
-        // otherwise the stock pins to the floor creating a permanent flatline.
-        if (stock.CurrentPrice < 0.01f)
+        // Dynamic floor — percentage of starting price prevents death spiral.
+        // At very low prices, all movement mechanics (noise, trend, events) scale
+        // with CurrentPrice, making recovery impossible. The dynamic floor keeps
+        // stocks in a range where price-scaled movement is still visible on the chart.
+        float dynamicFloor = System.Math.Max(0.01f, stock.StartingPrice * GameConfig.PriceFloorPercent);
+        if (stock.CurrentPrice < dynamicFloor)
         {
-            stock.CurrentPrice = 0.01f;
-            // FIX-17: Reset trend line to floor price so mean reversion doesn't fight the bounce
-            stock.TrendLinePrice = 0.01f;
-            // Minimum bounce slope: overcome the trend + add strong visible upward movement.
-            // Uses 2x the trend magnitude so the stock visibly rebounds off the floor
-            // rather than hovering at $0.01 with imperceptible drift.
-            float minBounceSlope = System.Math.Abs(stock.TrendPerSecond) * 2f + stock.CurrentPrice * 0.01f;
+            stock.CurrentPrice = dynamicFloor;
+            // Reset trend line to floor price so mean reversion doesn't fight the bounce
+            stock.TrendLinePrice = dynamicFloor;
+            // Bounce slope based on StartingPrice so it produces visible movement
+            // regardless of how low the current price is.
+            float minBounceSlope = stock.StartingPrice * 0.02f;
             if (stock.SegmentSlope < minBounceSlope)
                 stock.SegmentSlope = minBounceSlope;
         }
@@ -313,6 +319,7 @@ public class PriceGenerator
             {
                 Ticker = stock.TickerSymbol,
                 CurrentPrice = stock.CurrentPrice,
+                StartingPrice = stock.StartingPrice,
                 TrendLinePrice = stock.TrendLinePrice,
                 TrendDirection = stock.TrendDirection,
                 TrendRate = stock.TrendRate,
@@ -353,6 +360,7 @@ public struct StockDebugInfo
 {
     public string Ticker;
     public float CurrentPrice;
+    public float StartingPrice;
     public float TrendLinePrice;
     public TrendDirection TrendDirection;
     public float TrendRate;

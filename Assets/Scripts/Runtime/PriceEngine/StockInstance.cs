@@ -17,6 +17,7 @@ public class StockInstance
     public int StockId { get; private set; }
     public string TickerSymbol { get; private set; }
     public float CurrentPrice { get; set; }
+    public float StartingPrice { get; private set; }
     public TrendDirection TrendDirection { get; private set; }
     // FIX-18: TrendRate is the percentage rate per second (e.g., 0.017 = 1.7%/s).
     // TrendPerSecond is now computed dynamically from current price for compound growth.
@@ -52,6 +53,7 @@ public class StockInstance
         StockId = stockId;
         TickerSymbol = tickerSymbol;
         CurrentPrice = startingPrice;
+        StartingPrice = startingPrice;
         TrendDirection = trendDirection;
         Tier = tier;
         Sector = sector;

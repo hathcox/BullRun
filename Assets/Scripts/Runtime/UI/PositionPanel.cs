@@ -33,7 +33,7 @@ public class PositionPanel : MonoBehaviour
     private static readonly Color DimTextColor = ColorPalette.WhiteDim;
 
     private PositionPanelData _data;
-    private Portfolio _portfolio;
+    private RunContext _ctx;
     private Dictionary<string, float> _latestPrices = new Dictionary<string, float>();
     private bool _pnlDirty;
     private bool _rebuildDirty;
@@ -58,9 +58,9 @@ public class PositionPanel : MonoBehaviour
 
     public PositionPanelData Data => _data;
 
-    public void Initialize(Portfolio portfolio, Transform entryContainer, Text emptyText)
+    public void Initialize(RunContext ctx, Transform entryContainer, Text emptyText)
     {
-        _portfolio = portfolio;
+        _ctx = ctx;
         _entryContainer = entryContainer;
         _emptyText = emptyText;
         _data = new PositionPanelData();
@@ -214,9 +214,9 @@ public class PositionPanel : MonoBehaviour
 
     private void RefreshPanel()
     {
-        if (_portfolio == null) return;
+        if (_ctx == null || _ctx.Portfolio == null) return;
 
-        _data.RefreshFromPortfolio(_portfolio);
+        _data.RefreshFromPortfolio(_ctx.Portfolio);
         RebuildEntryViews();
         UpdatePnLDisplay();
 
@@ -358,9 +358,15 @@ public class PositionPanel : MonoBehaviour
         }
     }
 
+    // Share square visual constants
+    public static readonly float ShareSquareSize = 8f;
+    public static readonly float ShareSquareSpacing = 2f;
+    public static readonly int ShareSquareMaxDisplay = 10;
+
     /// <summary>
     /// Creates a compact entry matching the reference layout:
     ///   LONG                    (type header, colored)
+    ///   [■][■][■]              (share squares, one per share)
     ///   MOON 1x Avg: $7.41 / P&L: -$3.43   (info line)
     ///   Hold: 4.2s             (countdown, shorts only)
     /// </summary>
@@ -389,7 +395,10 @@ public class PositionPanel : MonoBehaviour
             FormatPositionType(entry.IsLong), typeColor, 15, FontStyle.Bold, TextAnchor.MiddleLeft, 18f);
         view.TickerText = typeGo.GetComponent<Text>();
 
-        // Line 2: Info — "MOON 1x  Avg: $7.41 / P&L: -$3.43"
+        // Line 2: Share squares — one filled square per share held
+        CreateShareSquares(entryGo.transform, entry.Shares, typeColor);
+
+        // Line 3: Info — "MOON 1x  Avg: $7.41 / P&L: -$3.43"
         var infoRowGo = new GameObject("InfoRow");
         infoRowGo.transform.SetParent(entryGo.transform, false);
         infoRowGo.AddComponent<RectTransform>();
@@ -435,6 +444,38 @@ public class PositionPanel : MonoBehaviour
         countdownGo.SetActive(false);
 
         return view;
+    }
+
+    /// <summary>
+    /// Creates a horizontal row of small colored squares, one per share held.
+    /// Capped at ShareSquareMaxDisplay to prevent overflow.
+    /// </summary>
+    private void CreateShareSquares(Transform parent, int shares, Color color)
+    {
+        var rowGo = new GameObject("ShareSquares");
+        rowGo.transform.SetParent(parent, false);
+        rowGo.AddComponent<RectTransform>();
+        var hlg = rowGo.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = ShareSquareSpacing;
+        hlg.childAlignment = TextAnchor.MiddleLeft;
+        hlg.childForceExpandWidth = false;
+        hlg.childForceExpandHeight = false;
+        var rowLayout = rowGo.AddComponent<LayoutElement>();
+        rowLayout.preferredHeight = ShareSquareSize + 4f;
+
+        int displayCount = Mathf.Min(shares, ShareSquareMaxDisplay);
+        for (int i = 0; i < displayCount; i++)
+        {
+            var sqGo = new GameObject($"Share_{i}");
+            sqGo.transform.SetParent(rowGo.transform, false);
+            var sqRect = sqGo.AddComponent<RectTransform>();
+            sqRect.sizeDelta = new Vector2(ShareSquareSize, ShareSquareSize);
+            var sqImg = sqGo.AddComponent<Image>();
+            sqImg.color = color;
+            var sqLayout = sqGo.AddComponent<LayoutElement>();
+            sqLayout.preferredWidth = ShareSquareSize;
+            sqLayout.preferredHeight = ShareSquareSize;
+        }
     }
 
     /// <summary>

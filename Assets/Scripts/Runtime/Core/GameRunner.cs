@@ -456,10 +456,10 @@ public class GameRunner : MonoBehaviour
         if (_quantitySelector.LeverageBadge != null)
             _quantitySelector.LeverageBadge.SetActive(_ctx.OwnedExpansions.Contains(ExpansionDefinitions.LeverageTrading));
 
-        // Story 13.7: Dual Short visibility
-        _dualShortActive = _ctx.OwnedExpansions.Contains(ExpansionDefinitions.DualShort);
+        // Dual Short now doubles shares instead of adding a second button — always hide Short2 UI
+        _dualShortActive = false;
         if (_quantitySelector.Short2Container != null)
-            _quantitySelector.Short2Container.SetActive(_dualShortActive);
+            _quantitySelector.Short2Container.SetActive(false);
     }
 
     // ========================

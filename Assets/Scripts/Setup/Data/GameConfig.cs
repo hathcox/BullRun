@@ -117,6 +117,11 @@ public static class GameConfig
     public static readonly float MusicActTransitionStingerVolume = 0.8f;
     public static readonly float MusicRoundVictoryStingerVolume = 0.9f;
 
+    // Dynamic price floor: percentage of starting price. Prevents death spiral
+    // where stocks crash to near-zero and all price-scaled movement becomes imperceptible.
+    // 10% means a $6 Penny stock can't drop below $0.60.
+    public static readonly float PriceFloorPercent = 0.10f;
+
     // Seconds at round start where price holds flat (no movement)
     public static readonly float PriceFreezeSeconds = 1.0f;
 

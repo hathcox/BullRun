@@ -110,7 +110,9 @@ public class RelicManager
     }
 
     /// <summary>
-    /// Returns effective short share count. Bear Raid: 3 shares instead of base.
+    /// Returns effective short share count.
+    /// Dual Short expansion: 2x base shares.
+    /// Bear Raid relic: 3 shares (overrides Dual Short).
     /// </summary>
     public int GetEffectiveShortShares()
     {
@@ -118,7 +120,12 @@ public class RelicManager
         {
             return 3;
         }
-        return GameConfig.ShortBaseShares;
+        int shares = GameConfig.ShortBaseShares;
+        if (_ctx.OwnedExpansions.Contains(ExpansionDefinitions.DualShort))
+        {
+            shares *= 2;
+        }
+        return shares;
     }
 
     /// <summary>

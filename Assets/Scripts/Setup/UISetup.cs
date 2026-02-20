@@ -117,7 +117,7 @@ public static class UISetup
         posPanelGo.transform.SetParent(hudParent.transform, false);
         var positionPanel = posPanelGo.AddComponent<PositionPanel>();
         positionPanel.Initialize(
-            runContext.Portfolio,
+            runContext,
             dashRefs.PositionEntryContainer,
             dashRefs.PositionEmptyText
         );
