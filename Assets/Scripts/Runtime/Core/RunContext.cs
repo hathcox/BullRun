@@ -65,6 +65,13 @@ public class RunContext
     public int BonusExpansionSlots { get; internal set; }
 
     /// <summary>
+    /// Story 17.7: Number of bonus relic slots from selling Relic Expansion relics.
+    /// Persists across shop visits within a run but resets on new run.
+    /// Used by ShopTransaction.GetEffectiveMaxRelicSlots().
+    /// </summary>
+    public int BonusRelicSlots { get; internal set; }
+
+    /// <summary>
     /// True when the player has completed all rounds (survived Round 8 margin call).
     /// Set by MarginCallState when the final round passes.
     /// </summary>
@@ -259,6 +266,7 @@ public class RunContext
         ShortingDisabled = false;
         FreeIntelThisVisit = false;
         BonusExpansionSlots = 0;
+        BonusRelicSlots = 0;
         RunCompleted = false;
         PeakCash = Portfolio.Cash;
         BestRoundProfit = 0f;

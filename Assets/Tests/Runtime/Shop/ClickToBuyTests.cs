@@ -225,12 +225,14 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRefund_Cost50_Returns25()
         {
-            _ctx.RelicManager.AddRelic("relic_relic_expansion"); // Cost: 50
+            // Story 17.7: relic_relic_expansion now has custom sell value of 0,
+            // so use relic_rep_doubler (cost 40) for standard 50% refund test
+            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 40
             int repBefore = _ctx.Reputation.Current;
 
-            _transaction.SellRelic(_ctx, "relic_relic_expansion");
+            _transaction.SellRelic(_ctx, "relic_rep_doubler");
 
-            Assert.AreEqual(repBefore + 25, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 20, _ctx.Reputation.Current);
         }
 
         // === ShopItemSoldEvent contains correct data (AC 15) ===

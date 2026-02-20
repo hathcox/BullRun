@@ -95,7 +95,7 @@ public static class ShopItemDefinitions
             "Earn 10% of stock value when shorting.",
             "+10% cash on short", 22),
         new RelicDef("relic_relic_expansion", "Relic Expansion",
-            "+1 relic slot permanently when sold. 0 rep refund.",
+            "Sell to permanently gain +1 relic slot. No Rep refund.",
             "+1 slot on sell (0 rep)", 50),
         new RelicDef("relic_event_catalyst", "Event Catalyst",
             "Rep earned = 1% chance per rep to trigger event.",

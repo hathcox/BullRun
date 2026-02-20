@@ -90,6 +90,7 @@ public class ShopTransaction
         {
             maxSlots += 2;
         }
+        maxSlots += ctx.BonusRelicSlots;
         return maxSlots;
     }
 

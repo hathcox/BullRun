@@ -75,7 +75,11 @@ public static class RelicFactory
         _registry["relic_free_intel"] = () => new FreeIntelRelic();
         _registry["relic_extra_expansion"] = () => new ExtraExpansionRelic();
 
-        // Remaining relics still use StubRelic until Story 17.7
+        // Story 17.7: Register real relic constructors for special relics
+        _registry["relic_event_catalyst"] = () => new EventCatalystRelic();
+        _registry["relic_relic_expansion"] = () => new RelicExpansionRelic();
+
+        // All 23 relics now have real implementations — StubRelic fallback for safety only
         for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
         {
             var id = ShopItemDefinitions.RelicPool[i].Id;

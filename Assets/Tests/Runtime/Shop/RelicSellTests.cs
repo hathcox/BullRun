@@ -62,14 +62,15 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRelic_RefundsHalfCostRoundedDown_HighCost()
         {
-            // Relic Expansion costs 50 → refund 25
-            _ctx.RelicManager.AddRelic("relic_relic_expansion"); // Cost: 50
+            // Story 17.7: relic_relic_expansion now has custom sell value of 0,
+            // so use relic_rep_doubler (cost 40) for standard 50% refund test
+            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 40
             int repBefore = _ctx.Reputation.Current;
 
-            var result = _transaction.SellRelic(_ctx, "relic_relic_expansion");
+            var result = _transaction.SellRelic(_ctx, "relic_rep_doubler");
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(repBefore + 25, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 20, _ctx.Reputation.Current);
         }
 
         // === Inventory Removal (AC: 6) ===
