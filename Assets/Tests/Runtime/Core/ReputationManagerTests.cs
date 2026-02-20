@@ -178,7 +178,7 @@ namespace BullRun.Tests.Core
             ctx.Reputation.Add(500);
 
             var transaction = new ShopTransaction();
-            var relic = new RelicDef("test", "Test", "desc", 200);
+            var relic = new RelicDef("test", "Test", "desc", "", 200);
 
             var result = transaction.PurchaseRelic(ctx, relic);
 

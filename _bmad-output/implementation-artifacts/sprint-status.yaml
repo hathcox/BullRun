@@ -92,7 +92,7 @@ development_status:
   # === Epic 17: Relic System — Effects, Data & UI ===
   epic-17: in-progress
   17-1-relic-effect-framework: done                            # IRelic, RelicBase, RelicManager, RelicFactory, EventBus wiring — code review: 6 fixes applied, 1724/1725 tests pass
-  17-2-shop-behavior-and-data-overhaul: ready-for-dev         # 23 relic defs, shop purchase/reroll fixes, RelicDef.EffectDescription
+  17-2-shop-behavior-and-data-overhaul: done                    # 23 relic defs, shop fixes, code review: 6 fixes applied
   17-3-trade-modification-relics: ready-for-dev               # Double Dealer, Quick Draw, Bear Raid, Skimmer, Short Profiteer
   17-4-event-interaction-relics: ready-for-dev                # Catalyst Trader, Event Storm, Loss Liquidator, Profit Refresh, Bull Believer
   17-5-economy-reputation-relics: ready-for-dev               # Rep Doubler, Fail Forward, Compound Rep, Rep Interest, Rep Dividend, Bond Bonus

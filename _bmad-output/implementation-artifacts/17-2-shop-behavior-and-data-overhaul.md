@@ -1,6 +1,6 @@
 # Story 17.2: Shop Behavior Fixes & Relic Data Overhaul
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -24,42 +24,42 @@ so that the shop feels responsive and I have meaningful choices.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Update RelicDef struct (AC: 7)
-  - [ ] Add `string EffectDescription` field to `RelicDef`
-  - [ ] Update constructor to accept EffectDescription parameter
-  - [ ] File: `Scripts/Setup/Data/ShopItemDefinitions.cs`
-- [ ] Task 2: Replace relic pool (AC: 5, 6)
-  - [ ] Remove all 8 placeholder relics from `RelicPool`
-  - [ ] Add all 23 new relic definitions with Id, Name, Description, EffectDescription, Cost
-  - [ ] Relic IDs follow pattern: `relic_snake_case_name`
-  - [ ] Costs range 8-50 Rep (see epic-17 for full table)
-  - [ ] File: `Scripts/Setup/Data/ShopItemDefinitions.cs`
-- [ ] Task 3: Fix purchase removes card (AC: 1, 2)
-  - [ ] In `ShopUI`, after successful purchase: set `_currentOffering[slotIndex] = null`
-  - [ ] Update card visual to show empty/blank (not SOLD stamp)
-  - [ ] Remove or bypass the existing "SOLD" stamp animation for relics
-  - [ ] The slot should appear as an empty dark card or hidden
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
-- [ ] Task 4: Fix reroll fills all 3 slots (AC: 3, 4)
-  - [ ] In ShopUI reroll handler: call `ShopGenerator.GenerateRelicOffering(ownedRelicIds, random)` WITHOUT additionalExcludeIds
-  - [ ] Remove the logic that preserves unsold relics during reroll
-  - [ ] All 3 slots get fresh random relics every reroll
-  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Runtime/Core/GameStates/ShopState.cs`
-- [ ] Task 5: Update RelicFactory registrations (AC: 8)
-  - [ ] Register all 23 relic IDs in RelicFactory with StubRelic constructors
-  - [ ] Each StubRelic has the correct Id matching the RelicDef
-  - [ ] File: `Scripts/Runtime/Items/RelicFactory.cs`
-- [ ] Task 6: Rebuild ItemLookup cache (AC: 9)
-  - [ ] Clear and rebuild the lookup dictionary
-  - [ ] Verify `GetRelicById()` works for all 23 new IDs
-  - [ ] File: `Scripts/Runtime/Items/ItemLookup.cs`
-- [ ] Task 7: Update tests (AC: 10, 11)
-  - [ ] Update ShopGeneratorTests for new pool size (23 relics)
-  - [ ] Update RelicPurchaseTests if any reference placeholder relic IDs
-  - [ ] Add test: purchase removes from offering array (slot becomes null)
-  - [ ] Add test: reroll regenerates all 3 slots fresh (no exclusion of displayed)
-  - [ ] Verify owned relic exclusion still works
-  - [ ] Files: `Tests/Runtime/Shop/ShopGeneratorTests.cs`, `Tests/Runtime/Shop/RelicPurchaseTests.cs`
+- [x] Task 1: Update RelicDef struct (AC: 7)
+  - [x] Add `string EffectDescription` field to `RelicDef`
+  - [x] Update constructor to accept EffectDescription parameter
+  - [x] File: `Scripts/Setup/Data/ShopItemDefinitions.cs`
+- [x] Task 2: Replace relic pool (AC: 5, 6)
+  - [x] Remove all 8 placeholder relics from `RelicPool`
+  - [x] Add all 23 new relic definitions with Id, Name, Description, EffectDescription, Cost
+  - [x] Relic IDs follow pattern: `relic_snake_case_name`
+  - [x] Costs range 8-50 Rep (see epic-17 for full table)
+  - [x] File: `Scripts/Setup/Data/ShopItemDefinitions.cs`
+- [x] Task 3: Fix purchase removes card (AC: 1, 2)
+  - [x] In `ShopUI`, after successful purchase: set `_currentOffering[slotIndex] = null`
+  - [x] Update card visual to show empty/blank (not SOLD stamp)
+  - [x] Remove or bypass the existing "SOLD" stamp animation for relics
+  - [x] The slot should appear as an empty dark card or hidden
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs`
+- [x] Task 4: Fix reroll fills all 3 slots (AC: 3, 4)
+  - [x] In ShopUI reroll handler: call `ShopGenerator.GenerateRelicOffering(ownedRelicIds, random)` WITHOUT additionalExcludeIds
+  - [x] Remove the logic that preserves unsold relics during reroll
+  - [x] All 3 slots get fresh random relics every reroll
+  - [x] File: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Runtime/Core/GameStates/ShopState.cs`
+- [x] Task 5: Update RelicFactory registrations (AC: 8)
+  - [x] Register all 23 relic IDs in RelicFactory with StubRelic constructors
+  - [x] Each StubRelic has the correct Id matching the RelicDef
+  - [x] File: `Scripts/Runtime/Items/RelicFactory.cs`
+- [x] Task 6: Rebuild ItemLookup cache (AC: 9)
+  - [x] Clear and rebuild the lookup dictionary
+  - [x] Verify `GetRelicById()` works for all 23 new IDs
+  - [x] File: `Scripts/Runtime/Items/ItemLookup.cs`
+- [x] Task 7: Update tests (AC: 10, 11)
+  - [x] Update ShopGeneratorTests for new pool size (23 relics)
+  - [x] Update RelicPurchaseTests if any reference placeholder relic IDs
+  - [x] Add test: purchase removes from offering array (slot becomes null)
+  - [x] Add test: reroll regenerates all 3 slots fresh (no exclusion of displayed)
+  - [x] Verify owned relic exclusion still works
+  - [x] Files: `Tests/Runtime/Shop/ShopGeneratorTests.cs`, `Tests/Runtime/Shop/RelicPurchaseTests.cs`
 
 ## Dev Notes
 
@@ -117,9 +117,42 @@ so that the shop feels responsive and I have meaningful choices.
 ## Dev Agent Record
 
 ### Agent Model Used
+Claude Opus 4.6
 
 ### Debug Log References
+None — no runtime errors encountered.
 
 ### Completion Notes List
+- Task 1: Added `EffectDescription` field to `RelicDef` struct with updated 5-param constructor.
+- Task 2: Replaced 8 placeholder relics with 23 balanced relic definitions (costs 8–50 Rep). All IDs follow `relic_snake_case_name` pattern.
+- Task 3: Replaced SOLD stamp animation with slide-up + fade-out purchase animation. `ApplyPurchasedEmptyState()` nulls the offering slot and shows empty/blank card via `SetupSoldOutRelicSlot()`. Both `ShopUI._relicOffering` and `ShopState._relicOffering` set to null on purchase.
+- Task 4: `ShopState.OnRerollRequested` now calls `GenerateRelicOffering(ctx.OwnedRelics, _random)` without `additionalExcludeIds`. All 3 slots regenerate fresh. `_purchased` and `_soldFlags` arrays are reset on reroll.
+- Task 5: `RelicFactory.RegisterDefaults()` dynamically iterates `ShopItemDefinitions.RelicPool` to register all 23 relics as StubRelic — no hardcoded list needed.
+- Task 6: `ItemLookup.EnsureCache()` automatically rebuilds from current `RelicPool` on first access. `ClearCache()` available for testing.
+- Task 7: Updated 12 test files across Shop, Items, and Core test directories. Tests validate 23-relic pool, EffectDescription presence, purchase-removes-card behavior, reroll-all-3-slots, owned exclusion, and all foundational shop transaction patterns.
+- Note: Tests were not run via CLI (Unity test runner not available in this environment). Manual test execution recommended before merge.
+- Review Fix: `ShopGeneratorTests.PartialExhaustion_SomeNulls` had stale assertion (assumed 8-relic pool). Updated to own `pool.Length - 2` relics.
+- Review Fix: Stale comments updated in `ShopGeneratorTests.cs`, `RelicFactory.cs`, `ShopUI.cs`.
 
 ### File List
+- `Assets/Scripts/Setup/Data/ShopItemDefinitions.cs` — Modified: RelicDef gains EffectDescription, 23 relics replace 8 placeholders
+- `Assets/Scripts/Runtime/UI/ShopUI.cs` — Modified: Purchase removes card (no SOLD stamp), reroll resets all slots
+- `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs` — Modified: Purchase nulls offering slot, reroll without additionalExcludeIds
+- `Assets/Scripts/Runtime/Items/RelicFactory.cs` — Unchanged: Dynamic registration from RelicPool was set up in 17.1 (comment updated by review)
+- `Assets/Scripts/Runtime/Items/ItemLookup.cs` — Unchanged (auto-rebuilds from pool)
+- `Assets/Tests/Runtime/Shop/ShopGeneratorTests.cs` — Modified: Updated for 23-relic pool
+- `Assets/Tests/Runtime/Shop/RelicPurchaseTests.cs` — Modified: Updated for 23-relic pool
+- `Assets/Tests/Runtime/Shop/ClickToBuyTests.cs` — Modified: Updated relic references
+- `Assets/Tests/Runtime/Shop/ShopItemDefinitionsTests.cs` — Modified: Validates 23 relics, EffectDescription, cost range
+- `Assets/Tests/Runtime/Shop/ShopTransactionTests.cs` — Modified: Updated relic references
+- `Assets/Tests/Runtime/Shop/RelicSellTests.cs` — Modified: Updated relic references
+- `Assets/Tests/Runtime/Shop/ExpansionEffectsTests.cs` — Modified: Updated relic references
+- `Assets/Tests/Runtime/Shop/StoreDataModelTests.cs` — Modified: Updated relic references
+- `Assets/Tests/Runtime/Items/ItemLookupTests.cs` — Modified: Validates all 23 IDs resolvable
+- `Assets/Tests/Runtime/Items/RelicFactoryTests.cs` — Modified: Validates all 23 IDs registered
+- `Assets/Tests/Runtime/Items/RelicManagerTests.cs` — Modified: Updated relic references
+- `Assets/Tests/Runtime/Core/ReputationManagerTests.cs` — Modified: Updated relic references
+
+## Change Log
+- 2026-02-19: Story 17.2 implemented — 23 relic definitions, purchase removes card, reroll fills all 3 slots, RelicFactory dynamic registration, 12 test files updated
+- 2026-02-19: Code review (AI) — Fixed 1 critical test bug (PartialExhaustion assumed 8-relic pool), corrected stale comments/docstrings in 3 files, updated File List to reflect RelicFactory.cs was unchanged

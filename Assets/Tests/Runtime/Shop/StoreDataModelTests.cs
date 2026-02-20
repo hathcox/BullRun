@@ -33,7 +33,7 @@ namespace BullRun.Tests.Shop
         private RelicDef MakeRelic(string id, string name, int cost)
         {
             RelicFactory.Register(id, () => new StubRelic(id));
-            return new RelicDef(id, name, "Test relic", cost);
+            return new RelicDef(id, name, "Test relic", "", cost);
         }
 
         // === BondRecord struct ===

@@ -27,17 +27,17 @@ namespace BullRun.Tests.Items
         [Test]
         public void GetRelicById_ValidId_ReturnsCorrectDefinition()
         {
-            var result = ItemLookup.GetRelicById("relic_stop_loss");
-            Assert.IsTrue(result.HasValue, "Should find relic_stop_loss");
-            Assert.AreEqual("Stop-Loss Order", result.Value.Name);
+            var result = ItemLookup.GetRelicById("relic_event_trigger");
+            Assert.IsTrue(result.HasValue, "Should find relic_event_trigger");
+            Assert.AreEqual("Catalyst Trader", result.Value.Name);
         }
 
         [Test]
         public void GetRelicById_AnotherValidId_ReturnsCorrectDefinition()
         {
-            var result = ItemLookup.GetRelicById("relic_insider_tip");
-            Assert.IsTrue(result.HasValue, "Should find relic_insider_tip");
-            Assert.AreEqual("Insider Tip", result.Value.Name);
+            var result = ItemLookup.GetRelicById("relic_short_multiplier");
+            Assert.IsTrue(result.HasValue, "Should find relic_short_multiplier");
+            Assert.AreEqual("Bear Raid", result.Value.Name);
         }
 
         [Test]
@@ -59,8 +59,8 @@ namespace BullRun.Tests.Items
         [Test]
         public void GetRelicById_MultipleCallsSameId_ReturnsSameResult()
         {
-            var first = ItemLookup.GetRelicById("relic_stop_loss");
-            var second = ItemLookup.GetRelicById("relic_stop_loss");
+            var first = ItemLookup.GetRelicById("relic_event_trigger");
+            var second = ItemLookup.GetRelicById("relic_event_trigger");
             Assert.IsTrue(first.HasValue && second.HasValue);
             Assert.AreEqual(first.Value.Id, second.Value.Id);
         }
@@ -68,11 +68,11 @@ namespace BullRun.Tests.Items
         [Test]
         public void ClearCache_ThenLookup_StillWorks()
         {
-            ItemLookup.GetRelicById("relic_stop_loss"); // Builds cache
+            ItemLookup.GetRelicById("relic_event_trigger"); // Builds cache
             ItemLookup.ClearCache();
-            var result = ItemLookup.GetRelicById("relic_stop_loss"); // Rebuilds cache
+            var result = ItemLookup.GetRelicById("relic_event_trigger"); // Rebuilds cache
             Assert.IsTrue(result.HasValue);
-            Assert.AreEqual("Stop-Loss Order", result.Value.Name);
+            Assert.AreEqual("Catalyst Trader", result.Value.Name);
         }
 
         [Test]

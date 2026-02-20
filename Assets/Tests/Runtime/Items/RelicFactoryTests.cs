@@ -23,9 +23,9 @@ namespace BullRun.Tests.Items
         [Test]
         public void Create_KnownId_ReturnsInstance()
         {
-            var relic = RelicFactory.Create("relic_stop_loss");
+            var relic = RelicFactory.Create("relic_event_trigger");
             Assert.IsNotNull(relic);
-            Assert.AreEqual("relic_stop_loss", relic.Id);
+            Assert.AreEqual("relic_event_trigger", relic.Id);
         }
 
         [Test]
@@ -62,7 +62,7 @@ namespace BullRun.Tests.Items
         public void ClearRegistry_ThenCreate_ReturnsNull()
         {
             RelicFactory.ClearRegistry();
-            var relic = RelicFactory.Create("relic_stop_loss");
+            var relic = RelicFactory.Create("relic_event_trigger");
             Assert.IsNull(relic, "After ClearRegistry, no relics should be creatable");
         }
 
@@ -81,8 +81,8 @@ namespace BullRun.Tests.Items
         [Test]
         public void Create_ReturnsFreshInstanceEachCall()
         {
-            var a = RelicFactory.Create("relic_stop_loss");
-            var b = RelicFactory.Create("relic_stop_loss");
+            var a = RelicFactory.Create("relic_event_trigger");
+            var b = RelicFactory.Create("relic_event_trigger");
             Assert.IsNotNull(a);
             Assert.IsNotNull(b);
             Assert.AreNotSame(a, b, "Each Create call should return a new instance");

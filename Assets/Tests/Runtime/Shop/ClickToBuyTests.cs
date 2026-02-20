@@ -38,7 +38,7 @@ namespace BullRun.Tests.Shop
         private RelicDef MakeTestRelic(string id, string name, string desc, int cost)
         {
             RelicFactory.Register(id, () => new StubRelic(id));
-            return new RelicDef(id, name, desc, cost);
+            return new RelicDef(id, name, desc, "", cost);
         }
 
         // === Click-to-buy relic: purchase succeeds, relic added to inventory (AC 7, 8) ===
@@ -201,36 +201,36 @@ namespace BullRun.Tests.Shop
         // === Sell refund calculation edge cases (AC 5, 6) ===
 
         [Test]
-        public void SellRefund_EvenCost100_Returns50()
+        public void SellRefund_Cost20_Returns10()
         {
-            _ctx.RelicManager.AddRelic("relic_stop_loss"); // Cost: 100
+            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 20
             int repBefore = _ctx.Reputation.Current;
 
-            _transaction.SellRelic(_ctx, "relic_stop_loss");
+            _transaction.SellRelic(_ctx, "relic_short_multiplier");
 
-            Assert.AreEqual(repBefore + 50, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 10, _ctx.Reputation.Current);
         }
 
         [Test]
-        public void SellRefund_Cost150_Returns75()
+        public void SellRefund_Cost30_Returns15()
         {
-            _ctx.RelicManager.AddRelic("relic_speed_trader"); // Cost: 150
+            _ctx.RelicManager.AddRelic("relic_double_dealer"); // Cost: 30
             int repBefore = _ctx.Reputation.Current;
 
-            _transaction.SellRelic(_ctx, "relic_speed_trader");
+            _transaction.SellRelic(_ctx, "relic_double_dealer");
 
-            Assert.AreEqual(repBefore + 75, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 15, _ctx.Reputation.Current);
         }
 
         [Test]
-        public void SellRefund_Cost500_Returns250()
+        public void SellRefund_Cost50_Returns25()
         {
-            _ctx.RelicManager.AddRelic("relic_master_universe"); // Cost: 500
+            _ctx.RelicManager.AddRelic("relic_relic_expansion"); // Cost: 50
             int repBefore = _ctx.Reputation.Current;
 
-            _transaction.SellRelic(_ctx, "relic_master_universe");
+            _transaction.SellRelic(_ctx, "relic_relic_expansion");
 
-            Assert.AreEqual(repBefore + 250, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 25, _ctx.Reputation.Current);
         }
 
         // === ShopItemSoldEvent contains correct data (AC 15) ===
@@ -241,12 +241,12 @@ namespace BullRun.Tests.Shop
             ShopItemSoldEvent received = default;
             EventBus.Subscribe<ShopItemSoldEvent>(e => { received = e; });
 
-            _ctx.RelicManager.AddRelic("relic_dark_pool"); // Cost: 350
+            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 40
 
-            _transaction.SellRelic(_ctx, "relic_dark_pool");
+            _transaction.SellRelic(_ctx, "relic_rep_doubler");
 
-            Assert.AreEqual("relic_dark_pool", received.RelicId);
-            Assert.AreEqual(175, received.RefundAmount); // 350 / 2
+            Assert.AreEqual("relic_rep_doubler", received.RelicId);
+            Assert.AreEqual(20, received.RefundAmount); // 40 / 2
         }
 
         // === Owned relics capacity dynamic adjustment (AC 2) ===

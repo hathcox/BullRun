@@ -212,7 +212,10 @@ public class ShopState : IGameState
             _purchased[cardIndex] = true;
             _purchasedItemIds.Add(relic.Id);
 
-            // Update UI: mark purchased, refresh affordability, and update owned relics bar (Story 13.10 AC 7)
+            // Story 17.2 AC 2: Null out the purchased slot
+            _relicOffering[cardIndex] = null;
+
+            // Update UI: remove card, refresh affordability, and update owned relics bar
             if (ShopUIInstance != null)
             {
                 ShopUIInstance.RefreshAfterPurchase(cardIndex);
@@ -261,24 +264,11 @@ public class ShopState : IGameState
             return; // Insufficient funds
         }
 
-        // Regenerate offering — only unsold slots get new items (AC 10)
-        // Exclude currently displayed unsold relics so reroll yields fresh items
-        var currentUnsoldIds = new List<string>();
-        for (int i = 0; i < _relicOffering.Length; i++)
-        {
-            if (!_purchased[i] && _relicOffering[i].HasValue)
-                currentUnsoldIds.Add(_relicOffering[i].Value.Id);
-        }
-        var newOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, currentUnsoldIds, _random);
+        // Story 17.2 AC 3, 4: ALL 3 slots regenerate fresh — no additionalExcludeIds
+        var newOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, _random);
 
-        // Preserve sold slots
-        for (int i = 0; i < _relicOffering.Length && i < newOffering.Length; i++)
-        {
-            if (_purchased[i])
-            {
-                newOffering[i] = _relicOffering[i]; // Keep sold item reference
-            }
-        }
+        // Reset purchased flags — all slots get fresh relics
+        _purchased = new bool[newOffering.Length];
 
         _relicOffering = newOffering;
 

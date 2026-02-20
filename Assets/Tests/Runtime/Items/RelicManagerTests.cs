@@ -37,17 +37,17 @@ namespace BullRun.Tests.Items
         [Test]
         public void AddRelic_AppearsInOrderedRelics()
         {
-            _mgr.AddRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
             Assert.AreEqual(1, _mgr.OrderedRelics.Count);
-            Assert.AreEqual("relic_stop_loss", _mgr.OrderedRelics[0].Id);
+            Assert.AreEqual("relic_event_trigger", _mgr.OrderedRelics[0].Id);
         }
 
         [Test]
         public void AddRelic_SyncsWithRunContextOwnedRelics()
         {
-            _mgr.AddRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
             Assert.AreEqual(1, _ctx.OwnedRelics.Count);
-            Assert.AreEqual("relic_stop_loss", _ctx.OwnedRelics[0]);
+            Assert.AreEqual("relic_event_trigger", _ctx.OwnedRelics[0]);
         }
 
         [Test]
@@ -70,23 +70,23 @@ namespace BullRun.Tests.Items
         [Test]
         public void RemoveRelic_RemovesFromList()
         {
-            _mgr.AddRelic("relic_stop_loss");
-            _mgr.AddRelic("relic_speed_trader");
-            _mgr.RemoveRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
+            _mgr.AddRelic("relic_short_multiplier");
+            _mgr.RemoveRelic("relic_event_trigger");
 
             Assert.AreEqual(1, _mgr.OrderedRelics.Count);
-            Assert.AreEqual("relic_speed_trader", _mgr.OrderedRelics[0].Id);
+            Assert.AreEqual("relic_short_multiplier", _mgr.OrderedRelics[0].Id);
         }
 
         [Test]
         public void RemoveRelic_SyncsWithRunContextOwnedRelics()
         {
-            _mgr.AddRelic("relic_stop_loss");
-            _mgr.AddRelic("relic_speed_trader");
-            _mgr.RemoveRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
+            _mgr.AddRelic("relic_short_multiplier");
+            _mgr.RemoveRelic("relic_event_trigger");
 
             Assert.AreEqual(1, _ctx.OwnedRelics.Count);
-            Assert.AreEqual("relic_speed_trader", _ctx.OwnedRelics[0]);
+            Assert.AreEqual("relic_short_multiplier", _ctx.OwnedRelics[0]);
         }
 
         [Test]
@@ -103,7 +103,7 @@ namespace BullRun.Tests.Items
         [Test]
         public void RemoveRelic_NonexistentId_DoesNothing()
         {
-            _mgr.AddRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
             _mgr.RemoveRelic("nonexistent");
             Assert.AreEqual(1, _mgr.OrderedRelics.Count);
         }
@@ -115,36 +115,36 @@ namespace BullRun.Tests.Items
         [Test]
         public void ReorderRelic_MovesCorrectly()
         {
-            _mgr.AddRelic("relic_stop_loss");
-            _mgr.AddRelic("relic_speed_trader");
-            _mgr.AddRelic("relic_insider_tip");
+            _mgr.AddRelic("relic_event_trigger");
+            _mgr.AddRelic("relic_short_multiplier");
+            _mgr.AddRelic("relic_market_manipulator");
 
             _mgr.ReorderRelic(0, 2);
 
-            Assert.AreEqual("relic_speed_trader", _mgr.OrderedRelics[0].Id);
-            Assert.AreEqual("relic_insider_tip", _mgr.OrderedRelics[1].Id);
-            Assert.AreEqual("relic_stop_loss", _mgr.OrderedRelics[2].Id);
+            Assert.AreEqual("relic_short_multiplier", _mgr.OrderedRelics[0].Id);
+            Assert.AreEqual("relic_market_manipulator", _mgr.OrderedRelics[1].Id);
+            Assert.AreEqual("relic_event_trigger", _mgr.OrderedRelics[2].Id);
         }
 
         [Test]
         public void ReorderRelic_SyncsOwnedRelics()
         {
-            _mgr.AddRelic("relic_stop_loss");
-            _mgr.AddRelic("relic_speed_trader");
+            _mgr.AddRelic("relic_event_trigger");
+            _mgr.AddRelic("relic_short_multiplier");
             _mgr.ReorderRelic(0, 1);
 
-            Assert.AreEqual("relic_speed_trader", _ctx.OwnedRelics[0]);
-            Assert.AreEqual("relic_stop_loss", _ctx.OwnedRelics[1]);
+            Assert.AreEqual("relic_short_multiplier", _ctx.OwnedRelics[0]);
+            Assert.AreEqual("relic_event_trigger", _ctx.OwnedRelics[1]);
         }
 
         [Test]
         public void ReorderRelic_InvalidIndices_DoesNothing()
         {
-            _mgr.AddRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
             _mgr.ReorderRelic(-1, 0);
             _mgr.ReorderRelic(0, 5);
             Assert.AreEqual(1, _mgr.OrderedRelics.Count);
-            Assert.AreEqual("relic_stop_loss", _mgr.OrderedRelics[0].Id);
+            Assert.AreEqual("relic_event_trigger", _mgr.OrderedRelics[0].Id);
         }
 
         // ════════════════════════════════════════════════════════════════
@@ -154,18 +154,18 @@ namespace BullRun.Tests.Items
         [Test]
         public void GetRelicById_ReturnsCorrectRelic()
         {
-            _mgr.AddRelic("relic_stop_loss");
-            _mgr.AddRelic("relic_speed_trader");
+            _mgr.AddRelic("relic_event_trigger");
+            _mgr.AddRelic("relic_short_multiplier");
 
-            var relic = _mgr.GetRelicById("relic_speed_trader");
+            var relic = _mgr.GetRelicById("relic_short_multiplier");
             Assert.IsNotNull(relic);
-            Assert.AreEqual("relic_speed_trader", relic.Id);
+            Assert.AreEqual("relic_short_multiplier", relic.Id);
         }
 
         [Test]
         public void GetRelicById_UnknownId_ReturnsNull()
         {
-            _mgr.AddRelic("relic_stop_loss");
+            _mgr.AddRelic("relic_event_trigger");
             Assert.IsNull(_mgr.GetRelicById("nonexistent"));
         }
 

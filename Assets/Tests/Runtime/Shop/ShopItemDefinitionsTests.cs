@@ -13,19 +13,19 @@ namespace BullRun.Tests.Shop
         // === RelicPool Tests ===
 
         [Test]
-        public void RelicPool_HasBetween5And8Relics()
+        public void RelicPool_Has23Relics()
         {
-            Assert.GreaterOrEqual(ShopItemDefinitions.RelicPool.Length, 5);
-            Assert.LessOrEqual(ShopItemDefinitions.RelicPool.Length, 8);
+            Assert.AreEqual(23, ShopItemDefinitions.RelicPool.Length);
         }
 
         [Test]
-        public void RelicPool_AllRelicsHaveValidCosts()
+        public void RelicPool_AllRelicsHaveCostsInRange8To50()
         {
             for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
             {
                 var relic = ShopItemDefinitions.RelicPool[i];
-                Assert.Greater(relic.Cost, 0, $"Relic {relic.Id} has invalid cost {relic.Cost}");
+                Assert.GreaterOrEqual(relic.Cost, 8, $"Relic {relic.Id} cost {relic.Cost} below minimum 8");
+                Assert.LessOrEqual(relic.Cost, 50, $"Relic {relic.Id} cost {relic.Cost} above maximum 50");
             }
         }
 
@@ -36,6 +36,16 @@ namespace BullRun.Tests.Shop
             {
                 var relic = ShopItemDefinitions.RelicPool[i];
                 Assert.IsFalse(string.IsNullOrEmpty(relic.Name), $"Relic {relic.Id} has empty name");
+            }
+        }
+
+        [Test]
+        public void RelicPool_AllRelicsHaveNonEmptyEffectDescriptions()
+        {
+            for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
+            {
+                var relic = ShopItemDefinitions.RelicPool[i];
+                Assert.IsFalse(string.IsNullOrEmpty(relic.EffectDescription), $"Relic {relic.Id} has empty EffectDescription");
             }
         }
 
@@ -64,10 +74,10 @@ namespace BullRun.Tests.Shop
         public void ItemLookup_GetRelicById_ValidId_ReturnsCorrectRelic()
         {
             ItemLookup.ClearCache();
-            var relic = ItemLookup.GetRelicById("relic_stop_loss");
+            var relic = ItemLookup.GetRelicById("relic_event_trigger");
             Assert.IsTrue(relic.HasValue);
-            Assert.AreEqual("relic_stop_loss", relic.Value.Id);
-            Assert.AreEqual("Stop-Loss Order", relic.Value.Name);
+            Assert.AreEqual("relic_event_trigger", relic.Value.Id);
+            Assert.AreEqual("Catalyst Trader", relic.Value.Name);
         }
 
         [Test]
@@ -81,7 +91,7 @@ namespace BullRun.Tests.Shop
         // === RelicDef struct validation ===
 
         [Test]
-        public void RelicDef_HasNoRarityOrCategory()
+        public void RelicDef_HasExpectedFieldsOnly()
         {
             var fields = typeof(RelicDef).GetFields();
             var fieldNames = new HashSet<string>();
@@ -91,6 +101,7 @@ namespace BullRun.Tests.Shop
             Assert.IsTrue(fieldNames.Contains("Id"));
             Assert.IsTrue(fieldNames.Contains("Name"));
             Assert.IsTrue(fieldNames.Contains("Description"));
+            Assert.IsTrue(fieldNames.Contains("EffectDescription"));
             Assert.IsTrue(fieldNames.Contains("Cost"));
             Assert.IsFalse(fieldNames.Contains("Rarity"), "RelicDef should not have Rarity field");
             Assert.IsFalse(fieldNames.Contains("Category"), "RelicDef should not have Category field");

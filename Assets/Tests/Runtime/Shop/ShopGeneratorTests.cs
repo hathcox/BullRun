@@ -66,7 +66,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GenerateRelicOffering_OwnedRelicsExcluded()
         {
-            var owned = new List<string> { "relic_stop_loss", "relic_speed_trader" };
+            var owned = new List<string> { "relic_event_trigger", "relic_short_multiplier" };
             var rng = new System.Random(99);
 
             for (int i = 0; i < 50; i++)
@@ -76,8 +76,8 @@ namespace BullRun.Tests.Shop
                 {
                     if (offering[j].HasValue)
                     {
-                        Assert.AreNotEqual("relic_stop_loss", offering[j].Value.Id);
-                        Assert.AreNotEqual("relic_speed_trader", offering[j].Value.Id);
+                        Assert.AreNotEqual("relic_event_trigger", offering[j].Value.Id);
+                        Assert.AreNotEqual("relic_short_multiplier", offering[j].Value.Id);
                     }
                 }
             }
@@ -86,7 +86,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GenerateRelicOffering_PoolExhausted_ReturnsNulls()
         {
-            // Own all 8 relics — pool should be exhausted
+            // Own all relics — pool should be exhausted
             var allOwned = new List<string>();
             for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
                 allOwned.Add(ShopItemDefinitions.RelicPool[i].Id);
@@ -104,9 +104,9 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GenerateRelicOffering_PartialExhaustion_SomeNulls()
         {
-            // Own 6 of 8 relics — only 2 available, third slot should be null
+            // Own all but 2 relics — only 2 available, third slot should be null
             var owned = new List<string>();
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < ShopItemDefinitions.RelicPool.Length - 2; i++)
                 owned.Add(ShopItemDefinitions.RelicPool[i].Id);
 
             var rng = new System.Random(42);
@@ -142,7 +142,7 @@ namespace BullRun.Tests.Shop
                 }
             }
 
-            // All 8 relics should appear at least once in 1000 iterations
+            // All relics should appear at least once in 1000 iterations
             Assert.AreEqual(ShopItemDefinitions.RelicPool.Length, counts.Count,
                 "All relics should appear at least once in 1000 iterations");
         }
@@ -170,13 +170,13 @@ namespace BullRun.Tests.Shop
         [Test]
         public void BuildAvailablePool_ExcludesOwnedRelics()
         {
-            var owned = new List<string> { "relic_stop_loss" };
+            var owned = new List<string> { "relic_event_trigger" };
             var pool = ShopGenerator.BuildAvailablePool(owned);
 
             Assert.AreEqual(ShopItemDefinitions.RelicPool.Length - 1, pool.Count);
             for (int i = 0; i < pool.Count; i++)
             {
-                Assert.AreNotEqual("relic_stop_loss", pool[i].Id);
+                Assert.AreNotEqual("relic_event_trigger", pool[i].Id);
             }
         }
 
@@ -193,7 +193,7 @@ namespace BullRun.Tests.Shop
             var rng = new System.Random(42);
             var owned = new List<string>();
             // Exclude 3 specific relics as "currently displayed"
-            var excludes = new List<string> { "relic_stop_loss", "relic_speed_trader", "relic_insider_tip" };
+            var excludes = new List<string> { "relic_event_trigger", "relic_short_multiplier", "relic_market_manipulator" };
 
             for (int run = 0; run < 50; run++)
             {
@@ -212,15 +212,15 @@ namespace BullRun.Tests.Shop
         [Test]
         public void BuildAvailablePool_WithAdditionalExcludes_FiltersAll()
         {
-            var owned = new List<string> { "relic_stop_loss" };
-            var excludes = new List<string> { "relic_speed_trader" };
+            var owned = new List<string> { "relic_event_trigger" };
+            var excludes = new List<string> { "relic_short_multiplier" };
             var pool = ShopGenerator.BuildAvailablePool(owned, excludes);
 
             Assert.AreEqual(ShopItemDefinitions.RelicPool.Length - 2, pool.Count);
             for (int i = 0; i < pool.Count; i++)
             {
-                Assert.AreNotEqual("relic_stop_loss", pool[i].Id);
-                Assert.AreNotEqual("relic_speed_trader", pool[i].Id);
+                Assert.AreNotEqual("relic_event_trigger", pool[i].Id);
+                Assert.AreNotEqual("relic_short_multiplier", pool[i].Id);
             }
         }
 
@@ -254,6 +254,68 @@ namespace BullRun.Tests.Shop
                 Assert.Greater(offering[i].Value.Cost, 0,
                     $"Relic {offering[i].Value.Id} has non-positive cost");
             }
+        }
+
+        // === Story 17.2: Pool has 23 relics ===
+
+        [Test]
+        public void RelicPool_Has23Relics()
+        {
+            Assert.AreEqual(23, ShopItemDefinitions.RelicPool.Length);
+        }
+
+        [Test]
+        public void GenerateRelicOffering_AllRelicsHaveEffectDescription()
+        {
+            var rng = new System.Random(42);
+            var offering = ShopGenerator.GenerateRelicOffering(new List<string>(), rng);
+
+            for (int i = 0; i < offering.Length; i++)
+            {
+                if (offering[i].HasValue)
+                {
+                    Assert.IsFalse(string.IsNullOrEmpty(offering[i].Value.EffectDescription),
+                        $"Relic {offering[i].Value.Id} has empty EffectDescription");
+                }
+            }
+        }
+
+        // === Story 17.2 AC 3, 4: Reroll generates all fresh slots (no additionalExcludeIds) ===
+
+        [Test]
+        public void GenerateRelicOffering_WithoutExcludes_AllSlotsPopulated()
+        {
+            var rng = new System.Random(42);
+            var owned = new List<string>();
+            var offering = ShopGenerator.GenerateRelicOffering(owned, rng);
+
+            for (int i = 0; i < offering.Length; i++)
+            {
+                Assert.IsTrue(offering[i].HasValue, $"Slot {i} should be populated with 23 relics available");
+            }
+        }
+
+        [Test]
+        public void GenerateRelicOffering_ConsecutiveCalls_ProduceDifferentResults()
+        {
+            var rng = new System.Random(42);
+            var owned = new List<string>();
+
+            var offering1 = ShopGenerator.GenerateRelicOffering(owned, rng);
+            var offering2 = ShopGenerator.GenerateRelicOffering(owned, rng);
+
+            // With 23 relics, consecutive calls should very likely produce different results
+            bool allSame = true;
+            for (int i = 0; i < offering1.Length; i++)
+            {
+                if (offering1[i].HasValue && offering2[i].HasValue
+                    && offering1[i].Value.Id != offering2[i].Value.Id)
+                {
+                    allSame = false;
+                    break;
+                }
+            }
+            Assert.IsFalse(allSame, "Consecutive offerings should differ (fresh relics each time)");
         }
     }
 }

@@ -35,7 +35,7 @@ namespace BullRun.Tests.Shop
         {
             // Story 17.1: Register in factory so RelicManager.AddRelic can create instances
             RelicFactory.Register(id, () => new StubRelic(id));
-            return new RelicDef(id, name, "Test relic", cost);
+            return new RelicDef(id, name, "Test relic", "", cost);
         }
 
         // === FIX-12 AC 4: Purchase deducts Reputation, not cash ===

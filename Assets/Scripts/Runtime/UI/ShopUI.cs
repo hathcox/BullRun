@@ -50,6 +50,7 @@ public class ShopUI : MonoBehaviour
     public const float HoverScale = 1.05f;
     public const float HoverDuration = 0.15f;
     public const float PurchaseAnimDuration = 0.5f;
+    // Story 17.2: Repurposed as post-purchase pause duration (SOLD stamp removed)
     public const float SoldStampDuration = 1.0f;
     public const float RerollFlipDuration = 0.4f;
     public const float RerollStaggerDelay = 0.08f;
@@ -393,8 +394,8 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Refreshes the relic slots with a new offering after reroll (AC 10).
-    /// Only regenerates unsold slots.
+    /// Refreshes the relic slots with a new offering after reroll.
+    /// Story 17.2 AC 3: Regenerates ALL 3 slots with fresh relics (including previously purchased slots).
     /// </summary>
     public void RefreshRelicOffering(RelicDef?[] newOffering)
     {
@@ -1299,6 +1300,10 @@ public class ShopUI : MonoBehaviour
 
     // === Purchase Animation (Story 13.8, Task 2, AC 2) ===
 
+    /// <summary>
+    /// Story 17.2 AC 1: Animate purchase — slide up + fade out, then show empty/blank slot.
+    /// No SOLD stamp — card is removed from display.
+    /// </summary>
     private IEnumerator AnimateCardPurchase(int cardIndex)
     {
         var slot = _relicSlots[cardIndex];
@@ -1307,11 +1312,11 @@ public class ShopUI : MonoBehaviour
 
         if (group == null)
         {
-            ApplySoldState(cardIndex);
+            ApplyPurchasedEmptyState(cardIndex);
             yield break;
         }
 
-        // Animate: slide up + fade out over PurchaseAnimDuration (AC 2)
+        // Animate: slide up + fade out over PurchaseAnimDuration
         Vector2 startPos = rect.anchoredPosition;
         Vector2 endPos = startPos + Vector2.up * 50f;
         for (float t = 0; t < PurchaseAnimDuration; t += Time.unscaledDeltaTime)
@@ -1323,56 +1328,40 @@ public class ShopUI : MonoBehaviour
         }
         group.alpha = 0f;
 
-        // Show SOLD stamp
-        var stampGo = new GameObject("SoldStamp");
-        stampGo.transform.SetParent(slot.Root.transform, false);
-        var stampRect = stampGo.AddComponent<RectTransform>();
-        stampRect.anchorMin = Vector2.zero;
-        stampRect.anchorMax = Vector2.one;
-        stampRect.offsetMin = Vector2.zero;
-        stampRect.offsetMax = Vector2.zero;
-        var stampText = stampGo.AddComponent<Text>();
-        stampText.text = "SOLD";
-        stampText.fontSize = 32;
-        stampText.fontStyle = FontStyle.Bold;
-        stampText.color = ColorPalette.WithAlpha(ColorPalette.Red, 0.9f);
-        stampText.alignment = TextAnchor.MiddleCenter;
-        stampText.raycastTarget = false;
+        yield return new WaitForSecondsRealtime(SoldStampDuration * 0.5f);
 
-        // Make stamp visible while card content is hidden
-        // ignoreParentGroups ensures stamp is visible despite parent CanvasGroup alpha=0
-        var stampGroup = stampGo.AddComponent<CanvasGroup>();
-        stampGroup.ignoreParentGroups = true;
-        group.alpha = 0f;
-        stampGroup.alpha = 1f;
-
-        yield return new WaitForSecondsRealtime(SoldStampDuration);
-
-        // Clean up stamp and apply sold state
-        Destroy(stampGo);
+        // Restore position and show as empty slot
         group.alpha = 1f;
         rect.localScale = Vector3.one;
         rect.anchoredPosition = startPos;
-        ApplySoldState(cardIndex);
+        ApplyPurchasedEmptyState(cardIndex);
     }
 
-    private void ApplySoldState(int cardIndex)
+    /// <summary>
+    /// Story 17.2 AC 1: After purchase, show slot as empty/blank (not SOLD stamp).
+    /// Sets offering to null and displays the empty card state.
+    /// </summary>
+    private void ApplyPurchasedEmptyState(int cardIndex)
     {
         _soldFlags[cardIndex] = true;
-        _relicSlots[cardIndex].PurchaseButton.interactable = false;
-        _relicSlots[cardIndex].ButtonText.text = "SOLD";
-        _relicSlots[cardIndex].CardBackground.color = SoldCardColor;
+        _relicOffering[cardIndex] = null;
+        SetupSoldOutRelicSlot(cardIndex);
     }
 
     // === Reroll Animation (Story 13.8, Task 3, AC 3) ===
 
+    /// <summary>
+    /// Story 17.2 AC 3: Reroll animates ALL 3 slots with fresh relics.
+    /// Sold flags are reset so previously purchased slots also get new relics.
+    /// </summary>
     private IEnumerator AnimateRerollFlip(RelicDef?[] newOffering)
     {
-        // Animate each non-sold card with staggered flip
+        // Reset sold flags — all slots get fresh relics on reroll
+        _soldFlags = new bool[_relicSlots.Length];
+
+        // Animate all cards with staggered flip
         for (int i = 0; i < _relicSlots.Length && i < newOffering.Length; i++)
         {
-            if (_soldFlags[i]) continue;
-
             int capturedIndex = i;
             var capturedOffering = newOffering;
             StartCoroutine(AnimateSingleRerollFlip(capturedIndex, capturedOffering));

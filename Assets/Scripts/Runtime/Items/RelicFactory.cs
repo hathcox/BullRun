@@ -4,8 +4,9 @@ using System.Collections.Generic;
 /// <summary>
 /// Static factory for creating IRelic instances by relic ID.
 /// Maintains a registry of constructor functions.
-/// Story 17.1: All 8 placeholder relics registered as StubRelic.
-/// Stories 17.3-17.7 will replace stubs with real relic classes.
+/// Story 17.1: Relic framework with dynamic registration from RelicPool.
+/// Story 17.2: Pool expanded to 23 relics (auto-registered via RegisterDefaults).
+/// Stories 17.3-17.7 will replace StubRelic constructors with real relic classes.
 /// </summary>
 public static class RelicFactory
 {

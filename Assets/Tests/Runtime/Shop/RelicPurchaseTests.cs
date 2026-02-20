@@ -34,7 +34,7 @@ namespace BullRun.Tests.Shop
         private RelicDef MakeRelic(string id, string name, int cost)
         {
             RelicFactory.Register(id, () => new StubRelic(id));
-            return new RelicDef(id, name, "Test relic", cost);
+            return new RelicDef(id, name, "Test relic", "", cost);
         }
 
         // === Purchase Tests (AC 5) ===
@@ -279,10 +279,9 @@ namespace BullRun.Tests.Shop
         // === RelicDef Data Tests (AC 4, 16, 17) ===
 
         [Test]
-        public void RelicPool_HasPlaceholderRelics()
+        public void RelicPool_Has23Relics()
         {
-            Assert.GreaterOrEqual(ShopItemDefinitions.RelicPool.Length, 5);
-            Assert.LessOrEqual(ShopItemDefinitions.RelicPool.Length, 8);
+            Assert.AreEqual(23, ShopItemDefinitions.RelicPool.Length);
         }
 
         [Test]
@@ -299,9 +298,8 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void RelicDef_HasNoRarityOrCategory()
+        public void RelicDef_HasExpectedFields()
         {
-            // Verify RelicDef struct only has Id, Name, Description, Cost (no rarity/category)
             var fields = typeof(RelicDef).GetFields();
             var fieldNames = new System.Collections.Generic.HashSet<string>();
             for (int i = 0; i < fields.Length; i++)
@@ -310,6 +308,7 @@ namespace BullRun.Tests.Shop
             Assert.IsTrue(fieldNames.Contains("Id"));
             Assert.IsTrue(fieldNames.Contains("Name"));
             Assert.IsTrue(fieldNames.Contains("Description"));
+            Assert.IsTrue(fieldNames.Contains("EffectDescription"));
             Assert.IsTrue(fieldNames.Contains("Cost"));
             Assert.IsFalse(fieldNames.Contains("Rarity"), "RelicDef should not have Rarity field");
             Assert.IsFalse(fieldNames.Contains("Category"), "RelicDef should not have Category field");
@@ -319,10 +318,10 @@ namespace BullRun.Tests.Shop
         public void GetRelicById_ReturnsCorrectRelic()
         {
             ItemLookup.ClearCache();
-            var relic = ItemLookup.GetRelicById("relic_stop_loss");
+            var relic = ItemLookup.GetRelicById("relic_event_trigger");
             Assert.IsTrue(relic.HasValue);
-            Assert.AreEqual("relic_stop_loss", relic.Value.Id);
-            Assert.AreEqual("Stop-Loss Order", relic.Value.Name);
+            Assert.AreEqual("relic_event_trigger", relic.Value.Id);
+            Assert.AreEqual("Catalyst Trader", relic.Value.Name);
         }
 
         [Test]
