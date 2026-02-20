@@ -375,10 +375,10 @@ public class AudioManager : MonoBehaviour
         switch (evt.EventType)
         {
             case MarketEventType.MarketCrash:
-                _crashRumbleSource = PlayLoop(_clips.CrashRumbleLoop, 0.7f);
+                _crashRumbleSource = PlayTrackedSfx(_clips.CrashRumbleLoop, 0.7f);
                 break;
             case MarketEventType.BullRun:
-                _bullrunShimmerSource = PlayLoop(_clips.BullrunShimmerLoop, 0.6f);
+                _bullrunShimmerSource = PlayTrackedSfx(_clips.BullrunShimmerLoop, 0.6f);
                 break;
             case MarketEventType.FlashCrash:
                 PlaySfx(_clips.FlashCrashImpact);
@@ -434,6 +434,7 @@ public class AudioManager : MonoBehaviour
 
     private void OnShopOpened(ShopOpenedEvent evt)
     {
+        StopAllLoops();
         PlayUI(_clips.ShopOpen);
         PlayUI(_clips.ShopCardCascadeIn);
     }
@@ -562,14 +563,15 @@ public class AudioManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Plays a looping SFX on the Sfx track. Returns the AudioSource handle for stopping.
+    /// Plays a one-shot SFX on the Sfx track and returns the AudioSource handle
+    /// so it can be stopped early (e.g., when the event ends or shop opens).
     /// </summary>
-    private AudioSource PlayLoop(AudioClip clip, float volume = 1f)
+    private AudioSource PlayTrackedSfx(AudioClip clip, float volume = 1f)
     {
         if (clip == null)
         {
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.LogWarning("[Audio] PlayLoop called with null clip — skipping");
+            Debug.LogWarning("[Audio] PlayTrackedSfx called with null clip — skipping");
             #endif
             return null;
         }
@@ -577,7 +579,7 @@ public class AudioManager : MonoBehaviour
         var options = MMSoundManagerPlayOptions.Default;
         options.MmSoundManagerTrack = MMSoundManager.MMSoundManagerTracks.Sfx;
         options.Volume = volume * SettingsManager.SfxVolume * SettingsManager.MasterVolume;
-        options.Loop = true;
+        options.Loop = false;
         return MMSoundManagerSoundPlayEvent.Trigger(clip, options);
     }
 

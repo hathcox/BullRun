@@ -1268,7 +1268,7 @@ public static class UISetup
         reminderText.alignment = TextAnchor.MiddleCenter;
         reminderText.raycastTarget = false;
 
-        // Create max possible slots (7 — base 5 + 2 from Expanded Inventory)
+        // Create max possible slots (6 — base 4 + 2 from Expanded Inventory)
         var ownedSlots = new ShopUI.OwnedRelicSlotView[ShopUI.MaxPossibleOwnedSlots];
         for (int i = 0; i < ownedSlots.Length; i++)
         {

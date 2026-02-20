@@ -1092,5 +1092,147 @@ namespace BullRun.Tests.PriceEngine
                 $"Positive event near floor should still produce visible price increase. " +
                 $"Before: ${priceBeforeEvent:F2}, After: ${stock.CurrentPrice:F2}");
         }
+
+        // --- Stale event carryover tests (Price Collapse Bug fix) ---
+
+        [Test]
+        public void UpdatePrice_StaleEventFromPreviousRound_DoesNotCorruptNewStock()
+        {
+            // Reproduces the price collapse bug: a stale event from a LowValue round
+            // should NOT corrupt a new MidValue stock after InitializeRound clears events.
+            var generator = new PriceGenerator(new System.Random(42));
+            var eventEffects = new EventEffects();
+            var scheduler = new EventScheduler(eventEffects, new System.Random(42));
+
+            // Round 1: LowValue stock (~$30) with a negative event
+            var oldStock = new StockInstance();
+            oldStock.Initialize(0, "OLD", StockTier.LowValue, 30f, TrendDirection.Neutral, 0f);
+            oldStock.TimeIntoTrading = 5f;
+
+            var oldStocks = new List<StockInstance> { oldStock };
+            eventEffects.SetActiveStocks(oldStocks);
+            generator.SetEventEffects(eventEffects);
+
+            // Fire a -25% crash event on StockId 0
+            var crashEvt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.25f, 10f);
+            eventEffects.StartEvent(crashEvt);
+
+            // Partially process — event captures start/target prices around $30
+            float dt = 0.05f;
+            for (int i = 0; i < 20; i++)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(oldStock, dt);
+            }
+
+            // Event is still active (only 1s of 10s elapsed)
+            Assert.Greater(eventEffects.ActiveEventCount, 0, "Event should still be active");
+
+            // Round 2: MidValue stock (~$250) — same StockId 0 (as happens in real game)
+            var newStock = new StockInstance();
+            newStock.Initialize(0, "NEW", StockTier.MidValue, 250f, TrendDirection.Neutral, 0f);
+            newStock.TimeIntoTrading = 5f;
+
+            var newStocks = new List<StockInstance> { newStock };
+            eventEffects.SetActiveStocks(newStocks);
+
+            // InitializeRound should clear stale events
+            scheduler.InitializeRound(2, 3, StockTier.MidValue, newStocks, 60f);
+
+            // Verify events were cleared
+            Assert.AreEqual(0, eventEffects.ActiveEventCount,
+                "InitializeRound should clear all stale events");
+
+            // Process price updates on new stock
+            for (int i = 0; i < 30; i++)
+            {
+                eventEffects.UpdateActiveEvents(dt);
+                generator.UpdatePrice(newStock, dt);
+            }
+
+            // New stock should stay near $250, NOT drop to ~$28
+            Assert.Greater(newStock.CurrentPrice, 200f,
+                $"New MidValue stock should not be corrupted by stale LowValue event. " +
+                $"Got ${newStock.CurrentPrice:F2} (expected near $250)");
+        }
+
+        [Test]
+        public void UpdatePrice_StaleEventFromPreviousRound_WithoutFix_CorruptsPrice()
+        {
+            // Proves the bug existed: applying a stale event's cached prices to a new stock
+            // produces a corrupted price, validating our understanding of the root cause.
+            var eventEffects = new EventEffects();
+
+            // Round 1: LowValue stock at $30
+            var oldStock = new StockInstance();
+            oldStock.Initialize(0, "OLD", StockTier.LowValue, 30f, TrendDirection.Neutral, 0f);
+
+            var oldStocks = new List<StockInstance> { oldStock };
+            eventEffects.SetActiveStocks(oldStocks);
+
+            // Fire event — this caches start=$30, target=$30*0.75=$22.50
+            var crashEvt = new MarketEvent(MarketEventType.MarketCrash, 0, -0.25f, 10f);
+            eventEffects.StartEvent(crashEvt);
+
+            // Let event capture prices by calling ApplyEventEffect
+            crashEvt.ElapsedTime = 2f; // Force > 0
+            eventEffects.ApplyEventEffect(oldStock, crashEvt, 0.016f);
+
+            // Now create new MidValue stock at $250 with same StockId 0
+            var newStock = new StockInstance();
+            newStock.Initialize(0, "NEW", StockTier.MidValue, 250f, TrendDirection.Neutral, 0f);
+
+            // WITHOUT clearing, apply the stale event to the new stock
+            float corruptedPrice = eventEffects.ApplyEventEffect(newStock, crashEvt, 0.016f);
+
+            // The stale cached prices ($30 start, $22.50 target) produce a Lerp
+            // far below the new stock's $250 price — this IS the bug
+            Assert.Less(corruptedPrice, 100f,
+                $"Stale event should corrupt new stock price via cached Lerp. " +
+                $"Got ${corruptedPrice:F2} (new stock initialized at $250)");
+        }
+
+        [Test]
+        public void EventEffects_ClearAllEvents_RemovesAllState()
+        {
+            var eventEffects = new EventEffects();
+
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
+
+            var stocks = new List<StockInstance> { stock };
+            eventEffects.SetActiveStocks(stocks);
+
+            // Add an event and let it cache prices
+            var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 4f);
+            eventEffects.StartEvent(evt);
+            evt.ElapsedTime = 2f; // Force > 0
+            eventEffects.ApplyEventEffect(stock, evt, 0.016f);
+
+            Assert.AreEqual(1, eventEffects.ActiveEventCount, "Should have 1 active event");
+
+            // Clear everything
+            eventEffects.ClearAllEvents();
+
+            Assert.AreEqual(0, eventEffects.ActiveEventCount,
+                "ClearAllEvents should remove all active events");
+
+            // GetActiveEventsForStock should return empty
+            var activeForStock = eventEffects.GetActiveEventsForStock(0);
+            Assert.AreEqual(0, activeForStock.Count,
+                "No events should remain for any stock after ClearAllEvents");
+
+            // Re-adding an event on the same stock should capture fresh prices (not stale)
+            var newEvt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.10f, 4f);
+            eventEffects.StartEvent(newEvt);
+            newEvt.ElapsedTime = 2f;
+            float result = eventEffects.ApplyEventEffect(stock, newEvt, 0.016f);
+
+            // Fresh capture: should Lerp from 100 toward 110, not use any stale values
+            Assert.Greater(result, 100f,
+                "After ClearAllEvents, new event should use fresh price capture");
+            Assert.Less(result, 115f,
+                "After ClearAllEvents, new event should target +10% (~$110)");
+        }
     }
 }

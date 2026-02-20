@@ -111,10 +111,10 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ExpandedInventory_MaxSlotsIncreasedBy2()
         {
-            Assert.AreEqual(5, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
+            Assert.AreEqual(4, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
 
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
-            Assert.AreEqual(7, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
+            Assert.AreEqual(6, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
         }
 
         [Test]
@@ -122,18 +122,18 @@ namespace BullRun.Tests.Shop
         {
             var transaction = new ShopTransaction();
 
-            // Fill to base capacity (5)
-            for (int i = 0; i < 5; i++)
+            // Fill to base capacity (4)
+            for (int i = 0; i < 4; i++)
                 _ctx.OwnedRelics.Add($"relic_{i}");
 
-            // Can't buy more (at max 5)
+            // Can't buy more (at max 4)
             var result = transaction.PurchaseRelic(_ctx, new RelicDef("relic_new", "New", "desc", "", 10, "T", "#FFFFFF"));
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
 
             // Buy expanded inventory expansion
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
 
-            // Now can buy (max is 7, have 5)
+            // Now can buy (max is 6, have 4)
             result = transaction.PurchaseRelic(_ctx, new RelicDef("relic_new", "New", "desc", "", 10, "T", "#FFFFFF"));
             Assert.AreEqual(ShopPurchaseResult.Success, result);
         }
@@ -255,14 +255,14 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void NoStacking_ExpandedInventory_DoesNotStackBeyond7()
+        public void NoStacking_ExpandedInventory_DoesNotStackBeyond6()
         {
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
             // Adding it again shouldn't increase further
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
 
-            // GetEffectiveMaxRelicSlots checks Contains, not count — still 7
-            Assert.AreEqual(7, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
+            // GetEffectiveMaxRelicSlots checks Contains, not count — still 6
+            Assert.AreEqual(6, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
         }
 
         // === HasExpansion convenience method (AC 7) ===

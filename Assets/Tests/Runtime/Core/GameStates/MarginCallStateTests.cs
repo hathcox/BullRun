@@ -312,19 +312,19 @@ namespace BullRun.Tests.Core.GameStates
             var state = new MarginCallState();
             state.Enter(ctx);
 
-            // Round 1 base = 5 Rep, exactly met target = 0 bonus
-            Assert.AreEqual(5, received.RepEarned);
-            Assert.AreEqual(5, received.BaseRep);
+            // Round 1 base = 10 Rep, exactly met target = 0 bonus
+            Assert.AreEqual(10, received.RepEarned);
+            Assert.AreEqual(10, received.BaseRep);
             Assert.AreEqual(0, received.BonusRep);
-            Assert.AreEqual(5, ctx.Reputation.Current);
-            Assert.AreEqual(5, ctx.ReputationEarned);
+            Assert.AreEqual(10, ctx.Reputation.Current);
+            Assert.AreEqual(10, ctx.ReputationEarned);
         }
 
         [Test]
         public void Enter_RoundPassed_AwardsBonusRepForExceedingTarget()
         {
             // Cash $30, target $20 → excess ratio = (30-20)/20 = 0.5
-            // baseRep = 5, bonusRep = floor(5 * 0.5 * 0.5) = floor(1.25) = 1
+            // baseRep = 10, bonusRep = floor(10 * 0.5 * 0.5) = floor(2.5) = 2
             var ctx = new RunContext(1, 1, new Portfolio(30f));
             MarketCloseState.RoundProfit = 20f;
 
@@ -340,10 +340,10 @@ namespace BullRun.Tests.Core.GameStates
             var state = new MarginCallState();
             state.Enter(ctx);
 
-            Assert.AreEqual(6, received.RepEarned); // 5 base + 1 bonus
-            Assert.AreEqual(5, received.BaseRep);
-            Assert.AreEqual(1, received.BonusRep);
-            Assert.AreEqual(6, ctx.Reputation.Current);
+            Assert.AreEqual(12, received.RepEarned); // 10 base + 2 bonus
+            Assert.AreEqual(10, received.BaseRep);
+            Assert.AreEqual(2, received.BonusRep);
+            Assert.AreEqual(12, ctx.Reputation.Current);
         }
 
         // --- FIX-14: Consolation Reputation on margin call failure ---
@@ -385,7 +385,7 @@ namespace BullRun.Tests.Core.GameStates
         public void RepAccumulates_AcrossMultipleRounds()
         {
             // Round 1: cash $25, target $20 → excess (25-20)/20=0.25
-            // baseRep=5, bonus=floor(5*0.25*0.5)=floor(0.625)=0 → total 5
+            // baseRep=10, bonus=floor(10*0.25*0.5)=floor(1.25)=1 → total 11
             var ctx = new RunContext(1, 1, new Portfolio(25f));
             MarketCloseState.RoundProfit = 15f;
 
@@ -396,7 +396,7 @@ namespace BullRun.Tests.Core.GameStates
                 TradeExecutor = null
             };
             new MarginCallState().Enter(ctx);
-            Assert.AreEqual(5, ctx.ReputationEarned);
+            Assert.AreEqual(11, ctx.ReputationEarned);
 
             // Simulate advancing to round 2: cash $40, target $35
             ctx.CurrentRound = 2;
@@ -411,9 +411,9 @@ namespace BullRun.Tests.Core.GameStates
             };
             new MarginCallState().Enter(ctx);
 
-            // Round 2 base=8, excess=(40-35)/35≈0.143, bonus=floor(8*0.143*0.5)=0 → total 8
-            Assert.AreEqual(13, ctx.ReputationEarned); // 5 + 8
-            Assert.AreEqual(13, ctx.Reputation.Current);
+            // Round 2 base=14, excess=(40-35)/35=5/35, bonus=floor(14*(5/35)*0.5)=floor(1.0)=1 → total 15
+            Assert.AreEqual(26, ctx.ReputationEarned); // 11 + 15
+            Assert.AreEqual(26, ctx.Reputation.Current);
         }
     }
 }

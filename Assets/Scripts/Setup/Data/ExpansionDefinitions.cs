@@ -39,7 +39,7 @@ public static class ExpansionDefinitions
             "Trade with 2x leverage (double gains/losses)",
             GameConfig.ExpansionCostLeverage),
         new ExpansionDef(ExpandedInventory, "Expanded Inventory",
-            "+2 relic slots (5 \u2192 7 max)",
+            "+2 relic slots (4 \u2192 6 max)",
             GameConfig.ExpansionCostExpandedInventory),
         new ExpansionDef(DualShort, "Dual Short",
             "Shorts execute 2 shares instead of 1",

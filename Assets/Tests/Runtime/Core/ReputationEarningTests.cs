@@ -28,21 +28,21 @@ namespace BullRun.Tests.Core
         {
             // Round 1, cash $20, target $20 → excess = 0 → bonus = 0
             int rep = MarginCallState.CalculateRoundReputation(1, 20f, 20f);
-            Assert.AreEqual(5, rep); // Base for round 1 = 5
+            Assert.AreEqual(10, rep); // Base for round 1 = 10
         }
 
         [Test]
-        public void CalculateRoundRep_Round1_BaseIs5()
+        public void CalculateRoundRep_Round1_BaseIs10()
         {
             int rep = MarginCallState.CalculateRoundReputation(1, 20f, 20f);
-            Assert.AreEqual(5, rep);
+            Assert.AreEqual(10, rep);
         }
 
         [Test]
-        public void CalculateRoundRep_Round8_BaseIs40()
+        public void CalculateRoundRep_Round8_BaseIs48()
         {
             int rep = MarginCallState.CalculateRoundReputation(8, 800f, 800f);
-            Assert.AreEqual(40, rep);
+            Assert.AreEqual(48, rep);
         }
 
         // === AC 4: Rep earned on round completion — base + bonus (exceeded target by 50%) ===
@@ -51,27 +51,27 @@ namespace BullRun.Tests.Core
         public void CalculateRoundRep_Exceeded50Percent_ReturnsBonusRep()
         {
             // Round 1, cash $30, target $20 → excess ratio = (30-20)/20 = 0.5
-            // baseRep = 5, bonusRep = floor(5 * 0.5 * 0.5) = floor(1.25) = 1
+            // baseRep = 10, bonusRep = floor(10 * 0.5 * 0.5) = floor(2.5) = 2
             int rep = MarginCallState.CalculateRoundReputation(1, 30f, 20f);
-            Assert.AreEqual(6, rep); // 5 base + 1 bonus
+            Assert.AreEqual(12, rep); // 10 base + 2 bonus
         }
 
         [Test]
         public void CalculateRoundRep_Exceeded100Percent_ReturnsHigherBonus()
         {
             // Round 1, cash $40, target $20 → excess ratio = (40-20)/20 = 1.0
-            // baseRep = 5, bonusRep = floor(5 * 1.0 * 0.5) = floor(2.5) = 2
+            // baseRep = 10, bonusRep = floor(10 * 1.0 * 0.5) = floor(5.0) = 5
             int rep = MarginCallState.CalculateRoundReputation(1, 40f, 20f);
-            Assert.AreEqual(7, rep); // 5 base + 2 bonus
+            Assert.AreEqual(15, rep); // 10 base + 5 bonus
         }
 
         [Test]
         public void CalculateRoundRep_Exceeded200Percent_ReturnsLargeBonus()
         {
             // Round 1, cash $60, target $20 → excess ratio = (60-20)/20 = 2.0
-            // baseRep = 5, bonusRep = floor(5 * 2.0 * 0.5) = floor(5.0) = 5
+            // baseRep = 10, bonusRep = floor(10 * 2.0 * 0.5) = floor(10.0) = 10
             int rep = MarginCallState.CalculateRoundReputation(1, 60f, 20f);
-            Assert.AreEqual(10, rep); // 5 base + 5 bonus
+            Assert.AreEqual(20, rep); // 10 base + 10 bonus
         }
 
         // === AC 4: Base + 0 bonus (exactly hit target, no excess) ===
@@ -182,8 +182,8 @@ namespace BullRun.Tests.Core
             };
             new MarginCallState().Enter(ctx);
 
-            Assert.AreEqual(5, received.RepEarned, "RoundCompletedEvent should carry RepEarned");
-            Assert.AreEqual(5, received.BaseRep, "Should carry base Rep component");
+            Assert.AreEqual(10, received.RepEarned, "RoundCompletedEvent should carry RepEarned");
+            Assert.AreEqual(10, received.BaseRep, "Should carry base Rep component");
             Assert.AreEqual(0, received.BonusRep, "Should carry 0 bonus when exactly meeting target");
         }
 
@@ -193,7 +193,7 @@ namespace BullRun.Tests.Core
             RoundCompletedEvent received = default;
             EventBus.Subscribe<RoundCompletedEvent>(e => received = e);
 
-            // Cash $30, target $20 → excess ratio = 0.5, bonus = floor(5 * 0.5 * 0.5) = 1
+            // Cash $30, target $20 → excess ratio = 0.5, bonus = floor(10 * 0.5 * 0.5) = 2
             var ctx = new RunContext(1, 1, new Portfolio(30f));
             var sm = new GameStateMachine(ctx);
             MarketCloseState.RoundProfit = 20f;
@@ -206,9 +206,9 @@ namespace BullRun.Tests.Core
             };
             new MarginCallState().Enter(ctx);
 
-            Assert.AreEqual(6, received.RepEarned, "Total should be 5 base + 1 bonus");
-            Assert.AreEqual(5, received.BaseRep, "Base Rep for round 1 = 5");
-            Assert.AreEqual(1, received.BonusRep, "Bonus Rep for 50% excess = 1");
+            Assert.AreEqual(12, received.RepEarned, "Total should be 10 base + 2 bonus");
+            Assert.AreEqual(10, received.BaseRep, "Base Rep for round 1 = 10");
+            Assert.AreEqual(2, received.BonusRep, "Bonus Rep for 50% excess = 2");
         }
 
         // === Edge: Player earns exactly $0 profit but above target ===

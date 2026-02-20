@@ -50,14 +50,14 @@ namespace BullRun.Tests.Items.Relics
         [Test]
         public void RepDoubler_RoundEndRepDoubled()
         {
-            // Round 1 base rep = 5 at target, no bonus
+            // Round 1 base rep = 10 at target, no bonus
             int normalRep = MarginCallState.CalculateRoundReputation(1, 20f, 20f);
-            Assert.AreEqual(5, normalRep, "Round 1 base rep should be 5");
+            Assert.AreEqual(10, normalRep, "Round 1 base rep should be 10");
 
             // With Rep Doubler, the doubling happens in MarginCallState.Enter,
             // so we test the multiplied value directly
             int doubledRep = normalRep * 2;
-            Assert.AreEqual(10, doubledRep);
+            Assert.AreEqual(20, doubledRep);
         }
 
         [Test]
@@ -142,8 +142,8 @@ namespace BullRun.Tests.Items.Relics
             int failForwardRep = GameConfig.RepBaseAwardPerRound[failRoundIndex];
             _ctx.Reputation.Add(failForwardRep);
 
-            // Round 3 base rep = 11
-            Assert.AreEqual(11, _ctx.Reputation.Current - repBefore);
+            // Round 3 base rep = 18
+            Assert.AreEqual(18, _ctx.Reputation.Current - repBefore);
         }
 
         [Test]
@@ -153,7 +153,7 @@ namespace BullRun.Tests.Items.Relics
             TradeFeedbackEvent? captured = null;
             EventBus.Subscribe<TradeFeedbackEvent>(e => captured = e);
 
-            // Simulate MarginCallState margin call path with Fail Forward
+            // Simulate MarginCallState margin call path with Fail Forward (round 3 base = 18)
             int failRoundIndex = System.Math.Max(0, System.Math.Min(3 - 1, GameConfig.RepBaseAwardPerRound.Length - 1));
             int failForwardRep = GameConfig.RepBaseAwardPerRound[failRoundIndex];
             _ctx.Reputation.Add(failForwardRep);
@@ -174,7 +174,7 @@ namespace BullRun.Tests.Items.Relics
             // Normal round completion uses CalculateRoundReputation, which is unaffected.
             _mgr.AddRelic("relic_fail_forward");
             int normalRep = MarginCallState.CalculateRoundReputation(1, 20f, 20f);
-            Assert.AreEqual(5, normalRep, "Normal round rep should be unaffected by Fail Forward");
+            Assert.AreEqual(10, normalRep, "Normal round rep should be unaffected by Fail Forward");
         }
 
         // ════════════════════════════════════════════════════════════════════

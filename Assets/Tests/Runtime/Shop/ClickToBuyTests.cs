@@ -75,7 +75,7 @@ namespace BullRun.Tests.Shop
         {
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
 
-            // Fill to base max (5) using real pool relics via RelicManager
+            // Fill to base max (4) using real pool relics via RelicManager
             for (int i = 0; i < GameConfig.MaxRelicSlots; i++)
                 _ctx.RelicManager.AddRelic(ShopItemDefinitions.RelicPool[i].Id);
 
@@ -201,38 +201,36 @@ namespace BullRun.Tests.Shop
         // === Sell refund calculation edge cases (AC 5, 6) ===
 
         [Test]
-        public void SellRefund_Cost20_Returns10()
+        public void SellRefund_Cost14_Returns7()
         {
-            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 20
+            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 14
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_short_multiplier");
+
+            Assert.AreEqual(repBefore + 7, _ctx.Reputation.Current);
+        }
+
+        [Test]
+        public void SellRefund_Cost20_Returns10()
+        {
+            _ctx.RelicManager.AddRelic("relic_double_dealer"); // Cost: 20
+            int repBefore = _ctx.Reputation.Current;
+
+            _transaction.SellRelic(_ctx, "relic_double_dealer");
 
             Assert.AreEqual(repBefore + 10, _ctx.Reputation.Current);
         }
 
         [Test]
-        public void SellRefund_Cost30_Returns15()
+        public void SellRefund_Cost28_Returns14()
         {
-            _ctx.RelicManager.AddRelic("relic_double_dealer"); // Cost: 30
-            int repBefore = _ctx.Reputation.Current;
-
-            _transaction.SellRelic(_ctx, "relic_double_dealer");
-
-            Assert.AreEqual(repBefore + 15, _ctx.Reputation.Current);
-        }
-
-        [Test]
-        public void SellRefund_Cost50_Returns25()
-        {
-            // Story 17.7: relic_relic_expansion now has custom sell value of 0,
-            // so use relic_rep_doubler (cost 40) for standard 50% refund test
-            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 40
+            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 28
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_rep_doubler");
 
-            Assert.AreEqual(repBefore + 20, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 14, _ctx.Reputation.Current);
         }
 
         // === ShopItemSoldEvent contains correct data (AC 15) ===
@@ -243,29 +241,29 @@ namespace BullRun.Tests.Shop
             ShopItemSoldEvent received = default;
             EventBus.Subscribe<ShopItemSoldEvent>(e => { received = e; });
 
-            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 40
+            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 28
 
             _transaction.SellRelic(_ctx, "relic_rep_doubler");
 
             Assert.AreEqual("relic_rep_doubler", received.RelicId);
-            Assert.AreEqual(20, received.RefundAmount); // 40 / 2
+            Assert.AreEqual(14, received.RefundAmount); // 28 / 2
         }
 
         // === Owned relics capacity dynamic adjustment (AC 2) ===
 
         [Test]
-        public void MaxSlots_Default5_ExpandedInventory7()
+        public void MaxSlots_Default4_ExpandedInventory6()
         {
-            Assert.AreEqual(5, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
+            Assert.AreEqual(4, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
 
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
-            Assert.AreEqual(7, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
+            Assert.AreEqual(6, ShopTransaction.GetEffectiveMaxRelicSlots(_ctx));
         }
 
         [Test]
-        public void MaxPossibleOwnedSlots_Is7()
+        public void MaxPossibleOwnedSlots_Is6()
         {
-            Assert.AreEqual(7, ShopUI.MaxPossibleOwnedSlots);
+            Assert.AreEqual(6, ShopUI.MaxPossibleOwnedSlots);
         }
 
         // === Sell then buy cycle (AC 6, 7) ===

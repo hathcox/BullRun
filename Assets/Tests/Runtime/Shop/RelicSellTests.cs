@@ -37,40 +37,38 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRelic_RefundsHalfCostRoundedDown_EvenCost()
         {
-            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 20
+            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 14
             int repBefore = _ctx.Reputation.Current;
 
             var result = _transaction.SellRelic(_ctx, "relic_short_multiplier");
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(repBefore + 10, _ctx.Reputation.Current); // 20 / 2 = 10
+            Assert.AreEqual(repBefore + 7, _ctx.Reputation.Current); // 14 / 2 = 7
         }
 
         [Test]
         public void SellRelic_RefundsHalfCostRoundedDown_OddCost()
         {
-            // Event Trigger costs 25 → refund 12 (25 / 2 = 12 via integer division)
-            _ctx.RelicManager.AddRelic("relic_event_trigger"); // Cost: 25
+            // Quick Draw costs 15 → refund 7 (15 / 2 = 7 via integer division)
+            _ctx.RelicManager.AddRelic("relic_quick_draw"); // Cost: 15
             int repBefore = _ctx.Reputation.Current;
 
-            var result = _transaction.SellRelic(_ctx, "relic_event_trigger");
+            var result = _transaction.SellRelic(_ctx, "relic_quick_draw");
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(repBefore + 12, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 7, _ctx.Reputation.Current);
         }
 
         [Test]
         public void SellRelic_RefundsHalfCostRoundedDown_HighCost()
         {
-            // Story 17.7: relic_relic_expansion now has custom sell value of 0,
-            // so use relic_rep_doubler (cost 40) for standard 50% refund test
-            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 40
+            _ctx.RelicManager.AddRelic("relic_rep_doubler"); // Cost: 28
             int repBefore = _ctx.Reputation.Current;
 
             var result = _transaction.SellRelic(_ctx, "relic_rep_doubler");
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
-            Assert.AreEqual(repBefore + 20, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 14, _ctx.Reputation.Current); // 28 / 2 = 14
         }
 
         // === Inventory Removal (AC: 6) ===
@@ -124,14 +122,14 @@ namespace BullRun.Tests.Shop
                 received = e;
             });
 
-            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 20
+            _ctx.RelicManager.AddRelic("relic_short_multiplier"); // Cost: 14
 
             _transaction.SellRelic(_ctx, "relic_short_multiplier");
 
             Assert.IsTrue(eventFired);
             Assert.AreEqual("relic_short_multiplier", received.RelicId);
-            Assert.AreEqual(10, received.RefundAmount); // 20 / 2
-            Assert.AreEqual(1010, received.RemainingReputation);
+            Assert.AreEqual(7, received.RefundAmount); // 14 / 2
+            Assert.AreEqual(1007, received.RemainingReputation);
         }
 
         [Test]
@@ -163,15 +161,15 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRelic_MultipleSells_CumulativeRefund()
         {
-            _ctx.RelicManager.AddRelic("relic_event_trigger");       // Cost: 25 → refund 12
-            _ctx.RelicManager.AddRelic("relic_short_multiplier");    // Cost: 20 → refund 10
+            _ctx.RelicManager.AddRelic("relic_event_trigger");       // Cost: 18 → refund 9
+            _ctx.RelicManager.AddRelic("relic_short_multiplier");    // Cost: 14 → refund 7
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_event_trigger");
             _transaction.SellRelic(_ctx, "relic_short_multiplier");
 
             Assert.AreEqual(0, _ctx.OwnedRelics.Count);
-            Assert.AreEqual(repBefore + 12 + 10, _ctx.Reputation.Current);
+            Assert.AreEqual(repBefore + 9 + 7, _ctx.Reputation.Current);
         }
     }
 }

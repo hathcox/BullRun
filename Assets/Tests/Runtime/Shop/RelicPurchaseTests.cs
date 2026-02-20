@@ -259,9 +259,9 @@ namespace BullRun.Tests.Shop
         // === GameConfig Constants Tests (AC 7, 8, 11) ===
 
         [Test]
-        public void GameConfig_MaxRelicSlots_Is5()
+        public void GameConfig_MaxRelicSlots_Is4()
         {
-            Assert.AreEqual(5, GameConfig.MaxRelicSlots);
+            Assert.AreEqual(4, GameConfig.MaxRelicSlots);
         }
 
         [Test]

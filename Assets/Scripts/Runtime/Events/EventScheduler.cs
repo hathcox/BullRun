@@ -51,6 +51,9 @@ public class EventScheduler
     /// </summary>
     public void InitializeRound(int round, int act, StockTier tier, IReadOnlyList<StockInstance> activeStocks, float roundDuration)
     {
+        // Clear stale events from previous round to prevent cached prices corrupting new stocks
+        _eventEffects.ClearAllEvents();
+
         // Story 17.4: Store for ForceFireRandomEvent
         _currentTier = tier;
         _currentActiveStocks = activeStocks;

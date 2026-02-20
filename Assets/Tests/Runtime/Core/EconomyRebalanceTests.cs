@@ -177,7 +177,7 @@ namespace BullRun.Tests.Core
         [Test]
         public void RepBaseAwardPerRound_MatchesExpected()
         {
-            int[] expected = { 5, 8, 11, 15, 20, 26, 33, 40 };
+            int[] expected = { 10, 14, 18, 22, 28, 34, 40, 48 };
             for (int i = 0; i < expected.Length; i++)
             {
                 Assert.AreEqual(expected[i], GameConfig.RepBaseAwardPerRound[i],

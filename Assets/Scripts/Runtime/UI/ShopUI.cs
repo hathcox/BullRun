@@ -550,11 +550,12 @@ public class ShopUI : MonoBehaviour
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
         cardLayout.preferredHeight = 95f;
+        cardLayout.flexibleHeight = 1f;
 
         var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 2f;
         vlg.padding = new RectOffset(8, 8, 6, 6);
-        vlg.childAlignment = TextAnchor.UpperCenter;
+        vlg.childAlignment = TextAnchor.MiddleCenter;
         vlg.childForceExpandWidth = true;
         vlg.childForceExpandHeight = false;
 
@@ -1850,7 +1851,7 @@ public class ShopUI : MonoBehaviour
     /// <summary>
     /// Refreshes the owned relics bar to reflect current RunContext.OwnedRelics (AC: 3, 4, 5, 7).
     /// Shows relic name + sell button for owned slots, "Empty" for vacant slots.
-    /// Handles dynamic slot count (5 base, 7 with Expanded Inventory).
+    /// Handles dynamic slot count (4 base, 6 with Expanded Inventory).
     /// </summary>
     public void RefreshOwnedRelicsBar()
     {
@@ -2069,7 +2070,7 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns the maximum possible owned relic slots (7 with Expanded Inventory).
+    /// Returns the maximum possible owned relic slots (6 with Expanded Inventory).
     /// Used by UISetup to create the right number of slot views.
     /// </summary>
     public static int MaxPossibleOwnedSlots => GameConfig.MaxRelicSlots + 2;

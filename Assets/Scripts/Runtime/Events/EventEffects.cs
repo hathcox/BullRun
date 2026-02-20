@@ -27,6 +27,18 @@ public class EventEffects
     public int ActiveEventCount => _activeEvents.Count;
 
     /// <summary>
+    /// Clears all active events and cached price state.
+    /// Must be called on round transitions to prevent stale events from corrupting new stocks.
+    /// </summary>
+    public void ClearAllEvents()
+    {
+        _activeEvents.Clear();
+        _eventStartPrices.Clear();
+        _eventTargetPrices.Clear();
+        _eventPhaseIndex.Clear();
+    }
+
+    /// <summary>
     /// Sets the active stocks list for ticker symbol resolution in headlines.
     /// Call during round initialization.
     /// </summary>

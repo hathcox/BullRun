@@ -33,7 +33,7 @@ public static class GameConfig
     public static readonly int StartingReputation = 0;
 
     // Store: max relic slots per run (Epic 13, AC 11)
-    public static readonly int MaxRelicSlots = 5;
+    public static readonly int MaxRelicSlots = 4;
 
     // Store: reroll base cost in Reputation (Epic 13, AC 7)
     public static readonly int RerollBaseCost = 5;
@@ -66,7 +66,7 @@ public static class GameConfig
     public static readonly int ExpansionCostExtendedTrading = 55;
 
     // Store: number of expansion cards shown per shop visit (Epic 13, Story 13.4)
-    public static readonly int ExpansionsPerShopVisit = 3;
+    public static readonly int ExpansionsPerShopVisit = 1;
 
     // Store: bond prices per round (Story 13.6, AC 4). Index 0 = Round 1, index 7 = Round 8 (unavailable).
     public static readonly int[] BondPricePerRound = new int[] { 3, 5, 8, 12, 17, 23, 30, 0 };
@@ -81,7 +81,7 @@ public static class GameConfig
     // Base Rep awarded per round completion (0-indexed: index 0 = Round 1)
     public static readonly int[] RepBaseAwardPerRound = new int[]
     {
-        5, 8, 11, 15, 20, 26, 33, 40
+        10, 14, 18, 22, 28, 34, 40, 48
     };
 
     // Bonus multiplier on target excess (e.g., 50% excess at 0.5 rate = 25% bonus on baseRep)

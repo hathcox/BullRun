@@ -19,13 +19,13 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void RelicPool_AllRelicsHaveCostsInRange8To50()
+        public void RelicPool_AllRelicsHaveCostsInRange5To35()
         {
             for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
             {
                 var relic = ShopItemDefinitions.RelicPool[i];
-                Assert.GreaterOrEqual(relic.Cost, 8, $"Relic {relic.Id} cost {relic.Cost} below minimum 8");
-                Assert.LessOrEqual(relic.Cost, 50, $"Relic {relic.Id} cost {relic.Cost} above maximum 50");
+                Assert.GreaterOrEqual(relic.Cost, 5, $"Relic {relic.Id} cost {relic.Cost} below minimum 5");
+                Assert.LessOrEqual(relic.Cost, 35, $"Relic {relic.Id} cost {relic.Cost} above maximum 35");
             }
         }
 
