@@ -813,6 +813,9 @@ namespace BullRun.Tests.PriceEngine
         public void UpdatePrice_FullEventLifecycle_PricePeristsNearTarget()
         {
             // FIX-17: Fire event → active → expires → verify price stays near target
+            // Use seeded random for deterministic noise — prevents flaky failures
+            var generator = new PriceGenerator(new System.Random(42));
+
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Neutral, 0f);
             stock.TimeIntoTrading = 5f; // Past noise ramp
@@ -820,7 +823,7 @@ namespace BullRun.Tests.PriceEngine
             var eventEffects = new EventEffects();
             var stocks = new List<StockInstance> { stock };
             eventEffects.SetActiveStocks(stocks);
-            _generator.SetEventEffects(eventEffects);
+            generator.SetEventEffects(eventEffects);
 
             // Start a +25% event
             var evt = new MarketEvent(MarketEventType.EarningsBeat, 0, 0.25f, 4f);
@@ -832,7 +835,7 @@ namespace BullRun.Tests.PriceEngine
             for (float t = 0f; t < 4.5f; t += dt)
             {
                 eventEffects.UpdateActiveEvents(dt);
-                _generator.UpdatePrice(stock, dt);
+                generator.UpdatePrice(stock, dt);
             }
 
             // Event has now expired. Price should be near 125 (not reverted to 100)

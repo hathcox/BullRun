@@ -10,8 +10,15 @@ using UnityEngine;
 public class PriceGenerator
 {
     private readonly List<StockInstance> _activeStocks = new List<StockInstance>();
-    private readonly System.Random _random = new System.Random();
+    private readonly System.Random _random;
     private EventEffects _eventEffects;
+
+    public PriceGenerator() : this(new System.Random()) { }
+
+    public PriceGenerator(System.Random random)
+    {
+        _random = random;
+    }
 
     public IReadOnlyList<StockInstance> ActiveStocks => _activeStocks;
 
