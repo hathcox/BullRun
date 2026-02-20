@@ -188,6 +188,18 @@ public class ShopTransaction
     /// </summary>
     public ShopPurchaseResult PurchaseTip(RunContext ctx, RevealedTip tip, int cost)
     {
+        // Story 17.6: Free Intel relic — first tip is free if flag is set
+        int effectiveCost = cost;
+        if (ctx.FreeIntelThisVisit && ctx.RevealedTips.Count == 0)
+        {
+            effectiveCost = 0;
+            ctx.FreeIntelThisVisit = false;
+
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log("[ShopTransaction] Free Intel relic: first tip is free!");
+            #endif
+        }
+
         try
         {
             if (ctx.RevealedTips.Count >= ctx.InsiderTipSlots)
@@ -198,15 +210,15 @@ public class ShopTransaction
                 return ShopPurchaseResult.SlotsFull;
             }
 
-            if (!ctx.Reputation.CanAfford(cost))
+            if (effectiveCost > 0 && !ctx.Reputation.CanAfford(effectiveCost))
             {
                 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                Debug.Log($"[ShopTransaction] Tip rejected: insufficient Rep {ctx.Reputation.Current} ({cost} Rep needed)");
+                Debug.Log($"[ShopTransaction] Tip rejected: insufficient Rep {ctx.Reputation.Current} ({effectiveCost} Rep needed)");
                 #endif
                 return ShopPurchaseResult.InsufficientFunds;
             }
 
-            if (!ctx.Reputation.Spend(cost))
+            if (effectiveCost > 0 && !ctx.Reputation.Spend(effectiveCost))
             {
                 return ShopPurchaseResult.InsufficientFunds;
             }
@@ -214,14 +226,14 @@ public class ShopTransaction
             ctx.RevealedTips.Add(tip);
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[ShopTransaction] Tip purchased: {tip.Type} for {cost} Rep");
+            Debug.Log($"[ShopTransaction] Tip purchased: {tip.Type} for {effectiveCost} Rep");
             #endif
 
             return ShopPurchaseResult.Success;
         }
         catch (System.Exception ex)
         {
-            ctx?.Reputation.Add(cost);
+            ctx?.Reputation.Add(effectiveCost);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.LogWarning($"[ShopTransaction] Tip purchase failed: {ex.Message}");
             #endif

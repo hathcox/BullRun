@@ -51,6 +51,20 @@ public class RunContext
     public bool ShortingDisabled { get; internal set; }
 
     /// <summary>
+    /// Story 17.6: When true, the first insider tip this shop visit is free.
+    /// Set by FreeIntelRelic.OnShopOpen, consumed by ShopTransaction.PurchaseTip,
+    /// reset in ShopState.Enter before DispatchShopOpen.
+    /// </summary>
+    public bool FreeIntelThisVisit { get; internal set; }
+
+    /// <summary>
+    /// Story 17.6: Number of bonus expansion slots this shop visit.
+    /// Set by ExtraExpansionRelic.OnShopOpen, used by ShopState when generating expansion offerings,
+    /// reset in ShopState.Enter before DispatchShopOpen.
+    /// </summary>
+    public int BonusExpansionSlots { get; internal set; }
+
+    /// <summary>
     /// True when the player has completed all rounds (survived Round 8 margin call).
     /// Set by MarginCallState when the final round passes.
     /// </summary>
@@ -243,6 +257,8 @@ public class RunContext
         StartingCapital = Portfolio.Cash;
         LongsDisabled = false;
         ShortingDisabled = false;
+        FreeIntelThisVisit = false;
+        BonusExpansionSlots = 0;
         RunCompleted = false;
         PeakCash = Portfolio.Cash;
         BestRoundProfit = 0f;

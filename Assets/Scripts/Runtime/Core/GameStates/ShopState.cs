@@ -60,6 +60,11 @@ public class ShopState : IGameState
         ctx.CurrentShopRerollCount = 0;
         ctx.RevealedTips.Clear();
 
+        // Story 17.6: Reset per-visit relic flags BEFORE DispatchShopOpen
+        // so relic hooks (FreeIntelRelic, ExtraExpansionRelic) can set them
+        ctx.FreeIntelThisVisit = false;
+        ctx.BonusExpansionSlots = 0;
+
         // Generate relic offering with uniform random selection (AC 1, 2, 3)
         _random = _randomSeedOverride >= 0 ? new System.Random(_randomSeedOverride) : new System.Random();
         _relicOffering = ShopGenerator.GenerateRelicOffering(ctx.OwnedRelics, _random);
@@ -69,10 +74,35 @@ public class ShopState : IGameState
         _shopTransaction = new ShopTransaction();
         _shopActive = true;
         _expansionsPurchasedCount = 0;
+        _bondsPurchasedCount = 0;
 
-        // Generate expansion offering (Story 13.4)
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        Debug.Log($"[ShopState] Generated relics: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
+        #endif
+
+        // Publish shop opened event — only include non-null relics
+        int availableCount = 0;
+        for (int i = 0; i < _relicOffering.Length; i++)
+            if (_relicOffering[i].HasValue) availableCount++;
+
+        var availableRelics = new RelicDef[availableCount];
+        int availIdx = 0;
+        for (int i = 0; i < _relicOffering.Length; i++)
+        {
+            if (_relicOffering[i].HasValue)
+            {
+                availableRelics[availIdx++] = _relicOffering[i].Value;
+            }
+        }
+
+        // Story 17.1: Dispatch shop-open hook to all owned relics
+        // Story 17.6: Must happen BEFORE expansion/tip generation so FreeIntelRelic
+        // and ExtraExpansionRelic can set their flags first
+        ctx.RelicManager.DispatchShopOpen();
+
+        // Story 17.6: Generate expansion offering AFTER relic dispatch so BonusExpansionSlots is set
         _expansionManager = new ExpansionManager(ctx);
-        _expansionOffering = _expansionManager.GetAvailableForShop(GameConfig.ExpansionsPerShopVisit, _random);
+        _expansionOffering = _expansionManager.GetAvailableForShop(GameConfig.ExpansionsPerShopVisit + ctx.BonusExpansionSlots, _random);
 
         // Story 13.7: Intel Expansion effect — increase tip slots when owned
         ctx.InsiderTipSlots = GameConfig.DefaultInsiderTipSlots +
@@ -85,11 +115,16 @@ public class ShopState : IGameState
         _tipOffering = _tipGenerator.GenerateTips(ctx.InsiderTipSlots, nextRound, nextAct, _random);
         _tipPurchased = new bool[_tipOffering.Length];
         _tipsPurchasedCount = 0;
-        _bondsPurchasedCount = 0;
 
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[ShopState] Generated relics: {RelicLabel(0)}, {RelicLabel(1)}, {RelicLabel(2)}");
-        #endif
+        EventBus.Publish(new ShopOpenedEvent
+        {
+            RoundNumber = ctx.CurrentRound,
+            AvailableRelics = availableRelics,
+            CurrentReputation = ctx.Reputation.Current,
+            ExpansionsAvailable = _expansionOffering.Length > 0,
+            TipsAvailable = _tipOffering != null && _tipOffering.Length > 0,
+            BondAvailable = ctx.CurrentRound < GameConfig.TotalRounds
+        });
 
         // Show store UI with purchase, close, and reroll callbacks
         if (ShopUIInstance != null)
@@ -118,34 +153,6 @@ public class ShopState : IGameState
             Debug.LogWarning("[ShopState] ShopUIInstance is NULL — shop panels will not populate");
             #endif
         }
-
-        // Publish shop opened event — only include non-null relics
-        int availableCount = 0;
-        for (int i = 0; i < _relicOffering.Length; i++)
-            if (_relicOffering[i].HasValue) availableCount++;
-
-        var availableRelics = new RelicDef[availableCount];
-        int availIdx = 0;
-        for (int i = 0; i < _relicOffering.Length; i++)
-        {
-            if (_relicOffering[i].HasValue)
-            {
-                availableRelics[availIdx++] = _relicOffering[i].Value;
-            }
-        }
-
-        EventBus.Publish(new ShopOpenedEvent
-        {
-            RoundNumber = ctx.CurrentRound,
-            AvailableRelics = availableRelics,
-            CurrentReputation = ctx.Reputation.Current,
-            ExpansionsAvailable = _expansionOffering.Length > 0,
-            TipsAvailable = _tipOffering != null && _tipOffering.Length > 0,
-            BondAvailable = ctx.CurrentRound < GameConfig.TotalRounds
-        });
-
-        // Story 17.1: Dispatch shop-open hook to all owned relics
-        ctx.RelicManager.DispatchShopOpen();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[ShopState] Enter: Store opened (Round {ctx.CurrentRound}), {availableRelics.Length} relics, untimed");

@@ -52,6 +52,27 @@ public class MarketCloseState : IGameState
             _tradeExecutor.IsTradeEnabled = false;
         }
 
+        // Story 17.6: Diamond Hands — compute long position value before liquidation
+        float diamondHandsMultiplier = ctx.RelicManager.GetLiquidationMultiplier();
+        float longPositionValue = 0f;
+        if (diamondHandsMultiplier > 1.0f)
+        {
+            foreach (var pos in ctx.Portfolio.GetAllPositions())
+            {
+                if (_priceGenerator != null && int.TryParse(pos.StockId, out int pid))
+                {
+                    for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
+                    {
+                        if (_priceGenerator.ActiveStocks[i].StockId == pid)
+                        {
+                            longPositionValue += pos.Shares * _priceGenerator.ActiveStocks[i].CurrentPrice;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         // Liquidate all positions at current prices
         int positionCount = ctx.Portfolio.PositionCount + ctx.Portfolio.ShortPositionCount;
         _roundProfit = ctx.Portfolio.LiquidateAllPositions(stockId =>
@@ -66,6 +87,14 @@ public class MarketCloseState : IGameState
             }
             return 0f;
         });
+
+        // Story 17.6: Diamond Hands — add bonus cash for long positions
+        if (diamondHandsMultiplier > 1.0f && longPositionValue > 0f)
+        {
+            float bonus = (diamondHandsMultiplier - 1.0f) * longPositionValue;
+            ctx.Portfolio.AddCash(bonus);
+            EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_diamond_hands" });
+        }
 
         // Total round profit = cash change from round start, not just liquidation P&L.
         // Manual trades realized during the round must count toward margin call targets.

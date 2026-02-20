@@ -85,6 +85,7 @@ public class GameRunner : MonoBehaviour
         // The real run initialization happens when START GAME is clicked.
         _ctx = new RunContext(1, 1, new Portfolio(GameConfig.StartingCapital));
         _priceGenerator = new PriceGenerator();
+        PriceGenerator.SetActiveInstance(_priceGenerator);
         _tradeExecutor = new TradeExecutor();
         _stateMachine = new GameStateMachine(_ctx);
 

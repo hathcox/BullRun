@@ -27,6 +27,19 @@ public class TradingState : IGameState
     public static bool IsActive { get; private set; }
 
     /// <summary>
+    /// Story 17.6: Extends the active round timer by the given seconds.
+    /// Called by TimeBuyerRelic on buy trade. No-op if trading is not active.
+    /// Static method consistent with other TradingState static accessors.
+    /// </summary>
+    private static TradingState _activeInstance;
+    public static void ExtendTimer(float seconds)
+    {
+        if (!IsActive || _activeInstance == null) return;
+        _activeInstance._timeRemaining += seconds;
+        ActiveTimeRemaining = _activeInstance._timeRemaining;
+    }
+
+    /// <summary>
     /// Sets external dependencies. Must be called before transitioning to this state.
     /// </summary>
     public static TradingStateConfig NextConfig;
@@ -59,6 +72,7 @@ public class TradingState : IGameState
         ActiveTimeRemaining = _timeRemaining;
         ActiveRoundDuration = _roundDuration;
         IsActive = true;
+        _activeInstance = this;
 
         // Story 17.4 review fix: Reset relic multipliers to defaults BEFORE RoundStartedEvent
         // so relics can set their values during dispatch (Event Storm, Bull Believer).
@@ -180,6 +194,7 @@ public class TradingState : IGameState
     public void Exit(RunContext ctx)
     {
         IsActive = false;
+        _activeInstance = null;
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[TradingState] Exit: TimeRemaining={_timeRemaining:F2}s");

@@ -16,6 +16,47 @@ public class PriceGenerator
     public IReadOnlyList<StockInstance> ActiveStocks => _activeStocks;
 
     /// <summary>
+    /// Story 17.6: Static reference for relics to access price manipulation.
+    /// Set by GameRunner during round initialization.
+    /// </summary>
+    private static PriceGenerator _activeInstance;
+    public static void SetActiveInstance(PriceGenerator instance) { _activeInstance = instance; }
+
+    /// <summary>
+    /// Story 17.6: Applies a price multiplier to a stock by its string ID.
+    /// Called by MarketManipulatorRelic after sell. Publishes PriceUpdatedEvent.
+    /// </summary>
+    public static void ApplyPriceMultiplier(string stockId, float multiplier)
+    {
+        if (_activeInstance == null) return;
+        if (!int.TryParse(stockId, out int parsedId)) return;
+
+        for (int i = 0; i < _activeInstance._activeStocks.Count; i++)
+        {
+            var stock = _activeInstance._activeStocks[i];
+            if (stock.StockId == parsedId)
+            {
+                float previousPrice = stock.CurrentPrice;
+                stock.CurrentPrice *= multiplier;
+
+                // Story 17.6 review fix: Also adjust TrendLinePrice so mean reversion
+                // doesn't immediately fight the price change back toward the old trend
+                if (stock.TrendLinePrice > 0f)
+                    stock.TrendLinePrice *= multiplier;
+
+                EventBus.Publish(new PriceUpdatedEvent
+                {
+                    StockId = stock.StockId,
+                    NewPrice = stock.CurrentPrice,
+                    PreviousPrice = previousPrice,
+                    DeltaTime = 0f
+                });
+                return;
+            }
+        }
+    }
+
+    /// <summary>
     /// Sets the EventEffects processor for event spike integration.
     /// </summary>
     public void SetEventEffects(EventEffects eventEffects)

@@ -96,7 +96,7 @@ development_status:
   17-3-trade-modification-relics: done                    # Code review: 8 findings, 4 fixes applied — Double Dealer, Quick Draw, Bear Raid, Skimmer, Short Profiteer
   17-4-event-interaction-relics: done                    # Code review: 7 findings, 6 fixes applied — Catalyst Trader, Event Storm, Loss Liquidator, Profit Refresh, Bull Believer
   17-5-economy-reputation-relics: done                    # Code review: 7 findings, 5 fixes applied — Rep Doubler, Fail Forward, Compound Rep, Rep Interest, Rep Dividend, Bond Bonus
-  17-6-mechanic-timer-relics: ready-for-dev                   # Time Buyer, Diamond Hands, Market Manipulator, Free Intel, Extra Expansion
+  17-6-mechanic-timer-relics: done                             # Code review: 7 findings, 4 fixes applied — Time Buyer, Diamond Hands, Market Manipulator, Free Intel, Extra Expansion
   17-7-special-relics: ready-for-dev                          # Event Catalyst, Relic Expansion
   17-8-trading-phase-relic-display: ready-for-dev             # Relic bar UI, tooltips, activation glow
   17-9-relic-reordering: ready-for-dev                        # Click-to-select-and-place reordering in shop

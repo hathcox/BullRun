@@ -687,10 +687,20 @@ public class ShopUI : MonoBehaviour
         for (int i = 0; i < offering.Length; i++)
         {
             _tipCards[i] = CreateTipCard(i, offering[i], _tipsPanel.transform);
-            bool canAfford = ctx.Reputation.CanAfford(offering[i].Definition.Cost);
+
+            // Story 17.6: Show "FREE" on first tip slot when Free Intel relic is active
+            if (i == 0 && ctx.FreeIntelThisVisit)
+            {
+                _tipCards[i].CostText.text = "FREE";
+                _tipCards[i].CostText.color = ColorPalette.Green;
+            }
+            else
+            {
+                bool canAfford = ctx.Reputation.CanAfford(offering[i].Definition.Cost);
+                _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
+            }
             _tipCards[i].PurchaseButton.interactable = true;
             _tipCards[i].ButtonText.gameObject.SetActive(false);
-            _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
 
             var card = _tipCards[i];
             var cardRT = card.Root.GetComponent<RectTransform>();
@@ -733,6 +743,10 @@ public class ShopUI : MonoBehaviour
         for (int i = 0; i < _tipCards.Length && i < _tipOffering.Length; i++)
         {
             if (_tipCards[i].IsRevealed) continue;
+
+            // Story 17.6 review fix: Preserve "FREE" label color for free first tip
+            if (i == 0 && _ctx.FreeIntelThisVisit && _ctx.RevealedTips.Count == 0)
+                continue;
 
             bool canAfford = _ctx.Reputation.CanAfford(_tipOffering[i].Definition.Cost);
             _tipCards[i].CostText.color = canAfford ? Color.white : ColorPalette.Red;
@@ -843,7 +857,9 @@ public class ShopUI : MonoBehaviour
         if (_tipOffering == null || index >= _tipOffering.Length) return;
         int cost = _tipOffering[index].Definition.Cost;
 
-        if (!_ctx.Reputation.CanAfford(cost))
+        // Story 17.6 review fix: Free Intel relic — first tip is free, bypass affordability check
+        bool isFreeFirstTip = _ctx.FreeIntelThisVisit && _ctx.RevealedTips.Count == 0;
+        if (!isFreeFirstTip && !_ctx.Reputation.CanAfford(cost))
         {
             if (_tipFlashCoroutines[index] != null) StopCoroutine(_tipFlashCoroutines[index]);
             _tipFlashCoroutines[index] = StartCoroutine(FlashTipFeedback(index, "CAN'T AFFORD", ColorPalette.Red));

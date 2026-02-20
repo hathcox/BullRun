@@ -68,7 +68,14 @@ public static class RelicFactory
         _registry["relic_rep_dividend"] = () => new RepDividendRelic();
         _registry["relic_bond_bonus"] = () => new BondBonusRelic();
 
-        // Remaining relics still use StubRelic until Stories 17.6-17.7
+        // Story 17.6: Register real relic constructors for mechanic/timer relics
+        _registry["relic_time_buyer"] = () => new TimeBuyerRelic();
+        _registry["relic_diamond_hands"] = () => new DiamondHandsRelic();
+        _registry["relic_market_manipulator"] = () => new MarketManipulatorRelic();
+        _registry["relic_free_intel"] = () => new FreeIntelRelic();
+        _registry["relic_extra_expansion"] = () => new ExtraExpansionRelic();
+
+        // Remaining relics still use StubRelic until Story 17.7
         for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
         {
             var id = ShopItemDefinitions.RelicPool[i].Id;

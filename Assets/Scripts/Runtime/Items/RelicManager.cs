@@ -122,6 +122,19 @@ public class RelicManager
     }
 
     /// <summary>
+    /// Story 17.6: Returns liquidation multiplier for long positions at market close.
+    /// Diamond Hands: 1.30f if owned, else 1.0f.
+    /// </summary>
+    public float GetLiquidationMultiplier()
+    {
+        if (GetRelicById("relic_diamond_hands") != null)
+        {
+            return 1.30f;
+        }
+        return 1.0f;
+    }
+
+    /// <summary>
     /// Returns effective trade quantity. Double Dealer: doubles the base quantity.
     /// </summary>
     public int GetEffectiveTradeQuantity(int baseQty)
