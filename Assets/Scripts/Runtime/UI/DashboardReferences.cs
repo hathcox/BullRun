@@ -57,4 +57,8 @@ public class DashboardReferences
     public Text EventTickerText;
     public Text StockNameLabel;
     public Text StockPriceLabel;
+
+    // ── Relic Bar (Story 17.8) ────────────────────────────────────────
+    public RectTransform RelicBarRoot;
+    public GameObject RelicBarTooltip;
 }

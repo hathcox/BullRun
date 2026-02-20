@@ -197,6 +197,9 @@ public class GameRunner : MonoBehaviour
         UISetup.ExecuteScreenEffects();
         UISetup.ExecuteEventPopup();
 
+        // Story 17.8: Create relic bar for trading phase display
+        UISetup.ExecuteRelicBar(_ctx);
+
         // Create overlay UIs that subscribe to state transition events
         UISetup.ExecuteRoundResultsUI();
         UISetup.ExecuteRunSummaryUI();

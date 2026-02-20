@@ -1,6 +1,6 @@
 # Story 17.8: Trading Phase Relic Display & Tooltips
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -26,64 +26,64 @@ so that I can track which relics I have, understand their effects at a glance, a
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create RelicBar MonoBehaviour (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13)
-  - [ ] Create `Assets/Scripts/Runtime/UI/RelicBar.cs` as a MonoBehaviour
-  - [ ] `Initialize(RunContext ctx)` method — stores RunContext reference for relic data access
-  - [ ] Private fields: `_iconSlots` (list of icon GameObjects), `_tooltipPanel` (GameObject), `_tooltipNameText` (Text), `_tooltipDescText` (Text), `_tooltipEffectText` (Text), `_glowTimers` (Dictionary<string, float>)
-  - [ ] `RefreshRelicIcons()` method — clears existing icons, iterates `ctx.RelicManager.OrderedRelics`, creates icon GameObjects for each
-  - [ ] Each icon: 40x40 `Image` with `Text` overlay using CRT theme character, background color from `CRTThemeData`
-  - [ ] Subscribe to `RelicActivatedEvent` via EventBus in `Initialize()` — triggers glow on matching relic icon (AC 8)
-  - [ ] Subscribe to `ShopItemPurchasedEvent` and `ShopItemSoldEvent` via EventBus — calls `RefreshRelicIcons()` (AC 4)
-  - [ ] Subscribe to `RoundStartedEvent` — show relic bar (AC 1, 13)
-  - [ ] Subscribe to `TradingPhaseEndedEvent` — hide relic bar (AC 9, 13)
-  - [ ] Subscribe to `MarketClosedEvent` — hide relic bar (AC 13)
-  - [ ] Unsubscribe all in `OnDestroy()`
-- [ ] Task 2: Implement hover tooltip (AC: 5, 6, 7)
-  - [ ] Add Unity `EventTrigger` or `IPointerEnterHandler`/`IPointerExitHandler` to each icon slot
-  - [ ] On pointer enter: show tooltip panel, populate with relic data from `ItemLookup.GetRelicById(relicId)`
-  - [ ] Tooltip content: Name (bold via rich text `<b>` tags), Description, EffectDescription
-  - [ ] Special case: if relicId == `relic_compound_rep`, append current sell value line (query from RelicManager or relic instance)
-  - [ ] Tooltip positioning: offset above or to the side of the icon; clamp to screen bounds so it never overlaps the chart area
-  - [ ] On pointer exit: hide tooltip panel
-  - [ ] Tooltip appears with no delay (Unity event trigger is effectively instant, satisfying ~0.1s AC 5)
-- [ ] Task 3: Implement activation glow effect (AC: 8)
-  - [ ] On `RelicActivatedEvent` received: find the icon slot matching `event.RelicId`
-  - [ ] Start a 0.3s glow timer for that slot — store in `_glowTimers` dictionary
-  - [ ] During `Update()`: for each active glow timer, lerp icon color/alpha to create a pulse effect (bright flash fading back to normal)
-  - [ ] Use `CRTThemeData.AccentGlow` or similar bright color for the flash, lerping back to the default icon color
-  - [ ] Multiple simultaneous glows supported (each relic has its own timer)
-- [ ] Task 4: Add relic bar references to DashboardReferences (AC: 12)
-  - [ ] Add `RectTransform RelicBarRoot` field to `DashboardReferences`
-  - [ ] Add `GameObject RelicBarTooltip` field to `DashboardReferences`
-  - [ ] File: `Assets/Scripts/Runtime/UI/DashboardReferences.cs`
-- [ ] Task 5: Create relic bar in UISetup (AC: 10)
-  - [ ] In `UISetup.cs`, add a new method `ExecuteRelicBar(RunContext ctx)` or add to existing `Execute()` flow
-  - [ ] Create relic bar Canvas (or child of existing dashboard canvas) with `HorizontalLayoutGroup`
-  - [ ] Position in top-right area below event ticker, or configurable position
-  - [ ] Set `HorizontalLayoutGroup` spacing, padding, and child alignment for 40x40 icons
-  - [ ] Create tooltip panel as a child with `CanvasGroup` (initially hidden, alpha 0 or inactive)
-  - [ ] Tooltip panel: vertical layout with Text components for name, description, effect
-  - [ ] Style using `CRTThemeData` colors — dark background panel, green/amber text matching CRT theme
-  - [ ] Wire references to `DashboardReferences` (Task 4)
-  - [ ] Instantiate `RelicBar` component on the bar root, call `Initialize(ctx)`
-  - [ ] File: `Assets/Scripts/Setup/UISetup.cs`
-- [ ] Task 6: Call ExecuteRelicBar from GameRunner (AC: 10)
-  - [ ] Add `UISetup.ExecuteRelicBar(_ctx)` call in `GameRunner.Start()` after other UI setup calls
-  - [ ] Ensure it runs after `UISetup.Execute()` so DashboardReferences exist
-  - [ ] File: `Assets/Scripts/Runtime/Core/GameRunner.cs`
-- [ ] Task 7: Handle visibility during state transitions (AC: 9, 13)
-  - [ ] Relic bar shows on `RoundStartedEvent` (trading begins)
-  - [ ] Relic bar hides on `TradingPhaseEndedEvent` or `MarketClosedEvent` (trading ends)
-  - [ ] Relic bar is not shown during shop — ShopUI has its own owned relics bar (AC 9)
-  - [ ] Relic bar starts hidden (inactive) — only activates when first `RoundStartedEvent` fires
-  - [ ] On `ReturnToMenuEvent`: hide relic bar (defensive cleanup)
-- [ ] Task 8: Write tests (AC: 1-13)
-  - [ ] RelicBar.RefreshRelicIcons: verify correct number of icons created matching OrderedRelics count
-  - [ ] RelicBar tooltip: verify correct data populated from ItemLookup
-  - [ ] RelicBar glow: verify glow timer starts on RelicActivatedEvent, completes after 0.3s
-  - [ ] Visibility: verify bar shows on RoundStarted, hides on TradingPhaseEnded
-  - [ ] Overflow: verify 8 relics render without clipping (layout test)
-  - [ ] Files: `Assets/Tests/Runtime/UI/RelicBarTests.cs`
+- [x] Task 1: Create RelicBar MonoBehaviour (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13)
+  - [x] Create `Assets/Scripts/Runtime/UI/RelicBar.cs` as a MonoBehaviour
+  - [x] `Initialize(RunContext ctx)` method — stores RunContext reference for relic data access
+  - [x] Private fields: `_iconSlots` (list of icon GameObjects), `_tooltipPanel` (GameObject), `_tooltipNameText` (Text), `_tooltipDescText` (Text), `_tooltipEffectText` (Text), `_glowTimers` (Dictionary<string, float>)
+  - [x] `RefreshRelicIcons()` method — clears existing icons, iterates `ctx.RelicManager.OrderedRelics`, creates icon GameObjects for each
+  - [x] Each icon: 40x40 `Image` with `Text` overlay using CRT theme character, background color from `CRTThemeData`
+  - [x] Subscribe to `RelicActivatedEvent` via EventBus in `Initialize()` — triggers glow on matching relic icon (AC 8)
+  - [x] Subscribe to `ShopItemPurchasedEvent` and `ShopItemSoldEvent` via EventBus — calls `RefreshRelicIcons()` (AC 4)
+  - [x] Subscribe to `RoundStartedEvent` — show relic bar (AC 1, 13)
+  - [x] Subscribe to `TradingPhaseEndedEvent` — hide relic bar (AC 9, 13)
+  - [x] Subscribe to `MarketClosedEvent` — hide relic bar (AC 13)
+  - [x] Unsubscribe all in `OnDestroy()`
+- [x] Task 2: Implement hover tooltip (AC: 5, 6, 7)
+  - [x] Add Unity `EventTrigger` or `IPointerEnterHandler`/`IPointerExitHandler` to each icon slot
+  - [x] On pointer enter: show tooltip panel, populate with relic data from `ItemLookup.GetRelicById(relicId)`
+  - [x] Tooltip content: Name (bold via rich text `<b>` tags), Description, EffectDescription
+  - [x] Special case: if relicId == `relic_compound_rep`, append current sell value line (query from RelicManager or relic instance)
+  - [x] Tooltip positioning: offset above or to the side of the icon; clamp to screen bounds so it never overlaps the chart area
+  - [x] On pointer exit: hide tooltip panel
+  - [x] Tooltip appears with no delay (Unity event trigger is effectively instant, satisfying ~0.1s AC 5)
+- [x] Task 3: Implement activation glow effect (AC: 8)
+  - [x] On `RelicActivatedEvent` received: find the icon slot matching `event.RelicId`
+  - [x] Start a 0.3s glow timer for that slot — store in `_glowTimers` dictionary
+  - [x] During `Update()`: for each active glow timer, lerp icon color/alpha to create a pulse effect (bright flash fading back to normal)
+  - [x] Use `ColorPalette.White` for the flash, lerping back to the default icon color (CRTThemeData has no AccentGlow — White gives a bright phosphor flash)
+  - [x] Multiple simultaneous glows supported (each relic has its own timer)
+- [x] Task 4: Add relic bar references to DashboardReferences (AC: 12)
+  - [x] Add `RectTransform RelicBarRoot` field to `DashboardReferences`
+  - [x] Add `GameObject RelicBarTooltip` field to `DashboardReferences`
+  - [x] File: `Assets/Scripts/Runtime/UI/DashboardReferences.cs`
+- [x] Task 5: Create relic bar in UISetup (AC: 10)
+  - [x] In `UISetup.cs`, add a new method `ExecuteRelicBar(RunContext ctx)` or add to existing `Execute()` flow
+  - [x] Create relic bar Canvas (or child of existing dashboard canvas) with `HorizontalLayoutGroup`
+  - [x] Position in top-right area below event ticker, or configurable position
+  - [x] Set `HorizontalLayoutGroup` spacing, padding, and child alignment for 40x40 icons
+  - [x] Create tooltip panel as a child with `CanvasGroup` (initially hidden, alpha 0 or inactive)
+  - [x] Tooltip panel: vertical layout with Text components for name, description, effect
+  - [x] Style using `CRTThemeData` colors — dark background panel, green/amber text matching CRT theme
+  - [x] Wire references to `DashboardReferences` (Task 4)
+  - [x] Instantiate `RelicBar` component on the bar root, call `Initialize(ctx)`
+  - [x] File: `Assets/Scripts/Setup/UISetup.cs`
+- [x] Task 6: Call ExecuteRelicBar from GameRunner (AC: 10)
+  - [x] Add `UISetup.ExecuteRelicBar(_ctx)` call in `GameRunner.Start()` after other UI setup calls
+  - [x] Ensure it runs after `UISetup.Execute()` so DashboardReferences exist
+  - [x] File: `Assets/Scripts/Runtime/Core/GameRunner.cs`
+- [x] Task 7: Handle visibility during state transitions (AC: 9, 13)
+  - [x] Relic bar shows on `RoundStartedEvent` (trading begins)
+  - [x] Relic bar hides on `TradingPhaseEndedEvent` or `MarketClosedEvent` (trading ends)
+  - [x] Relic bar is not shown during shop — ShopUI has its own owned relics bar (AC 9)
+  - [x] Relic bar starts hidden (inactive) — only activates when first `RoundStartedEvent` fires
+  - [x] On `ReturnToMenuEvent`: hide relic bar (defensive cleanup)
+- [x] Task 8: Write tests (AC: 1-13)
+  - [x] RelicBar.RefreshRelicIcons: verify correct number of icons created matching OrderedRelics count
+  - [x] RelicBar tooltip: verify correct data populated from ItemLookup
+  - [x] RelicBar glow: verify glow timer starts on RelicActivatedEvent, completes after 0.3s
+  - [x] Visibility: verify bar shows on RoundStarted, hides on TradingPhaseEnded
+  - [x] Overflow: verify 8 relics render without clipping (layout test)
+  - [x] Files: `Assets/Tests/Runtime/UI/RelicBarTests.cs`
 
 ## Dev Notes
 
@@ -130,8 +130,34 @@ so that I can track which relics I have, understand their effects at a glance, a
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
+
+N/A — no runtime debugging needed; tests validate all logic paths.
 
 ### Completion Notes List
 
+- Created `RelicBar` MonoBehaviour with full EventBus-driven lifecycle: subscribes to 7 events (RelicActivatedEvent, ShopItemPurchasedEvent, ShopItemSoldEvent, RoundStartedEvent, TradingPhaseEndedEvent, MarketClosedEvent, ReturnToMenuEvent), unsubscribes all in OnDestroy.
+- `RefreshRelicIcons()` creates 40x40 icon slots with CRTThemeData.Panel background, text overlay showing first 2 chars of relic name (placeholder for Story 17.10 proper icons).
+- Hover tooltip via Unity `EventTrigger` (PointerEnter/PointerExit) — shows relic Name (bold rich text), Description, EffectDescription. Compound Rep special case appends dynamic sell value from `IRelic.GetSellValue()`.
+- Tooltip positioned above icon with screen-edge clamping (right, left, top overflow handled).
+- Activation glow: 0.3s timer per relic, `Color.Lerp` from `ColorPalette.White` to `CRTThemeData.Panel`. Multiple simultaneous glows supported. Used White instead of AccentGlow (not in CRTThemeData) for bright phosphor flash effect.
+- UISetup.ExecuteRelicBar creates its own canvas (sortingOrder 21), HorizontalLayoutGroup bar, tooltip with CanvasGroup + VerticalLayoutGroup, ContentSizeFitter for overflow prevention.
+- DashboardReferences gains `RelicBarRoot` (RectTransform) and `RelicBarTooltip` (GameObject) fields.
+- GameRunner.Start() calls `UISetup.ExecuteRelicBar(_ctx)` after `UISetup.ExecuteScreenEffects()` / before overlay UIs.
+- Visibility: starts hidden, shows on RoundStarted, hides on TradingPhaseEnded/MarketClosed/ReturnToMenu.
+- 27 tests covering: icon creation (0, 3, 8 relics), refresh on events, glow start/multi-glow/duration, visibility state transitions, tooltip content population (AC 5), Compound Rep dynamic sell value (AC 6), tooltip edge cases, non-relic purchase filtering, icon character generation edge cases.
+
+### Change Log
+
+- 2026-02-20: Implemented Story 17.8 — RelicBar UI with tooltips and glow effects (all 8 tasks, 22 tests)
+- 2026-02-20: Code review fixes — eliminated per-frame allocations in Update(), added relic-only purchase filter, fixed tooltip positioning for resolution independence, cleaned up tooltip show/hide (blocksRaycasts), added 5 missing tests (AC 5, 6, 8 coverage). 27 tests total.
+
 ### File List
+
+- `Assets/Scripts/Runtime/UI/RelicBar.cs` (new) — RelicBar MonoBehaviour with icons, tooltip, glow
+- `Assets/Scripts/Runtime/UI/DashboardReferences.cs` (modified) — Added RelicBarRoot, RelicBarTooltip fields
+- `Assets/Scripts/Setup/UISetup.cs` (modified) — Added ExecuteRelicBar() method
+- `Assets/Scripts/Runtime/Core/GameRunner.cs` (modified) — Added UISetup.ExecuteRelicBar(_ctx) call in Start()
+- `Assets/Tests/Runtime/UI/RelicBarTests.cs` (new) — 27 unit tests for RelicBar

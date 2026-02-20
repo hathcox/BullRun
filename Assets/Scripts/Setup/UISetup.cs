@@ -2615,6 +2615,110 @@ public static class UISetup
         });
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // Story 17.8: Relic Bar — Trading Phase Relic Display & Tooltips
+    // ════════════════════════════════════════════════════════════════════
+
+    public static RelicBar ExecuteRelicBar(RunContext ctx)
+    {
+        var dashRefs = DashRefs;
+
+        // Create relic bar canvas (above Control Deck, below feedback)
+        var canvasGo = new GameObject("RelicBarCanvas");
+        var canvas = canvasGo.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 21; // Between Control Deck (20) and feedback (23)
+
+        var scaler = canvasGo.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        canvasGo.AddComponent<GraphicRaycaster>();
+
+        // Relic bar root panel — top-right area below event ticker
+        var barGo = new GameObject("RelicBarRoot");
+        barGo.transform.SetParent(canvasGo.transform, false);
+        var barRect = barGo.AddComponent<RectTransform>();
+        barRect.anchorMin = new Vector2(0.55f, 0.88f);
+        barRect.anchorMax = new Vector2(0.95f, 0.96f);
+        barRect.offsetMin = Vector2.zero;
+        barRect.offsetMax = Vector2.zero;
+
+        // Background panel styling
+        var barBg = barGo.AddComponent<Image>();
+        barBg.color = ColorPalette.WithAlpha(CRTThemeData.Panel, 0.8f);
+        barBg.raycastTarget = false;
+        CRTThemeData.ApplyPanelStyle(barBg);
+
+        // HorizontalLayoutGroup for icon spacing
+        var hlg = barGo.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 6f;
+        hlg.padding = new RectOffset(8, 8, 4, 4);
+        hlg.childAlignment = TextAnchor.MiddleLeft;
+        hlg.childForceExpandWidth = false;
+        hlg.childForceExpandHeight = false;
+
+        // Content size fitter to prevent overflow
+        var csf = barGo.AddComponent<ContentSizeFitter>();
+        csf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // ── Tooltip Panel ──
+        var tooltipGo = new GameObject("RelicBarTooltip");
+        tooltipGo.transform.SetParent(canvasGo.transform, false);
+        var tooltipRect = tooltipGo.AddComponent<RectTransform>();
+        tooltipRect.sizeDelta = new Vector2(260f, 120f);
+        tooltipRect.pivot = new Vector2(0.5f, 0f);
+
+        var tooltipBg = tooltipGo.AddComponent<Image>();
+        tooltipBg.color = ColorPalette.WithAlpha(CRTThemeData.Background, 0.95f);
+        CRTThemeData.ApplyPanelStyle(tooltipBg);
+
+        var tooltipCg = tooltipGo.AddComponent<CanvasGroup>();
+        tooltipCg.alpha = 0f;
+        tooltipCg.blocksRaycasts = false;
+
+        // Vertical layout for tooltip content
+        var tooltipVlg = tooltipGo.AddComponent<VerticalLayoutGroup>();
+        tooltipVlg.padding = new RectOffset(8, 8, 6, 6);
+        tooltipVlg.spacing = 3f;
+        tooltipVlg.childAlignment = TextAnchor.UpperLeft;
+        tooltipVlg.childForceExpandWidth = true;
+        tooltipVlg.childForceExpandHeight = false;
+
+        // Content size fitter for tooltip
+        var tooltipCsf = tooltipGo.AddComponent<ContentSizeFitter>();
+        tooltipCsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // Tooltip text fields
+        var nameGo = CreateLabel("TooltipName", tooltipGo.transform, "", CRTThemeData.TextHigh, 16);
+        nameGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
+        nameGo.GetComponent<Text>().supportRichText = true;
+        var nameText = nameGo.GetComponent<Text>();
+
+        var descGo = CreateLabel("TooltipDesc", tooltipGo.transform, "", CRTThemeData.TextLow, 13);
+        descGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
+        var descText = descGo.GetComponent<Text>();
+
+        var effectGo = CreateLabel("TooltipEffect", tooltipGo.transform, "", ColorPalette.Amber, 13);
+        effectGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
+        effectGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
+        var effectText = effectGo.GetComponent<Text>();
+
+        tooltipGo.SetActive(false);
+
+        // Wire DashboardReferences
+        if (dashRefs != null)
+        {
+            dashRefs.RelicBarRoot = barRect;
+            dashRefs.RelicBarTooltip = tooltipGo;
+        }
+
+        // Create RelicBar MonoBehaviour and initialize
+        var relicBar = barGo.AddComponent<RelicBar>();
+        relicBar.Initialize(ctx, barGo.transform, tooltipGo, nameText, descText, effectText);
+
+        return relicBar;
+    }
+
     private static GameObject CreatePanel(string name, Transform parent)
     {
         var go = new GameObject(name);
