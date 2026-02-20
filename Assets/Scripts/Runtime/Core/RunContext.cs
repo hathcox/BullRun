@@ -26,6 +26,12 @@ public class RunContext
     public float StartingCapital { get; internal set; }
 
     /// <summary>
+    /// When true, buy and sell (long) trades are permanently disabled for this run.
+    /// Set by Bear Raid relic on acquisition. Story 17.3.
+    /// </summary>
+    public bool LongsDisabled { get; internal set; }
+
+    /// <summary>
     /// True when the player has completed all rounds (survived Round 8 margin call).
     /// Set by MarginCallState when the final round passes.
     /// </summary>
@@ -216,6 +222,7 @@ public class RunContext
         RevealedTips.Clear();
         Reputation.Reset();
         StartingCapital = Portfolio.Cash;
+        LongsDisabled = false;
         RunCompleted = false;
         PeakCash = Portfolio.Cash;
         BestRoundProfit = 0f;

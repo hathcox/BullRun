@@ -79,6 +79,47 @@ public class RelicManager
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // Passive query helpers — GameRunner calls these instead of raw GameConfig
+    // Story 17.3: Trade modification relics
+    // ════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Returns effective post-trade cooldown. Quick Draw: 0 for buy, 2x for sell.
+    /// </summary>
+    public float GetEffectiveCooldown(bool isBuy)
+    {
+        if (GetRelicById("relic_quick_draw") != null)
+        {
+            return isBuy ? 0f : GameConfig.PostTradeCooldown * 2f;
+        }
+        return GameConfig.PostTradeCooldown;
+    }
+
+    /// <summary>
+    /// Returns effective short share count. Bear Raid: 3 shares instead of base.
+    /// </summary>
+    public int GetEffectiveShortShares()
+    {
+        if (GetRelicById("relic_short_multiplier") != null)
+        {
+            return 3;
+        }
+        return GameConfig.ShortBaseShares;
+    }
+
+    /// <summary>
+    /// Returns effective trade quantity. Double Dealer: doubles the base quantity.
+    /// </summary>
+    public int GetEffectiveTradeQuantity(int baseQty)
+    {
+        if (GetRelicById("relic_double_dealer") != null)
+        {
+            return baseQty * 2;
+        }
+        return baseQty;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // Dispatch methods — iterate left-to-right with per-relic try-catch
     // ════════════════════════════════════════════════════════════════════
 

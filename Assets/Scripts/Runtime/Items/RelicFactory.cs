@@ -46,10 +46,19 @@ public static class RelicFactory
 
     private static void RegisterDefaults()
     {
+        // Story 17.3: Register real relic constructors for trade modification relics
+        _registry["relic_double_dealer"] = () => new DoubleDealerRelic();
+        _registry["relic_quick_draw"] = () => new QuickDrawRelic();
+        _registry["relic_short_multiplier"] = () => new ShortMultiplierRelic();
+        _registry["relic_skimmer"] = () => new SkimmerRelic();
+        _registry["relic_short_profiteer"] = () => new ShortProfiteerRelic();
+
+        // Remaining relics still use StubRelic until Stories 17.4-17.7
         for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
         {
             var id = ShopItemDefinitions.RelicPool[i].Id;
-            _registry[id] = () => new StubRelic(id);
+            if (!_registry.ContainsKey(id))
+                _registry[id] = () => new StubRelic(id);
         }
     }
 }

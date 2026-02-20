@@ -461,6 +461,10 @@ public class GameRunner : MonoBehaviour
     /// </summary>
     private void OnRoundStartedForShort(RoundStartedEvent evt)
     {
+        // Story 17.3: Apply locked visuals if LongsDisabled (Bear Raid)
+        if (_ctx.LongsDisabled)
+            ApplyLongsDisabledVisuals();
+
         _shortEntryPrice = 0f;
         _shortShares = 0;
         _shortStockId = null;
@@ -566,7 +570,11 @@ public class GameRunner : MonoBehaviour
 
         string stockIdStr = stockId.ToString();
         string ticker = GetSelectedTicker();
-        int shares = GameConfig.ShortBaseShares;
+        int shares = _ctx.RelicManager.GetEffectiveShortShares();
+
+        // Story 17.3 review fix: Fire RelicActivatedEvent when Bear Raid modifies short shares (AC 10)
+        if (shares != GameConfig.ShortBaseShares)
+            EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_short_multiplier" });
 
         bool success = _tradeExecutor.ExecuteShort(stockIdStr, shares, currentPrice, _ctx.Portfolio);
         if (success)
@@ -775,7 +783,11 @@ public class GameRunner : MonoBehaviour
         if (currentPrice <= 0f) return;
 
         string stockIdStr = stockId.ToString();
-        int shares = GameConfig.ShortBaseShares;
+        int shares = _ctx.RelicManager.GetEffectiveShortShares();
+
+        // Story 17.3 review fix: Fire RelicActivatedEvent when Bear Raid modifies short shares (AC 10)
+        if (shares != GameConfig.ShortBaseShares)
+            EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_short_multiplier" });
 
         bool success = _tradeExecutor.ExecuteShort(stockIdStr + "_s2", shares, currentPrice, _ctx.Portfolio);
         if (success)
@@ -894,13 +906,16 @@ public class GameRunner : MonoBehaviour
         // Buy/Sell trade actions: blocked during post-trade cooldown
         if (_isPostTradeCooldownActive) return;
 
+        // Story 17.3: B/S blocked when LongsDisabled (Bear Raid)
+        if (_ctx.LongsDisabled) return;
+
         if (keyboard.bKey.wasPressedThisFrame)
         {
-            if (ExecuteBuy()) StartPostTradeCooldown();
+            if (ExecuteBuy()) StartPostTradeCooldown(true);
         }
         else if (keyboard.sKey.wasPressedThisFrame)
         {
-            if (ExecuteSell()) StartPostTradeCooldown();
+            if (ExecuteSell()) StartPostTradeCooldown(false);
         }
     }
 
@@ -933,9 +948,11 @@ public class GameRunner : MonoBehaviour
     {
         if (!TradingState.IsActive) return;
         if (_isPostTradeCooldownActive) return;
+        // Story 17.3: Block buy/sell buttons when LongsDisabled (Bear Raid)
+        if (_ctx.LongsDisabled) return;
 
         bool success = evt.IsBuy ? ExecuteBuy() : ExecuteSell();
-        if (success) StartPostTradeCooldown();
+        if (success) StartPostTradeCooldown(evt.IsBuy);
     }
 
     /// <summary>
@@ -963,14 +980,22 @@ public class GameRunner : MonoBehaviour
     // Post-Trade Cooldown (FIX-10 v2)
     // ========================
 
-    private void StartPostTradeCooldown()
+    private void StartPostTradeCooldown(bool isBuy)
     {
+        float cooldown = _ctx.RelicManager.GetEffectiveCooldown(isBuy);
+
+        // Story 17.3 review fix: Fire RelicActivatedEvent when Quick Draw modifies cooldown (AC 10)
+        if (cooldown != GameConfig.PostTradeCooldown)
+            EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_quick_draw" });
+
+        if (cooldown <= 0f) return; // Quick Draw: instant buy, no cooldown
+
         _isPostTradeCooldownActive = true;
-        _postTradeCooldownTimer = GameConfig.PostTradeCooldown;
+        _postTradeCooldownTimer = cooldown;
         ShowCooldownOverlay();
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[GameRunner] Post-trade cooldown started: {GameConfig.PostTradeCooldown}s");
+        Debug.Log($"[GameRunner] Post-trade cooldown started: {cooldown}s (isBuy={isBuy})");
         #endif
     }
 
@@ -986,6 +1011,13 @@ public class GameRunner : MonoBehaviour
 
     private void HideCooldownOverlay()
     {
+        // Story 17.3: If LongsDisabled, keep buttons locked
+        if (_ctx.LongsDisabled)
+        {
+            ApplyLongsDisabledVisuals();
+            return;
+        }
+
         // Restore both buttons to original state
         if (_buyButton != null) _buyButton.interactable = true;
         if (_sellButton != null) _sellButton.interactable = true;
@@ -993,6 +1025,19 @@ public class GameRunner : MonoBehaviour
         if (_sellButtonImage != null) _sellButtonImage.color = _sellButtonOriginalColor;
         if (_buyButtonText != null) _buyButtonText.text = "BUY";
         if (_sellButtonText != null) _sellButtonText.text = "SELL";
+    }
+
+    /// <summary>
+    /// Story 17.3: Dims and disables buy/sell buttons when LongsDisabled (Bear Raid).
+    /// </summary>
+    private void ApplyLongsDisabledVisuals()
+    {
+        if (_buyButton != null) _buyButton.interactable = false;
+        if (_sellButton != null) _sellButton.interactable = false;
+        if (_buyButtonImage != null) _buyButtonImage.color = DimColor(_buyButtonOriginalColor);
+        if (_sellButtonImage != null) _sellButtonImage.color = DimColor(_sellButtonOriginalColor);
+        if (_buyButtonText != null) _buyButtonText.text = "LOCKED";
+        if (_sellButtonText != null) _sellButtonText.text = "LOCKED";
     }
 
     private void UpdateCooldownTimerDisplay()
@@ -1012,6 +1057,16 @@ public class GameRunner : MonoBehaviour
     /// </summary>
     private bool ExecuteBuy()
     {
+        // Story 17.3: Block buys when LongsDisabled (Bear Raid)
+        if (_ctx.LongsDisabled)
+        {
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = "LOCKED", IsSuccess = false, IsBuy = true, IsShort = false
+            });
+            return false;
+        }
+
         int selectedStockId = GetSelectedStockId();
         if (selectedStockId < 0) return false;
 
@@ -1021,7 +1076,14 @@ public class GameRunner : MonoBehaviour
         string stockIdStr = selectedStockId.ToString();
         string ticker = GetSelectedTicker();
 
-        int qty = _quantitySelector.GetCurrentQuantity(true, false, stockIdStr, currentPrice, _ctx.Portfolio);
+        int baseQty = _quantitySelector.GetCurrentQuantity(true, false, stockIdStr, currentPrice, _ctx.Portfolio);
+        int qty = _ctx.RelicManager.GetEffectiveTradeQuantity(baseQty);
+        // Story 17.3 review fix: Clamp doubled qty to what's affordable
+        if (qty > baseQty && currentPrice > 0f)
+        {
+            int maxAffordable = (int)(_ctx.Portfolio.Cash / currentPrice);
+            if (qty > maxAffordable) qty = maxAffordable;
+        }
         if (qty <= 0)
         {
             EventBus.Publish(new TradeFeedbackEvent
@@ -1031,6 +1093,9 @@ public class GameRunner : MonoBehaviour
             return false;
         }
         bool success = _tradeExecutor.ExecuteBuy(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+        // Story 17.3 review fix: Fire RelicActivatedEvent after successful trade only (M2)
+        if (success && qty != baseQty)
+            EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_double_dealer" });
         EventBus.Publish(new TradeFeedbackEvent
         {
             Message = success ? $"BOUGHT {ticker} x{qty}" : "Insufficient cash",
@@ -1051,6 +1116,16 @@ public class GameRunner : MonoBehaviour
     /// </summary>
     private bool ExecuteSell()
     {
+        // Story 17.3: Block sells when LongsDisabled (Bear Raid)
+        if (_ctx.LongsDisabled)
+        {
+            EventBus.Publish(new TradeFeedbackEvent
+            {
+                Message = "LOCKED", IsSuccess = false, IsBuy = false, IsShort = false
+            });
+            return false;
+        }
+
         int selectedStockId = GetSelectedStockId();
         if (selectedStockId < 0) return false;
 
@@ -1060,7 +1135,15 @@ public class GameRunner : MonoBehaviour
         string stockIdStr = selectedStockId.ToString();
         string ticker = GetSelectedTicker();
 
-        int qty = _quantitySelector.GetCurrentQuantity(false, false, stockIdStr, currentPrice, _ctx.Portfolio);
+        // Story 17.3 review fix: Fetch position early for qty clamping and profitability check
+        var position = _ctx.Portfolio.GetPosition(stockIdStr);
+        float entryPrice = position != null ? position.AverageBuyPrice : 0f;
+
+        int baseQty = _quantitySelector.GetCurrentQuantity(false, false, stockIdStr, currentPrice, _ctx.Portfolio);
+        int qty = _ctx.RelicManager.GetEffectiveTradeQuantity(baseQty);
+        // Story 17.3 review fix: Clamp doubled qty to available position
+        if (qty > baseQty && position != null && qty > position.Shares)
+            qty = position.Shares;
         if (qty <= 0)
         {
             EventBus.Publish(new TradeFeedbackEvent
@@ -1070,11 +1153,10 @@ public class GameRunner : MonoBehaviour
             return false;
         }
 
-        // Check entry price before sell to determine profitability
-        var position = _ctx.Portfolio.GetPosition(stockIdStr);
-        float entryPrice = position != null ? position.AverageBuyPrice : 0f;
-
         bool success = _tradeExecutor.ExecuteSell(stockIdStr, qty, currentPrice, _ctx.Portfolio);
+        // Story 17.3 review fix: Fire RelicActivatedEvent after successful trade only (M2)
+        if (success && qty != baseQty)
+            EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_double_dealer" });
         if (success)
         {
             // Story 13.7 AC 2: Leverage expansion doubles long trade P&L
