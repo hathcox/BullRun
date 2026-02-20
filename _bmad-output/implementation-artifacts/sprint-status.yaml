@@ -94,8 +94,8 @@ development_status:
   17-1-relic-effect-framework: done                            # IRelic, RelicBase, RelicManager, RelicFactory, EventBus wiring — code review: 6 fixes applied, 1724/1725 tests pass
   17-2-shop-behavior-and-data-overhaul: done                    # 23 relic defs, shop fixes, code review: 6 fixes applied
   17-3-trade-modification-relics: done                    # Code review: 8 findings, 4 fixes applied — Double Dealer, Quick Draw, Bear Raid, Skimmer, Short Profiteer
-  17-4-event-interaction-relics: ready-for-dev                # Catalyst Trader, Event Storm, Loss Liquidator, Profit Refresh, Bull Believer
-  17-5-economy-reputation-relics: ready-for-dev               # Rep Doubler, Fail Forward, Compound Rep, Rep Interest, Rep Dividend, Bond Bonus
+  17-4-event-interaction-relics: done                    # Code review: 7 findings, 6 fixes applied — Catalyst Trader, Event Storm, Loss Liquidator, Profit Refresh, Bull Believer
+  17-5-economy-reputation-relics: done                    # Code review: 7 findings, 5 fixes applied — Rep Doubler, Fail Forward, Compound Rep, Rep Interest, Rep Dividend, Bond Bonus
   17-6-mechanic-timer-relics: ready-for-dev                   # Time Buyer, Diamond Hands, Market Manipulator, Free Intel, Extra Expansion
   17-7-special-relics: ready-for-dev                          # Event Catalyst, Relic Expansion
   17-8-trading-phase-relic-display: ready-for-dev             # Relic bar UI, tooltips, activation glow

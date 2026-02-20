@@ -1,6 +1,6 @@
 # Story 17.5: Economy & Reputation Relics (6 Relics)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -24,90 +24,90 @@ so that I can build a powerful economic engine across my run.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add GameRunner modifications for Rep Doubler and Fail Forward (AC: 1, 2, 8, 9)
-  - [ ] In GameRunner's round-end Rep calculation (near `RoundCompletedEvent` publishing), check if `ctx.RelicManager.GetRelicById("relic_rep_doubler") != null`
-  - [ ] If Rep Doubler is owned, multiply the total Rep earned (base + bonus) by 2 before awarding
-  - [ ] Ensure the doubled Rep is reflected in `RoundCompletedEvent.RepEarned`, `.BaseRep`, `.BonusRep`
-  - [ ] In GameRunner's margin call handler (where `MarginCallTriggeredEvent` is published), check if `ctx.RelicManager.GetRelicById("relic_fail_forward") != null`
-  - [ ] If Fail Forward is owned, calculate and award base Rep for the current round despite the margin call
-  - [ ] Publish a `TradeFeedbackEvent` with "Fail Forward: +X Rep" message
-  - [ ] File: `Scripts/Runtime/Core/GameRunner.cs`
+- [x] Task 1: Add GameRunner modifications for Rep Doubler and Fail Forward (AC: 1, 2, 8, 9)
+  - [x] In GameRunner's round-end Rep calculation (near `RoundCompletedEvent` publishing), check if `ctx.RelicManager.GetRelicById("relic_rep_doubler") != null`
+  - [x] If Rep Doubler is owned, multiply the total Rep earned (base + bonus) by 2 before awarding
+  - [x] Ensure the doubled Rep is reflected in `RoundCompletedEvent.RepEarned`, `.BaseRep`, `.BonusRep`
+  - [x] In GameRunner's margin call handler (where `MarginCallTriggeredEvent` is published), check if `ctx.RelicManager.GetRelicById("relic_fail_forward") != null`
+  - [x] If Fail Forward is owned, calculate and award base Rep for the current round despite the margin call
+  - [x] Publish a `TradeFeedbackEvent` with "Fail Forward: +X Rep" message
+  - [x] File: `Scripts/Runtime/Core/GameStates/MarginCallState.cs` (actual location of Rep calculation)
 
-- [ ] Task 2: Add ShopTransaction sell override for Compound Rep (AC: 3, 7)
-  - [ ] In `ShopTransaction.SellRelic()`, after finding the relic, call `relic.OnSellSelf(ctx)` on the IRelic instance via RelicManager
-  - [ ] Add a mechanism for `OnSellSelf` to return a custom refund amount (e.g., `int? OnSellSelf(RunContext ctx)` returning null for default behavior, or a separate `int GetSellValue(RunContext ctx)` method on IRelic)
-  - [ ] If `OnSellSelf` returns a custom value, use that instead of `relicDef.Cost / 2`
-  - [ ] Compound Rep's `OnSellSelf` returns `3 * (int)Math.Pow(2, _roundsHeld)`
-  - [ ] Bond Bonus's `OnSellSelf` does NOT override the refund (returns null / uses default 50%)
-  - [ ] File: `Scripts/Runtime/Shop/ShopTransaction.cs`, `Scripts/Runtime/Items/IRelic.cs` (if adding GetSellValue)
+- [x] Task 2: Add ShopTransaction sell override for Compound Rep (AC: 3, 7)
+  - [x] In `ShopTransaction.SellRelic()`, after finding the relic, call `relic.GetSellValue(ctx)` on the IRelic instance via RelicManager
+  - [x] Add `int? GetSellValue(RunContext ctx)` method to IRelic returning null for default behavior
+  - [x] If `GetSellValue` returns a custom value, use that instead of `relicDef.Cost / 2`
+  - [x] Compound Rep's `GetSellValue` returns `3 * (int)Math.Pow(2, _roundsHeld)`
+  - [x] Bond Bonus's `GetSellValue` returns null (uses default 50%)
+  - [x] File: `Scripts/Runtime/Shop/ShopTransaction.cs`, `Scripts/Runtime/Items/IRelic.cs`, `Scripts/Runtime/Items/RelicBase.cs`
 
-- [ ] Task 3: Implement Rep Doubler relic (AC: 1, 10, 11)
-  - [ ] Create `RepDoublerRelic.cs` extending `RelicBase`
-  - [ ] Override `Id` to return `"relic_rep_doubler"`
-  - [ ] Effect is passive — GameRunner checks for this relic's presence during round-end Rep calculation
-  - [ ] No hook override needed; the relic's existence is what matters (queried by GameRunner)
-  - [ ] File: `Scripts/Runtime/Items/Relics/RepDoublerRelic.cs`
+- [x] Task 3: Implement Rep Doubler relic (AC: 1, 10, 11)
+  - [x] Create `RepDoublerRelic.cs` extending `RelicBase`
+  - [x] Override `Id` to return `"relic_rep_doubler"`
+  - [x] Effect is passive — MarginCallState checks for this relic's presence during round-end Rep calculation
+  - [x] No hook override needed; the relic's existence is what matters (queried by MarginCallState)
+  - [x] File: `Scripts/Runtime/Items/Relics/RepDoublerRelic.cs`
 
-- [ ] Task 4: Implement Fail Forward relic (AC: 2, 10, 11)
-  - [ ] Create `FailForwardRelic.cs` extending `RelicBase`
-  - [ ] Override `Id` to return `"relic_fail_forward"`
-  - [ ] Effect is passive — GameRunner checks for this relic's presence during margin call handling
-  - [ ] No hook override needed; the relic's existence is what matters (queried by GameRunner)
-  - [ ] File: `Scripts/Runtime/Items/Relics/FailForwardRelic.cs`
+- [x] Task 4: Implement Fail Forward relic (AC: 2, 10, 11)
+  - [x] Create `FailForwardRelic.cs` extending `RelicBase`
+  - [x] Override `Id` to return `"relic_fail_forward"`
+  - [x] Effect is passive — MarginCallState checks for this relic's presence during margin call handling
+  - [x] No hook override needed; the relic's existence is what matters (queried by MarginCallState)
+  - [x] File: `Scripts/Runtime/Items/Relics/FailForwardRelic.cs`
 
-- [ ] Task 5: Implement Compound Rep relic (AC: 3, 10, 11)
-  - [ ] Create `CompoundRepRelic.cs` extending `RelicBase`
-  - [ ] Override `Id` to return `"relic_compound_rep"`
-  - [ ] Add private `int _roundsHeld = 0` field
-  - [ ] Override `OnRoundStart` — increment `_roundsHeld` by 1
-  - [ ] Override `OnSellSelf` (or `GetSellValue`) — return `3 * (int)Math.Pow(2, _roundsHeld)` as the custom sell refund
-  - [ ] Publish `RelicActivatedEvent` when sold (for UI feedback)
-  - [ ] File: `Scripts/Runtime/Items/Relics/CompoundRepRelic.cs`
+- [x] Task 5: Implement Compound Rep relic (AC: 3, 10, 11)
+  - [x] Create `CompoundRepRelic.cs` extending `RelicBase`
+  - [x] Override `Id` to return `"relic_compound_rep"`
+  - [x] Add private `int _roundsHeld = 0` field
+  - [x] Override `OnRoundStart` — increment `_roundsHeld` by 1
+  - [x] Override `GetSellValue` — return `3 * (int)Math.Pow(2, _roundsHeld)` as the custom sell refund
+  - [x] Publish `RelicActivatedEvent` when sold (for UI feedback)
+  - [x] File: `Scripts/Runtime/Items/Relics/CompoundRepRelic.cs`
 
-- [ ] Task 6: Implement Rep Interest relic (AC: 4, 10, 11)
-  - [ ] Create `RepInterestRelic.cs` extending `RelicBase`
-  - [ ] Override `Id` to return `"relic_rep_interest"`
-  - [ ] Override `OnRoundStart` — calculate `ctx.Reputation.Current / 10` (integer division = floor)
-  - [ ] Add the calculated interest to Reputation via `ctx.Reputation.Add()` (or equivalent method)
-  - [ ] Publish `TradeFeedbackEvent` with "+X Rep Interest" message
-  - [ ] Publish `RelicActivatedEvent` with relic Id
-  - [ ] File: `Scripts/Runtime/Items/Relics/RepInterestRelic.cs`
+- [x] Task 6: Implement Rep Interest relic (AC: 4, 10, 11)
+  - [x] Create `RepInterestRelic.cs` extending `RelicBase`
+  - [x] Override `Id` to return `"relic_rep_interest"`
+  - [x] Override `OnRoundStart` — calculate `ctx.Reputation.Current / 10` (integer division = floor)
+  - [x] Add the calculated interest to Reputation via `ctx.Reputation.Add()`
+  - [x] Publish `TradeFeedbackEvent` with "+X Rep Interest" message
+  - [x] Publish `RelicActivatedEvent` with relic Id
+  - [x] File: `Scripts/Runtime/Items/Relics/RepInterestRelic.cs`
 
-- [ ] Task 7: Implement Rep Dividend relic (AC: 5, 10, 11)
-  - [ ] Create `RepDividendRelic.cs` extending `RelicBase`
-  - [ ] Override `Id` to return `"relic_rep_dividend"`
-  - [ ] Override `OnRoundStart` — calculate `ctx.Reputation.Current / 2` (integer division = $1 per 2 Rep)
-  - [ ] Add the calculated dividend to cash via `ctx.Portfolio.AddCash()` (or direct Portfolio.Cash +=)
-  - [ ] Publish `TradeFeedbackEvent` with "+$X Dividend" message
-  - [ ] Publish `RelicActivatedEvent` with relic Id
-  - [ ] File: `Scripts/Runtime/Items/Relics/RepDividendRelic.cs`
+- [x] Task 7: Implement Rep Dividend relic (AC: 5, 10, 11)
+  - [x] Create `RepDividendRelic.cs` extending `RelicBase`
+  - [x] Override `Id` to return `"relic_rep_dividend"`
+  - [x] Override `OnRoundStart` — calculate `ctx.Reputation.Current / 2` (integer division = $1 per 2 Rep)
+  - [x] Add the calculated dividend to cash via `ctx.Portfolio.AddCash()`
+  - [x] Publish `TradeFeedbackEvent` with "+$X Dividend" message
+  - [x] Publish `RelicActivatedEvent` with relic Id
+  - [x] File: `Scripts/Runtime/Items/Relics/RepDividendRelic.cs`
 
-- [ ] Task 8: Implement Bond Bonus relic (AC: 6, 10, 11)
-  - [ ] Create `BondBonusRelic.cs` extending `RelicBase`
-  - [ ] Override `Id` to return `"relic_bond_bonus"`
-  - [ ] Override `OnAcquired` — increase `ctx.BondsOwned` by 10
-  - [ ] Add 10 synthetic `BondRecord` entries to `ctx.BondPurchaseHistory` with `Round = ctx.CurrentRound`
-  - [ ] These bonds generate Rep per round like normal bonds via BondManager
-  - [ ] Override `OnSellSelf` — decrease `ctx.BondsOwned` by 10 (clamp to minimum 0 via `Math.Max(0, ctx.BondsOwned - 10)`)
-  - [ ] Remove 10 bond records from `ctx.BondPurchaseHistory` LIFO (remove from the end of the list)
-  - [ ] If fewer than 10 records exist, remove all remaining records
-  - [ ] Publish `RelicActivatedEvent` with relic Id on both acquire and sell
-  - [ ] File: `Scripts/Runtime/Items/Relics/BondBonusRelic.cs`
+- [x] Task 8: Implement Bond Bonus relic (AC: 6, 10, 11)
+  - [x] Create `BondBonusRelic.cs` extending `RelicBase`
+  - [x] Override `Id` to return `"relic_bond_bonus"`
+  - [x] Override `OnAcquired` — increase `ctx.BondsOwned` by 10
+  - [x] Add 10 synthetic `BondRecord` entries to `ctx.BondPurchaseHistory` with `Round = ctx.CurrentRound`
+  - [x] These bonds generate Rep per round like normal bonds via BondManager
+  - [x] Override `OnSellSelf` — decrease `ctx.BondsOwned` by 10 (clamp to minimum 0 via `Math.Max(0, ctx.BondsOwned - 10)`)
+  - [x] Remove 10 bond records from `ctx.BondPurchaseHistory` LIFO (remove from the end of the list)
+  - [x] If fewer than 10 records exist, remove all remaining records
+  - [x] Publish `RelicActivatedEvent` with relic Id on both acquire and sell
+  - [x] File: `Scripts/Runtime/Items/Relics/BondBonusRelic.cs`
 
-- [ ] Task 9: Register relics in RelicFactory (AC: 10)
-  - [ ] Replace stub registrations for `relic_rep_doubler`, `relic_fail_forward`, `relic_compound_rep`, `relic_rep_interest`, `relic_rep_dividend`, `relic_bond_bonus` with real constructors
-  - [ ] File: `Scripts/Runtime/Items/RelicFactory.cs`
+- [x] Task 9: Register relics in RelicFactory (AC: 10)
+  - [x] Replace stub registrations for `relic_rep_doubler`, `relic_fail_forward`, `relic_compound_rep`, `relic_rep_interest`, `relic_rep_dividend`, `relic_bond_bonus` with real constructors
+  - [x] File: `Scripts/Runtime/Items/RelicFactory.cs`
 
-- [ ] Task 10: Write tests (AC: 1-11)
-  - [ ] Rep Doubler: round-end Rep doubled, bond Rep unaffected, Rep Interest unaffected
-  - [ ] Fail Forward: margin call still awards base Rep, message published, non-margin-call rounds unaffected
-  - [ ] Compound Rep: roundsHeld increments on OnRoundStart, sell value = `3 * 2^N` (test N=0,1,2,3), overrides default 50% refund
-  - [ ] Rep Interest: 10% of current Rep added at round start (floor), 0 Rep = no interest, 9 Rep = 0 interest, 10 Rep = 1 interest
-  - [ ] Rep Dividend: $1 per 2 Rep added as cash at round start, 0 Rep = $0, 1 Rep = $0, 5 Rep = $2
-  - [ ] Bond Bonus: acquire adds 10 bonds + 10 BondRecords, sell removes 10 bonds + 10 records LIFO, BondsOwned never negative
-  - [ ] Bond Bonus edge case: sell when fewer than 10 BondRecords exist (removes all remaining)
-  - [ ] ShopTransaction.SellRelic: Compound Rep returns custom sell value, other relics return default 50%
-  - [ ] Files: `Tests/Runtime/Items/Relics/EconomyRelicTests.cs`
+- [x] Task 10: Write tests (AC: 1-11)
+  - [x] Rep Doubler: round-end Rep doubled, bond Rep unaffected, Rep Interest unaffected
+  - [x] Fail Forward: margin call still awards base Rep, message published, non-margin-call rounds unaffected
+  - [x] Compound Rep: roundsHeld increments on OnRoundStart, sell value = `3 * 2^N` (test N=0,1,2,3), overrides default 50% refund
+  - [x] Rep Interest: 10% of current Rep added at round start (floor), 0 Rep = no interest, 9 Rep = 0 interest, 10 Rep = 1 interest
+  - [x] Rep Dividend: $1 per 2 Rep added as cash at round start, 0 Rep = $0, 1 Rep = $0, 5 Rep = $2
+  - [x] Bond Bonus: acquire adds 10 bonds + 10 BondRecords, sell removes 10 bonds + 10 records LIFO, BondsOwned never negative
+  - [x] Bond Bonus edge case: sell when fewer than 10 BondRecords exist (removes all remaining)
+  - [x] ShopTransaction.SellRelic: Compound Rep returns custom sell value, other relics return default 50%
+  - [x] Files: `Tests/Runtime/Items/Relics/EconomyRelicTests.cs`
 
 ## Dev Notes
 
@@ -159,8 +159,52 @@ so that I can build a powerful economic engine across my run.
 
 ### Agent Model Used
 
+Claude Opus 4.6
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Implemented 6 economy/reputation relics: Rep Doubler, Fail Forward, Compound Rep, Rep Interest, Rep Dividend, Bond Bonus
+- Added `int? GetSellValue(RunContext ctx)` to IRelic/RelicBase for custom sell value override mechanism
+- Modified MarginCallState (not GameRunner) for Rep Doubler (2x round-end rep) and Fail Forward (base rep on margin call)
+- Modified ShopTransaction.SellRelic to check GetSellValue before applying default 50% refund
+- Registered all 6 relics in RelicFactory replacing StubRelic entries
+- All 59 new tests pass (1887/1888 total, 1 pre-existing skip)
+- Note: Rep calculation code is in MarginCallState.cs, not GameRunner.cs as story tasks specified — modified the correct file
+
 ### File List
+
+- Assets/Scripts/Runtime/Items/Relics/RepDoublerRelic.cs (new)
+- Assets/Scripts/Runtime/Items/Relics/FailForwardRelic.cs (new)
+- Assets/Scripts/Runtime/Items/Relics/CompoundRepRelic.cs (new)
+- Assets/Scripts/Runtime/Items/Relics/RepInterestRelic.cs (new)
+- Assets/Scripts/Runtime/Items/Relics/RepDividendRelic.cs (new)
+- Assets/Scripts/Runtime/Items/Relics/BondBonusRelic.cs (new)
+- Assets/Scripts/Runtime/Items/IRelic.cs (modified — added GetSellValue)
+- Assets/Scripts/Runtime/Items/RelicBase.cs (modified — added GetSellValue default)
+- Assets/Scripts/Runtime/Items/RelicFactory.cs (modified — registered 6 relics)
+- Assets/Scripts/Runtime/Core/GameStates/MarginCallState.cs (modified — Rep Doubler + Fail Forward)
+- Assets/Scripts/Runtime/Shop/ShopTransaction.cs (modified — sell value override)
+- Assets/Tests/Runtime/Items/Relics/EconomyRelicTests.cs (new — 61 tests)
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Iggy on 2026-02-19
+**Issues Found:** 2 High, 3 Medium, 2 Low
+**Outcome:** 5 issues fixed, 1 deferred (M5 tooltip — requires UI story)
+
+### Fixes Applied
+- **[H1] Fixed** RoundCompletedEvent BaseRep/BonusRep breakdown now correctly doubled when Rep Doubler active (MarginCallState.cs)
+- **[H2] Fixed** FailForward_MessagePublished test now actually verifies TradeFeedbackEvent message (EconomyRelicTests.cs)
+- **[M3] Fixed** Moved RelicActivatedEvent from CompoundRep.GetSellValue() (query) to OnSellSelf() (command) — no more side effects in getter; also switched Math.Pow to bit shift (L6)
+- **[M4] Improved** Added RepDoubler_BaseBonusBreakdownCorrectWhenDoubled test + CompoundRep_GetSellValue_NoBoolSideEffects test (2 new tests)
+- **[L7] Fixed** Added code comment documenting synthetic BondRecord cost=0 in BondBonusRelic
+
+### Deferred
+- **[M5]** AC 3 dynamic tooltip ("show current sell value") — CompoundRep.GetSellValue() is now a clean query for tooltip systems to call, but no tooltip UI exists yet. Requires Owned Relics Bar tooltip implementation (Story 17.8 or separate UI story).
+
+## Change Log
+
+- 2026-02-19: Story 17.5 implemented — 6 economy/reputation relics with sell override mechanism, 59 tests, all passing (1887/1888 total)
+- 2026-02-19: Code review — fixed 5 issues (H1: RepDoubler base/bonus breakdown, H2: FailForward test, M3: GetSellValue side effect, M4: added 2 tests, L7: doc comment). 1 deferred (M5: tooltip). 61 tests total.

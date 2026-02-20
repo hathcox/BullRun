@@ -54,13 +54,23 @@ public class MarginCallState : IGameState
 
             // FIX-14: Award Reputation for completing this round
             int repEarned = CalculateRoundReputation(ctx.CurrentRound, totalCash, target);
-            ctx.Reputation.Add(repEarned);
-            ctx.ReputationEarned += repEarned;
 
-            // Compute base/bonus breakdown for UI display (AC 6)
+            // Compute base/bonus breakdown for UI display BEFORE doubling (AC 6)
             int roundIndex = Mathf.Clamp(ctx.CurrentRound - 1, 0, GameConfig.RepBaseAwardPerRound.Length - 1);
             int baseRep = GameConfig.RepBaseAwardPerRound[roundIndex];
             int bonusRep = repEarned - baseRep;
+
+            // Story 17.5: Rep Doubler — double all trade-performance Rep (base + bonus)
+            if (ctx.RelicManager.GetRelicById("relic_rep_doubler") != null)
+            {
+                baseRep *= 2;
+                bonusRep *= 2;
+                repEarned *= 2;
+                EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_rep_doubler" });
+            }
+
+            ctx.Reputation.Add(repEarned);
+            ctx.ReputationEarned += repEarned;
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[MarginCallState] Round {ctx.CurrentRound} PASSED: cash ${totalCash:F2} >= target ${target:F2}, Rep earned: {repEarned} (base: {baseRep}, bonus: {bonusRep})");
@@ -102,6 +112,21 @@ public class MarginCallState : IGameState
             {
                 ctx.Reputation.Add(consolationRep);
                 ctx.ReputationEarned += consolationRep;
+            }
+
+            // Story 17.5: Fail Forward — award base Rep for failed round despite margin call
+            if (ctx.RelicManager.GetRelicById("relic_fail_forward") != null)
+            {
+                int failRoundIndex = Mathf.Clamp(ctx.CurrentRound - 1, 0, GameConfig.RepBaseAwardPerRound.Length - 1);
+                int failForwardRep = GameConfig.RepBaseAwardPerRound[failRoundIndex];
+                ctx.Reputation.Add(failForwardRep);
+                ctx.ReputationEarned += failForwardRep;
+                EventBus.Publish(new TradeFeedbackEvent
+                {
+                    Message = $"Fail Forward: +{failForwardRep} Rep",
+                    IsSuccess = true, IsBuy = false, IsShort = false
+                });
+                EventBus.Publish(new RelicActivatedEvent { RelicId = "relic_fail_forward" });
             }
 
             #if UNITY_EDITOR || DEVELOPMENT_BUILD

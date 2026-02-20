@@ -53,7 +53,22 @@ public static class RelicFactory
         _registry["relic_skimmer"] = () => new SkimmerRelic();
         _registry["relic_short_profiteer"] = () => new ShortProfiteerRelic();
 
-        // Remaining relics still use StubRelic until Stories 17.4-17.7
+        // Story 17.4: Register real relic constructors for event interaction relics
+        _registry["relic_event_trigger"] = () => new CatalystTraderRelic();
+        _registry["relic_event_storm"] = () => new EventStormRelic();
+        _registry["relic_loss_liquidator"] = () => new LossLiquidatorRelic();
+        _registry["relic_profit_refresh"] = () => new ProfitRefreshRelic();
+        _registry["relic_bull_believer"] = () => new BullBelieverRelic();
+
+        // Story 17.5: Register real relic constructors for economy/reputation relics
+        _registry["relic_rep_doubler"] = () => new RepDoublerRelic();
+        _registry["relic_fail_forward"] = () => new FailForwardRelic();
+        _registry["relic_compound_rep"] = () => new CompoundRepRelic();
+        _registry["relic_rep_interest"] = () => new RepInterestRelic();
+        _registry["relic_rep_dividend"] = () => new RepDividendRelic();
+        _registry["relic_bond_bonus"] = () => new BondBonusRelic();
+
+        // Remaining relics still use StubRelic until Stories 17.6-17.7
         for (int i = 0; i < ShopItemDefinitions.RelicPool.Length; i++)
         {
             var id = ShopItemDefinitions.RelicPool[i].Id;

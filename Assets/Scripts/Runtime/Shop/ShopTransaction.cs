@@ -259,6 +259,15 @@ public class ShopTransaction
 
         try
         {
+            // Story 17.5: Check for custom sell value before dispatching sell
+            var relicInstance = ctx.RelicManager.GetRelicById(relicId);
+            if (relicInstance != null)
+            {
+                int? customValue = relicInstance.GetSellValue(ctx);
+                if (customValue.HasValue)
+                    refund = customValue.Value;
+            }
+
             ctx.RelicManager.DispatchSellSelf(relicId);
             ctx.RelicManager.RemoveRelic(relicId);
             relicRemoved = true;

@@ -17,4 +17,5 @@ public abstract class RelicBase : IRelic
     public virtual void OnReputationChanged(RunContext ctx, int oldRep, int newRep) { }
     public virtual void OnShopOpen(RunContext ctx) { }
     public virtual void OnSellSelf(RunContext ctx) { }
+    public virtual int? GetSellValue(RunContext ctx) { return null; }
 }
