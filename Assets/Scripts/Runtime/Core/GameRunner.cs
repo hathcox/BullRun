@@ -93,6 +93,12 @@ public class GameRunner : MonoBehaviour
         _priceGenerator.SetEventEffects(eventEffects);
         _eventScheduler = new EventScheduler(eventEffects);
 
+        // Story 17.4: Wire EventScheduler to RunContext for relic access
+        _ctx.EventScheduler = _eventScheduler;
+
+        // Story 17.4 review fix: Wire ResetBuyCooldown delegate for Profit Refresh relic
+        _ctx.ResetBuyCooldownAction = ResetBuyCooldown;
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[GameRunner] Awake: Systems created, starting capital ${GameConfig.StartingCapital}");
         #endif
@@ -465,6 +471,10 @@ public class GameRunner : MonoBehaviour
         if (_ctx.LongsDisabled)
             ApplyLongsDisabledVisuals();
 
+        // Story 17.4: Apply locked visuals if ShortingDisabled (Bull Believer)
+        if (_ctx.ShortingDisabled)
+            ApplyShortingDisabledVisuals();
+
         _shortEntryPrice = 0f;
         _shortShares = 0;
         _shortStockId = null;
@@ -686,6 +696,14 @@ public class GameRunner : MonoBehaviour
     {
         if (_shortButtonImage == null || _shortButtonText == null) return;
 
+        // Story 17.4: Show LOCKED when ShortingDisabled (Bull Believer)
+        if (_ctx.ShortingDisabled)
+        {
+            _shortButtonImage.color = DimColor(_shortButtonOriginalColor);
+            _shortButtonText.text = "LOCKED";
+            return;
+        }
+
         switch (_shortState)
         {
             case ShortState.RoundLockout:
@@ -763,6 +781,8 @@ public class GameRunner : MonoBehaviour
     public void HandleShort2Input()
     {
         if (!TradingState.IsActive) return;
+        // Story 17.4: Block shorts when ShortingDisabled (Bull Believer)
+        if (_ctx.ShortingDisabled) return;
 
         switch (_short2State)
         {
@@ -838,6 +858,15 @@ public class GameRunner : MonoBehaviour
     private void UpdateShort2ButtonVisuals()
     {
         if (_short2ButtonImage == null || _short2ButtonText == null) return;
+
+        // Story 17.4 review fix: Show LOCKED when ShortingDisabled (Bull Believer) — matches UpdateShortButtonVisuals
+        if (_ctx.ShortingDisabled)
+        {
+            _short2ButtonImage.color = DimColor(_short2ButtonOriginalColor);
+            _short2ButtonText.text = "LOCKED";
+            return;
+        }
+
         switch (_short2State)
         {
             case ShortState.RoundLockout:
@@ -898,7 +927,8 @@ public class GameRunner : MonoBehaviour
         if (keyboard == null) return;
 
         // FIX-11: D key for short actions (independent of Buy/Sell cooldown)
-        if (keyboard.dKey.wasPressedThisFrame)
+        // Story 17.4: Blocked when ShortingDisabled (Bull Believer)
+        if (keyboard.dKey.wasPressedThisFrame && !_ctx.ShortingDisabled)
         {
             HandleShortInput();
         }
@@ -926,6 +956,8 @@ public class GameRunner : MonoBehaviour
     public void HandleShortInput()
     {
         if (!TradingState.IsActive) return;
+        // Story 17.4: Block shorts when ShortingDisabled (Bull Believer)
+        if (_ctx.ShortingDisabled) return;
 
         switch (_shortState)
         {
@@ -999,6 +1031,18 @@ public class GameRunner : MonoBehaviour
         #endif
     }
 
+    /// <summary>
+    /// Story 17.4: Resets the post-trade buy cooldown to 0, re-enabling the buy button immediately.
+    /// Called by Profit Refresh relic when the player sells at a profit.
+    /// </summary>
+    public void ResetBuyCooldown()
+    {
+        if (!_isPostTradeCooldownActive) return;
+        _postTradeCooldownTimer = 0f;
+        _isPostTradeCooldownActive = false;
+        HideCooldownOverlay();
+    }
+
     private void ShowCooldownOverlay()
     {
         // Dim both buttons and set non-interactable
@@ -1038,6 +1082,17 @@ public class GameRunner : MonoBehaviour
         if (_sellButtonImage != null) _sellButtonImage.color = DimColor(_sellButtonOriginalColor);
         if (_buyButtonText != null) _buyButtonText.text = "LOCKED";
         if (_sellButtonText != null) _sellButtonText.text = "LOCKED";
+    }
+
+    /// <summary>
+    /// Story 17.4: Dims and disables short buttons when ShortingDisabled (Bull Believer).
+    /// </summary>
+    private void ApplyShortingDisabledVisuals()
+    {
+        if (_shortButtonImage != null) _shortButtonImage.color = DimColor(_shortButtonOriginalColor);
+        if (_shortButtonText != null) _shortButtonText.text = "LOCKED";
+        if (_short2ButtonImage != null) _short2ButtonImage.color = DimColor(_short2ButtonOriginalColor);
+        if (_short2ButtonText != null) _short2ButtonText.text = "LOCKED";
     }
 
     private void UpdateCooldownTimerDisplay()

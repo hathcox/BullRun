@@ -16,6 +16,16 @@ public class EventScheduler
     private int _eventCount;
     private int _rareEventsFiredThisRound;
 
+    // Story 17.4: Relic multipliers — reset by TradingState before RoundStartedEvent, set by relics after dispatch,
+    // then used by InitializeRound (EventCountMultiplier) and FireEvent (ImpactMultiplier, PositiveImpactMultiplier)
+    public float EventCountMultiplier { get; set; } = 1.0f;
+    public float ImpactMultiplier { get; set; } = 1.0f;
+    public float PositiveImpactMultiplier { get; set; } = 1.0f;
+
+    // Story 17.4: Stored for ForceFireRandomEvent
+    private StockTier _currentTier;
+    private IReadOnlyList<StockInstance> _currentActiveStocks;
+
     public int ScheduledEventCount => _eventCount;
     public EventEffects EventEffects => _eventEffects;
 
@@ -41,6 +51,10 @@ public class EventScheduler
     /// </summary>
     public void InitializeRound(int round, int act, StockTier tier, IReadOnlyList<StockInstance> activeStocks, float roundDuration)
     {
+        // Story 17.4: Store for ForceFireRandomEvent
+        _currentTier = tier;
+        _currentActiveStocks = activeStocks;
+
         _rareEventsFiredThisRound = 0;
         // Determine event count based on act (early vs late)
         bool isLateRound = (act >= 3);
@@ -50,8 +64,8 @@ public class EventScheduler
         // Apply tier frequency modifier
         float frequencyModifier = StockTierData.GetTierConfig(tier).EventFrequencyModifier;
 
-        // Scale event count by frequency modifier (round to nearest int, clamp to min 1)
-        float scaledCount = _random.Next(minEvents, maxEvents + 1) * frequencyModifier;
+        // Scale event count by frequency modifier and relic multiplier (round to nearest int, clamp to min 1)
+        float scaledCount = _random.Next(minEvents, maxEvents + 1) * frequencyModifier * EventCountMultiplier;
         _eventCount = Mathf.Max(1, Mathf.RoundToInt(scaledCount));
 
         // Pre-schedule fire times distributed across the round
@@ -106,6 +120,19 @@ public class EventScheduler
 
         // Advance active event timers
         _eventEffects.UpdateActiveEvents(deltaTime);
+    }
+
+    /// <summary>
+    /// Story 17.4: Immediately fires a random market event on the active stock.
+    /// Uses existing SelectEventType and FireEvent logic for normal event processing.
+    /// Called by relics (Catalyst Trader, Loss Liquidator) to trigger events on trade.
+    /// </summary>
+    public void ForceFireRandomEvent()
+    {
+        if (_currentActiveStocks == null || _currentActiveStocks.Count == 0) return;
+
+        var config = SelectEventType(_currentTier);
+        FireEvent(config, _currentActiveStocks);
     }
 
     /// <summary>
@@ -178,8 +205,10 @@ public class EventScheduler
         // FIX-15: Always target the single active stock
         int targetStockId = activeStocks[0].StockId;
 
-        // Roll price effect between min and max
-        float priceEffect = RandomRange(config.MinPriceEffect, config.MaxPriceEffect);
+        // Roll price effect between min and max, apply relic multipliers (Story 17.4)
+        float priceEffect = RandomRange(config.MinPriceEffect, config.MaxPriceEffect) * ImpactMultiplier;
+        if (EventHeadlineData.IsPositiveEvent(config.EventType))
+            priceEffect *= PositiveImpactMultiplier;
 
         MarketEvent evt;
 
@@ -250,7 +279,7 @@ public class EventScheduler
         if (activeStocks.Count == 0)
             return;
 
-        float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect);
+        float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect) * ImpactMultiplier;
 
         // Single stock: random direction
         bool isPositive = _random.NextDouble() >= 0.5;

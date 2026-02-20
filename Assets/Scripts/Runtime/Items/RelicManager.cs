@@ -84,15 +84,29 @@ public class RelicManager
     // ════════════════════════════════════════════════════════════════════
 
     /// <summary>
-    /// Returns effective post-trade cooldown. Quick Draw: 0 for buy, 2x for sell.
+    /// Returns effective post-trade cooldown.
+    /// Quick Draw: 0 for buy, 2x for sell. Catalyst Trader: +3s for buy.
+    /// Effects stack additively (Quick Draw 0 + Catalyst Trader +3 = 3s for buy).
     /// </summary>
     public float GetEffectiveCooldown(bool isBuy)
     {
+        float cooldown;
         if (GetRelicById("relic_quick_draw") != null)
         {
-            return isBuy ? 0f : GameConfig.PostTradeCooldown * 2f;
+            cooldown = isBuy ? 0f : GameConfig.PostTradeCooldown * 2f;
         }
-        return GameConfig.PostTradeCooldown;
+        else
+        {
+            cooldown = GameConfig.PostTradeCooldown;
+        }
+
+        // Story 17.4: Catalyst Trader adds +3s to buy cooldown
+        if (isBuy && GetRelicById("relic_event_trigger") != null)
+        {
+            cooldown += 3f;
+        }
+
+        return cooldown;
     }
 
     /// <summary>

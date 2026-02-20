@@ -60,6 +60,17 @@ public class TradingState : IGameState
         ActiveRoundDuration = _roundDuration;
         IsActive = true;
 
+        // Story 17.4 review fix: Reset relic multipliers to defaults BEFORE RoundStartedEvent
+        // so relics can set their values during dispatch (Event Storm, Bull Believer).
+        // InitializeRound then uses the relic-set values for event count calculation.
+        if (_eventScheduler != null)
+        {
+            _eventScheduler.EventCountMultiplier = 1.0f;
+            _eventScheduler.ImpactMultiplier = 1.0f;
+            _eventScheduler.PositiveImpactMultiplier = 1.0f;
+        }
+
+        // Publish RoundStartedEvent — relics dispatch synchronously and set multipliers
         EventBus.Publish(new RoundStartedEvent
         {
             RoundNumber = ctx.CurrentRound,
@@ -69,7 +80,7 @@ public class TradingState : IGameState
             TimeLimit = _roundDuration
         });
 
-        // Initialize event scheduler for this round
+        // Initialize event scheduler AFTER relic dispatch so EventCountMultiplier affects event count
         if (_eventScheduler != null && _priceGenerator != null)
         {
             _eventScheduler.EventEffects.SetActiveStocks(_priceGenerator.ActiveStocks);

@@ -26,10 +26,29 @@ public class RunContext
     public float StartingCapital { get; internal set; }
 
     /// <summary>
+    /// Story 17.4: EventScheduler reference for relics that trigger events (Catalyst Trader, Loss Liquidator).
+    /// Set by GameRunner during initialization.
+    /// </summary>
+    public EventScheduler EventScheduler { get; internal set; }
+
+    /// <summary>
+    /// Story 17.4 review fix: Delegate to reset post-trade buy cooldown.
+    /// Set by GameRunner during initialization. Used by Profit Refresh relic
+    /// instead of direct GameRunner.Instance reference (architecture compliance).
+    /// </summary>
+    public System.Action ResetBuyCooldownAction { get; internal set; }
+
+    /// <summary>
     /// When true, buy and sell (long) trades are permanently disabled for this run.
     /// Set by Bear Raid relic on acquisition. Story 17.3.
     /// </summary>
     public bool LongsDisabled { get; internal set; }
+
+    /// <summary>
+    /// When true, short trades are permanently disabled for this run.
+    /// Set by Bull Believer relic on acquisition. Story 17.4.
+    /// </summary>
+    public bool ShortingDisabled { get; internal set; }
 
     /// <summary>
     /// True when the player has completed all rounds (survived Round 8 margin call).
@@ -223,6 +242,7 @@ public class RunContext
         Reputation.Reset();
         StartingCapital = Portfolio.Cash;
         LongsDisabled = false;
+        ShortingDisabled = false;
         RunCompleted = false;
         PeakCash = Portfolio.Cash;
         BestRoundProfit = 0f;
