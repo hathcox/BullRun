@@ -144,6 +144,9 @@ public class ShopState : IGameState
             BondAvailable = ctx.CurrentRound < GameConfig.TotalRounds
         });
 
+        // Story 17.1: Dispatch shop-open hook to all owned relics
+        ctx.RelicManager.DispatchShopOpen();
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[ShopState] Enter: Store opened (Round {ctx.CurrentRound}), {availableRelics.Length} relics, untimed");
         #endif

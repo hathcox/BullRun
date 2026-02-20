@@ -19,6 +19,12 @@ public class DashboardReferences
     public Button SellButton;
     public Button ShortButton;
 
+    // Buy/Sell UI references (for cooldown dimming + timer text)
+    public Image BuyButtonImage;
+    public Text BuyButtonText;
+    public Image SellButtonImage;
+    public Text SellButtonText;
+
     // Short UI references
     public Image ShortButtonImage;
     public Text ShortButtonText;

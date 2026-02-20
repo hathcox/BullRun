@@ -10,6 +10,12 @@ public class ReputationManager
     /// </summary>
     public int Current { get; private set; }
 
+    /// <summary>
+    /// Story 17.1: Fired after any mutation (Add, Spend, Reset) with (oldValue, newValue).
+    /// RelicManager subscribes to dispatch OnReputationChanged to all relics.
+    /// </summary>
+    public event System.Action<int, int> OnChanged;
+
     public ReputationManager()
     {
         Current = GameConfig.StartingReputation;
@@ -21,7 +27,9 @@ public class ReputationManager
     public void Add(int amount)
     {
         if (amount <= 0) return;
+        int old = Current;
         Current += amount;
+        OnChanged?.Invoke(old, Current);
     }
 
     /// <summary>
@@ -33,7 +41,9 @@ public class ReputationManager
         if (amount < 0) return false;
         if (amount == 0) return true;
         if (amount > Current) return false;
+        int old = Current;
         Current -= amount;
+        OnChanged?.Invoke(old, Current);
         return true;
     }
 
@@ -50,6 +60,9 @@ public class ReputationManager
     /// </summary>
     public void Reset()
     {
+        int old = Current;
         Current = 0;
+        if (old != 0)
+            OnChanged?.Invoke(old, 0);
     }
 }

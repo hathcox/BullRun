@@ -51,7 +51,7 @@ public class ShopTransaction
             }
             repDeducted = true;
 
-            ctx.OwnedRelics.Add(relic.Id);
+            ctx.RelicManager.AddRelic(relic.Id);
             relicAdded = true;
 
             EventBus.Publish(new ShopItemPurchasedEvent
@@ -71,7 +71,7 @@ public class ShopTransaction
         catch (System.Exception ex)
         {
             if (repDeducted) ctx?.Reputation.Add(relic.Cost);
-            if (relicAdded) ctx?.OwnedRelics.Remove(relic.Id);
+            if (relicAdded) ctx?.RelicManager.RemoveRelic(relic.Id);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.LogWarning($"[ShopTransaction] Relic purchase failed for {relic.Name}: {ex.Message}");
             #endif
@@ -259,7 +259,8 @@ public class ShopTransaction
 
         try
         {
-            ctx.OwnedRelics.Remove(relicId);
+            ctx.RelicManager.DispatchSellSelf(relicId);
+            ctx.RelicManager.RemoveRelic(relicId);
             relicRemoved = true;
             ctx.Reputation.Add(refund);
 
@@ -278,7 +279,7 @@ public class ShopTransaction
         }
         catch (System.Exception ex)
         {
-            if (relicRemoved) ctx?.OwnedRelics.Add(relicId);
+            if (relicRemoved) ctx?.RelicManager.AddRelic(relicId);
             ctx?.Reputation.Spend(refund);
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.LogWarning($"[ShopTransaction] Relic sell failed for {relicId}: {ex.Message}");

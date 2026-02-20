@@ -324,39 +324,7 @@ public class MusicManager : MonoBehaviour
 
     private void OnPriceUpdatedForMusic(PriceUpdatedEvent evt)
     {
-        if (!TradingState.IsActive) return;
-        if (_currentMusicState != MusicState.Trading) return;
-
-        float timeRemaining = TradingState.ActiveTimeRemaining;
-
-        // Critical layer at 5s threshold (replaces urgency)
-        if (!_criticalActive && timeRemaining <= GameConfig.TimerCriticalThreshold)
-        {
-            // Fade out urgency if active
-            if (_urgencyActive)
-            {
-                FadeOutAndStop(ref _urgencyLayer, GameConfig.MusicCriticalFadeIn);
-                _urgencyActive = false;
-            }
-
-            // Fade in critical layer
-            if (_clips.MusicCriticalLayer != null)
-            {
-                _criticalLayer = PlayMusicLoop(_clips.MusicCriticalLayer,
-                    GameConfig.MusicCriticalVolume, GameConfig.MusicCriticalFadeIn);
-                _criticalActive = true;
-            }
-        }
-        // Urgency layer at 15s threshold
-        else if (!_urgencyActive && !_criticalActive && timeRemaining <= GameConfig.TimerWarningThreshold)
-        {
-            if (_clips.MusicUrgencyLayer != null)
-            {
-                _urgencyLayer = PlayMusicLoop(_clips.MusicUrgencyLayer,
-                    GameConfig.MusicUrgencyVolume, GameConfig.MusicUrgencyFadeIn);
-                _urgencyActive = true;
-            }
-        }
+        // Urgency/critical music layers disabled — they clash with the trading music
     }
 
     private void OnTradingPhaseEnded(TradingPhaseEndedEvent evt)

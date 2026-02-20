@@ -17,6 +17,7 @@ namespace BullRun.Tests.Shop
         public void SetUp()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
             ItemLookup.ClearCache();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
             _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
@@ -28,6 +29,16 @@ namespace BullRun.Tests.Shop
         public void TearDown()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
+        }
+
+        /// <summary>
+        /// Helper to register a test relic in the factory and return its RelicDef.
+        /// </summary>
+        private RelicDef MakeTestRelic(string id, string name, string desc, int cost)
+        {
+            RelicFactory.Register(id, () => new StubRelic(id));
+            return new RelicDef(id, name, desc, cost);
         }
 
         // === Click-to-buy relic: purchase succeeds, relic added to inventory (AC 7, 8) ===
@@ -35,7 +46,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ClickToBuy_RelicPurchase_AddsToOwnedRelics()
         {
-            var relic = new RelicDef("test_relic", "Test", "desc", 100);
+            var relic = MakeTestRelic("test_relic", "Test", "desc", 100);
             var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
@@ -48,11 +59,11 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ClickToBuy_WhenFull_RejectsWithSlotsFull()
         {
-            // Fill inventory to max
+            // Fill inventory to max using real pool relics via RelicManager
             for (int i = 0; i < GameConfig.MaxRelicSlots; i++)
-                _ctx.OwnedRelics.Add($"relic_{i}");
+                _ctx.RelicManager.AddRelic(ShopItemDefinitions.RelicPool[i].Id);
 
-            var relic = new RelicDef("extra", "Extra", "desc", 100);
+            var relic = MakeTestRelic("extra", "Extra", "desc", 100);
             var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
@@ -64,11 +75,11 @@ namespace BullRun.Tests.Shop
         {
             _ctx.OwnedExpansions.Add(ExpansionDefinitions.ExpandedInventory);
 
-            // Fill to base max (5)
+            // Fill to base max (5) using real pool relics via RelicManager
             for (int i = 0; i < GameConfig.MaxRelicSlots; i++)
-                _ctx.OwnedRelics.Add($"relic_{i}");
+                _ctx.RelicManager.AddRelic(ShopItemDefinitions.RelicPool[i].Id);
 
-            var relic = new RelicDef("beyond_base", "Beyond", "desc", 100);
+            var relic = MakeTestRelic("beyond_base", "Beyond", "desc", 100);
             var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
@@ -83,7 +94,7 @@ namespace BullRun.Tests.Shop
             _ctx.Reputation.Reset();
             _ctx.Reputation.Add(50); // Less than relic cost
 
-            var relic = new RelicDef("expensive", "Expensive", "desc", 200);
+            var relic = MakeTestRelic("expensive", "Expensive", "desc", 200);
             var result = _transaction.PurchaseRelic(_ctx, relic);
 
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
@@ -121,7 +132,7 @@ namespace BullRun.Tests.Shop
             bool fired = false;
             EventBus.Subscribe<ShopItemPurchasedEvent>(e => { fired = true; });
 
-            _transaction.PurchaseRelic(_ctx, new RelicDef("r", "R", "d", 100));
+            _transaction.PurchaseRelic(_ctx, MakeTestRelic("r", "R", "d", 100));
 
             Assert.IsTrue(fired);
         }
@@ -192,7 +203,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRefund_EvenCost100_Returns50()
         {
-            _ctx.OwnedRelics.Add("relic_stop_loss"); // Cost: 100
+            _ctx.RelicManager.AddRelic("relic_stop_loss"); // Cost: 100
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_stop_loss");
@@ -203,7 +214,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRefund_Cost150_Returns75()
         {
-            _ctx.OwnedRelics.Add("relic_speed_trader"); // Cost: 150
+            _ctx.RelicManager.AddRelic("relic_speed_trader"); // Cost: 150
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_speed_trader");
@@ -214,7 +225,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRefund_Cost500_Returns250()
         {
-            _ctx.OwnedRelics.Add("relic_master_universe"); // Cost: 500
+            _ctx.RelicManager.AddRelic("relic_master_universe"); // Cost: 500
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_master_universe");
@@ -230,7 +241,7 @@ namespace BullRun.Tests.Shop
             ShopItemSoldEvent received = default;
             EventBus.Subscribe<ShopItemSoldEvent>(e => { received = e; });
 
-            _ctx.OwnedRelics.Add("relic_dark_pool"); // Cost: 350
+            _ctx.RelicManager.AddRelic("relic_dark_pool"); // Cost: 350
 
             _transaction.SellRelic(_ctx, "relic_dark_pool");
 
@@ -260,12 +271,12 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellThenBuy_FreesSlotForNewPurchase()
         {
-            // Fill to max
+            // Fill to max using real pool relics via RelicManager
             for (int i = 0; i < GameConfig.MaxRelicSlots; i++)
-                _ctx.OwnedRelics.Add(ShopItemDefinitions.RelicPool[i].Id);
+                _ctx.RelicManager.AddRelic(ShopItemDefinitions.RelicPool[i].Id);
 
             // Should be full
-            var relic = new RelicDef("new_relic", "New", "desc", 100);
+            var relic = MakeTestRelic("new_relic", "New", "desc", 100);
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, _transaction.PurchaseRelic(_ctx, relic));
 
             // Sell one

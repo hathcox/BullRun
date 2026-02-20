@@ -80,6 +80,7 @@ public class QuantitySelector : MonoBehaviour
         if (_quantityDisplayRect != null)
         {
             _quantityDisplayRect.DOKill();
+            _quantityDisplayRect.localScale = Vector3.one;
             _quantityDisplayRect.DOPunchScale(Vector3.one * QuantityPunchStrength, QuantityPunchDuration, 1, 0.5f)
                 .SetUpdate(false);
         }

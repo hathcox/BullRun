@@ -1,0 +1,143 @@
+# Story 17.9: Relic Reordering
+
+Status: ready-for-dev
+
+## Story
+
+As a player,
+I want to reorder my relics in the shop's owned relics bar by clicking to select and clicking a destination,
+so that I can control the execution order for strategic effect (relics execute left-to-right).
+
+## Acceptance Criteria
+
+1. In shop phase, clicking an owned relic in the owned relics bar highlights it as "selected" (raised, glowing border)
+2. Other relic slots show insertion indicators when a relic is selected (subtle markers between slots showing where the relic will land)
+3. Clicking another position moves the selected relic there (insert, not swap)
+4. Other relics shift to accommodate the inserted relic
+5. `RelicManager.ReorderRelic(fromIndex, toIndex)` is called on reorder
+6. Clicking the same relic again or pressing Escape cancels selection without reordering
+7. Relics execute in the new visual order on next dispatch (left-to-right)
+8. Order persists for the rest of the run (survives round transitions between shop and trading phases)
+9. Reorder is only available in the shop phase owned relics bar (NOT the trading phase RelicBar display from Story 17.8)
+10. A brief label or tooltip reminds the player: "Relics execute left to right"
+11. `RunContext.OwnedRelics` list order is synced with `RelicManager` after every reorder
+
+## Tasks / Subtasks
+
+- [ ] Task 1: Add selection state tracking to ShopUI (AC: 1, 6)
+  - [ ] Add `_selectedRelicIndex` field (`int`, default `-1` = no selection) to ShopUI
+  - [ ] Add `_isRelicReorderMode` bool field to ShopUI
+  - [ ] Add `SelectRelicForReorder(int slotIndex)` method that sets selection state and updates visuals
+  - [ ] Add `CancelRelicSelection()` method that clears selection state and restores visuals
+  - [ ] If selected slot is clicked again, call `CancelRelicSelection()` (AC 6)
+  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
+
+- [ ] Task 2: Add visual highlight for selected relic (AC: 1)
+  - [ ] Define `SelectedRelicBorderColor` static readonly Color (use a bright variant, e.g., `ColorPalette.Cyan` or brighter amber)
+  - [ ] Define `SelectedRelicScale` constant (e.g., `1.08f`) for slight scale-up effect
+  - [ ] When a relic is selected: change slot `Background.color` to `SelectedRelicBorderColor`, scale slot root via `localScale`
+  - [ ] When selection is cancelled: restore slot to `OwnedRelicSlotColor`, reset `localScale` to `Vector3.one`
+  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
+
+- [ ] Task 3: Add insertion indicators between slots (AC: 2)
+  - [ ] Extend `OwnedRelicSlotView` struct with `GameObject InsertionIndicator` field (a thin vertical bar between slots)
+  - [ ] Create insertion indicator GameObjects in UISetup during owned relics bar construction — one between each pair of adjacent slots, plus one before slot 0 and one after last slot
+  - [ ] Indicators are hidden by default (`SetActive(false)`)
+  - [ ] When a relic is selected: show insertion indicators at all valid drop positions (all positions except the selected relic's current position)
+  - [ ] Indicator visual: thin vertical line (2-4px wide) with a subtle glow color (e.g., `ColorPalette.Cyan` at 0.6 alpha)
+  - [ ] When selection is cancelled or reorder completes: hide all insertion indicators
+  - [ ] Files: `Scripts/Runtime/UI/ShopUI.cs`, `Scripts/Setup/UISetup.cs`
+
+- [ ] Task 4: Wire click handlers for reorder (AC: 3, 4, 5, 11)
+  - [ ] In `RefreshOwnedRelicsBar()`, add a click handler to each populated owned relic slot root (not the sell button — the slot background/name area)
+  - [ ] Click logic: if no relic selected → select this relic (Task 1). If a relic is already selected → perform reorder to this position.
+  - [ ] On reorder: call `RelicManager.ReorderRelic(_selectedRelicIndex, targetIndex)`
+  - [ ] After `ReorderRelic`, sync `RunContext.OwnedRelics` list to match `RelicManager.OrderedRelics` order
+  - [ ] Call `RefreshOwnedRelicsBar()` to update visuals after reorder
+  - [ ] Clear selection state after successful reorder
+  - [ ] Ensure sell button click does NOT trigger reorder (stop event propagation or check click target)
+  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
+
+- [ ] Task 5: Sync RunContext.OwnedRelics after reorder (AC: 11)
+  - [ ] Add `SyncOwnedRelicsFromRelicManager()` helper method to ShopUI (or ShopState)
+  - [ ] Method rebuilds `RunContext.OwnedRelics` list from `RelicManager.OrderedRelics` IDs
+  - [ ] Called immediately after every `ReorderRelic()` call
+  - [ ] This ensures save/load and other systems see the new order
+  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs` or `Scripts/Runtime/Core/GameStates/ShopState.cs`
+
+- [ ] Task 6: Add Escape key cancellation (AC: 6)
+  - [ ] In ShopUI `Update()`, check for Escape key press when `_isRelicReorderMode` is true
+  - [ ] On Escape: call `CancelRelicSelection()`
+  - [ ] Ensure this does not conflict with existing Escape handling (e.g., pause menu) — reorder cancel takes priority when in reorder mode
+  - [ ] File: `Scripts/Runtime/UI/ShopUI.cs`
+
+- [ ] Task 7: Add "Relics execute left to right" reminder label (AC: 10)
+  - [ ] Add a small label above or below the owned relics bar: "Relics execute left to right"
+  - [ ] Use a dim/subtle color (e.g., `ColorPalette.Dimmed(ColorPalette.TextPrimary, 0.5f)`) so it is informative but not distracting
+  - [ ] Label is always visible when the owned relics bar is showing (not only during reorder mode)
+  - [ ] Create the label in UISetup during owned relics bar construction
+  - [ ] Files: `Scripts/Setup/UISetup.cs`, `Scripts/Runtime/UI/DashboardReferences.cs` (if reference wiring needed)
+
+- [ ] Task 8: Verify execution order after reorder (AC: 7, 8)
+  - [ ] After reorder, verify that `RelicManager.OrderedRelics` reflects the new order
+  - [ ] Verify that the next dispatch (e.g., `DispatchRoundStart`) iterates in the new visual order
+  - [ ] Verify that `RunContext.OwnedRelics` persists the new order across round transitions (shop → trading → shop)
+  - [ ] This is primarily a test task — see Task 9
+
+- [ ] Task 9: Write tests (All AC)
+  - [ ] Test: `ReorderRelic` moves relic and shifts others correctly (insert, not swap) — verify resulting list for multiple from/to combinations
+  - [ ] Test: `ReorderRelic` with fromIndex == toIndex is a no-op
+  - [ ] Test: `RunContext.OwnedRelics` order matches `RelicManager.OrderedRelics` after reorder
+  - [ ] Test: dispatch order matches visual order after reorder (create 3 test relics, reorder, dispatch, verify call order)
+  - [ ] Test: order persists through simulated round transition (reorder, enter trading state, return to shop, verify order unchanged)
+  - [ ] Test: selection state reset after successful reorder (no lingering selection)
+  - [ ] Test: cancel selection restores original visual state
+  - [ ] Files: `Tests/Runtime/Items/RelicReorderTests.cs`, `Tests/Runtime/UI/RelicReorderUITests.cs`
+
+## Dev Notes
+
+### Architecture Compliance
+
+- **Programmatic uGUI:** All new UI elements (insertion indicators, reminder label) created in `UISetup.cs` during F5. No prefabs, no Inspector configuration.
+- **EventBus communication:** Reorder logic communicates through `RelicManager` method calls (UI → RelicManager is the allowed one-way dependency for UI classes per project-context.md).
+- **No ScriptableObjects:** Selection state lives as instance fields on ShopUI MonoBehaviour. No new data definitions needed.
+- **Single-scene architecture:** All changes are runtime code; no scene modifications needed.
+- **No DOTween for selection visuals:** Use direct property assignment for `Background.color` and `localScale` changes (instant, not animated). If animation is desired, use coroutines with `Mathf.Lerp`.
+
+### Existing Code to Read Before Implementing
+
+- `Scripts/Runtime/UI/ShopUI.cs` — `OwnedRelicSlotView` struct (line ~205), `RefreshOwnedRelicsBar()` method (line ~1816), `_ownedRelicSlots` array, `SetOwnedRelicSlots()`, sell button click wiring pattern
+- `Scripts/Runtime/Items/RelicManager.cs` — `ReorderRelic(int fromIndex, int toIndex)` already defined in Story 17.1 (AC 9)
+- `Scripts/Runtime/Core/RunContext.cs` — `OwnedRelics` property (`List<string>`, line ~16), used for save/load and UI display
+- `Scripts/Runtime/Core/GameStates/ShopState.cs` — shop phase lifecycle, sell callback wiring, `RefreshOwnedRelicsBar` calls after purchases
+- `Scripts/Setup/UISetup.cs` — owned relics bar construction (`CreateOwnedRelicSlot` method from Story 13.10)
+- `Scripts/Runtime/Shop/ShopTransaction.cs` — `GetEffectiveMaxRelicSlots(ctx)` for dynamic slot count
+
+### Key Design Decisions
+
+- **Click-to-select-and-place (not drag-and-drop):** Simpler to implement with uGUI Button components already on slots. Drag-and-drop would require PointerDrag handlers and visual feedback that adds complexity. Click-select-click is also more accessible for gamepad (future).
+- **Insert, not swap:** Moving a relic inserts it at the target position and shifts others. This matches `RelicManager.ReorderRelic` semantics (remove from old index, insert at new index). More intuitive for ordering than swapping.
+- **Insertion indicators as separate GameObjects:** Created once in UISetup, toggled via `SetActive`. Avoids per-frame allocation. Positioned between slot roots using layout offsets.
+- **Sell button isolation:** The sell button click must NOT trigger reorder. Use `EventTrigger` or check `EventSystem.current.currentSelectedGameObject` to distinguish sell button clicks from slot background clicks, or add a separate clickable area (Button on the name label area) that excludes the sell button region.
+
+### Depends On
+
+- Story 17.1 (Relic Effect Framework) — `RelicManager.ReorderRelic(fromIndex, toIndex)` must exist
+- Story 13.10 (Owned Relics Bar) — owned relics bar UI must exist with `OwnedRelicSlotView` struct and `RefreshOwnedRelicsBar()` method
+
+### References
+
+- [Source: _bmad-output/planning-artifacts/epic-17-relic-system.md#Story 17.9]
+- [Source: _bmad-output/implementation-artifacts/13-10-owned-relics-bar-and-click-to-buy.md]
+- [Source: _bmad-output/implementation-artifacts/17-1-relic-effect-framework.md]
+- [Source: _bmad-output/project-context.md#EventBus Communication]
+
+## Dev Agent Record
+
+### Agent Model Used
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List

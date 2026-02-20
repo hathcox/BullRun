@@ -382,6 +382,10 @@ public static class UISetup
 
         refs.BuyButton = buyButton;
         refs.SellButton = sellButton;
+        refs.BuyButtonImage = buyBtnGo.GetComponent<Image>();
+        refs.BuyButtonText = buyLabel.GetComponent<Text>();
+        refs.SellButtonImage = sellBtnGo.GetComponent<Image>();
+        refs.SellButtonText = sellLabel.GetComponent<Text>();
 
         // Bottom row: SHORT button full-width — CRTThemeData.ButtonShort amber
         var shortBtnGo = CreatePanel("ShortButton", centerCoreGo.transform);
@@ -2474,8 +2478,8 @@ public static class UISetup
         var confirmGo = new GameObject("ConfirmationPopup");
         confirmGo.transform.SetParent(canvasGo.transform, false);
         var confirmRect = confirmGo.AddComponent<RectTransform>();
-        confirmRect.anchorMin = new Vector2(0.3f, 0.35f);
-        confirmRect.anchorMax = new Vector2(0.7f, 0.65f);
+        confirmRect.anchorMin = new Vector2(0.35f, 0.4f);
+        confirmRect.anchorMax = new Vector2(0.65f, 0.6f);
         confirmRect.offsetMin = Vector2.zero;
         confirmRect.offsetMax = Vector2.zero;
         var confirmImg = confirmGo.AddComponent<Image>();
@@ -2500,8 +2504,8 @@ public static class UISetup
         var btnRowHlg = btnRowGo.AddComponent<HorizontalLayoutGroup>();
         btnRowHlg.spacing = 20f;
         btnRowHlg.childAlignment = TextAnchor.MiddleCenter;
-        btnRowHlg.childForceExpandWidth = true;
-        btnRowHlg.childForceExpandHeight = true;
+        btnRowHlg.childForceExpandWidth = false;
+        btnRowHlg.childForceExpandHeight = false;
         var btnRowLayout = btnRowGo.AddComponent<LayoutElement>();
         btnRowLayout.preferredHeight = 48f;
 
@@ -2515,7 +2519,8 @@ public static class UISetup
         yesBtnImg.color = ColorPalette.Red;
         refs.ConfirmYesButton = yesBtnGo.AddComponent<Button>();
         var yesLayout = yesBtnGo.AddComponent<LayoutElement>();
-        yesLayout.flexibleWidth = 1f;
+        yesLayout.preferredWidth = 120f;
+        yesLayout.preferredHeight = 48f;
 
         var yesLabel = CreateLabel("YesLabel", yesBtnGo.transform, "YES", Color.white, 20);
         yesLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
@@ -2537,7 +2542,8 @@ public static class UISetup
         noBtnImg.color = ColorPalette.Green;
         refs.ConfirmNoButton = noBtnGo.AddComponent<Button>();
         var noLayout = noBtnGo.AddComponent<LayoutElement>();
-        noLayout.flexibleWidth = 1f;
+        noLayout.preferredWidth = 120f;
+        noLayout.preferredHeight = 48f;
 
         var noLabel = CreateLabel("NoLabel", noBtnGo.transform, "NO", Color.white, 20);
         noLabel.GetComponent<Text>().fontStyle = FontStyle.Bold;
@@ -2587,6 +2593,7 @@ public static class UISetup
         enterEntry.callback.AddListener(_ =>
         {
             btn.transform.DOKill();
+            btn.transform.localScale = Vector3.one;
             btn.transform.DOScale(1.05f, 0.1f);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonHover();
         });
@@ -2596,13 +2603,14 @@ public static class UISetup
         exitEntry.callback.AddListener(_ =>
         {
             btn.transform.DOKill();
-            btn.transform.DOScale(1f, 0.08f);
+            btn.transform.localScale = Vector3.one;
         });
         trigger.triggers.Add(exitEntry);
 
         btn.onClick.AddListener(() =>
         {
             btn.transform.DOKill();
+            btn.transform.localScale = Vector3.one;
             btn.transform.DOPunchScale(new Vector3(-0.08f, -0.08f, 0f), 0.15f, 1, 0f);
         });
     }

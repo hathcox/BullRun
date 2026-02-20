@@ -393,3 +393,12 @@ public struct GameResumedEvent { }
 /// Story 16.2: GameRunner subscribes to clean up gameplay state and transition to MainMenuState.
 /// </summary>
 public struct ReturnToMenuEvent { }
+
+/// <summary>
+/// Fired when a relic's effect activates during gameplay.
+/// Story 17.1: Framework event — concrete relics fire this in Stories 17.3-17.7.
+/// </summary>
+public struct RelicActivatedEvent
+{
+    public string RelicId;
+}

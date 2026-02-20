@@ -15,6 +15,8 @@ namespace BullRun.Tests.Shop
         public void SetUp()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
+            ItemLookup.ClearCache();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
             _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
             _ctx.Reputation.Add(1000);
@@ -25,10 +27,12 @@ namespace BullRun.Tests.Shop
         public void TearDown()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
         }
 
         private RelicDef MakeRelic(string id, string name, int cost)
         {
+            RelicFactory.Register(id, () => new StubRelic(id));
             return new RelicDef(id, name, "Test relic", cost);
         }
 
@@ -396,7 +400,7 @@ namespace BullRun.Tests.Shop
         public void PurchaseRelic_AllowsUpToMaxRelicSlots()
         {
             for (int i = 0; i < GameConfig.MaxRelicSlots - 1; i++)
-                _ctx.OwnedRelics.Add($"relic-{i}");
+                _ctx.RelicManager.AddRelic(ShopItemDefinitions.RelicPool[i].Id);
 
             var relic = MakeRelic("relic-last", "Last Slot", 100);
             var result = _transaction.PurchaseRelic(_ctx, relic);

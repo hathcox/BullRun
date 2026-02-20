@@ -22,6 +22,7 @@ public class RunContext
     public List<RevealedTip> RevealedTips { get; private set; }
     public ReputationManager Reputation { get; private set; }
     public BondManager Bonds { get; private set; }
+    public RelicManager RelicManager { get; private set; }
     public float StartingCapital { get; internal set; }
 
     /// <summary>
@@ -90,6 +91,7 @@ public class RunContext
         RevealedTips = new List<RevealedTip>();
         Reputation = new ReputationManager();
         Bonds = new BondManager(this);
+        RelicManager = new RelicManager(this);
         StartingCapital = portfolio.Cash;
         PeakCash = portfolio.Cash;
     }
@@ -208,6 +210,7 @@ public class RunContext
         BondsOwned = 0;
         BondPurchaseHistory.Clear();
         Bonds = new BondManager(this);
+        RelicManager = new RelicManager(this);
         CurrentShopRerollCount = 0;
         InsiderTipSlots = GameConfig.DefaultInsiderTipSlots;
         RevealedTips.Clear();

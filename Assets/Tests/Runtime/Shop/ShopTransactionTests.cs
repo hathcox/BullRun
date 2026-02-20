@@ -16,6 +16,7 @@ namespace BullRun.Tests.Shop
         public void SetUp()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
             _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
             // FIX-12: Seed Reputation for tests (shop uses Rep, not cash)
@@ -27,10 +28,13 @@ namespace BullRun.Tests.Shop
         public void TearDown()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
         }
 
         private RelicDef MakeRelic(string id, string name, int cost)
         {
+            // Story 17.1: Register in factory so RelicManager.AddRelic can create instances
+            RelicFactory.Register(id, () => new StubRelic(id));
             return new RelicDef(id, name, "Test relic", cost);
         }
 

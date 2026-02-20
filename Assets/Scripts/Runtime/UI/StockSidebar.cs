@@ -185,6 +185,7 @@ public class StockSidebar : MonoBehaviour
             && _entryViews[index].Background != null)
         {
             _entryViews[index].Background.transform.DOKill();
+            _entryViews[index].Background.transform.localScale = Vector3.one;
             _entryViews[index].Background.transform
                 .DOPunchScale(Vector3.one * 0.08f, 0.18f, 6, 0.5f).SetUpdate(true);
         }

@@ -17,6 +17,7 @@ namespace BullRun.Tests.Shop
         public void SetUp()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
             ItemLookup.ClearCache();
             _ctx = new RunContext(1, 1, new Portfolio(1000f));
             _ctx.Portfolio.StartRound(_ctx.Portfolio.Cash);
@@ -28,6 +29,7 @@ namespace BullRun.Tests.Shop
         public void TearDown()
         {
             EventBus.Clear();
+            RelicFactory.ResetRegistry();
         }
 
         // === Sell Price Calculation (AC: 5, 6) ===
@@ -36,7 +38,7 @@ namespace BullRun.Tests.Shop
         public void SellRelic_RefundsHalfCostRoundedDown_EvenCost()
         {
             // Relic costs 200 → refund 100
-            _ctx.OwnedRelics.Add("relic_stop_loss"); // Cost: 100
+            _ctx.RelicManager.AddRelic("relic_stop_loss"); // Cost: 100
             int repBefore = _ctx.Reputation.Current;
 
             var result = _transaction.SellRelic(_ctx, "relic_stop_loss");
@@ -49,7 +51,7 @@ namespace BullRun.Tests.Shop
         public void SellRelic_RefundsHalfCostRoundedDown_OddCost()
         {
             // Speed Trader costs 150 → refund 75 (150 / 2 = 75, no rounding needed)
-            _ctx.OwnedRelics.Add("relic_speed_trader"); // Cost: 150
+            _ctx.RelicManager.AddRelic("relic_speed_trader"); // Cost: 150
             int repBefore = _ctx.Reputation.Current;
 
             var result = _transaction.SellRelic(_ctx, "relic_speed_trader");
@@ -62,7 +64,7 @@ namespace BullRun.Tests.Shop
         public void SellRelic_RefundsHalfCostRoundedDown_HighCost()
         {
             // Dark Pool Access costs 350 → refund 175
-            _ctx.OwnedRelics.Add("relic_dark_pool"); // Cost: 350
+            _ctx.RelicManager.AddRelic("relic_dark_pool"); // Cost: 350
             int repBefore = _ctx.Reputation.Current;
 
             var result = _transaction.SellRelic(_ctx, "relic_dark_pool");
@@ -76,8 +78,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRelic_RemovesFromOwnedRelics()
         {
-            _ctx.OwnedRelics.Add("relic_stop_loss");
-            _ctx.OwnedRelics.Add("relic_speed_trader");
+            _ctx.RelicManager.AddRelic("relic_stop_loss");
+            _ctx.RelicManager.AddRelic("relic_speed_trader");
 
             _transaction.SellRelic(_ctx, "relic_stop_loss");
 
@@ -122,7 +124,7 @@ namespace BullRun.Tests.Shop
                 received = e;
             });
 
-            _ctx.OwnedRelics.Add("relic_stop_loss"); // Cost: 100
+            _ctx.RelicManager.AddRelic("relic_stop_loss"); // Cost: 100
 
             _transaction.SellRelic(_ctx, "relic_stop_loss");
 
@@ -148,7 +150,7 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRelic_DoesNotTouchCash()
         {
-            _ctx.OwnedRelics.Add("relic_stop_loss");
+            _ctx.RelicManager.AddRelic("relic_stop_loss");
             float cashBefore = _ctx.Portfolio.Cash;
 
             _transaction.SellRelic(_ctx, "relic_stop_loss");
@@ -161,8 +163,8 @@ namespace BullRun.Tests.Shop
         [Test]
         public void SellRelic_MultipleSells_CumulativeRefund()
         {
-            _ctx.OwnedRelics.Add("relic_stop_loss");      // Cost: 100 → refund 50
-            _ctx.OwnedRelics.Add("relic_speed_trader");    // Cost: 150 → refund 75
+            _ctx.RelicManager.AddRelic("relic_stop_loss");      // Cost: 100 → refund 50
+            _ctx.RelicManager.AddRelic("relic_speed_trader");    // Cost: 150 → refund 75
             int repBefore = _ctx.Reputation.Current;
 
             _transaction.SellRelic(_ctx, "relic_stop_loss");

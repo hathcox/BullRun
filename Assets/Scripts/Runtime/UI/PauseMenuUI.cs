@@ -272,6 +272,7 @@ public class PauseMenuUI : MonoBehaviour
         enterEntry.callback.AddListener(_ =>
         {
             btn.transform.DOKill();
+            btn.transform.localScale = Vector3.one;
             btn.transform.DOScale(1.05f, 0.15f).SetUpdate(true);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonHover();
         });
@@ -281,13 +282,14 @@ public class PauseMenuUI : MonoBehaviour
         exitEntry.callback.AddListener(_ =>
         {
             btn.transform.DOKill();
-            btn.transform.DOScale(1f, 0.1f).SetUpdate(true);
+            btn.transform.localScale = Vector3.one;
         });
         trigger.triggers.Add(exitEntry);
 
         btn.onClick.AddListener(() =>
         {
             btn.transform.DOKill();
+            btn.transform.localScale = Vector3.one;
             btn.transform.DOPunchScale(Vector3.one * 0.12f, 0.18f, 6, 0.5f).SetUpdate(true);
         });
     }

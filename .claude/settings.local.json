@@ -13,13 +13,14 @@
       "Bash(/Applications/Unity/Hub/Editor/6000.3.4f1/Unity.app/Contents/MacOS/Unity:*)",
       "Bash(python3:*)",
       "Bash(dotnet test:*)",
-      "Bash(\"D:/UnityHub/Editor/6000.3.4f1/Editor/Unity.exe\" -runTests -batchmode -nographics -projectPath \"E:/BullRun\" -testPlatform EditMode -testResults \"E:/BullRun/TestResults.xml\" -logFile \"E:/BullRun/unity-test.log\")",
+      "Bash(\"D:/UnityHub/Editor/6000.3.8f1/Editor/Unity.exe\" -runTests -batchmode -nographics -projectPath \"E:/BullRun\" -testPlatform EditMode -testResults \"E:/BullRun/TestResults.xml\" -logFile \"E:/BullRun/unity-test.log\")",
       "Bash(git status:*)",
       "WebSearch",
       "Bash(find:*)",
       "Bash(dotnet build:*)",
       "Bash(dir:*)",
-      "Bash(/Applications/Unity/Hub/Editor/6000.3.8f1/Unity.app/Contents/MacOS/Unity:*)"
+      "Bash(/Applications/Unity/Hub/Editor/6000.3.8f1/Unity.app/Contents/MacOS/Unity:*)",
+      "Bash(test:*)"
     ]
   }
 }

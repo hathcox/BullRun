@@ -1547,6 +1547,7 @@ public class ShopUI : MonoBehaviour
         {
             AudioManager.Instance?.PlayButtonHover();
             btn.transform.DOKill();
+            btn.transform.localScale = Vector3.one;
             btn.transform.DOScale(1.07f, 0.1f).SetUpdate(true);
         });
         trigger.triggers.Add(enterEntry);
@@ -1555,7 +1556,7 @@ public class ShopUI : MonoBehaviour
         exitEntry.callback.AddListener((_) =>
         {
             btn.transform.DOKill();
-            btn.transform.DOScale(1f, 0.1f).SetUpdate(true);
+            btn.transform.localScale = Vector3.one;
         });
         trigger.triggers.Add(exitEntry);
     }
@@ -1570,6 +1571,7 @@ public class ShopUI : MonoBehaviour
         btn.onClick.AddListener(() =>
         {
             btn.transform.DOKill();
+            btn.transform.localScale = Vector3.one;
             btn.transform.DOPunchScale(Vector3.one * 0.12f, 0.18f, 6, 0.5f).SetUpdate(true);
         });
     }

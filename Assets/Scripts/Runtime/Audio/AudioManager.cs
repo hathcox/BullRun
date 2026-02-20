@@ -176,6 +176,8 @@ public class AudioManager : MonoBehaviour
             return;
         }
 
+        PlayUI(_clips.UiConfirm);
+
         // Detect auto-close from feedback message
         if (evt.IsShort && evt.Message != null && evt.Message.Contains("AUTO-CLOSED"))
         {
@@ -486,7 +488,7 @@ public class AudioManager : MonoBehaviour
 
     private void OnTradeButtonPressed(TradeButtonPressedEvent evt)
     {
-        PlayUI(_clips.UiConfirm);
+        // Sound moved to OnTradeFeedback — only plays on successful trade
     }
 
     // ════════════════════════════════════════════════════════════════════

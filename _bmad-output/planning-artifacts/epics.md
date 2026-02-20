@@ -1226,3 +1226,67 @@ As a player, I want the entire screen framed as a curved 1999 CRT monitor with s
 - URP Bloom for phosphor glow effect
 - Tier themes layer over CRT base (accents only, base colors fixed)
 - No performance regressions
+
+---
+
+## Epic 17: Relic System — Design, Effects & Collection Management
+
+**Description:** Complete relic system overhaul — remove all placeholder relics, build an effect execution framework, implement 23 unique relics with real gameplay effects, fix shop purchase/reroll behavior, add trading-phase relic display with tooltips, relic reordering, and relic icons. Transforms relics from inert inventory items into build-defining gameplay modifiers (Balatro joker-style).
+**Phase:** Post-Epic 16, core gameplay expansion
+**Depends On:** Epic 13 (Store Rework — complete), Epic 14 (CRT UI — complete)
+**Epic File:** `planning-artifacts/epic-17-relic-system.md`
+
+### Story 17.1: Relic Effect Framework — IRelic, RelicManager & Event Dispatch
+
+As a developer, I want a relic effect execution framework with an IRelic interface, RelicManager, and EventBus dispatch pipeline, so that relics can hook into game events and execute effects in player-defined order.
+
+**Acceptance Criteria:**
+- IRelic interface with hook methods (OnRoundStart, OnAfterTrade, OnMarketEventFired, etc.)
+- RelicBase abstract class with virtual no-op defaults
+- RelicManager with ordered list, left-to-right dispatch, per-relic try-catch
+- RelicFactory mapping relic IDs to constructors
+- RunContext updated with RelicManager property
+- GameRunner wires EventBus events to RelicManager dispatch
+
+### Story 17.2: Shop Behavior Fixes & Relic Data Overhaul
+
+As a player, I want purchased relics to disappear from the shop, reroll to fill all 3 slots fresh, and a new pool of 23 real relics with balanced prices, so that the shop works correctly.
+
+**Acceptance Criteria:**
+- Purchase removes relic card from display (not SOLD stamp)
+- Reroll regenerates ALL 3 slots (no additionalExcludeIds)
+- All 8 placeholders removed, replaced with 23 new relic definitions (8-50 Rep range)
+- RelicDef gains EffectDescription field
+- RelicFactory updated with all 23 constructors (stub classes until 17.3-17.7)
+
+### Story 17.3: Trade Modification Relics (5 Relics)
+
+As a player, I want relics that change how I trade — Double Dealer, Quick Draw, Bear Raid, Skimmer, Short Profiteer, so that my build alters trading gameplay.
+
+### Story 17.4: Event Interaction Relics (5 Relics)
+
+As a player, I want relics that interact with events — Catalyst Trader, Event Storm, Loss Liquidator, Profit Refresh, Bull Believer, so that I can build around event manipulation.
+
+### Story 17.5: Economy & Reputation Relics (6 Relics)
+
+As a player, I want relics that boost my economy — Rep Doubler, Fail Forward, Compound Rep, Rep Interest, Rep Dividend, Bond Bonus, so that I can build a powerful economic engine.
+
+### Story 17.6: Mechanic & Timer Relics (5 Relics)
+
+As a player, I want relics that change game rules — Time Buyer, Diamond Hands, Market Manipulator, Free Intel, Extra Expansion, so that I can bend the rules to match my playstyle.
+
+### Story 17.7: Special Relics (2 Relics)
+
+As a player, I want unique chase relics — Event Catalyst and Relic Expansion, so that I have high-impact build-around options.
+
+### Story 17.8: Trading Phase Relic Display & Tooltips
+
+As a player, I want to see my owned relics during trading with hover tooltips, so that I always know what I have.
+
+### Story 17.9: Relic Reordering
+
+As a player, I want to reorder relics in the shop owned bar to control execution order, so that relic order becomes a strategic choice.
+
+### Story 17.10: Relic Icons
+
+As a player, I want each relic to have a distinctive text icon with color coding, so that I can identify relics at a glance.

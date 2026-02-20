@@ -49,6 +49,16 @@ public class GameRunner : MonoBehaviour
     private int _short2OpenStockId = -1; // Numeric stock ID for price lookups (multi-stock safe)
     private bool _dualShortActive;
 
+    // Buy/Sell UI references (wired from DashboardReferences in Start)
+    private Button _buyButton;
+    private Image _buyButtonImage;
+    private Text _buyButtonText;
+    private Color _buyButtonOriginalColor;
+    private Button _sellButton;
+    private Image _sellButtonImage;
+    private Text _sellButtonText;
+    private Color _sellButtonOriginalColor;
+
     // Short UI references (wired from DashboardReferences in Start)
     private Image _shortButtonImage;
     private Text _shortButtonText;
@@ -120,6 +130,19 @@ public class GameRunner : MonoBehaviour
         _quantitySelector.CooldownOverlay = dashRefs.CooldownOverlay;
         _quantitySelector.CooldownTimerText = dashRefs.CooldownTimerText;
 
+        // Buy/Sell button refs for cooldown visuals
+        _buyButton = dashRefs.BuyButton;
+        _buyButtonImage = dashRefs.BuyButtonImage;
+        _buyButtonText = dashRefs.BuyButtonText;
+        if (_buyButtonImage != null)
+            _buyButtonOriginalColor = _buyButtonImage.color;
+
+        _sellButton = dashRefs.SellButton;
+        _sellButtonImage = dashRefs.SellButtonImage;
+        _sellButtonText = dashRefs.SellButtonText;
+        if (_sellButtonImage != null)
+            _sellButtonOriginalColor = _sellButtonImage.color;
+
         _shortButtonImage = dashRefs.ShortButtonImage;
         _shortButtonText = dashRefs.ShortButtonText;
         if (_shortButtonImage != null)
@@ -153,6 +176,13 @@ public class GameRunner : MonoBehaviour
 
         // Story 16.2: Subscribe to ReturnToMenuEvent from PauseMenuUI
         EventBus.Subscribe<ReturnToMenuEvent>(OnReturnToMenu);
+
+        // Story 17.1: Wire EventBus events to RelicManager dispatch
+        EventBus.Subscribe<RoundStartedEvent>(OnRoundStartedForRelics);
+        EventBus.Subscribe<MarketClosedEvent>(OnMarketClosedForRelics);
+        EventBus.Subscribe<TradeExecutedEvent>(OnTradeExecutedForRelics);
+        EventBus.Subscribe<MarketEventFiredEvent>(OnMarketEventForRelics);
+        _ctx.Reputation.OnChanged += OnReputationChangedForRelics;
 
         // Create event display systems (subscribe to MarketEventFiredEvent)
         // Story 14.5: NewsBanner replaced by EventTickerBanner (created in ChartSetup).
@@ -362,6 +392,35 @@ public class GameRunner : MonoBehaviour
         }
     }
 
+    // ════════════════════════════════════════════════════════════════════
+    // Story 17.1: Relic dispatch handlers
+    // ════════════════════════════════════════════════════════════════════
+
+    private void OnRoundStartedForRelics(RoundStartedEvent e)
+    {
+        _ctx.RelicManager.DispatchRoundStart(e);
+    }
+
+    private void OnMarketClosedForRelics(MarketClosedEvent e)
+    {
+        _ctx.RelicManager.DispatchRoundEnd(e);
+    }
+
+    private void OnTradeExecutedForRelics(TradeExecutedEvent e)
+    {
+        _ctx.RelicManager.DispatchAfterTrade(e);
+    }
+
+    private void OnMarketEventForRelics(MarketEventFiredEvent e)
+    {
+        _ctx.RelicManager.DispatchMarketEvent(e);
+    }
+
+    private void OnReputationChangedForRelics(int oldRep, int newRep)
+    {
+        _ctx.RelicManager.DispatchReputationChanged(oldRep, newRep);
+    }
+
     private void OnDestroy()
     {
         EventBus.Unsubscribe<TradeButtonPressedEvent>(OnTradeButtonPressed);
@@ -370,6 +429,12 @@ public class GameRunner : MonoBehaviour
         EventBus.Unsubscribe<MarketOpenEvent>(OnMarketOpenForExpansions);
         EventBus.Unsubscribe<StartGameRequestedEvent>(OnStartGameRequested);
         EventBus.Unsubscribe<ReturnToMenuEvent>(OnReturnToMenu);
+        EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStartedForRelics);
+        EventBus.Unsubscribe<MarketClosedEvent>(OnMarketClosedForRelics);
+        EventBus.Unsubscribe<TradeExecutedEvent>(OnTradeExecutedForRelics);
+        EventBus.Unsubscribe<MarketEventFiredEvent>(OnMarketEventForRelics);
+        if (_ctx != null && _ctx.Reputation != null)
+            _ctx.Reputation.OnChanged -= OnReputationChangedForRelics;
     }
 
     /// <summary>
@@ -911,23 +976,30 @@ public class GameRunner : MonoBehaviour
 
     private void ShowCooldownOverlay()
     {
-        if (_quantitySelector.CooldownOverlay != null)
-        {
-            _quantitySelector.CooldownOverlay.SetActive(true);
-            UpdateCooldownTimerDisplay();
-        }
+        // Dim both buttons and set non-interactable
+        if (_buyButton != null) _buyButton.interactable = false;
+        if (_sellButton != null) _sellButton.interactable = false;
+        if (_buyButtonImage != null) _buyButtonImage.color = DimColor(_buyButtonOriginalColor);
+        if (_sellButtonImage != null) _sellButtonImage.color = DimColor(_sellButtonOriginalColor);
+        UpdateCooldownTimerDisplay();
     }
 
     private void HideCooldownOverlay()
     {
-        if (_quantitySelector.CooldownOverlay != null)
-            _quantitySelector.CooldownOverlay.SetActive(false);
+        // Restore both buttons to original state
+        if (_buyButton != null) _buyButton.interactable = true;
+        if (_sellButton != null) _sellButton.interactable = true;
+        if (_buyButtonImage != null) _buyButtonImage.color = _buyButtonOriginalColor;
+        if (_sellButtonImage != null) _sellButtonImage.color = _sellButtonOriginalColor;
+        if (_buyButtonText != null) _buyButtonText.text = "BUY";
+        if (_sellButtonText != null) _sellButtonText.text = "SELL";
     }
 
     private void UpdateCooldownTimerDisplay()
     {
-        if (_quantitySelector.CooldownTimerText != null)
-            _quantitySelector.CooldownTimerText.text = $"{_postTradeCooldownTimer:F1}s";
+        string timer = $"{_postTradeCooldownTimer:F1}s";
+        if (_buyButtonText != null) _buyButtonText.text = timer;
+        if (_sellButtonText != null) _sellButtonText.text = timer;
     }
 
     // ========================
