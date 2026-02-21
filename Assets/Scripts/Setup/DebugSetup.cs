@@ -9,7 +9,8 @@ using UnityEngine;
 public static class DebugSetup
 {
     public static void Execute(PriceGenerator priceGenerator = null, ChartRenderer chartRenderer = null,
-        RunContext runContext = null, GameStateMachine stateMachine = null, TradeExecutor tradeExecutor = null)
+        RunContext runContext = null, GameStateMachine stateMachine = null, TradeExecutor tradeExecutor = null,
+        EventScheduler eventScheduler = null)
     {
         var debugGo = new GameObject("DebugManager");
         var mgr = debugGo.AddComponent<DebugManager>();
@@ -19,7 +20,7 @@ public static class DebugSetup
         if (chartRenderer != null)
             mgr.SetChartRenderer(chartRenderer);
         if (runContext != null && stateMachine != null)
-            mgr.SetGameContext(runContext, stateMachine, tradeExecutor);
+            mgr.SetGameContext(runContext, stateMachine, tradeExecutor, eventScheduler);
 
         Debug.Log("[Setup] DebugManager created");
     }

@@ -2,20 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Data point on the chart: normalized time (0-1) and price value.
+/// Data point on the chart: elapsed time (seconds) and price value.
+/// Normalization to 0-1 happens at render time using ChartRenderer.RoundDuration.
 /// </summary>
 public struct ChartPoint
 {
-    public float NormalizedTime;
+    public float ElapsedTime;
     public float Price;
 }
 
 /// <summary>
 /// Records a trade execution point on the chart for visual markers.
+/// ElapsedTime stored in seconds; normalized at render time.
 /// </summary>
 public struct TradeMarker
 {
-    public float NormalizedTime;
+    public float ElapsedTime;
     public float Price;
     public bool IsBuy;
     public bool IsShort;
@@ -37,10 +39,14 @@ public class ChartRenderer
     private bool _hasShortPosition;
     private int _activeStockId = -1;
     private float _roundDuration;
+    private float _targetRoundDuration;
     private float _elapsedTime;
     private bool _roundActive;
     private float _minPrice = float.MaxValue;
     private float _maxPrice = float.MinValue;
+
+    // Exponential lerp speed for duration tween (~98% in 0.5s)
+    private const float DurationLerpSpeed = 8f;
 
     public int PointCount => _points.Count;
     public int ActiveStockId => _activeStockId;
@@ -80,6 +86,7 @@ public class ChartRenderer
     public ChartRenderer()
     {
         _roundDuration = GameConfig.RoundDurationSeconds;
+        _targetRoundDuration = _roundDuration;
     }
 
     public ChartPoint GetPoint(int index)
@@ -87,9 +94,9 @@ public class ChartRenderer
         return _points[index];
     }
 
-    public void AddPoint(float normalizedTime, float price)
+    public void AddPoint(float elapsedTime, float price)
     {
-        _points.Add(new ChartPoint { NormalizedTime = normalizedTime, Price = price });
+        _points.Add(new ChartPoint { ElapsedTime = elapsedTime, Price = price });
 
         if (price < _minPrice) _minPrice = price;
         if (price > _maxPrice) _maxPrice = price;
@@ -118,11 +125,9 @@ public class ChartRenderer
         // TradeExecutedEvent.StockId is a string (from TradeExecutor), activeStockId is int
         if (evt.StockId != _activeStockId.ToString()) return;
 
-        float normalizedTime = _roundDuration > 0f ? Mathf.Clamp01(_elapsedTime / _roundDuration) : 0f;
-
         _tradeMarkers.Add(new TradeMarker
         {
-            NormalizedTime = normalizedTime,
+            ElapsedTime = _elapsedTime,
             Price = evt.Price,
             IsBuy = evt.IsBuy,
             IsShort = evt.IsShort
@@ -187,6 +192,7 @@ public class ChartRenderer
     public void SetRoundDuration(float duration)
     {
         _roundDuration = duration;
+        _targetRoundDuration = duration;
     }
 
     public void StartRound()
@@ -210,9 +216,27 @@ public class ChartRenderer
             return;
 
         _elapsedTime += evt.DeltaTime;
-        float normalizedTime = _roundDuration > 0f ? Mathf.Clamp01(_elapsedTime / _roundDuration) : 0f;
 
-        AddPoint(normalizedTime, evt.NewPrice);
+        // Tween round duration toward target for smooth chart expansion
+        if (_roundDuration != _targetRoundDuration)
+        {
+            _roundDuration = Mathf.Lerp(_roundDuration, _targetRoundDuration,
+                1f - Mathf.Exp(-DurationLerpSpeed * evt.DeltaTime));
+            // Snap when close enough to avoid floating-point drift
+            if (Mathf.Abs(_roundDuration - _targetRoundDuration) < 0.01f)
+                _roundDuration = _targetRoundDuration;
+        }
+
+        AddPoint(_elapsedTime, evt.NewPrice);
+    }
+
+    /// <summary>
+    /// Handles timer extension (e.g., Time Buyer relic). Sets target duration
+    /// and tweens toward it over ~0.5s for a smooth "zoom out" effect.
+    /// </summary>
+    public void HandleTimerExtended(RoundTimerExtendedEvent evt)
+    {
+        _targetRoundDuration = evt.NewDuration;
     }
 
 }

@@ -131,7 +131,9 @@ public class ChartUI : MonoBehaviour
         float paddedBottom = _chartBottom + padding;
         float paddedTop = _chartTop - padding;
 
-        float worldX = Mathf.Lerp(_chartLeft, _chartRight, lastPoint.NormalizedTime);
+        float normalizedTime = _chartRenderer.RoundDuration > 0f
+            ? Mathf.Clamp01(lastPoint.ElapsedTime / _chartRenderer.RoundDuration) : 0f;
+        float worldX = Mathf.Lerp(_chartLeft, _chartRight, normalizedTime);
         float worldY = Mathf.Lerp(paddedBottom, paddedTop, (lastPoint.Price - minPrice) / priceRange);
 
         // Convert world position to canvas position via screen space

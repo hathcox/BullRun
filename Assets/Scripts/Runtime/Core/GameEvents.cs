@@ -136,6 +136,15 @@ public struct RoundStartedEvent
 }
 
 /// <summary>
+/// Fired when the round timer is extended (e.g., by Time Buyer relic).
+/// ChartRenderer subscribes to update its round duration so the chart axis expands.
+/// </summary>
+public struct RoundTimerExtendedEvent
+{
+    public float NewDuration;
+}
+
+/// <summary>
 /// Fired when the trading phase ends (timer expired or manual end).
 /// </summary>
 public struct TradingPhaseEndedEvent

@@ -247,7 +247,7 @@ public class GameRunner : MonoBehaviour
         ChartRenderer chartRendererRef = null;
         var holder = Object.FindFirstObjectByType<ChartDataHolder>();
         if (holder != null) chartRendererRef = holder.Renderer;
-        DebugSetup.Execute(_priceGenerator, chartRendererRef, _ctx, _stateMachine, _tradeExecutor);
+        DebugSetup.Execute(_priceGenerator, chartRendererRef, _ctx, _stateMachine, _tradeExecutor, _eventScheduler);
         #endif
 
         // Story 16.1: Start at main menu instead of jumping directly into gameplay

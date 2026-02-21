@@ -158,7 +158,9 @@ public class ChartLineView : MonoBehaviour
         for (int i = 0; i < pointCount; i++)
         {
             var point = _chartRenderer.GetPoint(i);
-            float x = Mathf.Lerp(_chartLeft, _chartRight, point.NormalizedTime);
+            float normalizedTime = _chartRenderer.RoundDuration > 0f
+                ? Mathf.Clamp01(point.ElapsedTime / _chartRenderer.RoundDuration) : 0f;
+            float x = Mathf.Lerp(_chartLeft, _chartRight, normalizedTime);
             float y = Mathf.Lerp(paddedBottom, paddedTop, (point.Price - minPrice) / priceRange);
             _positionBuffer.Add(new Vector3(x, y, 0f));
         }
@@ -251,7 +253,9 @@ public class ChartLineView : MonoBehaviour
             var go = _markerObjects[i];
             go.SetActive(true);
 
-            float x = Mathf.Lerp(_chartLeft, _chartRight, marker.NormalizedTime);
+            float markerNormTime = _chartRenderer.RoundDuration > 0f
+                ? Mathf.Clamp01(marker.ElapsedTime / _chartRenderer.RoundDuration) : 0f;
+            float x = Mathf.Lerp(_chartLeft, _chartRight, markerNormTime);
             float y = Mathf.Lerp(paddedBottom, paddedTop, (marker.Price - minPrice) / priceRange);
             go.transform.position = new Vector3(x, y, 0f);
             go.transform.localScale = new Vector3(0.15f, 0.15f, 1f);

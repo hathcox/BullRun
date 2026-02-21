@@ -36,7 +36,13 @@ public class TradingState : IGameState
     {
         if (!IsActive || _activeInstance == null) return;
         _activeInstance._timeRemaining += seconds;
+        _activeInstance._roundDuration += seconds;
         ActiveTimeRemaining = _activeInstance._timeRemaining;
+        ActiveRoundDuration = _activeInstance._roundDuration;
+        EventBus.Publish(new RoundTimerExtendedEvent
+        {
+            NewDuration = _activeInstance._roundDuration
+        });
     }
 
     /// <summary>

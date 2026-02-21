@@ -18,6 +18,7 @@ public class DebugManager : MonoBehaviour
     private RunContext _runContext;
     private GameStateMachine _stateMachine;
     private TradeExecutor _tradeExecutor;
+    private EventScheduler _eventScheduler;
     private GUIStyle _headerStyle;
     private GUIStyle _stockStyle;
     private GUIStyle _eventStyle;
@@ -53,11 +54,12 @@ public class DebugManager : MonoBehaviour
     /// <summary>
     /// Injects game context references for F3 skip-to-round functionality.
     /// </summary>
-    public void SetGameContext(RunContext runContext, GameStateMachine stateMachine, TradeExecutor tradeExecutor)
+    public void SetGameContext(RunContext runContext, GameStateMachine stateMachine, TradeExecutor tradeExecutor, EventScheduler eventScheduler = null)
     {
         _runContext = runContext;
         _stateMachine = stateMachine;
         _tradeExecutor = tradeExecutor;
+        _eventScheduler = eventScheduler;
     }
 
     private void Update()
@@ -190,7 +192,8 @@ public class DebugManager : MonoBehaviour
         {
             StateMachine = _stateMachine,
             PriceGenerator = _priceGenerator,
-            TradeExecutor = _tradeExecutor
+            TradeExecutor = _tradeExecutor,
+            EventScheduler = _eventScheduler
         };
         _stateMachine.TransitionTo<ShopState>();
 

@@ -138,12 +138,14 @@ public static class ChartSetup
             chartRenderer.ResetChart();
             chartUI.ResetForNewRound();
         });
-        EventBus.Subscribe<RoundStartedEvent>(_ =>
+        EventBus.Subscribe<RoundStartedEvent>(evt =>
         {
             chartRenderer.ResetChart();
+            chartRenderer.SetRoundDuration(evt.TimeLimit);
             chartRenderer.StartRound();
             chartUI.ResetForNewRound();
         });
+        EventBus.Subscribe<RoundTimerExtendedEvent>(chartRenderer.HandleTimerExtended);
         // Auto-select first stock when market opens (before trading begins).
         EventBus.Subscribe<MarketOpenEvent>(evt =>
         {

@@ -47,7 +47,7 @@ namespace BullRun.Tests.Chart
             _renderer.AddPoint(0.3f, 125f);
 
             var point = _renderer.GetPoint(0);
-            Assert.AreEqual(0.3f, point.NormalizedTime, 0.001f);
+            Assert.AreEqual(0.3f, point.ElapsedTime, 0.001f);
             Assert.AreEqual(125f, point.Price, 0.001f);
         }
 
@@ -122,7 +122,7 @@ namespace BullRun.Tests.Chart
         }
 
         [Test]
-        public void ProcessPriceUpdate_CalculatesNormalizedTime()
+        public void ProcessPriceUpdate_StoresElapsedTime()
         {
             _renderer.SetActiveStock(0);
             _renderer.SetRoundDuration(60f);
@@ -140,8 +140,8 @@ namespace BullRun.Tests.Chart
             });
 
             var point = _renderer.GetPoint(0);
-            Assert.AreEqual(0.5f, point.NormalizedTime, 0.01f,
-                "~30s of 60s round should be ~0.5 normalized time");
+            Assert.AreEqual(30f, point.ElapsedTime, 0.01f,
+                "~30s elapsed should be stored as ~30 seconds");
         }
 
         // --- Price Range Tracking ---
@@ -285,8 +285,8 @@ namespace BullRun.Tests.Chart
             });
 
             var point = _renderer.GetPoint(0);
-            Assert.Less(point.NormalizedTime, 0.01f,
-                "After reset, normalized time should start near 0 again");
+            Assert.AreEqual(0.016f, point.ElapsedTime, 0.001f,
+                "After reset, elapsed time should be just the single DeltaTime");
         }
 
         [Test]
@@ -307,8 +307,8 @@ namespace BullRun.Tests.Chart
             });
 
             var secondPoint = _renderer.GetPoint(1);
-            Assert.AreEqual(0.5f, secondPoint.NormalizedTime, 0.01f,
-                "Two 15s updates should put second point at 0.5 normalized time");
+            Assert.AreEqual(30f, secondPoint.ElapsedTime, 0.01f,
+                "Two 15s updates should store 30s elapsed time");
         }
 
         // --- ElapsedTime Property (used by ChartUI for time bar) ---
@@ -355,6 +355,101 @@ namespace BullRun.Tests.Chart
 
             Assert.AreEqual(0f, _renderer.ElapsedTime, 0.001f,
                 "ElapsedTime should reset to 0 after ResetChart");
+        }
+
+        // --- Timer Extension (Time Buyer relic) ---
+
+        [Test]
+        public void HandleTimerExtended_TweensRoundDuration()
+        {
+            _renderer.SetActiveStock(0);
+            _renderer.SetRoundDuration(60f);
+            _renderer.StartRound();
+
+            // Add a point at 30s elapsed
+            _renderer.ProcessPriceUpdate(new PriceUpdatedEvent
+            {
+                StockId = 0, NewPrice = 105f, PreviousPrice = 100f, DeltaTime = 30f
+            });
+
+            // Extend timer by 5s (60 -> 65)
+            _renderer.HandleTimerExtended(new RoundTimerExtendedEvent { NewDuration = 65f });
+
+            // Duration should NOT snap immediately — still at 60 before next update
+            Assert.AreEqual(60f, _renderer.RoundDuration, 0.001f,
+                "RoundDuration should not snap immediately after HandleTimerExtended");
+
+            // After one large deltaTime, tween should move toward target
+            _renderer.ProcessPriceUpdate(new PriceUpdatedEvent
+            {
+                StockId = 0, NewPrice = 110f, PreviousPrice = 105f, DeltaTime = 0.5f
+            });
+
+            Assert.Greater(_renderer.RoundDuration, 60f,
+                "RoundDuration should begin tweening toward 65");
+            Assert.LessOrEqual(_renderer.RoundDuration, 65f,
+                "RoundDuration should not overshoot target");
+
+            // After enough frames, should snap to target
+            for (int i = 0; i < 60; i++)
+            {
+                _renderer.ProcessPriceUpdate(new PriceUpdatedEvent
+                {
+                    StockId = 0, NewPrice = 110f, PreviousPrice = 110f, DeltaTime = 0.016f
+                });
+            }
+
+            Assert.AreEqual(65f, _renderer.RoundDuration, 0.01f,
+                "RoundDuration should reach target after sufficient frames");
+
+            var point = _renderer.GetPoint(1);
+            Assert.AreEqual(30.5f, point.ElapsedTime, 0.001f,
+                "Points after extension should store correct elapsed time");
+        }
+
+        [Test]
+        public void ProcessPriceUpdate_ElapsedTimeBeyondOriginalDuration_StoresCorrectly()
+        {
+            _renderer.SetActiveStock(0);
+            _renderer.SetRoundDuration(60f);
+            _renderer.StartRound();
+
+            // Simulate 55s elapsed
+            _renderer.SetElapsedTime(55f);
+
+            // Extend to 70s
+            _renderer.HandleTimerExtended(new RoundTimerExtendedEvent { NewDuration = 70f });
+
+            // Simulate enough frames for tween to complete
+            for (int i = 0; i < 60; i++)
+            {
+                _renderer.ProcessPriceUpdate(new PriceUpdatedEvent
+                {
+                    StockId = 0, NewPrice = 115f, PreviousPrice = 110f, DeltaTime = 0.016f
+                });
+            }
+
+            // Add point beyond original 60s duration
+            _renderer.ProcessPriceUpdate(new PriceUpdatedEvent
+            {
+                StockId = 0, NewPrice = 120f, PreviousPrice = 115f, DeltaTime = 5f
+            });
+
+            var lastIdx = _renderer.PointCount - 1;
+            var point = _renderer.GetPoint(lastIdx);
+            Assert.Greater(point.ElapsedTime, 60f,
+                "Elapsed time beyond original duration should not be clamped");
+            Assert.AreEqual(70f, _renderer.RoundDuration, 0.01f,
+                "RoundDuration should reflect extended value after tween completes");
+        }
+
+        [Test]
+        public void SetRoundDuration_SnapsImmediately_NoTween()
+        {
+            _renderer.SetRoundDuration(75f);
+
+            Assert.AreEqual(75f, _renderer.RoundDuration, 0.001f,
+                "SetRoundDuration should snap immediately (used at round start)");
         }
     }
 }
