@@ -112,20 +112,20 @@ public class TradingState : IGameState
                 _roundDuration);
         }
 
-        // Story 18.2: Activate insider tip overlays using actual round-start data
+        // Story 18.2 + 18.6: Activate insider tip overlays using pre-decided event data
         if (ctx.RevealedTips != null && ctx.RevealedTips.Count > 0
             && _priceGenerator != null && _priceGenerator.ActiveStocks.Count > 0)
         {
             var activationCtx = new TipActivationContext
             {
                 ActiveStock = _priceGenerator.ActiveStocks[0],
-                ScheduledEventCount = _eventScheduler != null ? _eventScheduler.ScheduledEventCount : 0,
-                ScheduledFireTimes = BuildFireTimesArray(_eventScheduler),
+                PreDecidedEvents = _eventScheduler != null ? _eventScheduler.PreDecidedEvents : null,
                 RoundDuration = _roundDuration,
                 TierConfig = StockTierData.GetTierConfig(ctx.CurrentTier),
                 Random = new System.Random(ctx.CurrentRound * 31 + ctx.CurrentAct)
             };
             ctx.ActiveTipOverlays.Clear();
+            // Story 18.6, AC 5: ActivateTips also updates RevealedTip display text in-place
             ctx.ActiveTipOverlays.AddRange(TipActivator.ActivateTips(ctx.RevealedTips, activationCtx));
 
             EventBus.Publish(new TipOverlaysActivatedEvent { Overlays = ctx.ActiveTipOverlays });
@@ -214,19 +214,6 @@ public class TradingState : IGameState
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Story 18.2: Builds array of scheduled fire times for TipActivationContext.
-    /// </summary>
-    private static float[] BuildFireTimesArray(EventScheduler scheduler)
-    {
-        if (scheduler == null || scheduler.ScheduledEventCount == 0)
-            return System.Array.Empty<float>();
-        var times = new float[scheduler.ScheduledEventCount];
-        for (int i = 0; i < times.Length; i++)
-            times[i] = scheduler.GetScheduledTime(i);
-        return times;
     }
 
     public void Exit(RunContext ctx)

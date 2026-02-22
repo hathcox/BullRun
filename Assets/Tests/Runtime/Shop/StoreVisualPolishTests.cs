@@ -418,8 +418,9 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void InsiderTipDefinitions_ChartOverlayTemplatesContainMarkedOnChart()
+        public void InsiderTipDefinitions_ChartOverlayTemplatesContainChartReference()
         {
+            // Story 18.6: Price tips now say "revealed on chart", others say "marked on chart"
             var chartTypes = new[] {
                 InsiderTipType.PriceForecast, InsiderTipType.PriceFloor,
                 InsiderTipType.PriceCeiling, InsiderTipType.DipMarker,
@@ -430,8 +431,8 @@ namespace BullRun.Tests.Shop
             {
                 var def = InsiderTipDefinitions.GetByType(t);
                 Assert.IsNotNull(def, $"Missing definition for {t}");
-                Assert.IsTrue(def.Value.DescriptionTemplate.Contains("marked on chart"),
-                    $"Template for {t} should contain 'marked on chart'");
+                Assert.IsTrue(def.Value.DescriptionTemplate.Contains("on chart"),
+                    $"Template for {t} should reference 'on chart'");
             }
         }
 

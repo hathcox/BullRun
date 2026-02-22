@@ -146,7 +146,7 @@ namespace BullRun.Tests.Shop
             }
         }
 
-        // === Fuzz: numeric values within range ===
+        // === ApplyFuzz utility (method retained for general use) ===
 
         [Test]
         public void ApplyFuzz_ValueWithinExpectedRange()
@@ -184,47 +184,51 @@ namespace BullRun.Tests.Shop
         // === Tier-appropriate values ===
 
         [Test]
-        public void GenerateTips_PennyTier_UsesCorrectPriceRange()
+        public void GenerateTips_PriceTips_UseGenericShopText()
         {
-            // Penny tier: act 1
+            // Story 18.6, AC 4: Price tips use generic text at shop time (no specific values)
             var tips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
 
-            // Find price-related tips and verify they reference reasonable penny-tier values
             for (int i = 0; i < tips.Length; i++)
             {
                 if (tips[i].Definition.Type == InsiderTipType.PriceForecast
                     || tips[i].Definition.Type == InsiderTipType.PriceFloor
                     || tips[i].Definition.Type == InsiderTipType.PriceCeiling)
                 {
-                    // Penny tier prices: $5-$8 range with ±10% fuzz
-                    // So revealed text should contain a "$" sign
-                    Assert.IsTrue(tips[i].DisplayText.Contains("$"),
-                        $"Price tip {tips[i].Definition.Type} missing '$': {tips[i].DisplayText}");
+                    // Generic text — should NOT contain "$" at shop time
+                    Assert.IsTrue(tips[i].DisplayText.Contains("revealed on chart"),
+                        $"Price tip {tips[i].Definition.Type} should use generic text: {tips[i].DisplayText}");
+                    Assert.AreEqual(0f, tips[i].NumericValue,
+                        $"Price tip {tips[i].Definition.Type} NumericValue should be 0 at shop time");
                 }
             }
         }
 
         [Test]
-        public void GenerateTips_DifferentActsProduceDifferentValues()
+        public void GenerateTips_EventCountDiffersAcrossActs()
         {
-            // Act 1 (Penny) vs Act 3 (MidValue) should produce different price ranges
-            var pennyTips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
-            var midTips = _generator.GenerateTips(9, 6, 3, new System.Random(42));
+            // Story 18.6: Price/direction tips now use generic text (same across acts).
+            // EventCount still computes an estimate, which can differ by act.
+            var earlyTips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
+            var lateTips = _generator.GenerateTips(9, 6, 3, new System.Random(42));
 
-            // Same seed but different act → at least some tips should differ in revealed text
-            bool anyDifferent = false;
-            for (int i = 0; i < pennyTips.Length && i < midTips.Length; i++)
+            // Find EventCount tips and compare
+            string earlyEventText = null;
+            string lateEventText = null;
+            for (int i = 0; i < earlyTips.Length; i++)
             {
-                if (pennyTips[i].Definition.Type == midTips[i].Definition.Type
-                    && pennyTips[i].DisplayText != midTips[i].DisplayText)
-                {
-                    anyDifferent = true;
-                    break;
-                }
+                if (earlyTips[i].Definition.Type == InsiderTipType.EventCount)
+                    earlyEventText = earlyTips[i].DisplayText;
             }
-            // Even if types differ, the values should be different for price tips
-            Assert.IsTrue(anyDifferent || pennyTips[0].Definition.Type != midTips[0].Definition.Type,
-                "Penny and Mid tips should produce different values or different type ordering");
+            for (int i = 0; i < lateTips.Length; i++)
+            {
+                if (lateTips[i].Definition.Type == InsiderTipType.EventCount)
+                    lateEventText = lateTips[i].DisplayText;
+            }
+
+            // Both should have EventCount tip (9 tips requested, all types present)
+            Assert.IsNotNull(earlyEventText, "Early tips should include EventCount");
+            Assert.IsNotNull(lateEventText, "Late tips should include EventCount");
         }
 
         // === Story 18.1: New data validation tests (AC 10) ===

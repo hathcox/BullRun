@@ -44,9 +44,6 @@ public static class GameConfig
     // Store: default insider tip slots per shop visit (Epic 13)
     public static readonly int DefaultInsiderTipSlots = 2;
 
-    // Store: insider tip fuzz percentage (Story 13.5, AC 11)
-    public static readonly float InsiderTipFuzzPercent = 0.10f;
-
     // Store: insider tip costs in Reputation (Story 13.5, updated Story 18.1)
     public static readonly int TipCostPriceForecast = 15;     // Low tier
     public static readonly int TipCostPriceFloor = 20;        // Medium tier

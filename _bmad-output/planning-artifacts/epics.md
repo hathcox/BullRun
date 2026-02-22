@@ -1361,3 +1361,31 @@ As a player, I want exciting face-down teasers, clear revealed text, and rebalan
 - Revealed text references chart overlays (e.g., "Floor at ~$3.20 — marked on chart")
 - Visual type indicator on cards (CHART badge for overlay tips)
 - All removed type references cleaned from ShopUI
+
+### Story 18.6: Event-Aware Accurate Tips
+
+As a player, I want my purchased insider tips to be correct — not fuzzy approximations that events can invalidate, so that paying for intel gives me an actual strategic edge I can trust.
+
+**Acceptance Criteria:**
+- EventScheduler.InitializeRound() pre-decides event types AND price effects (not just fire times)
+- New PreDecidedEvent struct stores fire time, event config, rolled price effect, phases
+- TipActivator gains SimulateRound() — analytical price simulation using trend + pre-decided events
+- All 9 tip types use simulation results: Ceiling=simulated max, Floor=simulated min, Forecast=simulated average, DipMarker=min-price time, PeakMarker=max-price time, ClosingDirection=simulated closing price direction, EventTiming=exact fire times, TrendReversal=simulated direction changes
+- All fuzz removed — no ±10% on prices, no ±4% on timing, no ±5% on zones
+- Shop-time display text for price/direction tips changed to generic ("Price ceiling — revealed on chart")
+- Accurate values shown on chart overlays and updated in RevealedTip at round start
+- **Story file:** `planning-artifacts/story-18-6-event-aware-accurate-tips.md`
+
+### Story 18.7: Accurate Tip Simulation & Honest Display
+
+As a player, I want my insider tips to accurately predict real price behavior, and to be displayed honestly as estimates rather than exact values, so that I can trust tips without feeling deceived when noise causes minor deviations.
+
+**Acceptance Criteria:**
+- SimulateRound() models event hold-phase target drift using MeanReversionSpeed, capped at `2 * NoiseAmplitude * price`, applied at 30% factor over 70% of event duration
+- Tracks trendLinePrice for accurate deviation calculation, re-anchored after each event
+- Multi-phase events (PumpAndDump, FlashCrash) also model drift on respective phases
+- For max tracking: raw event target as brief peak; drifted price as base for continuing trend
+- Display text uses "~$" prefix for PriceCeiling, PriceFloor, PriceForecast (overlay labels match)
+- Integration tests: full rounds with PriceGenerator + EventScheduler, predictions within ±15% of actual
+- Regression tests: drift reduces max vs naive, compounding inflation eliminated, zero events unchanged
+- **Story file:** `planning-artifacts/story-18-7-accurate-tip-simulation-and-honest-display.md`

@@ -2,19 +2,44 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
+/// Story 18.6: Pre-decided event data computed at round start.
+/// Contains the full event plan (type, effect, phases) for each scheduled slot.
+/// </summary>
+public struct PreDecidedEvent
+{
+    public float FireTime;
+    public MarketEventConfig Config;
+    public float PriceEffect;
+    public bool IsPositive;
+    public List<MarketEventPhase> Phases;
+
+    public PreDecidedEvent(float fireTime, MarketEventConfig config, float priceEffect, bool isPositive, List<MarketEventPhase> phases = null)
+    {
+        FireTime = fireTime;
+        Config = config;
+        PriceEffect = priceEffect;
+        IsPositive = isPositive;
+        Phases = phases;
+    }
+}
+
+/// <summary>
 /// Schedules and fires market events during trading rounds.
 /// Determines WHEN and WHAT events fire — delegates actual price effects to EventEffects.
 /// Pure C# class (no MonoBehaviour) for testability.
+/// Story 18.6: Pre-decides event types and effects at InitializeRound() time.
 /// </summary>
 public class EventScheduler
 {
     private readonly EventEffects _eventEffects;
     private readonly System.Random _random;
 
-    private float[] _scheduledFireTimes;
     private bool[] _firedSlots;
     private int _eventCount;
     private int _rareEventsFiredThisRound;
+
+    // Story 18.6: Pre-decided events with types and effects computed at round start
+    private PreDecidedEvent[] _preDecidedEvents;
 
     // Story 17.4: Relic multipliers — reset by TradingState before RoundStartedEvent, set by relics after dispatch,
     // then used by InitializeRound (EventCountMultiplier) and FireEvent (ImpactMultiplier, PositiveImpactMultiplier)
@@ -28,6 +53,12 @@ public class EventScheduler
 
     public int ScheduledEventCount => _eventCount;
     public EventEffects EventEffects => _eventEffects;
+
+    /// <summary>
+    /// Story 18.6: Pre-decided event plan for the current round.
+    /// Available after InitializeRound() for use by TipActivator.
+    /// </summary>
+    public PreDecidedEvent[] PreDecidedEvents => _preDecidedEvents;
 
     public EventScheduler(EventEffects eventEffects)
     {
@@ -46,8 +77,8 @@ public class EventScheduler
 
     /// <summary>
     /// Initializes event schedule for a new round.
-    /// Determines event count based on act and pre-schedules fire times.
-    /// Event types are selected at fire time to keep events unpredictable.
+    /// Determines event count, pre-schedules fire times, and pre-decides event types + effects.
+    /// Story 18.6: All event data is now determined at init time for tip accuracy.
     /// </summary>
     public void InitializeRound(int round, int act, StockTier tier, IReadOnlyList<StockInstance> activeStocks, float roundDuration)
     {
@@ -71,8 +102,8 @@ public class EventScheduler
         float scaledCount = _random.Next(minEvents, maxEvents + 1) * frequencyModifier * EventCountMultiplier;
         _eventCount = Mathf.Max(1, Mathf.RoundToInt(scaledCount));
 
-        // Pre-schedule fire times distributed across the round
-        _scheduledFireTimes = new float[_eventCount];
+        // Pre-schedule fire times and pre-decide events
+        _preDecidedEvents = new PreDecidedEvent[_eventCount];
         _firedSlots = new bool[_eventCount];
 
         float windowStart = EventSchedulerConfig.EarlyBufferSeconds;
@@ -91,12 +122,46 @@ public class EventScheduler
         {
             float segStart = windowStart + (i * segmentLength);
             float segEnd = segStart + segmentLength;
-            _scheduledFireTimes[i] = RandomRange(segStart, segEnd);
+            float fireTime = RandomRange(segStart, segEnd);
+
+            // Story 18.6: Pre-decide event type and price effect at init time
+            var config = SelectEventType(tier);
+
+            float priceEffect;
+            bool isPositive;
+            if (config.EventType == MarketEventType.SectorRotation)
+            {
+                // SectorRotation: random magnitude with random direction
+                float rotationPercent = RandomRange(Mathf.Abs(config.MinPriceEffect), config.MaxPriceEffect) * ImpactMultiplier;
+                bool dirPositive = _random.NextDouble() >= 0.5;
+                priceEffect = dirPositive ? rotationPercent : -rotationPercent;
+                isPositive = EventHeadlineData.IsPositiveEvent(config.EventType);
+            }
+            else
+            {
+                priceEffect = RandomRange(config.MinPriceEffect, config.MaxPriceEffect) * ImpactMultiplier;
+                isPositive = EventHeadlineData.IsPositiveEvent(config.EventType);
+                if (isPositive)
+                    priceEffect *= PositiveImpactMultiplier;
+            }
+
+            // Pre-compute phases for multi-phase events
+            List<MarketEventPhase> phases = null;
+            if (config.EventType == MarketEventType.PumpAndDump)
+            {
+                phases = BuildPumpAndDumpPhases(priceEffect, config.Duration);
+            }
+            else if (config.EventType == MarketEventType.FlashCrash)
+            {
+                phases = BuildFlashCrashPhases(priceEffect, config.Duration);
+            }
+
+            _preDecidedEvents[i] = new PreDecidedEvent(fireTime, config, priceEffect, isPositive, phases);
             _firedSlots[i] = false;
         }
 
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[EventScheduler] Round {round} (Act {act}, {tier}): {_eventCount} events scheduled, freq modifier {frequencyModifier:F1}");
+        Debug.Log($"[EventScheduler] Round {round} (Act {act}, {tier}): {_eventCount} events pre-decided, freq modifier {frequencyModifier:F1}");
         #endif
     }
 
@@ -104,19 +169,19 @@ public class EventScheduler
     /// Per-frame update. Checks if any scheduled events should fire based on elapsed time.
     /// Also advances active event timers via EventEffects.
     /// Must be called BEFORE PriceGenerator.UpdatePrice().
+    /// Story 18.6: Uses pre-decided event data instead of rolling at fire time.
     /// </summary>
     public void Update(float elapsedTime, float deltaTime, IReadOnlyList<StockInstance> activeStocks, StockTier tier)
     {
-        // Check for events that should fire
-        if (_scheduledFireTimes != null)
+        // Check for events that should fire using pre-decided data
+        if (_preDecidedEvents != null)
         {
             for (int i = 0; i < _eventCount; i++)
             {
-                if (!_firedSlots[i] && elapsedTime >= _scheduledFireTimes[i])
+                if (!_firedSlots[i] && elapsedTime >= _preDecidedEvents[i].FireTime)
                 {
                     _firedSlots[i] = true;
-                    var config = SelectEventType(tier);
-                    FireEvent(config, activeStocks);
+                    FirePreDecidedEvent(_preDecidedEvents[i], activeStocks);
                 }
             }
         }
@@ -217,46 +282,12 @@ public class EventScheduler
 
         if (config.EventType == MarketEventType.PumpAndDump)
         {
-            // Multi-phase: Pump (+50-100%) then Dump (crash below starting price)
-            // Phase 0: 60% of duration — pump to rolled effect
-            // Phase 1: 40% of duration — crash from pump peak to 80% of original (20% below start)
-            float pumpDuration = config.Duration * 0.6f;
-            float dumpDuration = config.Duration * 0.4f;
-
-            // From pump peak, calculate dump target to land at 80% of original price
-            // Pump peak = startPrice * (1 + priceEffect)
-            // End target = startPrice * 0.80
-            // Phase 1 percent = endTarget / pumpPeak - 1 = 0.80 / (1 + priceEffect) - 1
-            float dumpTarget = 0.80f / (1f + priceEffect) - 1f;
-
-            var phases = new List<MarketEventPhase>
-            {
-                new MarketEventPhase(priceEffect, pumpDuration),
-                new MarketEventPhase(dumpTarget, dumpDuration)
-            };
-
+            var phases = BuildPumpAndDumpPhases(priceEffect, config.Duration);
             evt = new MarketEvent(config.EventType, targetStockId, priceEffect, config.Duration, phases);
         }
         else if (config.EventType == MarketEventType.FlashCrash)
         {
-            // Multi-phase V-shape: crash then recover
-            // Phase 0: price drops by rolled effect over first ~40% of duration
-            // Phase 1: price recovers ~90% of the drop over remaining ~60% of duration
-            float crashDuration = config.Duration * 0.4f;
-            float recoveryDuration = config.Duration * 0.6f;
-
-            // Recovery target: from crash bottom, recover 90% of the drop
-            // Crash bottom = startPrice * (1 + priceEffect) where priceEffect is negative
-            // Recovery end = crashBottom * (1 + recoveryPercent)
-            // We want to end at ~95% of original: 0.95 / (1 + priceEffect) - 1
-            float recoveryTarget = 0.95f / (1f + priceEffect) - 1f;
-
-            var phases = new List<MarketEventPhase>
-            {
-                new MarketEventPhase(priceEffect, crashDuration),
-                new MarketEventPhase(recoveryTarget, recoveryDuration)
-            };
-
+            var phases = BuildFlashCrashPhases(priceEffect, config.Duration);
             evt = new MarketEvent(config.EventType, targetStockId, priceEffect, config.Duration, phases);
         }
         else if (config.EventType == MarketEventType.SectorRotation)
@@ -296,6 +327,37 @@ public class EventScheduler
     }
 
     /// <summary>
+    /// Story 18.6: Fires an event from pre-decided data, constructing MarketEvent
+    /// from the already-rolled type, effect, and phases.
+    /// </summary>
+    private void FirePreDecidedEvent(PreDecidedEvent preDecided, IReadOnlyList<StockInstance> activeStocks)
+    {
+        if (activeStocks.Count == 0) return;
+
+        int targetStockId = activeStocks[0].StockId;
+
+        if (preDecided.Config.EventType == MarketEventType.SectorRotation)
+        {
+            // SectorRotation uses the pre-decided effect directly (already has random direction)
+            var evt = new MarketEvent(preDecided.Config.EventType, targetStockId, preDecided.PriceEffect, preDecided.Config.Duration);
+            _eventEffects.StartEvent(evt);
+            return;
+        }
+
+        MarketEvent marketEvent;
+        if (preDecided.Phases != null)
+        {
+            marketEvent = new MarketEvent(preDecided.Config.EventType, targetStockId, preDecided.PriceEffect, preDecided.Config.Duration, preDecided.Phases);
+        }
+        else
+        {
+            marketEvent = new MarketEvent(preDecided.Config.EventType, targetStockId, preDecided.PriceEffect, preDecided.Config.Duration);
+        }
+
+        _eventEffects.StartEvent(marketEvent);
+    }
+
+    /// <summary>
     /// Returns the number of events that have already fired this round.
     /// </summary>
     public int FiredEventCount
@@ -317,7 +379,39 @@ public class EventScheduler
     /// </summary>
     public float GetScheduledTime(int index)
     {
-        return _scheduledFireTimes[index];
+        return _preDecidedEvents[index].FireTime;
+    }
+
+    /// <summary>
+    /// Builds phase data for a PumpAndDump event.
+    /// Shared by InitializeRound (pre-decided) and FireEvent (forced events).
+    /// </summary>
+    private static List<MarketEventPhase> BuildPumpAndDumpPhases(float priceEffect, float duration)
+    {
+        float pumpDuration = duration * 0.6f;
+        float dumpDuration = duration * 0.4f;
+        float dumpTarget = 0.80f / (1f + priceEffect) - 1f;
+        return new List<MarketEventPhase>
+        {
+            new MarketEventPhase(priceEffect, pumpDuration),
+            new MarketEventPhase(dumpTarget, dumpDuration)
+        };
+    }
+
+    /// <summary>
+    /// Builds phase data for a FlashCrash event.
+    /// Shared by InitializeRound (pre-decided) and FireEvent (forced events).
+    /// </summary>
+    private static List<MarketEventPhase> BuildFlashCrashPhases(float priceEffect, float duration)
+    {
+        float crashDuration = duration * 0.4f;
+        float recoveryDuration = duration * 0.6f;
+        float recoveryTarget = 0.95f / (1f + priceEffect) - 1f;
+        return new List<MarketEventPhase>
+        {
+            new MarketEventPhase(priceEffect, crashDuration),
+            new MarketEventPhase(recoveryTarget, recoveryDuration)
+        };
     }
 
     private float RandomRange(float min, float max)

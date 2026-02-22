@@ -136,14 +136,6 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(2, _ctx.InsiderTipSlots);
         }
 
-        // === Fuzz percentage constant ===
-
-        [Test]
-        public void InsiderTipFuzzPercent_IsTenPercent()
-        {
-            Assert.AreEqual(0.10f, GameConfig.InsiderTipFuzzPercent);
-        }
-
         // === Multiple tips can be purchased within slot capacity ===
 
         [Test]

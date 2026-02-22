@@ -24,14 +24,16 @@ public static class InsiderTipDefinitions
 {
     public static readonly InsiderTipDef[] All = new InsiderTipDef[]
     {
+        // Story 18.6, AC 4: Price/direction tips use generic text at shop time
+        // (accurate values revealed on chart at round start)
         new InsiderTipDef(InsiderTipType.PriceForecast,
-            "Sweet spot around ~${0} \u2014 marked on chart",
+            "Price forecast \u2014 revealed on chart",
             GameConfig.TipCostPriceForecast),
         new InsiderTipDef(InsiderTipType.PriceFloor,
-            "Floor at ~${0} \u2014 marked on chart",
+            "Price floor \u2014 revealed on chart",
             GameConfig.TipCostPriceFloor),
         new InsiderTipDef(InsiderTipType.PriceCeiling,
-            "Ceiling at ~${0} \u2014 marked on chart",
+            "Price ceiling \u2014 revealed on chart",
             GameConfig.TipCostPriceCeiling),
         new InsiderTipDef(InsiderTipType.EventCount,
             "Expect ~{0} disruptions \u2014 live countdown active",
@@ -42,8 +44,9 @@ public static class InsiderTipDefinitions
         new InsiderTipDef(InsiderTipType.PeakMarker,
             "Peak sell window marked on chart",
             GameConfig.TipCostPeakMarker),
+        // Story 18.6, AC 4: ClosingDirection uses generic text at shop time
         new InsiderTipDef(InsiderTipType.ClosingDirection,
-            "Round closes {0}",
+            "Closing direction \u2014 revealed on chart",
             GameConfig.TipCostClosingDirection),
         new InsiderTipDef(InsiderTipType.EventTiming,
             "Event timing marked on chart",

@@ -451,19 +451,104 @@ so that buying tips feels like purchasing a real insider advantage.
 
 ---
 
+## Story 18.6: Event-Aware Accurate Tips
+
+As a player,
+I want my purchased insider tips to be **correct** — not fuzzy approximations that events can invalidate,
+so that paying for intel gives me an actual strategic edge I can trust.
+
+**Problem:** All price-based tips use static tier ranges with ±10% fuzz, but events push prices 25-100% beyond those ranges. Timing tips use heuristics and intentional fuzz. Tips should be accurate insider intel, not guesswork.
+
+**Solution:** Pre-decide event types and effects at round start (not at fire time), then run a lightweight price simulation so TipActivator knows the actual price trajectory.
+
+**Acceptance Criteria:**
+
+1. `EventScheduler.InitializeRound()` pre-decides event types AND price effects for every scheduled slot via new `PreDecidedEvent` struct (fire time, config, rolled effect, phases for multi-phase events). `Update()` uses pre-decided data instead of re-rolling. Behavior identical to current system, just decided earlier.
+
+2. New `TipActivator.SimulateRound()` method computes price trajectory analytically: compound trend between events, event effects at boundaries, multi-phase tracking (PumpAndDump peaks, FlashCrash troughs). Outputs `RoundSimulation` struct: MinPrice, MaxPrice, MinPriceNormalizedTime, MaxPriceNormalizedTime, ClosingPrice, AveragePrice.
+
+3. All 9 tip types use simulation results — no tier statistics, no heuristics, no fuzz:
+   - PriceCeiling → `simulation.MaxPrice`
+   - PriceFloor → `simulation.MinPrice`
+   - PriceForecast → `simulation.AveragePrice`
+   - DipMarker → time zone centered on `simulation.MinPriceNormalizedTime`
+   - PeakMarker → time zone centered on `simulation.MaxPriceNormalizedTime`
+   - ClosingDirection → `sign(simulation.ClosingPrice - startingPrice)`
+   - EventTiming → exact fire times from PreDecidedEvents (no fuzz)
+   - EventCount → `PreDecidedEvents.Length` (already accurate)
+   - TrendReversal → detect direction changes in simulated trajectory
+
+4. Shop-time display text for price/direction tips changed to generic ("Price ceiling — revealed on chart") since accurate values require round initialization. Accurate values shown on chart overlays and updated in `RevealedTip.DisplayText` at round start.
+
+5. All fuzz removed: `InsiderTipFuzzPercent` deprecated, `ApplyFuzz()` no longer used for tips, ±4% timing fuzz removed, ±5% zone fuzz removed.
+
+6. `TipActivationContext` updated: remove `ScheduledEventCount`/`ScheduledFireTimes`, add `PreDecidedEvents[]`.
+
+7. Tests: simulation accuracy, per-tip-type correctness vs simulation, no-fuzz verification, multi-phase event handling, determinism.
+
+**Full story file:** `planning-artifacts/story-18-6-event-aware-accurate-tips.md`
+
+**Files to modify:**
+- `EventScheduler.cs` — PreDecidedEvent struct, pre-decide in InitializeRound, use in Update
+- `TipActivator.cs` — SimulateRound, RoundSimulation, rewrite all overlay computations
+- `StoreDataTypes.cs` — TipActivationContext field changes
+- `InsiderTipGenerator.cs` — generic display text for price/direction tips
+- `TradingState.cs` — pass PreDecidedEvents in context, handle updated RevealedTip list
+- `GameConfig.cs` — deprecate InsiderTipFuzzPercent
+- `InsiderTipDefinitions.cs` — update DescriptionTemplate for price/direction tips
+- Tests: TipActivatorTests, EventSchedulerTests, InsiderTipGeneratorTests
+
+**Depends On:** Stories 18.1-18.5 (all complete)
+
+---
+
+## Story 18.7: Accurate Tip Simulation & Honest Display
+
+As a player,
+I want my insider tips to accurately predict real price behavior, and to be displayed honestly as estimates rather than exact values,
+so that I can trust tips as a strategic edge without feeling deceived when noise causes minor deviations.
+
+**Problem:** `SimulateRound()` (18.6) models only trend + events. The runtime PriceGenerator has 4 layers: trend, noise, events, and mean reversion. The simulation ignores the event hold-phase target drift (where mean reversion pulls event targets back toward the trend line during the hold phase), causing 15-20% overestimation on ceilings. Tips display exact values, setting false precision expectations.
+
+**Solution:** Add hold-phase drift modeling to `SimulateRound()` using tier mean reversion speed and event duration. Track trend line price for accurate deviation calculation. Display tip values with "~" prefix to convey estimates. Build EditMode integration tests that run full rounds (PriceGenerator + EventScheduler frame-by-frame) and verify predictions are within noise tolerance (±15%).
+
+**Acceptance Criteria:**
+
+1. `SimulateRound()` models event hold-phase target drift using MeanReversionSpeed, capped at `2 * NoiseAmplitude * price`, applied at 30% factor over 70% of event duration. Tracks trendLinePrice alongside currentPrice.
+2. For max tracking: raw event target recorded as brief peak. For continuing trend: drifted post-event price used as base.
+3. Multi-phase events (PumpAndDump, FlashCrash) also model drift on their respective phases.
+4. Display text uses "~$" prefix for PriceCeiling, PriceFloor, PriceForecast. Overlay labels match.
+5. ClosingDirection unchanged (binary, no precision issue).
+6. Integration tests: run full rounds with PriceGenerator + EventScheduler, compare actual min/max/close/timing against SimulateRound() predictions. Assert within tolerance (±15% price, ±0.15 normalized time, ≥80% closing direction match rate).
+7. Regression tests: drift reduces max vs naive simulation, compounding inflation eliminated, higher MRS = more drift, zero events unchanged.
+
+**Full story file:** `planning-artifacts/story-18-7-accurate-tip-simulation-and-honest-display.md`
+
+**Files to create:**
+- `TipAccuracyIntegrationTests.cs` — full-round integration tests
+
+**Files to modify:**
+- `TipActivator.cs` — drift modeling in SimulateRound(), trend line tracking, "~" display format
+- `TipActivatorTests.cs` — drift regression tests, updated display text assertions
+
+**Depends On:** Stories 18.1-18.6 (all complete)
+
+---
+
 ## Story Dependency Graph
 
 ```
 18.1 (Data Model)
  ├──→ 18.2 (Generation & Activation)
  │     ├──→ 18.3 (Chart Overlays)    [needs overlay data]
- │     └──→ 18.4 (HUD & Countdown)   [needs EventCountdown]
+ │     ├──→ 18.4 (HUD & Countdown)   [needs EventCountdown]
+ │     ├──→ 18.6 (Accurate Tips)     [needs activation + overlay infrastructure]
+ │     │     └──→ 18.7 (Accurate Simulation & Honest Display) [fixes 18.6 accuracy]
+ │     └──→ 18.5 (Shop Cards)        [needs new types]
  └──→ 18.5 (Shop Cards)              [needs new types]
 ```
 
-**Suggested implementation order:** 18.1 → 18.2 → 18.5 → 18.3 → 18.4
-
-(18.5 can go before 18.3/18.4 because shop cards only need the data model and generation, not the chart rendering)
+**Suggested implementation order:** 18.1 → 18.2 → 18.5 → 18.3 → 18.4 → 18.6 → **18.7**
 
 ---
 
@@ -492,18 +577,9 @@ X-axis only changes if round duration changes (Time Buyer relic), so time-based 
 
 EventScheduler currently keeps `_scheduledFireTimes` private. Story 18.2 requires exposing this via a read-only getter (e.g., `public ReadOnlyCollection<float> ScheduledFireTimes`). This is a minimal change.
 
-### Dip/Peak Estimation Heuristics
+### Dip/Peak Estimation (Updated by Story 18.6)
 
-The price engine uses compound growth: `price(t+dt) = price(t) * (1 + trendRate * dt)`. For a bull trend, compound growth means the lowest price is almost always at or near the start. For a bear trend, it's near the end. Events can override this, but the trend is the dominant force over the full round.
-
-The heuristic:
-- **Bull trend:** Dip zone centered at 15% of round duration (early), Peak zone centered at 85%
-- **Bear trend:** Dip zone centered at 85% (late), Peak zone centered at 15%
-- **Neutral/weak trend:** Center on nearest large event cluster or use 50%
-- **Zone width:** ±10% of round duration (so 20% total width)
-- **Fuzz:** ±5% random offset on center position
-
-This will be "right enough" most of the time. The ±10% fuzz on price values already sets the expectation that tips are approximate, not exact.
+~~The heuristic approach with ±5% fuzz has been superseded.~~ Story 18.6 replaces trend-direction heuristics with actual price simulation. DipMarker centers on the simulated minimum price time, PeakMarker on the simulated maximum price time. No fuzz applied — tips are accurate insider intel.
 
 ### Performance Considerations
 

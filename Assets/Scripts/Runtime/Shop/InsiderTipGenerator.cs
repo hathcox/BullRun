@@ -60,28 +60,15 @@ public class InsiderTipGenerator
 
     private (string text, float numericValue) CalculateDisplayText(InsiderTipDef def, StockTierConfig tierConfig, int nextAct, System.Random random)
     {
-        float fuzz = GameConfig.InsiderTipFuzzPercent;
-
         switch (def.Type)
         {
+            // Story 18.6, AC 4: Price/direction tips return generic text at shop time.
+            // NumericValue = 0 — accurate values computed at round start by TipActivator.
             case InsiderTipType.PriceForecast:
-            {
-                float avgPrice = (tierConfig.MinPrice + tierConfig.MaxPrice) / 2f;
-                float fuzzed = ApplyFuzz(avgPrice, fuzz, random);
-                return (string.Format(def.DescriptionTemplate, FormatPrice(fuzzed)), fuzzed);
-            }
-
             case InsiderTipType.PriceFloor:
-            {
-                float fuzzed = ApplyFuzz(tierConfig.MinPrice, fuzz, random);
-                return (string.Format(def.DescriptionTemplate, FormatPrice(fuzzed)), fuzzed);
-            }
-
             case InsiderTipType.PriceCeiling:
-            {
-                float fuzzed = ApplyFuzz(tierConfig.MaxPrice, fuzz, random);
-                return (string.Format(def.DescriptionTemplate, FormatPrice(fuzzed)), fuzzed);
-            }
+            case InsiderTipType.ClosingDirection:
+                return (def.DescriptionTemplate, 0f);
 
             case InsiderTipType.EventCount:
             {
@@ -95,12 +82,6 @@ public class InsiderTipGenerator
 
             case InsiderTipType.PeakMarker:
                 return (def.DescriptionTemplate, 0f);
-
-            case InsiderTipType.ClosingDirection:
-            {
-                bool closesHigher = random.NextDouble() < 0.6;
-                return (string.Format(def.DescriptionTemplate, closesHigher ? "HIGHER" : "LOWER"), 0f);
-            }
 
             case InsiderTipType.EventTiming:
                 return (def.DescriptionTemplate, 0f);
@@ -128,10 +109,5 @@ public class InsiderTipGenerator
         int maxEvents = isLateRound ? EventSchedulerConfig.MaxEventsLateRounds : EventSchedulerConfig.MaxEventsEarlyRounds;
         float scaled = random.Next(minEvents, maxEvents + 1) * tierConfig.EventFrequencyModifier;
         return scaled < 1 ? 1 : (int)(scaled + 0.5f);
-    }
-
-    private static string FormatPrice(float price)
-    {
-        return price.ToString("F2");
     }
 }

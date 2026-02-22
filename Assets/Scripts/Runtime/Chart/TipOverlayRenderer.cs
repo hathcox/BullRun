@@ -65,6 +65,7 @@ public class TipOverlayRenderer : MonoBehaviour
 
     // Cached camera reference (avoid per-frame Camera.main lookups)
     private Camera _cachedCamera;
+    private bool _subscribed;
 
     // Reusable mesh data (avoid per-frame allocation)
     private Mesh _forecastMesh;
@@ -134,10 +135,14 @@ public class TipOverlayRenderer : MonoBehaviour
         _peakZoneMeshFilter.mesh = _peakZoneMesh;
 
         _cachedCamera = Camera.main;
+
+        EnsureSubscribed();
     }
 
-    private void OnEnable()
+    private void EnsureSubscribed()
     {
+        if (_subscribed) return;
+        _subscribed = true;
         EventBus.Subscribe<TipOverlaysActivatedEvent>(OnTipOverlaysActivated);
         EventBus.Subscribe<RoundStartedEvent>(OnRoundStarted);
         EventBus.Subscribe<ShopOpenedEvent>(OnShopOpened);
@@ -145,8 +150,15 @@ public class TipOverlayRenderer : MonoBehaviour
         // independent of round duration, so timer extensions don't affect overlay placement.
     }
 
+    private void OnEnable()
+    {
+        EnsureSubscribed();
+    }
+
     private void OnDisable()
     {
+        if (!_subscribed) return;
+        _subscribed = false;
         EventBus.Unsubscribe<TipOverlaysActivatedEvent>(OnTipOverlaysActivated);
         EventBus.Unsubscribe<RoundStartedEvent>(OnRoundStarted);
         EventBus.Unsubscribe<ShopOpenedEvent>(OnShopOpened);
@@ -332,7 +344,7 @@ public class TipOverlayRenderer : MonoBehaviour
     {
         if (priceRange <= 0f) return (paddedBottom + paddedTop) * 0.5f;
         float normalized = (price - minPrice) / priceRange;
-        return Mathf.Lerp(paddedBottom, paddedTop, normalized);
+        return Mathf.LerpUnclamped(paddedBottom, paddedTop, normalized);
     }
 
     /// <summary>

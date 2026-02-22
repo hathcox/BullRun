@@ -819,6 +819,142 @@ namespace BullRun.Tests.Events
                 "ShortSqueeze should have at least 3 headlines");
         }
 
+        // --- Story 18.6: Pre-decided event tests ---
+
+        [Test]
+        public void InitializeRound_PreDecidedEvents_NotNullAndCorrectLength()
+        {
+            _scheduler.InitializeRound(1, 1, StockTier.MidValue, _activeStocks, 60f);
+
+            Assert.IsNotNull(_scheduler.PreDecidedEvents);
+            Assert.AreEqual(_scheduler.ScheduledEventCount, _scheduler.PreDecidedEvents.Length);
+        }
+
+        [Test]
+        public void InitializeRound_PreDecidedEvents_AllHaveValidData()
+        {
+            _scheduler.InitializeRound(1, 1, StockTier.MidValue, _activeStocks, 60f);
+
+            for (int i = 0; i < _scheduler.PreDecidedEvents.Length; i++)
+            {
+                var evt = _scheduler.PreDecidedEvents[i];
+                Assert.Greater(evt.FireTime, 0f, $"Event {i}: FireTime should be positive");
+                Assert.Greater(evt.Config.Duration, 0f, $"Event {i}: Config.Duration should be positive");
+                Assert.AreNotEqual(0f, evt.PriceEffect, $"Event {i}: PriceEffect should be non-zero");
+            }
+        }
+
+        [Test]
+        public void InitializeRound_PreDecidedEvents_MultiPhaseEventsHaveValidPhases()
+        {
+            // Run many seeds on Penny tier to catch PumpAndDump (Penny-only)
+            bool foundMultiPhase = false;
+
+            for (int seed = 0; seed < 500; seed++)
+            {
+                var rng = new System.Random(seed);
+                var scheduler = new EventScheduler(_eventEffects, rng);
+
+                var pennyStocks = new List<StockInstance>();
+                var stock = new StockInstance();
+                stock.Initialize(0, "MEME", StockTier.Penny, 5f, TrendDirection.Neutral, 0f);
+                pennyStocks.Add(stock);
+
+                scheduler.InitializeRound(1, 1, StockTier.Penny, pennyStocks, 60f);
+
+                for (int i = 0; i < scheduler.PreDecidedEvents.Length; i++)
+                {
+                    var evt = scheduler.PreDecidedEvents[i];
+                    if (evt.Phases != null)
+                    {
+                        foundMultiPhase = true;
+                        Assert.AreEqual(2, evt.Phases.Count,
+                            $"Multi-phase event {evt.Config.EventType} should have exactly 2 phases");
+
+                        if (evt.Config.EventType == MarketEventType.PumpAndDump)
+                        {
+                            Assert.Greater(evt.Phases[0].TargetPricePercent, 0f,
+                                "PumpAndDump Phase 0 (pump) should be positive");
+                            Assert.Less(evt.Phases[1].TargetPricePercent, 0f,
+                                "PumpAndDump Phase 1 (dump) should be negative");
+                        }
+                        else if (evt.Config.EventType == MarketEventType.FlashCrash)
+                        {
+                            Assert.Less(evt.Phases[0].TargetPricePercent, 0f,
+                                "FlashCrash Phase 0 (crash) should be negative");
+                            Assert.Greater(evt.Phases[1].TargetPricePercent, 0f,
+                                "FlashCrash Phase 1 (recovery) should be positive");
+                        }
+                    }
+                }
+            }
+
+            Assert.IsTrue(foundMultiPhase,
+                "Should find at least one multi-phase pre-decided event across 500 Penny tier seeds");
+        }
+
+        [Test]
+        public void InitializeRound_PreDecidedEvents_IsPositiveMatchesEventType()
+        {
+            for (int seed = 0; seed < 100; seed++)
+            {
+                var rng = new System.Random(seed);
+                var scheduler = new EventScheduler(_eventEffects, rng);
+                scheduler.InitializeRound(1, 1, StockTier.MidValue, _activeStocks, 60f);
+
+                for (int i = 0; i < scheduler.PreDecidedEvents.Length; i++)
+                {
+                    var evt = scheduler.PreDecidedEvents[i];
+                    bool expectedPositive = EventHeadlineData.IsPositiveEvent(evt.Config.EventType);
+                    Assert.AreEqual(expectedPositive, evt.IsPositive,
+                        $"Seed {seed}, Event {i}: IsPositive should match EventHeadlineData for {evt.Config.EventType}");
+                }
+            }
+        }
+
+        [Test]
+        public void InitializeRound_PreDecidedEvents_ImpactMultiplierApplied()
+        {
+            // Run with ImpactMultiplier = 1.0 to get baseline
+            var rng1 = new System.Random(42);
+            var scheduler1 = new EventScheduler(_eventEffects, rng1);
+            scheduler1.ImpactMultiplier = 1.0f;
+            scheduler1.InitializeRound(1, 1, StockTier.MidValue, _activeStocks, 60f);
+
+            // Run with same seed but ImpactMultiplier = 2.0
+            var rng2 = new System.Random(42);
+            var scheduler2 = new EventScheduler(_eventEffects, rng2);
+            scheduler2.ImpactMultiplier = 2.0f;
+            scheduler2.InitializeRound(1, 1, StockTier.MidValue, _activeStocks, 60f);
+
+            Assert.AreEqual(scheduler1.ScheduledEventCount, scheduler2.ScheduledEventCount,
+                "Same seed should produce same event count");
+
+            bool foundScaledEffect = false;
+            for (int i = 0; i < scheduler1.PreDecidedEvents.Length; i++)
+            {
+                var baseEvt = scheduler1.PreDecidedEvents[i];
+                var scaledEvt = scheduler2.PreDecidedEvents[i];
+
+                Assert.AreEqual(baseEvt.Config.EventType, scaledEvt.Config.EventType,
+                    $"Event {i}: same seed should select same event type");
+
+                // Verify ImpactMultiplier scaling (skip SectorRotation which has random direction)
+                if (baseEvt.Config.EventType != MarketEventType.SectorRotation)
+                {
+                    float baseMag = System.Math.Abs(baseEvt.PriceEffect);
+                    float scaledMag = System.Math.Abs(scaledEvt.PriceEffect);
+                    float ratio = scaledMag / baseMag;
+                    Assert.AreEqual(2.0f, ratio, 0.05f,
+                        $"Event {i} ({baseEvt.Config.EventType}): effect should be scaled by 2x");
+                    foundScaledEffect = true;
+                }
+            }
+
+            Assert.IsTrue(foundScaledEffect,
+                "Should have found at least one non-SectorRotation event to verify scaling");
+        }
+
         [Test]
         public void TierFiltering_SectorRotation_OnlyMidAndBlue()
         {

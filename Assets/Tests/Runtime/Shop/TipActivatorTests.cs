@@ -9,438 +9,514 @@ namespace BullRun.Tests.Shop
         private TipActivationContext CreateContext(
             TrendDirection trend = TrendDirection.Bull,
             float startingPrice = 10f,
-            float[] fireTimes = null,
+            PreDecidedEvent[] preDecidedEvents = null,
             float roundDuration = 60f,
-            int seed = 42)
+            float trendRate = 0.015f,
+            int seed = 42,
+            StockTier tier = StockTier.Penny)
         {
             var stock = new StockInstance();
-            stock.Initialize(0, "TEST", StockTier.Penny, startingPrice, trend, 0.015f);
-
-            int eventCount = fireTimes != null ? fireTimes.Length : 0;
+            stock.Initialize(0, "TEST", tier, startingPrice, trend, trendRate);
 
             return new TipActivationContext
             {
                 ActiveStock = stock,
-                ScheduledEventCount = eventCount,
-                ScheduledFireTimes = fireTimes,
+                PreDecidedEvents = preDecidedEvents,
                 RoundDuration = roundDuration,
-                TierConfig = StockTierData.GetTierConfig(StockTier.Penny),
+                TierConfig = StockTierData.GetTierConfig(tier),
                 Random = new System.Random(seed)
             };
         }
 
-        // === Price overlay tests (AC 4) ===
-
-        [Test]
-        public void PriceFloor_ProducesPriceLevelOverlay()
+        /// <summary>
+        /// Helper to create a single-phase pre-decided event.
+        /// </summary>
+        private PreDecidedEvent MakeEvent(float fireTime, float priceEffect, bool isPositive = true,
+            MarketEventType type = MarketEventType.EarningsBeat, float duration = 4f)
         {
-            var ctx = CreateContext();
-            var tip = new RevealedTip(InsiderTipType.PriceFloor, "FLOOR ~$4.50", 4.50f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(1, overlays.Count);
-            Assert.AreEqual(InsiderTipType.PriceFloor, overlays[0].Type);
-            Assert.AreEqual(4.50f, overlays[0].PriceLevel, 0.001f);
-            Assert.IsTrue(overlays[0].Label.Contains("FLOOR"));
+            var config = new MarketEventConfig(type, priceEffect, priceEffect, duration,
+                new[] { StockTier.Penny, StockTier.LowValue, StockTier.MidValue, StockTier.BlueChip }, 0.5f);
+            return new PreDecidedEvent(fireTime, config, priceEffect, isPositive);
         }
 
-        [Test]
-        public void PriceCeiling_ProducesPriceLevelOverlay()
+        /// <summary>
+        /// Helper to create a PumpAndDump pre-decided event.
+        /// </summary>
+        private PreDecidedEvent MakePumpAndDump(float fireTime, float pumpEffect)
         {
-            var ctx = CreateContext();
-            var tip = new RevealedTip(InsiderTipType.PriceCeiling, "CEILING ~$8.00", 8.00f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(1, overlays.Count);
-            Assert.AreEqual(InsiderTipType.PriceCeiling, overlays[0].Type);
-            Assert.AreEqual(8.00f, overlays[0].PriceLevel, 0.001f);
-            Assert.IsTrue(overlays[0].Label.Contains("CEILING"));
-        }
-
-        [Test]
-        public void PriceForecast_ProducesBandOverlay()
-        {
-            var ctx = CreateContext();
-            var tip = new RevealedTip(InsiderTipType.PriceForecast, "FORECAST ~$6.50", 6.50f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(1, overlays.Count);
-            Assert.AreEqual(InsiderTipType.PriceForecast, overlays[0].Type);
-            Assert.AreEqual(6.50f, overlays[0].BandCenter, 0.001f);
-            var tierConfig = StockTierData.GetTierConfig(StockTier.Penny);
-            float expectedHalfWidth = (tierConfig.MaxPrice - tierConfig.MinPrice) * 0.12f;
-            Assert.AreEqual(expectedHalfWidth, overlays[0].BandHalfWidth, 0.001f);
-        }
-
-        // === EventCount tests (AC 5) ===
-
-        [Test]
-        public void EventCount_UsesActualScheduledCount()
-        {
-            var ctx = CreateContext(fireTimes: new float[] { 10f, 20f, 30f });
-            var tip = new RevealedTip(InsiderTipType.EventCount, "EVENTS: 2", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(1, overlays.Count);
-            Assert.AreEqual(3, overlays[0].EventCountdown, "Should use actual count (3), not shop estimate (2)");
-            Assert.AreEqual("EVENTS: 3", overlays[0].Label);
-        }
-
-        [Test]
-        public void EventCount_ZeroEvents_ReturnsZeroCountdown()
-        {
-            var ctx = CreateContext(fireTimes: null);
-            var tip = new RevealedTip(InsiderTipType.EventCount, "EVENTS: 0", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(0, overlays[0].EventCountdown);
-        }
-
-        // === DipMarker tests (AC 6) ===
-
-        [Test]
-        public void DipMarker_BullTrend_ZoneInFirstThird()
-        {
-            var ctx = CreateContext(trend: TrendDirection.Bull);
-            var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.Less(overlays[0].TimeZoneCenter, 0.35f,
-                $"Bull dip zone center {overlays[0].TimeZoneCenter} should be in first third");
-            Assert.AreEqual("DIP ZONE", overlays[0].Label);
-        }
-
-        [Test]
-        public void DipMarker_BearTrend_ZoneInLastThird()
-        {
-            var ctx = CreateContext(trend: TrendDirection.Bear);
-            var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.Greater(overlays[0].TimeZoneCenter, 0.65f,
-                $"Bear dip zone center {overlays[0].TimeZoneCenter} should be in last third");
-        }
-
-        [Test]
-        public void DipMarker_NeutralTrend_ZoneNearCenter()
-        {
-            var ctx = CreateContext(trend: TrendDirection.Neutral);
-            var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.Greater(overlays[0].TimeZoneCenter, 0.35f);
-            Assert.Less(overlays[0].TimeZoneCenter, 0.65f);
-        }
-
-        [Test]
-        public void DipMarker_ZoneWidthIsTenPercent()
-        {
-            var ctx = CreateContext();
-            var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(0.10f, overlays[0].TimeZoneHalfWidth, 0.001f);
-        }
-
-        [Test]
-        public void DipMarker_ZoneClamped_NeverOffChart()
-        {
-            // Test with many seeds to ensure clamping works
-            for (int seed = 0; seed < 50; seed++)
+            var config = new MarketEventConfig(MarketEventType.PumpAndDump, pumpEffect, pumpEffect, 6f,
+                new[] { StockTier.Penny }, 0.3f);
+            float dumpTarget = 0.80f / (1f + pumpEffect) - 1f;
+            var phases = new List<MarketEventPhase>
             {
-                var ctx = CreateContext(seed: seed);
-                var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
-                var tips = new List<RevealedTip> { tip };
-
-                var overlays = TipActivator.ActivateTips(tips, ctx);
-
-                Assert.GreaterOrEqual(overlays[0].TimeZoneCenter, 0.10f,
-                    $"Seed {seed}: center {overlays[0].TimeZoneCenter} below 0.10");
-                Assert.LessOrEqual(overlays[0].TimeZoneCenter, 0.90f,
-                    $"Seed {seed}: center {overlays[0].TimeZoneCenter} above 0.90");
-            }
+                new MarketEventPhase(pumpEffect, 3.6f),
+                new MarketEventPhase(dumpTarget, 2.4f)
+            };
+            return new PreDecidedEvent(fireTime, config, pumpEffect, true, phases);
         }
 
-        // === PeakMarker tests (AC 7) ===
+        /// <summary>
+        /// Helper to create a FlashCrash pre-decided event.
+        /// </summary>
+        private PreDecidedEvent MakeFlashCrash(float fireTime, float crashEffect)
+        {
+            var config = new MarketEventConfig(MarketEventType.FlashCrash, crashEffect, crashEffect, 3f,
+                new[] { StockTier.LowValue, StockTier.MidValue }, 0.25f);
+            float recoveryTarget = 0.95f / (1f + crashEffect) - 1f;
+            var phases = new List<MarketEventPhase>
+            {
+                new MarketEventPhase(crashEffect, 1.2f),
+                new MarketEventPhase(recoveryTarget, 1.8f)
+            };
+            return new PreDecidedEvent(fireTime, config, crashEffect, false, phases);
+        }
+
+        // === SimulateRound accuracy tests (AC 8) ===
 
         [Test]
-        public void PeakMarker_BullTrend_ZoneInLastThird()
+        public void SimulateRound_NoEvents_PureTrend_BullTrend()
         {
-            var ctx = CreateContext(trend: TrendDirection.Bull);
+            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f, trendRate: 0.01f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Bull trend with no events: min = starting price, max = closing price
+            Assert.AreEqual(10f, sim.MinPrice, 0.01f, "Min should be starting price for pure bull");
+            Assert.Greater(sim.MaxPrice, 10f, "Max should be above starting for pure bull");
+            Assert.Greater(sim.ClosingPrice, 10f, "Closing should be above starting for pure bull");
+            Assert.AreEqual(sim.ClosingPrice, sim.MaxPrice, 0.01f, "For pure bull, max = closing");
+        }
+
+        [Test]
+        public void SimulateRound_NoEvents_PureTrend_BearTrend()
+        {
+            var ctx = CreateContext(trend: TrendDirection.Bear, startingPrice: 10f, trendRate: 0.01f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Bear trend with no events: max = starting price, min = closing price
+            Assert.AreEqual(10f, sim.MaxPrice, 0.01f, "Max should be starting price for pure bear");
+            Assert.Less(sim.MinPrice, 10f, "Min should be below starting for pure bear");
+            Assert.Less(sim.ClosingPrice, 10f, "Closing should be below starting for pure bear");
+        }
+
+        [Test]
+        public void SimulateRound_NoEvents_NeutralTrend()
+        {
+            var ctx = CreateContext(trend: TrendDirection.Neutral, startingPrice: 10f, trendRate: 0.01f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Neutral: price stays at starting price
+            Assert.AreEqual(10f, sim.MinPrice, 0.01f);
+            Assert.AreEqual(10f, sim.MaxPrice, 0.01f);
+            Assert.AreEqual(10f, sim.ClosingPrice, 0.01f);
+        }
+
+        [Test]
+        public void SimulateRound_SinglePositiveEvent_MaxExceedsTierBounds()
+        {
+            // +50% event should push ceiling beyond tier max ($8)
+            var events = new[] { MakeEvent(20f, 0.50f, true) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Ceiling should be well above $8 tier max
+            Assert.Greater(sim.MaxPrice, 8f,
+                $"Ceiling ${sim.MaxPrice:F2} should exceed tier max $8.00 with +50% event");
+        }
+
+        [Test]
+        public void SimulateRound_SingleNegativeEvent_FloorBelowTierMin()
+        {
+            // -30% event should push floor below normal range
+            var events = new[] { MakeEvent(20f, -0.30f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            Assert.Less(sim.MinPrice, 6f, "Floor should be below starting price with -30% event");
+        }
+
+        [Test]
+        public void SimulateRound_PumpAndDump_TracksPumpPeakAsMax()
+        {
+            var events = new[] { MakePumpAndDump(20f, 0.80f) };
+            var ctx = CreateContext(startingPrice: 5f, preDecidedEvents: events, trendRate: 0.005f,
+                trend: TrendDirection.Neutral);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Pump peak = ~$5 * (1 + 0.80) = ~$9, post-event = $5 * 0.80 = $4
+            Assert.Greater(sim.MaxPrice, 8f, "Max should reflect pump peak, not post-event price");
+            Assert.Less(sim.MinPrice, 5f, "Min should reflect post-dump price below starting");
+        }
+
+        [Test]
+        public void SimulateRound_FlashCrash_TracksCrashBottomAsMin()
+        {
+            var events = new[] { MakeFlashCrash(20f, -0.25f) };
+            var ctx = CreateContext(startingPrice: 10f, preDecidedEvents: events, trendRate: 0.005f,
+                trend: TrendDirection.Neutral);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Crash bottom = 10 * (1 + -0.25) = $7.50, recovery = 10 * 0.95 = $9.50
+            Assert.Less(sim.MinPrice, 8f, "Min should reflect crash bottom");
+        }
+
+        [Test]
+        public void SimulateRound_DynamicFloor_ClampsPrice()
+        {
+            // Massive negative event on low starting price should trigger floor
+            var events = new[] { MakeEvent(10f, -0.95f, false, MarketEventType.MarketCrash) };
+            var ctx = CreateContext(startingPrice: 5f, preDecidedEvents: events, trendRate: 0.001f,
+                trend: TrendDirection.Neutral);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            float expectedFloor = 5f * GameConfig.PriceFloorPercent;
+            Assert.GreaterOrEqual(sim.MinPrice, expectedFloor,
+                $"Min ${sim.MinPrice:F2} should not breach dynamic floor ${expectedFloor:F2}");
+        }
+
+        [Test]
+        public void SimulateRound_Deterministic_SameSeedSameResults()
+        {
+            var events = new[] {
+                MakeEvent(10f, 0.20f),
+                MakeEvent(30f, -0.15f, false, MarketEventType.EarningsMiss),
+                MakeEvent(45f, 0.30f)
+            };
+
+            var ctx1 = CreateContext(preDecidedEvents: events, seed: 42);
+            var sim1 = TipActivator.SimulateRound(ctx1);
+
+            var ctx2 = CreateContext(preDecidedEvents: events, seed: 42);
+            var sim2 = TipActivator.SimulateRound(ctx2);
+
+            Assert.AreEqual(sim1.MinPrice, sim2.MinPrice, 0.0001f);
+            Assert.AreEqual(sim1.MaxPrice, sim2.MaxPrice, 0.0001f);
+            Assert.AreEqual(sim1.ClosingPrice, sim2.ClosingPrice, 0.0001f);
+            Assert.AreEqual(sim1.MinPriceNormalizedTime, sim2.MinPriceNormalizedTime, 0.0001f);
+            Assert.AreEqual(sim1.MaxPriceNormalizedTime, sim2.MaxPriceNormalizedTime, 0.0001f);
+        }
+
+        // === PriceCeiling uses simulation max (AC 8) ===
+
+        [Test]
+        public void PriceCeiling_UsesSimulationMax_NotTierMax()
+        {
+            var events = new[] { MakeEvent(20f, 0.50f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var tip = new RevealedTip(InsiderTipType.PriceCeiling, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            var sim = TipActivator.SimulateRound(CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f));
+            Assert.AreEqual(sim.MaxPrice, overlays[0].PriceLevel, 0.01f,
+                "Ceiling overlay should use simulation max price");
+            Assert.Greater(overlays[0].PriceLevel, 8f,
+                "Ceiling should exceed tier max $8 with +50% event");
+        }
+
+        // === PriceFloor uses simulation min (AC 8) ===
+
+        [Test]
+        public void PriceFloor_UsesSimulationMin_NotTierMin()
+        {
+            var events = new[] { MakeEvent(20f, -0.30f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var tip = new RevealedTip(InsiderTipType.PriceFloor, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.Less(overlays[0].PriceLevel, 6f,
+                "Floor overlay should use simulation min, below starting price");
+        }
+
+        // === DipMarker time matches simulation min time (AC 8) ===
+
+        [Test]
+        public void DipMarker_TimeMatchesSimulationMinTime()
+        {
+            // Bull trend + late large negative event → dip near event time
+            // -50% at t=45 on bull (price ~$15.67): target = $7.84, well below starting $10
+            var events = new[] { MakeEvent(45f, -0.50f, false, MarketEventType.MarketCrash) };
+            var ctx = CreateContext(trend: TrendDirection.Bull, preDecidedEvents: events, trendRate: 0.01f);
+            var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            // Dip should be near the event, not at start
+            Assert.Greater(overlays[0].TimeZoneCenter, 0.50f,
+                $"Dip zone {overlays[0].TimeZoneCenter} should be near late event, not at start");
+        }
+
+        // === PeakMarker time matches simulation max time (AC 8) ===
+
+        [Test]
+        public void PeakMarker_TimeMatchesSimulationMaxTime()
+        {
+            // Bull trend + early positive event → peak reflects actual max
+            var events = new[] { MakeEvent(10f, 0.50f) };
+            var ctx = CreateContext(trend: TrendDirection.Bull, preDecidedEvents: events, trendRate: 0.01f);
             var tip = new RevealedTip(InsiderTipType.PeakMarker, "PEAK", 0f);
             var tips = new List<RevealedTip> { tip };
 
             var overlays = TipActivator.ActivateTips(tips, ctx);
 
-            Assert.Greater(overlays[0].TimeZoneCenter, 0.65f,
-                $"Bull peak zone center {overlays[0].TimeZoneCenter} should be in last third");
-            Assert.AreEqual("PEAK ZONE", overlays[0].Label);
+            // Bull trend + early positive event: max is at round end (clamped to 0.90 by ComputePeakMarkerOverlay)
+            Assert.GreaterOrEqual(overlays[0].TimeZoneCenter, 0.80f,
+                $"Peak zone {overlays[0].TimeZoneCenter} should be near round end for bull + early positive event");
         }
 
+        // === ClosingDirection matches simulation (AC 8) ===
+
         [Test]
-        public void PeakMarker_BearTrend_ZoneInFirstThird()
+        public void ClosingDirection_MatchesSimulation_BearWithLatePositiveEvent()
         {
-            var ctx = CreateContext(trend: TrendDirection.Bear);
-            var tip = new RevealedTip(InsiderTipType.PeakMarker, "PEAK", 0f);
+            // Bear trend with late +80% bull event → simulation shows closing higher
+            var events = new[] { MakeEvent(50f, 0.80f) };
+            var ctx = CreateContext(trend: TrendDirection.Bear, preDecidedEvents: events,
+                startingPrice: 10f, trendRate: 0.005f);
+            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "DIR", 0f);
             var tips = new List<RevealedTip> { tip };
 
             var overlays = TipActivator.ActivateTips(tips, ctx);
 
-            Assert.Less(overlays[0].TimeZoneCenter, 0.35f,
-                $"Bear peak zone center {overlays[0].TimeZoneCenter} should be in first third");
+            // Verify simulation says closing higher
+            var sim = TipActivator.SimulateRound(CreateContext(trend: TrendDirection.Bear,
+                preDecidedEvents: events, startingPrice: 10f, trendRate: 0.005f));
+            int expectedDirection = sim.ClosingPrice >= 10f ? 1 : -1;
+            Assert.AreEqual(expectedDirection, overlays[0].DirectionSign,
+                $"Direction should match simulation. Closing={sim.ClosingPrice:F2}, Starting=10.00");
         }
 
-        [Test]
-        public void PeakMarker_InverseOfDipMarker()
-        {
-            // Bull: peak should be later than dip
-            var ctxBull = CreateContext(trend: TrendDirection.Bull, seed: 99);
-            var dipTip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
-            var peakTip = new RevealedTip(InsiderTipType.PeakMarker, "PEAK", 0f);
-
-            var dipOverlays = TipActivator.ActivateTips(new List<RevealedTip> { dipTip }, ctxBull);
-            // Reset random for fair comparison
-            var ctxBull2 = CreateContext(trend: TrendDirection.Bull, seed: 99);
-            var peakOverlays = TipActivator.ActivateTips(new List<RevealedTip> { peakTip }, ctxBull2);
-
-            Assert.Greater(peakOverlays[0].TimeZoneCenter, dipOverlays[0].TimeZoneCenter,
-                "Bull peak should be later than bull dip");
-
-            // Bear: peak should be earlier than dip
-            var ctxBear = CreateContext(trend: TrendDirection.Bear, seed: 99);
-            dipOverlays = TipActivator.ActivateTips(new List<RevealedTip> { dipTip }, ctxBear);
-            var ctxBear2 = CreateContext(trend: TrendDirection.Bear, seed: 99);
-            peakOverlays = TipActivator.ActivateTips(new List<RevealedTip> { peakTip }, ctxBear2);
-
-            Assert.Less(peakOverlays[0].TimeZoneCenter, dipOverlays[0].TimeZoneCenter,
-                "Bear peak should be earlier than bear dip");
-        }
-
-        // === ClosingDirection tests (AC 8) ===
+        // === EventTiming has no fuzz (AC 8) ===
 
         [Test]
-        public void ClosingDirection_BullTrend_ReturnsPositive()
+        public void EventTiming_ExactFireTimes_NoFuzz()
         {
-            var ctx = CreateContext(trend: TrendDirection.Bull);
-            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "CLOSING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(1, overlays[0].DirectionSign);
-            Assert.AreEqual("CLOSING UP", overlays[0].Label);
-        }
-
-        [Test]
-        public void ClosingDirection_BearTrend_ReturnsNegative()
-        {
-            var ctx = CreateContext(trend: TrendDirection.Bear);
-            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "CLOSING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(-1, overlays[0].DirectionSign);
-            Assert.AreEqual("CLOSING DOWN", overlays[0].Label);
-        }
-
-        [Test]
-        public void ClosingDirection_NeutralTrend_ReturnsEitherDirection()
-        {
-            var ctx = CreateContext(trend: TrendDirection.Neutral);
-            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "CLOSING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.IsTrue(overlays[0].DirectionSign == 1 || overlays[0].DirectionSign == -1,
-                $"Neutral direction should be +1 or -1, got {overlays[0].DirectionSign}");
-        }
-
-        // === EventTiming tests (AC 9) ===
-
-        [Test]
-        public void EventTiming_MarkerCountMatchesEventCount()
-        {
-            var ctx = CreateContext(fireTimes: new float[] { 10f, 25f, 40f });
-            var tip = new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.AreEqual(3, overlays[0].TimeMarkers.Length);
-        }
-
-        [Test]
-        public void EventTiming_MarkersNormalized()
-        {
-            var ctx = CreateContext(fireTimes: new float[] { 5f, 15f, 30f, 55f });
-            var tip = new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            for (int i = 0; i < overlays[0].TimeMarkers.Length; i++)
+            var events = new[]
             {
-                Assert.GreaterOrEqual(overlays[0].TimeMarkers[i], 0f,
-                    $"Marker {i} below 0: {overlays[0].TimeMarkers[i]}");
-                Assert.LessOrEqual(overlays[0].TimeMarkers[i], 1f,
-                    $"Marker {i} above 1: {overlays[0].TimeMarkers[i]}");
-            }
-        }
-
-        [Test]
-        public void EventTiming_MarkersSorted()
-        {
-            var ctx = CreateContext(fireTimes: new float[] { 50f, 10f, 30f, 20f });
-            var tip = new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            for (int i = 1; i < overlays[0].TimeMarkers.Length; i++)
-            {
-                Assert.GreaterOrEqual(overlays[0].TimeMarkers[i], overlays[0].TimeMarkers[i - 1],
-                    $"Markers not sorted: [{i - 1}]={overlays[0].TimeMarkers[i - 1]} > [{i}]={overlays[0].TimeMarkers[i]}");
-            }
-        }
-
-        [Test]
-        public void EventTiming_MarkersWithinFuzzOfActual()
-        {
-            float[] fireTimes = { 10f, 25f, 40f };
-            float roundDuration = 60f;
-            var ctx = CreateContext(fireTimes: fireTimes, roundDuration: roundDuration);
+                MakeEvent(10f, 0.10f),
+                MakeEvent(25f, 0.10f),
+                MakeEvent(40f, 0.10f)
+            };
+            var ctx = CreateContext(preDecidedEvents: events, roundDuration: 60f);
             var tip = new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f);
             var tips = new List<RevealedTip> { tip };
 
             var overlays = TipActivator.ActivateTips(tips, ctx);
             var markers = overlays[0].TimeMarkers;
 
-            // Markers are sorted after fuzz so order may differ from input
-            // But each actual normalized time should have a marker within ±5%
-            for (int j = 0; j < fireTimes.Length; j++)
+            Assert.AreEqual(3, markers.Length);
+            // Exact normalized times — bit-for-bit match
+            Assert.AreEqual(10f / 60f, markers[0], 0.0001f, "Marker 0 should exactly match fire time");
+            Assert.AreEqual(25f / 60f, markers[1], 0.0001f, "Marker 1 should exactly match fire time");
+            Assert.AreEqual(40f / 60f, markers[2], 0.0001f, "Marker 2 should exactly match fire time");
+        }
+
+        // === TrendReversal detects event-driven reversal (AC 8) ===
+
+        [Test]
+        public void TrendReversal_BullWithLateCrash_DetectsReversal()
+        {
+            // Bull trend + late crash event → price was rising, then drops → reversal
+            var events = new[]
             {
-                float expected = fireTimes[j] / roundDuration;
-                bool found = false;
-                for (int k = 0; k < markers.Length; k++)
+                MakeEvent(15f, 0.10f),          // small positive — still rising
+                MakeEvent(40f, -0.40f, false, MarketEventType.MarketCrash)  // big negative — reversal
+            };
+            var ctx = CreateContext(trend: TrendDirection.Bull, preDecidedEvents: events, trendRate: 0.01f);
+            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.AreEqual("REVERSAL", overlays[0].Label);
+            Assert.Greater(overlays[0].ReversalTime, 0f, "Should detect reversal");
+        }
+
+        // === Pre-decided events match runtime behavior (AC 8) ===
+
+        [Test]
+        public void PreDecidedEvents_MatchTypes_EventScheduler()
+        {
+            EventBus.Clear();
+            var eventEffects = new EventEffects();
+            var rng = new System.Random(42);
+            var scheduler = new EventScheduler(eventEffects, rng);
+
+            var stocks = new List<StockInstance>();
+            var stock = new StockInstance();
+            stock.Initialize(0, "TEST", StockTier.MidValue, 100f, TrendDirection.Bull, 0.01f);
+            stocks.Add(stock);
+            eventEffects.SetActiveStocks(stocks);
+
+            scheduler.InitializeRound(1, 1, StockTier.MidValue, stocks, 60f);
+
+            // Verify pre-decided events have valid data
+            Assert.IsNotNull(scheduler.PreDecidedEvents);
+            Assert.AreEqual(scheduler.ScheduledEventCount, scheduler.PreDecidedEvents.Length);
+
+            for (int i = 0; i < scheduler.PreDecidedEvents.Length; i++)
+            {
+                var evt = scheduler.PreDecidedEvents[i];
+                Assert.Greater(evt.FireTime, 0f, $"Event {i} fire time should be positive");
+                Assert.Greater(evt.Config.Duration, 0f, $"Event {i} config duration should be positive");
+                Assert.AreNotEqual(0f, evt.PriceEffect, $"Event {i} price effect should be non-zero");
+            }
+
+            EventBus.Clear();
+        }
+
+        // === Multi-phase simulation (AC 8) ===
+
+        [Test]
+        public void SimulateRound_MultiPhase_PumpAndDump_PumpPeakIsMax()
+        {
+            var events = new[] { MakePumpAndDump(20f, 0.60f) };
+            var ctx = CreateContext(startingPrice: 10f, preDecidedEvents: events, trendRate: 0f,
+                trend: TrendDirection.Neutral);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Pump peak = 10 * (1 + 0.60) = $16.00
+            float expectedPeak = 10f * (1f + 0.60f);
+            Assert.AreEqual(expectedPeak, sim.MaxPrice, 0.1f,
+                "Max should be at pump peak");
+
+            // Post-dump = 10 * 0.80 = $8.00
+            float expectedDump = 10f * 0.80f;
+            Assert.AreEqual(expectedDump, sim.MinPrice, 0.1f,
+                "Min should be at post-dump price");
+        }
+
+        // === No fuzz in any tip value (AC 8) ===
+
+        [Test]
+        public void NoFuzz_AllTipValues_DeterministicAcrossRuns()
+        {
+            var events = new[]
+            {
+                MakeEvent(10f, 0.20f),
+                MakeEvent(30f, -0.15f, false, MarketEventType.EarningsMiss),
+                MakeEvent(50f, 0.10f)
+            };
+
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceFloor, "generic", 0f),
+                new RevealedTip(InsiderTipType.PriceCeiling, "generic", 0f),
+                new RevealedTip(InsiderTipType.PriceForecast, "generic", 0f),
+                new RevealedTip(InsiderTipType.DipMarker, "generic", 0f),
+                new RevealedTip(InsiderTipType.PeakMarker, "generic", 0f),
+                new RevealedTip(InsiderTipType.ClosingDirection, "generic", 0f),
+                new RevealedTip(InsiderTipType.EventTiming, "generic", 0f),
+                new RevealedTip(InsiderTipType.EventCount, "generic", 0f),
+                new RevealedTip(InsiderTipType.TrendReversal, "generic", 0f)
+            };
+
+            // Run 1
+            var ctx1 = CreateContext(preDecidedEvents: events, seed: 99);
+            var overlays1 = TipActivator.ActivateTips(new List<RevealedTip>(tips), ctx1);
+
+            // Run 2 — same inputs, different Random seed (shouldn't matter — no fuzz)
+            var ctx2 = CreateContext(preDecidedEvents: events, seed: 123);
+            var overlays2 = TipActivator.ActivateTips(new List<RevealedTip>(tips), ctx2);
+
+            // All overlay values should be identical regardless of Random seed
+            for (int i = 0; i < overlays1.Count; i++)
+            {
+                Assert.AreEqual(overlays1[i].PriceLevel, overlays2[i].PriceLevel, 0.0001f,
+                    $"Overlay {i} ({overlays1[i].Type}) PriceLevel differs — fuzz detected");
+                Assert.AreEqual(overlays1[i].BandCenter, overlays2[i].BandCenter, 0.0001f,
+                    $"Overlay {i} ({overlays1[i].Type}) BandCenter differs — fuzz detected");
+                Assert.AreEqual(overlays1[i].TimeZoneCenter, overlays2[i].TimeZoneCenter, 0.0001f,
+                    $"Overlay {i} ({overlays1[i].Type}) TimeZoneCenter differs — fuzz detected");
+                Assert.AreEqual(overlays1[i].DirectionSign, overlays2[i].DirectionSign,
+                    $"Overlay {i} ({overlays1[i].Type}) DirectionSign differs — fuzz detected");
+                Assert.AreEqual(overlays1[i].ReversalTime, overlays2[i].ReversalTime, 0.0001f,
+                    $"Overlay {i} ({overlays1[i].Type}) ReversalTime differs — fuzz detected");
+                if (overlays1[i].TimeMarkers != null && overlays2[i].TimeMarkers != null)
                 {
-                    if (System.Math.Abs(markers[k] - expected) < 0.05f)
+                    Assert.AreEqual(overlays1[i].TimeMarkers.Length, overlays2[i].TimeMarkers.Length);
+                    for (int j = 0; j < overlays1[i].TimeMarkers.Length; j++)
                     {
-                        found = true;
-                        break;
+                        Assert.AreEqual(overlays1[i].TimeMarkers[j], overlays2[i].TimeMarkers[j], 0.0001f,
+                            $"Overlay {i} marker {j} differs — fuzz detected");
                     }
                 }
-                Assert.IsTrue(found,
-                    $"No marker within ±5% of actual time {expected:F3}");
             }
         }
 
-        [Test]
-        public void EventTiming_NoEvents_ReturnsEmptyArray()
-        {
-            var ctx = CreateContext(fireTimes: null);
-            var tip = new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.IsNotNull(overlays[0].TimeMarkers);
-            Assert.AreEqual(0, overlays[0].TimeMarkers.Length);
-            Assert.AreEqual("NO EVENTS", overlays[0].Label);
-        }
-
-        // === TrendReversal tests (AC 10) ===
+        // === Display text update tests (AC 5) ===
 
         [Test]
-        public void TrendReversal_NeutralTrend_ReturnsNegativeOne()
+        public void ActivateTips_UpdatesDisplayText_PriceCeiling()
         {
-            var ctx = CreateContext(trend: TrendDirection.Neutral, fireTimes: new float[] { 10f, 20f, 30f });
-            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
-            var tips = new List<RevealedTip> { tip };
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceCeiling, "Price ceiling \u2014 revealed on chart", 0f)
+            };
 
-            var overlays = TipActivator.ActivateTips(tips, ctx);
+            TipActivator.ActivateTips(tips, ctx);
 
-            Assert.AreEqual(-1f, overlays[0].ReversalTime, 0.001f);
-            Assert.AreEqual("NO REVERSAL", overlays[0].Label);
+            Assert.IsTrue(tips[0].DisplayText.Contains("Ceiling ~$"),
+                $"Display text should be updated with actual value, got: {tips[0].DisplayText}");
+            Assert.Greater(tips[0].NumericValue, 0f, "NumericValue should be set to simulation max");
         }
 
         [Test]
-        public void TrendReversal_NoEvents_ReturnsNegativeOne()
+        public void ActivateTips_UpdatesDisplayText_PriceFloor()
         {
-            var ctx = CreateContext(fireTimes: null);
-            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
-            var tips = new List<RevealedTip> { tip };
+            var events = new[] { MakeEvent(20f, -0.20f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceFloor, "Price floor \u2014 revealed on chart", 0f)
+            };
 
-            var overlays = TipActivator.ActivateTips(tips, ctx);
+            TipActivator.ActivateTips(tips, ctx);
 
-            Assert.AreEqual(-1f, overlays[0].ReversalTime, 0.001f);
+            Assert.IsTrue(tips[0].DisplayText.Contains("Floor ~$"),
+                $"Display text should be updated, got: {tips[0].DisplayText}");
         }
 
         [Test]
-        public void TrendReversal_FewEventsInHalf_ReturnsNegativeOne()
+        public void ActivateTips_UpdatesDisplayText_PriceForecast()
         {
-            // Bull: searches back half (0.5-1.0). Only 1 event there → no reversal
-            var ctx = CreateContext(trend: TrendDirection.Bull, fireTimes: new float[] { 10f, 50f });
-            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
-            var tips = new List<RevealedTip> { tip };
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events, trendRate: 0.005f);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceForecast, "Price forecast \u2014 revealed on chart", 0f)
+            };
 
-            var overlays = TipActivator.ActivateTips(tips, ctx);
+            TipActivator.ActivateTips(tips, ctx);
 
-            Assert.AreEqual(-1f, overlays[0].ReversalTime, 0.001f,
-                "Only 1 event in back half should mean no reversal");
+            Assert.IsTrue(tips[0].DisplayText.Contains("Sweet spot ~$"),
+                $"Display text should be updated with actual value, got: {tips[0].DisplayText}");
+            Assert.Greater(tips[0].NumericValue, 0f, "NumericValue should be set to simulation average");
         }
 
         [Test]
-        public void TrendReversal_BullWithLateEvents_ReturnsTimeInBackHalf()
+        public void ActivateTips_UpdatesDisplayText_ClosingDirection()
         {
-            // Bull: 3 events in back half (0.5-1.0)
-            var ctx = CreateContext(trend: TrendDirection.Bull,
-                fireTimes: new float[] { 5f, 35f, 40f, 45f });
-            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
-            var tips = new List<RevealedTip> { tip };
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
+                preDecidedEvents: events, trendRate: 0.01f);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.ClosingDirection, "Closing direction \u2014 revealed on chart", 0f)
+            };
 
-            var overlays = TipActivator.ActivateTips(tips, ctx);
+            TipActivator.ActivateTips(tips, ctx);
 
-            Assert.Greater(overlays[0].ReversalTime, 0.50f,
-                $"Bull reversal time {overlays[0].ReversalTime} should be in back half");
-            Assert.AreEqual("REVERSAL", overlays[0].Label);
+            Assert.IsTrue(tips[0].DisplayText.Contains("HIGHER") || tips[0].DisplayText.Contains("LOWER"),
+                $"Display text should be updated with direction, got: {tips[0].DisplayText}");
         }
 
-        [Test]
-        public void TrendReversal_BearWithEarlyEvents_ReturnsTimeInFrontHalf()
-        {
-            // Bear: 3 events in front half (0.0-0.5)
-            var ctx = CreateContext(trend: TrendDirection.Bear,
-                fireTimes: new float[] { 10f, 15f, 20f, 55f });
-            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
-            var tips = new List<RevealedTip> { tip };
-
-            var overlays = TipActivator.ActivateTips(tips, ctx);
-
-            Assert.Less(overlays[0].ReversalTime, 0.55f,
-                $"Bear reversal time {overlays[0].ReversalTime} should be in front half");
-        }
-
-        // === Integration tests (AC 14) ===
+        // === Integration tests ===
 
         [Test]
         public void ActivateTips_EmptyList_ReturnsEmptyList()
@@ -457,12 +533,13 @@ namespace BullRun.Tests.Shop
         [Test]
         public void ActivateTips_MultipleTips_ReturnsCorrectCount()
         {
-            var ctx = CreateContext(fireTimes: new float[] { 10f, 20f, 30f });
+            var events = new[] { MakeEvent(10f, 0.10f), MakeEvent(30f, -0.10f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(preDecidedEvents: events);
             var tips = new List<RevealedTip>
             {
-                new RevealedTip(InsiderTipType.PriceFloor, "FLOOR", 4.50f),
-                new RevealedTip(InsiderTipType.EventCount, "EVENTS", 0f),
-                new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f)
+                new RevealedTip(InsiderTipType.PriceFloor, "generic", 0f),
+                new RevealedTip(InsiderTipType.EventCount, "generic", 0f),
+                new RevealedTip(InsiderTipType.DipMarker, "generic", 0f)
             };
 
             var overlays = TipActivator.ActivateTips(tips, ctx);
@@ -474,40 +551,69 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void ActivateTips_Deterministic_SameSeedSameResults()
+        public void EventCount_UsesPreDecidedEventLength()
         {
-            var tips = new List<RevealedTip>
-            {
-                new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f),
-                new RevealedTip(InsiderTipType.PeakMarker, "PEAK", 0f),
-                new RevealedTip(InsiderTipType.ClosingDirection, "DIR", 0f),
-                new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f)
-            };
+            var events = new[] { MakeEvent(10f, 0.10f), MakeEvent(20f, 0.10f), MakeEvent(30f, 0.10f) };
+            var ctx = CreateContext(preDecidedEvents: events);
+            var tip = new RevealedTip(InsiderTipType.EventCount, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
 
-            var ctx1 = CreateContext(seed: 42, fireTimes: new float[] { 10f, 30f, 50f });
-            var overlays1 = TipActivator.ActivateTips(tips, ctx1);
+            var overlays = TipActivator.ActivateTips(tips, ctx);
 
-            var ctx2 = CreateContext(seed: 42, fireTimes: new float[] { 10f, 30f, 50f });
-            var overlays2 = TipActivator.ActivateTips(tips, ctx2);
+            Assert.AreEqual(3, overlays[0].EventCountdown);
+            Assert.AreEqual("EVENTS: 3", overlays[0].Label);
+        }
 
-            Assert.AreEqual(overlays1.Count, overlays2.Count);
-            for (int i = 0; i < overlays1.Count; i++)
-            {
-                Assert.AreEqual(overlays1[i].Type, overlays2[i].Type);
-                Assert.AreEqual(overlays1[i].TimeZoneCenter, overlays2[i].TimeZoneCenter, 0.0001f,
-                    $"Overlay {i} TimeZoneCenter differs");
-                Assert.AreEqual(overlays1[i].DirectionSign, overlays2[i].DirectionSign,
-                    $"Overlay {i} DirectionSign differs");
-                if (overlays1[i].TimeMarkers != null && overlays2[i].TimeMarkers != null)
-                {
-                    Assert.AreEqual(overlays1[i].TimeMarkers.Length, overlays2[i].TimeMarkers.Length);
-                    for (int j = 0; j < overlays1[i].TimeMarkers.Length; j++)
-                    {
-                        Assert.AreEqual(overlays1[i].TimeMarkers[j], overlays2[i].TimeMarkers[j], 0.0001f,
-                            $"Overlay {i} marker {j} differs");
-                    }
-                }
-            }
+        [Test]
+        public void EventCount_NoEvents_ReturnsZero()
+        {
+            var ctx = CreateContext(preDecidedEvents: null);
+            var tip = new RevealedTip(InsiderTipType.EventCount, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.AreEqual(0, overlays[0].EventCountdown);
+        }
+
+        [Test]
+        public void EventTiming_NoEvents_ReturnsEmptyArray()
+        {
+            var ctx = CreateContext(preDecidedEvents: null);
+            var tip = new RevealedTip(InsiderTipType.EventTiming, "TIMING", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsNotNull(overlays[0].TimeMarkers);
+            Assert.AreEqual(0, overlays[0].TimeMarkers.Length);
+            Assert.AreEqual("NO EVENTS", overlays[0].Label);
+        }
+
+        [Test]
+        public void TrendReversal_NeutralTrend_NoReversal()
+        {
+            var events = new[] { MakeEvent(10f, 0.10f), MakeEvent(30f, -0.10f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(trend: TrendDirection.Neutral, preDecidedEvents: events);
+            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.AreEqual(-1f, overlays[0].ReversalTime, 0.001f);
+            Assert.AreEqual("NO REVERSAL", overlays[0].Label);
+        }
+
+        [Test]
+        public void TrendReversal_NoEvents_NoReversal()
+        {
+            var ctx = CreateContext(preDecidedEvents: null);
+            var tip = new RevealedTip(InsiderTipType.TrendReversal, "REVERSAL", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.AreEqual(-1f, overlays[0].ReversalTime, 0.001f);
         }
 
         // === Sentinel value tests ===
@@ -515,8 +621,9 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PriceFloor_SentinelValuesCorrect()
         {
-            var ctx = CreateContext();
-            var tip = new RevealedTip(InsiderTipType.PriceFloor, "FLOOR", 5f);
+            var events = new[] { MakeEvent(20f, -0.10f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(preDecidedEvents: events);
+            var tip = new RevealedTip(InsiderTipType.PriceFloor, "generic", 0f);
             var overlays = TipActivator.ActivateTips(new List<RevealedTip> { tip }, ctx);
 
             Assert.AreEqual(-1f, overlays[0].TimeZoneCenter, 0.001f, "TimeZoneCenter sentinel");
@@ -528,13 +635,263 @@ namespace BullRun.Tests.Shop
         [Test]
         public void DipMarker_SentinelValuesCorrect()
         {
-            var ctx = CreateContext();
-            var tip = new RevealedTip(InsiderTipType.DipMarker, "DIP", 0f);
+            var events = new[] { MakeEvent(20f, -0.10f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(preDecidedEvents: events);
+            var tip = new RevealedTip(InsiderTipType.DipMarker, "generic", 0f);
             var overlays = TipActivator.ActivateTips(new List<RevealedTip> { tip }, ctx);
 
             Assert.AreEqual(0f, overlays[0].PriceLevel, 0.001f, "PriceLevel sentinel");
             Assert.AreEqual(-1f, overlays[0].ReversalTime, 0.001f, "ReversalTime sentinel");
             Assert.AreEqual(-1, overlays[0].EventCountdown, "EventCountdown sentinel");
+        }
+
+        // === Story 18.7, AC 7: Drift regression tests ===
+
+        [Test]
+        public void Drift_SingleLargeEvent_ReducesMaxVsNaive()
+        {
+            // Bull stock, +50% event at t=30, duration=4
+            // Without drift: post-event base stays at full target, trend compounds on inflated base
+            // With drift: post-event base pulled down toward trend line, reducing closing price
+            var events = new[] { MakeEvent(30f, 0.50f) };
+            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
+                preDecidedEvents: events, trendRate: 0.01f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Compute naive (no drift) closing: full target compounds for remaining time
+            float priceAtEventTime = 10f * UnityEngine.Mathf.Pow(1f + 0.01f, 30f);
+            float naiveTarget = priceAtEventTime * 1.50f;
+            float naiveClosing = naiveTarget * UnityEngine.Mathf.Pow(1f + 0.01f, 60f - 30f - 4f);
+
+            // Closing should be lower than naive closing (drift pulls post-event base down)
+            Assert.Less(sim.ClosingPrice, naiveClosing,
+                $"Closing ${sim.ClosingPrice:F2} should be below naive closing ${naiveClosing:F2} due to drift");
+
+            // For bull trend, max is at round end (trend continues growing past event peak)
+            Assert.AreEqual(sim.ClosingPrice, sim.MaxPrice, 0.01f,
+                "For bull trend, MaxPrice should equal ClosingPrice (continuous growth)");
+        }
+
+        [Test]
+        public void Drift_CompoundingEvents_InflationEliminated()
+        {
+            // Two events: +30% at t=15 (dur=4), +20% at t=40 (dur=4)
+            // Without drift: second event compounds on full +30% target → inflated closing
+            // With drift: second event compounds on drifted (lower) base → reduced closing
+            var events = new[]
+            {
+                MakeEvent(15f, 0.30f),
+                MakeEvent(40f, 0.20f)
+            };
+
+            // Compute naive (no drift) closing: full targets compound for remaining time
+            float price15 = 10f * UnityEngine.Mathf.Pow(1f + 0.01f, 15f);
+            float naiveAfterFirst = price15 * 1.30f;
+            float naiveAt40 = naiveAfterFirst * UnityEngine.Mathf.Pow(1f + 0.01f, 40f - 15f - 4f);
+            float naiveAfterSecond = naiveAt40 * 1.20f;
+            float naiveClosing = naiveAfterSecond * UnityEngine.Mathf.Pow(1f + 0.01f, 60f - 40f - 4f);
+
+            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
+                preDecidedEvents: events, trendRate: 0.01f);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Closing should be less than naive closing — drift reduces inflation from compounding events
+            Assert.Less(sim.ClosingPrice, naiveClosing,
+                $"Closing ${sim.ClosingPrice:F2} should be less than naive ${naiveClosing:F2} — drift eliminates inflation");
+        }
+
+        [Test]
+        public void Drift_HigherMeanReversionSpeed_ProducesMoreDrift()
+        {
+            // Compare Penny (MRS=0.20, NA=0.08) vs LowValue (MRS=0.35, NA=0.05)
+            // Use +20% positive event where both tiers are in the uncapped drift regime:
+            //   Penny: force = 0.20 * rawTarget * 0.20, cap = 0.08 * rawTarget * 2 → uncapped
+            //   LowValue: force = 0.20 * rawTarget * 0.35, cap = 0.05 * rawTarget * 2 → uncapped
+            var events = new[] { MakeEvent(20f, 0.20f) };
+
+            var pennyCtx = CreateContext(startingPrice: 6f, preDecidedEvents: events,
+                trendRate: 0.01f, tier: StockTier.Penny);
+            var pennyClosing = TipActivator.SimulateRound(pennyCtx).ClosingPrice;
+
+            var lowValueCtx = CreateContext(startingPrice: 20f, preDecidedEvents: events,
+                trendRate: 0.01f, tier: StockTier.LowValue);
+            var lowValueClosing = TipActivator.SimulateRound(lowValueCtx).ClosingPrice;
+
+            // Compare relative to starting price: LowValue (higher MRS) should drift more
+            float pennyRatio = pennyClosing / 6f;
+            float lowValueRatio = lowValueClosing / 20f;
+
+            // Both get same +20% event and same trend. LowValue (MRS=0.35) should
+            // have lower ratio because stronger mean reversion pulls price down more.
+            Assert.Less(lowValueRatio, pennyRatio,
+                $"LowValue ratio {lowValueRatio:F4} should be less than Penny ratio {pennyRatio:F4} due to higher MRS");
+        }
+
+        [Test]
+        public void Drift_ZeroEvents_SimulationUnchanged()
+        {
+            // Pure trend, no events → no drift → results identical to pre-drift behavior
+            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
+                trendRate: 0.01f, preDecidedEvents: null);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Expected: pure compound growth over full round duration
+            float expectedClosing = 10f * UnityEngine.Mathf.Pow(1f + 0.01f, 60f);
+            Assert.AreEqual(expectedClosing, sim.ClosingPrice, 0.01f,
+                "Zero events should produce pure trend — no drift applied");
+            Assert.AreEqual(10f, sim.MinPrice, 0.01f, "Min should be starting price");
+            Assert.AreEqual(expectedClosing, sim.MaxPrice, 0.01f, "Max should be closing price");
+        }
+
+        [Test]
+        public void Drift_NegativeEvent_DriftPullsTowardTrendLine()
+        {
+            // Large negative event: drift should pull price UP toward trend line
+            // Force is self-limiting: deviation * rawTarget * MRS → as rawTarget drops, force drops
+            var events = new[] { MakeEvent(20f, -0.40f, false, MarketEventType.MarketCrash) };
+            var ctx = CreateContext(startingPrice: 10f, preDecidedEvents: events,
+                trendRate: 0.005f, trend: TrendDirection.Neutral);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            // Raw target = 10 * (1 - 0.40) = $6.00
+            // Trend line ≈ $10 (neutral, no movement)
+            // Drift pulls price UP toward trend line
+            float rawTarget = 10f * (1f - 0.40f);
+            Assert.Greater(sim.ClosingPrice, rawTarget,
+                "Negative event drift should pull closing price UP toward trend line");
+
+            // Drift should not overshoot the trend line
+            Assert.Less(sim.ClosingPrice, 10f,
+                "Drift should not overshoot the trend line");
+        }
+
+        [Test]
+        public void Drift_DynamicFloor_RespectedAfterDrift()
+        {
+            // Massive negative event should trigger floor even after drift
+            var events = new[] { MakeEvent(10f, -0.95f, false, MarketEventType.MarketCrash) };
+            var ctx = CreateContext(startingPrice: 5f, preDecidedEvents: events, trendRate: 0.001f,
+                trend: TrendDirection.Neutral);
+            var sim = TipActivator.SimulateRound(ctx);
+
+            float expectedFloor = 5f * GameConfig.PriceFloorPercent;
+            Assert.GreaterOrEqual(sim.MinPrice, expectedFloor,
+                $"Min ${sim.MinPrice:F2} should not breach floor ${expectedFloor:F2}");
+            Assert.GreaterOrEqual(sim.ClosingPrice, expectedFloor,
+                $"Closing ${sim.ClosingPrice:F2} should not breach floor ${expectedFloor:F2}");
+        }
+
+        // === Story 18.7, AC 8: Display text tests ===
+
+        [Test]
+        public void DisplayText_PriceCeiling_ContainsTilde()
+        {
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceCeiling, "generic", 0f)
+            };
+
+            TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsTrue(tips[0].DisplayText.Contains("~$"),
+                $"PriceCeiling display should contain ~$, got: {tips[0].DisplayText}");
+            Assert.IsFalse(tips[0].DisplayText.Contains("at $"),
+                "PriceCeiling should not contain bare 'at $' without tilde");
+        }
+
+        [Test]
+        public void DisplayText_PriceFloor_ContainsTilde()
+        {
+            var events = new[] { MakeEvent(20f, -0.20f, false, MarketEventType.EarningsMiss) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceFloor, "generic", 0f)
+            };
+
+            TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsTrue(tips[0].DisplayText.Contains("~$"),
+                $"PriceFloor display should contain ~$, got: {tips[0].DisplayText}");
+        }
+
+        [Test]
+        public void DisplayText_PriceForecast_ContainsTilde()
+        {
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceForecast, "generic", 0f)
+            };
+
+            TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsTrue(tips[0].DisplayText.Contains("~$"),
+                $"PriceForecast display should contain ~$, got: {tips[0].DisplayText}");
+        }
+
+        [Test]
+        public void DisplayText_ClosingDirection_DoesNotContainTilde()
+        {
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
+                preDecidedEvents: events, trendRate: 0.01f);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.ClosingDirection, "generic", 0f)
+            };
+
+            TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsFalse(tips[0].DisplayText.Contains("~"),
+                $"ClosingDirection display should NOT contain ~, got: {tips[0].DisplayText}");
+        }
+
+        [Test]
+        public void OverlayLabels_PriceTypes_ContainTilde()
+        {
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.PriceCeiling, "generic", 0f),
+                new RevealedTip(InsiderTipType.PriceFloor, "generic", 0f),
+                new RevealedTip(InsiderTipType.PriceForecast, "generic", 0f)
+            };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsTrue(overlays[0].Label.Contains("~$"),
+                $"CEILING label should contain ~$, got: {overlays[0].Label}");
+            Assert.IsTrue(overlays[1].Label.Contains("~$"),
+                $"FLOOR label should contain ~$, got: {overlays[1].Label}");
+            Assert.IsTrue(overlays[2].Label.Contains("~$"),
+                $"FORECAST label should contain ~$, got: {overlays[2].Label}");
+        }
+
+        [Test]
+        public void OverlayLabels_NonPriceTypes_DoNotContainTilde()
+        {
+            var events = new[] { MakeEvent(20f, 0.30f) };
+            var ctx = CreateContext(startingPrice: 6f, preDecidedEvents: events);
+            var tips = new List<RevealedTip>
+            {
+                new RevealedTip(InsiderTipType.EventTiming, "generic", 0f),
+                new RevealedTip(InsiderTipType.DipMarker, "generic", 0f),
+                new RevealedTip(InsiderTipType.PeakMarker, "generic", 0f)
+            };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsFalse(overlays[0].Label.Contains("~"),
+                $"EVENT TIMING label should not contain ~, got: {overlays[0].Label}");
+            Assert.IsFalse(overlays[1].Label.Contains("~"),
+                $"DIP ZONE label should not contain ~, got: {overlays[1].Label}");
+            Assert.IsFalse(overlays[2].Label.Contains("~"),
+                $"PEAK ZONE label should not contain ~, got: {overlays[2].Label}");
         }
     }
 }
