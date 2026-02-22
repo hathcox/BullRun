@@ -47,15 +47,16 @@ public static class GameConfig
     // Store: insider tip fuzz percentage (Story 13.5, AC 11)
     public static readonly float InsiderTipFuzzPercent = 0.10f;
 
-    // Store: insider tip costs in Reputation (Story 13.5)
-    public static readonly int TipCostPriceForecast = 15;
-    public static readonly int TipCostPriceFloor = 20;
-    public static readonly int TipCostPriceCeiling = 20;
-    public static readonly int TipCostTrendDirection = 15;
-    public static readonly int TipCostEventForecast = 25;
-    public static readonly int TipCostEventCount = 10;
-    public static readonly int TipCostVolatilityWarning = 15;
-    public static readonly int TipCostOpeningPrice = 20;
+    // Store: insider tip costs in Reputation (Story 13.5, updated Story 18.1)
+    public static readonly int TipCostPriceForecast = 15;     // Low tier
+    public static readonly int TipCostPriceFloor = 20;        // Medium tier
+    public static readonly int TipCostPriceCeiling = 20;      // Medium tier
+    public static readonly int TipCostEventCount = 10;        // Low tier
+    public static readonly int TipCostDipMarker = 30;         // High tier — answers "when to buy"
+    public static readonly int TipCostPeakMarker = 30;        // High tier — answers "when to sell"
+    public static readonly int TipCostClosingDirection = 15;   // Low tier — binary info
+    public static readonly int TipCostEventTiming = 35;       // High tier — multiple data points
+    public static readonly int TipCostTrendReversal = 25;     // Medium tier — timing estimate
 
     // Store: expansion costs in Reputation (Epic 13, Story 13.4)
     // FIX-15: ExpansionCostMultiStock removed — Multi-Stock expansion permanently removed

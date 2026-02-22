@@ -320,7 +320,7 @@ public class TradingHUD : MonoBehaviour
                 for (int i = 0; i < _runContext.RevealedTips.Count; i++)
                 {
                     if (i > 0) sb.Append(" | ");
-                    sb.Append(_runContext.RevealedTips[i].RevealedText);
+                    sb.Append(_runContext.RevealedTips[i].DisplayText);
                 }
                 _tipsDisplayText.text = sb.ToString();
                 _tipsDisplayText.gameObject.SetActive(true);

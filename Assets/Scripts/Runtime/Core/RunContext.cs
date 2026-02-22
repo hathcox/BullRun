@@ -20,6 +20,7 @@ public class RunContext
     public int CurrentShopRerollCount { get; internal set; }
     public int InsiderTipSlots { get; internal set; }
     public List<RevealedTip> RevealedTips { get; private set; }
+    public List<TipOverlayData> ActiveTipOverlays { get; private set; }
     public ReputationManager Reputation { get; private set; }
     public BondManager Bonds { get; private set; }
     public RelicManager RelicManager { get; private set; }
@@ -135,6 +136,7 @@ public class RunContext
         CurrentShopRerollCount = 0;
         InsiderTipSlots = GameConfig.DefaultInsiderTipSlots;
         RevealedTips = new List<RevealedTip>();
+        ActiveTipOverlays = new List<TipOverlayData>();
         Reputation = new ReputationManager();
         Bonds = new BondManager(this);
         RelicManager = new RelicManager(this);
@@ -260,6 +262,7 @@ public class RunContext
         CurrentShopRerollCount = 0;
         InsiderTipSlots = GameConfig.DefaultInsiderTipSlots;
         RevealedTips.Clear();
+        ActiveTipOverlays.Clear();
         Reputation.Reset();
         StartingCapital = Portfolio.Cash;
         LongsDisabled = false;

@@ -253,7 +253,7 @@ public struct ShopExpansionPurchasedEvent
 public struct InsiderTipPurchasedEvent
 {
     public InsiderTipType TipType;
-    public string RevealedText;
+    public string DisplayText;
     public int Cost;
     public int RemainingReputation;
 }

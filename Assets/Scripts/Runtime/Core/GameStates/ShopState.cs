@@ -337,7 +337,7 @@ public class ShopState : IGameState
         if (_tipPurchased[cardIndex]) return;
 
         var offering = _tipOffering[cardIndex];
-        var tip = new RevealedTip(offering.Definition.Type, offering.RevealedText);
+        var tip = new RevealedTip(offering.Definition.Type, offering.DisplayText, offering.NumericValue);
         var result = _shopTransaction.PurchaseTip(ctx, tip, offering.Definition.Cost);
 
         if (result == ShopPurchaseResult.Success)
@@ -348,7 +348,7 @@ public class ShopState : IGameState
             EventBus.Publish(new InsiderTipPurchasedEvent
             {
                 TipType = offering.Definition.Type,
-                RevealedText = offering.RevealedText,
+                DisplayText = offering.DisplayText,
                 Cost = offering.Definition.Cost,
                 RemainingReputation = ctx.Reputation.Current
             });

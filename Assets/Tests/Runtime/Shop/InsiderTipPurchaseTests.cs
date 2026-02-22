@@ -42,12 +42,12 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PurchaseTip_AddsTipToRevealedTips()
         {
-            var tip = new RevealedTip(InsiderTipType.TrendDirection, "Market is trending BULLISH");
+            var tip = new RevealedTip(InsiderTipType.DipMarker, "Market is trending BULLISH");
             _transaction.PurchaseTip(_ctx, tip, 15);
 
             Assert.AreEqual(1, _ctx.RevealedTips.Count);
-            Assert.AreEqual(InsiderTipType.TrendDirection, _ctx.RevealedTips[0].Type);
-            Assert.AreEqual("Market is trending BULLISH", _ctx.RevealedTips[0].RevealedText);
+            Assert.AreEqual(InsiderTipType.DipMarker, _ctx.RevealedTips[0].Type);
+            Assert.AreEqual("Market is trending BULLISH", _ctx.RevealedTips[0].DisplayText);
         }
 
         [Test]
@@ -55,7 +55,7 @@ namespace BullRun.Tests.Shop
         {
             _ctx.Reputation.Reset();
             _ctx.Reputation.Add(5); // Only 5 rep
-            var tip = new RevealedTip(InsiderTipType.EventForecast, "Expect MOSTLY GOOD events");
+            var tip = new RevealedTip(InsiderTipType.EventTiming, "Expect MOSTLY GOOD events");
 
             var result = _transaction.PurchaseTip(_ctx, tip, 25);
 
@@ -105,7 +105,7 @@ namespace BullRun.Tests.Shop
             _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceFloor, "tip2"));
             _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.EventCount, "tip3"));
 
-            var tip = new RevealedTip(InsiderTipType.TrendDirection, "BEARISH");
+            var tip = new RevealedTip(InsiderTipType.DipMarker, "BEARISH");
             var result = _transaction.PurchaseTip(_ctx, tip, 15);
 
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
@@ -117,7 +117,7 @@ namespace BullRun.Tests.Shop
         public void RevealedTips_ClearedOnNewShopVisit()
         {
             _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, "tip1"));
-            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.TrendDirection, "tip2"));
+            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.DipMarker, "tip2"));
 
             Assert.AreEqual(2, _ctx.RevealedTips.Count);
 
@@ -166,18 +166,18 @@ namespace BullRun.Tests.Shop
         [Test]
         public void RevealedTip_StoresTypeAndText()
         {
-            var tip = new RevealedTip(InsiderTipType.VolatilityWarning, "Expect HIGH volatility");
-            Assert.AreEqual(InsiderTipType.VolatilityWarning, tip.Type);
-            Assert.AreEqual("Expect HIGH volatility", tip.RevealedText);
+            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "Expect HIGH volatility");
+            Assert.AreEqual(InsiderTipType.ClosingDirection, tip.Type);
+            Assert.AreEqual("Expect HIGH volatility", tip.DisplayText);
         }
 
         // === InsiderTipType enum values ===
 
         [Test]
-        public void InsiderTipType_HasEightValues()
+        public void InsiderTipType_HasNineValues()
         {
             var values = System.Enum.GetValues(typeof(InsiderTipType));
-            Assert.AreEqual(8, values.Length);
+            Assert.AreEqual(9, values.Length);
         }
 
         // === Tips persist during trading round (stored in RunContext) ===
@@ -186,13 +186,13 @@ namespace BullRun.Tests.Shop
         public void RevealedTips_PersistAcrossRoundAdvance()
         {
             _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, "price tip"));
-            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.TrendDirection, "trend tip"));
+            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.DipMarker, "trend tip"));
 
             // Simulate round advance (AdvanceRound does NOT clear tips)
             _ctx.AdvanceRound();
 
             Assert.AreEqual(2, _ctx.RevealedTips.Count);
-            Assert.AreEqual("price tip", _ctx.RevealedTips[0].RevealedText);
+            Assert.AreEqual("price tip", _ctx.RevealedTips[0].DisplayText);
         }
 
         // === ResetForNewRun clears tips ===

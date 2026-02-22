@@ -17,9 +17,9 @@ namespace BullRun.Tests.Shop
         // === InsiderTipDefinitions data ===
 
         [Test]
-        public void InsiderTipDefinitions_HasEightTipTypes()
+        public void InsiderTipDefinitions_HasNineTipTypes()
         {
-            Assert.AreEqual(8, InsiderTipDefinitions.All.Length);
+            Assert.AreEqual(9, InsiderTipDefinitions.All.Length);
         }
 
         [Test]
@@ -43,11 +43,12 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(GameConfig.TipCostPriceForecast, byType[InsiderTipType.PriceForecast]);
             Assert.AreEqual(GameConfig.TipCostPriceFloor, byType[InsiderTipType.PriceFloor]);
             Assert.AreEqual(GameConfig.TipCostPriceCeiling, byType[InsiderTipType.PriceCeiling]);
-            Assert.AreEqual(GameConfig.TipCostTrendDirection, byType[InsiderTipType.TrendDirection]);
-            Assert.AreEqual(GameConfig.TipCostEventForecast, byType[InsiderTipType.EventForecast]);
             Assert.AreEqual(GameConfig.TipCostEventCount, byType[InsiderTipType.EventCount]);
-            Assert.AreEqual(GameConfig.TipCostVolatilityWarning, byType[InsiderTipType.VolatilityWarning]);
-            Assert.AreEqual(GameConfig.TipCostOpeningPrice, byType[InsiderTipType.OpeningPrice]);
+            Assert.AreEqual(GameConfig.TipCostDipMarker, byType[InsiderTipType.DipMarker]);
+            Assert.AreEqual(GameConfig.TipCostPeakMarker, byType[InsiderTipType.PeakMarker]);
+            Assert.AreEqual(GameConfig.TipCostClosingDirection, byType[InsiderTipType.ClosingDirection]);
+            Assert.AreEqual(GameConfig.TipCostEventTiming, byType[InsiderTipType.EventTiming]);
+            Assert.AreEqual(GameConfig.TipCostTrendReversal, byType[InsiderTipType.TrendReversal]);
         }
 
         [Test]
@@ -98,9 +99,9 @@ namespace BullRun.Tests.Shop
         [Test]
         public void GenerateTips_ClampsToAvailableTypes()
         {
-            // Request more than 8 types available
-            var tips = _generator.GenerateTips(10, 2, 1, new System.Random(42));
-            Assert.AreEqual(8, tips.Length);
+            // Request more than 9 types available
+            var tips = _generator.GenerateTips(12, 2, 1, new System.Random(42));
+            Assert.AreEqual(9, tips.Length);
         }
 
         // === GenerateTips: no duplicates ===
@@ -135,12 +136,12 @@ namespace BullRun.Tests.Shop
         // === GenerateTips: revealed text ===
 
         [Test]
-        public void GenerateTips_AllHaveRevealedText()
+        public void GenerateTips_AllHaveDisplayText()
         {
-            var tips = _generator.GenerateTips(8, 2, 1, new System.Random(42));
+            var tips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
             for (int i = 0; i < tips.Length; i++)
             {
-                Assert.IsNotEmpty(tips[i].RevealedText,
+                Assert.IsNotEmpty(tips[i].DisplayText,
                     $"Tip {tips[i].Definition.Type} has no revealed text");
             }
         }
@@ -176,7 +177,7 @@ namespace BullRun.Tests.Shop
             for (int i = 0; i < tips1.Length; i++)
             {
                 Assert.AreEqual(tips1[i].Definition.Type, tips2[i].Definition.Type);
-                Assert.AreEqual(tips1[i].RevealedText, tips2[i].RevealedText);
+                Assert.AreEqual(tips1[i].DisplayText, tips2[i].DisplayText);
             }
         }
 
@@ -186,20 +187,19 @@ namespace BullRun.Tests.Shop
         public void GenerateTips_PennyTier_UsesCorrectPriceRange()
         {
             // Penny tier: act 1
-            var tips = _generator.GenerateTips(8, 2, 1, new System.Random(42));
+            var tips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
 
             // Find price-related tips and verify they reference reasonable penny-tier values
             for (int i = 0; i < tips.Length; i++)
             {
                 if (tips[i].Definition.Type == InsiderTipType.PriceForecast
                     || tips[i].Definition.Type == InsiderTipType.PriceFloor
-                    || tips[i].Definition.Type == InsiderTipType.PriceCeiling
-                    || tips[i].Definition.Type == InsiderTipType.OpeningPrice)
+                    || tips[i].Definition.Type == InsiderTipType.PriceCeiling)
                 {
                     // Penny tier prices: $5-$8 range with ±10% fuzz
                     // So revealed text should contain a "$" sign
-                    Assert.IsTrue(tips[i].RevealedText.Contains("$"),
-                        $"Price tip {tips[i].Definition.Type} missing '$': {tips[i].RevealedText}");
+                    Assert.IsTrue(tips[i].DisplayText.Contains("$"),
+                        $"Price tip {tips[i].Definition.Type} missing '$': {tips[i].DisplayText}");
                 }
             }
         }
@@ -208,15 +208,15 @@ namespace BullRun.Tests.Shop
         public void GenerateTips_DifferentActsProduceDifferentValues()
         {
             // Act 1 (Penny) vs Act 3 (MidValue) should produce different price ranges
-            var pennyTips = _generator.GenerateTips(8, 2, 1, new System.Random(42));
-            var midTips = _generator.GenerateTips(8, 6, 3, new System.Random(42));
+            var pennyTips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
+            var midTips = _generator.GenerateTips(9, 6, 3, new System.Random(42));
 
             // Same seed but different act → at least some tips should differ in revealed text
             bool anyDifferent = false;
             for (int i = 0; i < pennyTips.Length && i < midTips.Length; i++)
             {
                 if (pennyTips[i].Definition.Type == midTips[i].Definition.Type
-                    && pennyTips[i].RevealedText != midTips[i].RevealedText)
+                    && pennyTips[i].DisplayText != midTips[i].DisplayText)
                 {
                     anyDifferent = true;
                     break;
@@ -225,6 +225,83 @@ namespace BullRun.Tests.Shop
             // Even if types differ, the values should be different for price tips
             Assert.IsTrue(anyDifferent || pennyTips[0].Definition.Type != midTips[0].Definition.Type,
                 "Penny and Mid tips should produce different values or different type ordering");
+        }
+
+        // === Story 18.1: New data validation tests (AC 10) ===
+
+        [Test]
+        public void InsiderTipType_HasExactlyNineUniqueEnumValues()
+        {
+            var values = System.Enum.GetValues(typeof(InsiderTipType));
+            Assert.AreEqual(9, values.Length);
+
+            var unique = new HashSet<int>();
+            foreach (var val in values)
+                Assert.IsTrue(unique.Add((int)val), $"Duplicate enum value: {val}");
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_AllNineTypesPresent()
+        {
+            Assert.AreEqual(9, InsiderTipDefinitions.All.Length);
+
+            var types = new HashSet<InsiderTipType>();
+            for (int i = 0; i < InsiderTipDefinitions.All.Length; i++)
+                types.Add(InsiderTipDefinitions.All[i].Type);
+
+            Assert.IsTrue(types.Contains(InsiderTipType.PriceForecast));
+            Assert.IsTrue(types.Contains(InsiderTipType.PriceFloor));
+            Assert.IsTrue(types.Contains(InsiderTipType.PriceCeiling));
+            Assert.IsTrue(types.Contains(InsiderTipType.EventCount));
+            Assert.IsTrue(types.Contains(InsiderTipType.DipMarker));
+            Assert.IsTrue(types.Contains(InsiderTipType.PeakMarker));
+            Assert.IsTrue(types.Contains(InsiderTipType.ClosingDirection));
+            Assert.IsTrue(types.Contains(InsiderTipType.EventTiming));
+            Assert.IsTrue(types.Contains(InsiderTipType.TrendReversal));
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_NoDuplicateTypesInArray()
+        {
+            var types = new HashSet<InsiderTipType>();
+            for (int i = 0; i < InsiderTipDefinitions.All.Length; i++)
+            {
+                Assert.IsTrue(types.Add(InsiderTipDefinitions.All[i].Type),
+                    $"Duplicate definition for type: {InsiderTipDefinitions.All[i].Type}");
+            }
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_GetByType_ReturnsCorrectForAllNineTypes()
+        {
+            var allTypes = (InsiderTipType[])System.Enum.GetValues(typeof(InsiderTipType));
+            foreach (var type in allTypes)
+            {
+                var result = InsiderTipDefinitions.GetByType(type);
+                Assert.IsTrue(result.HasValue, $"GetByType returned null for {type}");
+                Assert.AreEqual(type, result.Value.Type);
+                Assert.Greater(result.Value.Cost, 0, $"{type} has zero cost");
+            }
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_GetByType_ReturnsNullForInvalidCast()
+        {
+            var result = InsiderTipDefinitions.GetByType((InsiderTipType)999);
+            Assert.IsFalse(result.HasValue, "GetByType should return null for invalid enum cast");
+        }
+
+        [Test]
+        public void GenerateTips_NewTypes_ProduceValidDisplayText()
+        {
+            var tips = _generator.GenerateTips(9, 2, 1, new System.Random(42));
+            for (int i = 0; i < tips.Length; i++)
+            {
+                Assert.IsNotNull(tips[i].DisplayText,
+                    $"Tip {tips[i].Definition.Type} has null revealed text");
+                Assert.IsNotEmpty(tips[i].DisplayText,
+                    $"Tip {tips[i].Definition.Type} has empty revealed text");
+            }
         }
     }
 }

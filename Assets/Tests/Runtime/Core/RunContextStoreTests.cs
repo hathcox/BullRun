@@ -234,5 +234,33 @@ namespace BullRun.Tests.Core
             Assert.IsNotNull(ctx.RevealedTips);
             Assert.AreEqual(0, ctx.RevealedTips.Count);
         }
+
+        // === Story 18.1: ActiveTipOverlays tests (AC 10) ===
+
+        [Test]
+        public void Constructor_ActiveTipOverlays_InitializedEmpty()
+        {
+            var ctx = new RunContext(1, 1, new Portfolio(1000f));
+            Assert.IsNotNull(ctx.ActiveTipOverlays);
+            Assert.AreEqual(0, ctx.ActiveTipOverlays.Count);
+        }
+
+        [Test]
+        public void ResetForNewRun_ClearsActiveTipOverlays()
+        {
+            var ctx = new RunContext(1, 1, new Portfolio(1000f));
+            ctx.Portfolio.SubscribeToPriceUpdates();
+            ctx.ActiveTipOverlays.Add(new TipOverlayData { Type = InsiderTipType.PriceFloor, PriceLevel = 5f });
+            ctx.ResetForNewRun();
+            Assert.AreEqual(0, ctx.ActiveTipOverlays.Count);
+        }
+
+        [Test]
+        public void StartNewRun_ActiveTipOverlays_InitializedEmpty()
+        {
+            var ctx = RunContext.StartNewRun();
+            Assert.IsNotNull(ctx.ActiveTipOverlays);
+            Assert.AreEqual(0, ctx.ActiveTipOverlays.Count);
+        }
     }
 }

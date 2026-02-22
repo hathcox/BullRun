@@ -915,11 +915,12 @@ public class ShopUI : MonoBehaviour
             case InsiderTipType.PriceForecast: return "PRICE FORECAST";
             case InsiderTipType.PriceFloor: return "PRICE FLOOR";
             case InsiderTipType.PriceCeiling: return "PRICE CEILING";
-            case InsiderTipType.TrendDirection: return "TREND DIRECTION";
-            case InsiderTipType.EventForecast: return "EVENT FORECAST";
             case InsiderTipType.EventCount: return "EVENT COUNT";
-            case InsiderTipType.VolatilityWarning: return "VOLATILITY WARNING";
-            case InsiderTipType.OpeningPrice: return "OPENING PRICE";
+            case InsiderTipType.DipMarker: return "DIP MARKER";
+            case InsiderTipType.PeakMarker: return "PEAK MARKER";
+            case InsiderTipType.ClosingDirection: return "CLOSING CALL";
+            case InsiderTipType.EventTiming: return "EVENT TIMING";
+            case InsiderTipType.TrendReversal: return "TREND REVERSAL";
             default: return "UNKNOWN";
         }
     }
@@ -935,11 +936,12 @@ public class ShopUI : MonoBehaviour
             case InsiderTipType.PriceForecast: return "Predicts the average price";
             case InsiderTipType.PriceFloor: return "Reveals the price floor";
             case InsiderTipType.PriceCeiling: return "Reveals the price ceiling";
-            case InsiderTipType.TrendDirection: return "Shows the market trend";
-            case InsiderTipType.EventForecast: return "Previews upcoming events";
             case InsiderTipType.EventCount: return "Reveals how many events";
-            case InsiderTipType.VolatilityWarning: return "Warns about volatility";
-            case InsiderTipType.OpeningPrice: return "Reveals the opening price";
+            case InsiderTipType.DipMarker: return "When's the best buy?";
+            case InsiderTipType.PeakMarker: return "When should you sell?";
+            case InsiderTipType.ClosingDirection: return "Up or down?";
+            case InsiderTipType.EventTiming: return "When do shakeups hit?";
+            case InsiderTipType.TrendReversal: return "When does it turn?";
             default: return "Unknown intel";
         }
     }
@@ -1464,7 +1466,7 @@ public class ShopUI : MonoBehaviour
         {
             var offering = _tipOffering[cardIndex];
             card.NameText.text = FormatTipTypeName(offering.Definition.Type);
-            card.DescriptionText.text = offering.RevealedText;
+            card.DescriptionText.text = offering.DisplayText;
             card.DescriptionText.fontSize = 12;
             card.DescriptionText.fontStyle = FontStyle.Normal;
             card.DescriptionText.color = ColorPalette.White;

@@ -291,7 +291,7 @@ namespace BullRun.Tests.Items.Relics
             int repAfterFirst = _ctx.Reputation.Current;
 
             // Second tip — costs normal
-            var tip2 = new RevealedTip(InsiderTipType.TrendDirection, "Tip 2");
+            var tip2 = new RevealedTip(InsiderTipType.DipMarker, "Tip 2");
             transaction.PurchaseTip(_ctx, tip2, 15);
 
             Assert.AreEqual(repAfterFirst - 15, _ctx.Reputation.Current);

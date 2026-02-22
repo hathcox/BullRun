@@ -1290,3 +1290,74 @@ As a player, I want to reorder relics in the shop owned bar to control execution
 ### Story 17.10: Relic Icons
 
 As a player, I want each relic to have a distinctive text icon with color coding, so that I can identify relics at a glance.
+
+---
+
+## Epic 18: Insider Tips Overhaul
+
+**Description:** Complete overhaul of the insider tips system — remove 4 underperforming tip types, add 5 new high-value types, transform tips from forgettable text into visual chart overlays (price lines, time zones, event markers, directional arrows), and make Event Count a live countdown. Tips become real strategic tools.
+**Phase:** Post-Epic 17, gameplay depth expansion
+**Depends On:** Epic 13 (Store Rework), Epic 17 (Relic System)
+
+### Story 18.1: Tip Data Model & Type Overhaul
+
+As a developer, I want to restructure the tip type system — removing 4 useless types (Opening Price, Volatility Warning, Trend Direction, Event Forecast), adding 5 new actionable types (Dip Marker, Peak Marker, Closing Direction, Event Timing, Trend Reversal), and extending the data model for chart overlay data, so that the system has the foundation for visual overlays.
+
+**Acceptance Criteria:**
+- InsiderTipType enum: remove 4, add 5, total 9 types
+- InsiderTipDefinitions updated with all 9 definitions
+- GameConfig costs rebalanced (Low 10-15, Medium 20-25, High 30-35 Rep)
+- RevealedTip extended with IsActivated flag
+- New TipOverlayData struct for chart overlay geometry
+- RunContext gains ActiveTipOverlays list
+- All references to removed types cleaned up
+
+### Story 18.2: Tip Generation & Round-Start Activation
+
+As a developer, I want tip generation logic for all 9 types and a round-start activation system that computes chart overlay data using actual round parameters, so that tips produce accurate information for visual overlays.
+
+**Acceptance Criteria:**
+- InsiderTipGenerator updated for new type display text
+- New TipActivator class computes overlay data at round start
+- DipMarker/PeakMarker use trend-based timing heuristics
+- ClosingDirection uses actual trend direction
+- EventTiming exposes fuzzed EventScheduler fire times
+- TrendReversal estimates disruption timing
+- TipOverlaysActivatedEvent published for chart/HUD consumption
+
+### Story 18.3: Chart Tip Overlay Rendering
+
+As a player, I want purchased tips to appear as visual overlays on the trading chart — price lines, shaded zones, event markers, and directional arrows, so that tips are impossible to miss during trading.
+
+**Acceptance Criteria:**
+- TipOverlayRenderer MonoBehaviour on chart system
+- Horizontal lines for Price Floor (cyan) and Price Ceiling (amber)
+- Shaded horizontal band for Price Forecast
+- Vertical markers for Event Timing (pooled LineRenderers)
+- Shaded time zones for Dip Marker (green) and Peak Marker (amber)
+- Reversal marker (vertical line with icon)
+- Direction arrow on chart right edge for Closing Direction
+- All overlays reposition in LateUpdate, no per-frame allocations
+
+### Story 18.4: Trading HUD Tip Panel & Live Event Countdown
+
+As a player, I want a dedicated tip panel replacing the old text line, and Event Count as a live countdown ticking down as events fire, so that my intel is prominent and the countdown gives real-time tactical info.
+
+**Acceptance Criteria:**
+- Old pipe-separated tip text removed
+- New compact TipPanel in trading HUD
+- Event Count shows live countdown, decrements on MarketEventFiredEvent
+- Counter shows "ALL CLEAR" at zero with visual flash
+- Chart-overlay tips show minimal "active" indicator in panel
+- Panel auto-hides when no tips purchased
+
+### Story 18.5: Shop Tip Card Refresh
+
+As a player, I want exciting face-down teasers, clear revealed text, and rebalanced costs on tip cards, so that buying tips feels like purchasing a real insider edge.
+
+**Acceptance Criteria:**
+- New face-down hints (e.g., "When's the best buy?", "Up or down?")
+- New display names for all 9 types
+- Revealed text references chart overlays (e.g., "Floor at ~$3.20 — marked on chart")
+- Visual type indicator on cards (CHART badge for overlay tips)
+- All removed type references cleaned from ShopUI

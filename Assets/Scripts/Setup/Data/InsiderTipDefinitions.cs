@@ -17,8 +17,8 @@ public struct InsiderTipDef
 }
 
 /// <summary>
-/// All insider tip definitions. Eight tip types with varying costs and reveal templates.
-/// Costs sourced from GameConfig for single source of truth (Story 13.5).
+/// All insider tip definitions. Nine tip types with varying costs and reveal templates.
+/// Costs sourced from GameConfig for single source of truth (Story 13.5, updated Story 18.1).
 /// </summary>
 public static class InsiderTipDefinitions
 {
@@ -33,21 +33,24 @@ public static class InsiderTipDefinitions
         new InsiderTipDef(InsiderTipType.PriceCeiling,
             "Price won't exceed ~${0}",
             GameConfig.TipCostPriceCeiling),
-        new InsiderTipDef(InsiderTipType.TrendDirection,
-            "Market is trending {0}",
-            GameConfig.TipCostTrendDirection),
-        new InsiderTipDef(InsiderTipType.EventForecast,
-            "Expect {0} events",
-            GameConfig.TipCostEventForecast),
         new InsiderTipDef(InsiderTipType.EventCount,
             "There will be {0} events this round",
             GameConfig.TipCostEventCount),
-        new InsiderTipDef(InsiderTipType.VolatilityWarning,
-            "Expect {0} volatility",
-            GameConfig.TipCostVolatilityWarning),
-        new InsiderTipDef(InsiderTipType.OpeningPrice,
-            "Stock opens at ~${0}",
-            GameConfig.TipCostOpeningPrice),
+        new InsiderTipDef(InsiderTipType.DipMarker,
+            "Best buy window marked on chart",
+            GameConfig.TipCostDipMarker),
+        new InsiderTipDef(InsiderTipType.PeakMarker,
+            "Peak sell window marked on chart",
+            GameConfig.TipCostPeakMarker),
+        new InsiderTipDef(InsiderTipType.ClosingDirection,
+            "Round closes {0}",
+            GameConfig.TipCostClosingDirection),
+        new InsiderTipDef(InsiderTipType.EventTiming,
+            "Event timing marked on chart",
+            GameConfig.TipCostEventTiming),
+        new InsiderTipDef(InsiderTipType.TrendReversal,
+            "Trend reversal point marked on chart",
+            GameConfig.TipCostTrendReversal),
     };
 
     /// <summary>

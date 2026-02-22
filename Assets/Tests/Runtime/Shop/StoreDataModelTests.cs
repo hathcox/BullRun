@@ -53,7 +53,7 @@ namespace BullRun.Tests.Shop
         {
             var tip = new RevealedTip(InsiderTipType.PriceForecast, "Stock X going up");
             Assert.AreEqual(InsiderTipType.PriceForecast, tip.Type);
-            Assert.AreEqual("Stock X going up", tip.RevealedText);
+            Assert.AreEqual("Stock X going up", tip.DisplayText);
         }
 
         // === PurchaseRelic ===
@@ -161,14 +161,14 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PurchaseTip_DeductsReputationAndAddsTip()
         {
-            var tip = new RevealedTip(InsiderTipType.EventForecast, "Crash incoming");
+            var tip = new RevealedTip(InsiderTipType.EventTiming, "Crash incoming");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
 
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(900, _ctx.Reputation.Current);
             Assert.AreEqual(1, _ctx.RevealedTips.Count);
-            Assert.AreEqual(InsiderTipType.EventForecast, _ctx.RevealedTips[0].Type);
-            Assert.AreEqual("Crash incoming", _ctx.RevealedTips[0].RevealedText);
+            Assert.AreEqual(InsiderTipType.EventTiming, _ctx.RevealedTips[0].Type);
+            Assert.AreEqual("Crash incoming", _ctx.RevealedTips[0].DisplayText);
         }
 
         [Test]
@@ -185,7 +185,7 @@ namespace BullRun.Tests.Shop
         {
             _ctx.Reputation.Reset();
             _ctx.Reputation.Add(30);
-            var tip = new RevealedTip(InsiderTipType.VolatilityWarning, "Tech rising");
+            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "Tech rising");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(ShopPurchaseResult.InsufficientFunds, result);
             Assert.AreEqual(30, _ctx.Reputation.Current);
@@ -337,7 +337,7 @@ namespace BullRun.Tests.Shop
         public void RevealedTips_ClearedEachShopVisit()
         {
             _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, "Up"));
-            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.EventForecast, "Crash"));
+            _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.EventTiming, "Crash"));
             Assert.AreEqual(2, _ctx.RevealedTips.Count);
 
             // Simulate what ShopState.Enter() does
@@ -416,7 +416,7 @@ namespace BullRun.Tests.Shop
             for (int i = 0; i < _ctx.InsiderTipSlots; i++)
                 _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, $"tip-{i}"));
 
-            var tip = new RevealedTip(InsiderTipType.VolatilityWarning, "Overflow");
+            var tip = new RevealedTip(InsiderTipType.ClosingDirection, "Overflow");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(ShopPurchaseResult.SlotsFull, result);
             Assert.AreEqual(1000, _ctx.Reputation.Current);
@@ -428,7 +428,7 @@ namespace BullRun.Tests.Shop
             for (int i = 0; i < _ctx.InsiderTipSlots - 1; i++)
                 _ctx.RevealedTips.Add(new RevealedTip(InsiderTipType.PriceForecast, $"tip-{i}"));
 
-            var tip = new RevealedTip(InsiderTipType.EventForecast, "Last slot");
+            var tip = new RevealedTip(InsiderTipType.EventTiming, "Last slot");
             var result = _transaction.PurchaseTip(_ctx, tip, 100);
             Assert.AreEqual(ShopPurchaseResult.Success, result);
             Assert.AreEqual(_ctx.InsiderTipSlots, _ctx.RevealedTips.Count);
@@ -462,6 +462,46 @@ namespace BullRun.Tests.Shop
 
             _transaction.PurchaseExpansion(_ctx, "expand-1", "Expansion One", 150);
             Assert.IsFalse(fired);
+        }
+
+        // === Story 18.1: TipOverlayData validation tests (AC 10) ===
+
+        [Test]
+        public void TipOverlayData_CreateDefault_HasCorrectSentinelValues()
+        {
+            var data = TipOverlayData.CreateDefault();
+            Assert.AreEqual(0f, data.PriceLevel, "PriceLevel should default to 0");
+            Assert.AreEqual(0f, data.BandCenter, "BandCenter should default to 0");
+            Assert.AreEqual(0f, data.BandHalfWidth, "BandHalfWidth should default to 0");
+            Assert.AreEqual(-1f, data.TimeZoneCenter, "TimeZoneCenter should be -1 (not applicable)");
+            Assert.AreEqual(0f, data.TimeZoneHalfWidth, "TimeZoneHalfWidth should default to 0");
+            Assert.AreEqual(-1f, data.ReversalTime, "ReversalTime should be -1 (no reversal expected)");
+            Assert.AreEqual(0, data.DirectionSign, "DirectionSign should default to 0");
+            Assert.AreEqual(-1, data.EventCountdown, "EventCountdown should be -1 (not applicable)");
+            Assert.IsNull(data.TimeMarkers, "TimeMarkers should default to null");
+        }
+
+        [Test]
+        public void RevealedTip_WithNumericValue_StoresCorrectly()
+        {
+            var tip = new RevealedTip(InsiderTipType.PriceFloor, "Floor ~$5.50", 5.5f);
+            Assert.AreEqual(InsiderTipType.PriceFloor, tip.Type);
+            Assert.AreEqual("Floor ~$5.50", tip.DisplayText);
+            Assert.AreEqual(5.5f, tip.NumericValue, 0.001f);
+        }
+
+        [Test]
+        public void RevealedTip_IsActivated_DefaultsFalse()
+        {
+            var tip = new RevealedTip(InsiderTipType.DipMarker, "Buy window");
+            Assert.IsFalse(tip.IsActivated);
+        }
+
+        [Test]
+        public void RevealedTip_NumericValue_DefaultsToZero()
+        {
+            var tip = new RevealedTip(InsiderTipType.EventCount, "3 events");
+            Assert.AreEqual(0f, tip.NumericValue, 0.001f);
         }
     }
 }

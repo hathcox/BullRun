@@ -216,33 +216,39 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void FormatTipTypeName_TrendDirection_ReturnsCorrectString()
-        {
-            Assert.AreEqual("TREND DIRECTION", ShopUI.FormatTipTypeName(InsiderTipType.TrendDirection));
-        }
-
-        [Test]
-        public void FormatTipTypeName_EventForecast_ReturnsCorrectString()
-        {
-            Assert.AreEqual("EVENT FORECAST", ShopUI.FormatTipTypeName(InsiderTipType.EventForecast));
-        }
-
-        [Test]
         public void FormatTipTypeName_EventCount_ReturnsCorrectString()
         {
             Assert.AreEqual("EVENT COUNT", ShopUI.FormatTipTypeName(InsiderTipType.EventCount));
         }
 
         [Test]
-        public void FormatTipTypeName_VolatilityWarning_ReturnsCorrectString()
+        public void FormatTipTypeName_DipMarker_ReturnsDipMarker()
         {
-            Assert.AreEqual("VOLATILITY WARNING", ShopUI.FormatTipTypeName(InsiderTipType.VolatilityWarning));
+            Assert.AreEqual("DIP MARKER", ShopUI.FormatTipTypeName(InsiderTipType.DipMarker));
         }
 
         [Test]
-        public void FormatTipTypeName_OpeningPrice_ReturnsCorrectString()
+        public void FormatTipTypeName_PeakMarker_ReturnsPeakMarker()
         {
-            Assert.AreEqual("OPENING PRICE", ShopUI.FormatTipTypeName(InsiderTipType.OpeningPrice));
+            Assert.AreEqual("PEAK MARKER", ShopUI.FormatTipTypeName(InsiderTipType.PeakMarker));
+        }
+
+        [Test]
+        public void FormatTipTypeName_ClosingDirection_ReturnsClosingCall()
+        {
+            Assert.AreEqual("CLOSING CALL", ShopUI.FormatTipTypeName(InsiderTipType.ClosingDirection));
+        }
+
+        [Test]
+        public void FormatTipTypeName_EventTiming_ReturnsEventTiming()
+        {
+            Assert.AreEqual("EVENT TIMING", ShopUI.FormatTipTypeName(InsiderTipType.EventTiming));
+        }
+
+        [Test]
+        public void FormatTipTypeName_TrendReversal_ReturnsTrendReversal()
+        {
+            Assert.AreEqual("TREND REVERSAL", ShopUI.FormatTipTypeName(InsiderTipType.TrendReversal));
         }
 
         [Test]
