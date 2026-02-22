@@ -1,6 +1,6 @@
 # Story 18.2: Tip Generation & Round-Start Activation
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -27,9 +27,9 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Update InsiderTipGenerator for new types (AC: 1)
-  - [ ] Open `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
-  - [ ] In `CalculateRevealedText()` switch statement, add cases for 5 new types:
+- [x] Task 1: Update InsiderTipGenerator for new types (AC: 1)
+  - [x] Open `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
+  - [x] In `CalculateRevealedText()` switch statement, add cases for 5 new types:
     ```csharp
     case InsiderTipType.DipMarker:
         return def.DescriptionTemplate;  // "Best buy window marked on chart"
@@ -48,12 +48,12 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
     case InsiderTipType.TrendReversal:
         return def.DescriptionTemplate;  // "Trend reversal point marked on chart"
     ```
-  - [ ] For price-based types (PriceForecast, PriceFloor, PriceCeiling): ensure the caller stores raw fuzzed float in `RevealedTip.NumericValue` — update `GenerateTips()` method to pass numeric value when constructing `TipOffering`
-  - [ ] Update `TipOffering` struct to carry `float NumericValue` alongside `RevealedText`
-  - [ ] File: `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
+  - [x] For price-based types (PriceForecast, PriceFloor, PriceCeiling): ensure the caller stores raw fuzzed float in `RevealedTip.NumericValue` — update `GenerateTips()` method to pass numeric value when constructing `TipOffering`
+  - [x] Update `TipOffering` struct to carry `float NumericValue` alongside `RevealedText`
+  - [x] File: `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
 
-- [ ] Task 2: Create `TipActivationContext` struct (AC: 3)
-  - [ ] Add to `Assets/Scripts/Runtime/Shop/StoreDataTypes.cs` (or new file `TipActivator.cs`):
+- [x] Task 2: Create `TipActivationContext` struct (AC: 3)
+  - [x] Add to `Assets/Scripts/Runtime/Shop/StoreDataTypes.cs` (or new file `TipActivator.cs`):
     ```csharp
     public struct TipActivationContext
     {
@@ -65,13 +65,13 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         public System.Random Random;               // For fuzz
     }
     ```
-  - [ ] Context populated in TradingState.Enter() before calling TipActivator
-  - [ ] `ScheduledFireTimes` array built by iterating `EventScheduler.GetScheduledTime(i)` for `i = 0..ScheduledEventCount-1`
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] Context populated in TradingState.Enter() before calling TipActivator
+  - [x] `ScheduledFireTimes` array built by iterating `EventScheduler.GetScheduledTime(i)` for `i = 0..ScheduledEventCount-1`
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 3: Create `TipActivator` static class (AC: 2, 11)
-  - [ ] Create new file: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
-  - [ ] Main method signature:
+- [x] Task 3: Create `TipActivator` static class (AC: 2, 11)
+  - [x] Create new file: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] Main method signature:
     ```csharp
     public static class TipActivator
     {
@@ -106,10 +106,10 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         }
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 4: Implement price-based overlay computation (AC: 4)
-  - [ ] `ComputePriceLineOverlay(RevealedTip tip, string labelPrefix)`:
+- [x] Task 4: Implement price-based overlay computation (AC: 4)
+  - [x] `ComputePriceLineOverlay(RevealedTip tip, string labelPrefix)`:
     ```csharp
     return new TipOverlayData
     {
@@ -118,7 +118,7 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         PriceLevel = tip.NumericValue
     };
     ```
-  - [ ] `ComputePriceBandOverlay(RevealedTip tip, TipActivationContext ctx)`:
+  - [x] `ComputePriceBandOverlay(RevealedTip tip, TipActivationContext ctx)`:
     ```csharp
     float priceRange = ctx.TierConfig.MaxPrice - ctx.TierConfig.MinPrice;
     return new TipOverlayData
@@ -129,10 +129,10 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         BandHalfWidth = priceRange * 0.12f  // ±12% of tier range
     };
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 5: Implement EventCount overlay (AC: 5)
-  - [ ] `ComputeEventCountOverlay(TipActivationContext ctx)`:
+- [x] Task 5: Implement EventCount overlay (AC: 5)
+  - [x] `ComputeEventCountOverlay(TipActivationContext ctx)`:
     ```csharp
     return new TipOverlayData
     {
@@ -141,17 +141,17 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         EventCountdown = ctx.ScheduledEventCount
     };
     ```
-  - [ ] Uses ACTUAL scheduled count (includes relic multipliers like EventCountMultiplier), not the shop-time estimate
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] Uses ACTUAL scheduled count (includes relic multipliers like EventCountMultiplier), not the shop-time estimate
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 6: Implement DipMarker overlay (AC: 6)
-  - [ ] `ComputeDipMarkerOverlay(TipActivationContext ctx)`:
-    - [ ] **Bull trend** (`TrendDirection.Bull`): dip zone centered at **0.15** (early — price is lowest before compound growth)
-    - [ ] **Bear trend** (`TrendDirection.Bear`): dip zone centered at **0.85** (late — price keeps falling)
-    - [ ] **Neutral** (`TrendDirection.Neutral`): dip zone centered at **0.50**
-    - [ ] Zone half-width: **0.10** (so total zone is 20% of round duration)
-    - [ ] Apply fuzz: center ± `(random.NextDouble() * 2 - 1) * 0.05` (±5%)
-    - [ ] Clamp center to [zoneHalfWidth, 1.0 - zoneHalfWidth] so zone doesn't go off chart
+- [x] Task 6: Implement DipMarker overlay (AC: 6)
+  - [x] `ComputeDipMarkerOverlay(TipActivationContext ctx)`:
+    - [x] **Bull trend** (`TrendDirection.Bull`): dip zone centered at **0.15** (early — price is lowest before compound growth)
+    - [x] **Bear trend** (`TrendDirection.Bear`): dip zone centered at **0.85** (late — price keeps falling)
+    - [x] **Neutral** (`TrendDirection.Neutral`): dip zone centered at **0.50**
+    - [x] Zone half-width: **0.10** (so total zone is 20% of round duration)
+    - [x] Apply fuzz: center ± `(random.NextDouble() * 2 - 1) * 0.05` (±5%)
+    - [x] Clamp center to [zoneHalfWidth, 1.0 - zoneHalfWidth] so zone doesn't go off chart
     ```csharp
     float center = ctx.ActiveStock.TrendDirection switch
     {
@@ -169,15 +169,15 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         TimeZoneHalfWidth = 0.10f
     };
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 7: Implement PeakMarker overlay (AC: 7)
-  - [ ] `ComputePeakMarkerOverlay(TipActivationContext ctx)`:
-    - [ ] Inverse of DipMarker:
-    - [ ] **Bull trend**: peak zone centered at **0.85** (late — compound growth maximizes)
-    - [ ] **Bear trend**: peak zone centered at **0.15** (early — before compound decay)
-    - [ ] **Neutral**: centered at **0.50**
-    - [ ] Same half-width (0.10) and fuzz (±5%) as DipMarker
+- [x] Task 7: Implement PeakMarker overlay (AC: 7)
+  - [x] `ComputePeakMarkerOverlay(TipActivationContext ctx)`:
+    - [x] Inverse of DipMarker:
+    - [x] **Bull trend**: peak zone centered at **0.85** (late — compound growth maximizes)
+    - [x] **Bear trend**: peak zone centered at **0.15** (early — before compound decay)
+    - [x] **Neutral**: centered at **0.50**
+    - [x] Same half-width (0.10) and fuzz (±5%) as DipMarker
     ```csharp
     float center = ctx.ActiveStock.TrendDirection switch
     {
@@ -187,10 +187,10 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
     };
     // Same fuzz and clamp as DipMarker
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 8: Implement ClosingDirection overlay (AC: 8)
-  - [ ] `ComputeClosingDirectionOverlay(TipActivationContext ctx)`:
+- [x] Task 8: Implement ClosingDirection overlay (AC: 8)
+  - [x] `ComputeClosingDirectionOverlay(TipActivationContext ctx)`:
     ```csharp
     int direction = ctx.ActiveStock.TrendDirection switch
     {
@@ -205,11 +205,11 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         DirectionSign = direction
     };
     ```
-  - [ ] At round start this uses ACTUAL trend direction from StockInstance, overriding the probabilistic shop-time guess
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] At round start this uses ACTUAL trend direction from StockInstance, overriding the probabilistic shop-time guess
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 9: Implement EventTiming overlay (AC: 9)
-  - [ ] `ComputeEventTimingOverlay(TipActivationContext ctx)`:
+- [x] Task 9: Implement EventTiming overlay (AC: 9)
+  - [x] `ComputeEventTimingOverlay(TipActivationContext ctx)`:
     ```csharp
     if (ctx.ScheduledEventCount == 0 || ctx.ScheduledFireTimes == null)
     {
@@ -237,20 +237,20 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         TimeMarkers = markers
     };
     ```
-  - [ ] Fuzz is ±4% of normalized time (so for 60s round, ±2.4s offset)
-  - [ ] Markers clamped to [0,1] and sorted after fuzz
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] Fuzz is ±4% of normalized time (so for 60s round, ±2.4s offset)
+  - [x] Markers clamped to [0,1] and sorted after fuzz
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 10: Implement TrendReversal overlay (AC: 10)
-  - [ ] `ComputeTrendReversalOverlay(TipActivationContext ctx)`:
-    - [ ] Algorithm: Find the most likely reversal point — where the dominant trend is most likely to be disrupted by events
-    - [ ] **For Bull trend**: Look for event cluster in back half (0.5-1.0) — events late in a bull run can cause perceived reversal
-    - [ ] **For Bear trend**: Look for event cluster in front half (0.0-0.5) — events early can arrest the decline
-    - [ ] **No reversal cases (return ReversalTime = -1)**:
+- [x] Task 10: Implement TrendReversal overlay (AC: 10)
+  - [x] `ComputeTrendReversalOverlay(TipActivationContext ctx)`:
+    - [x] Algorithm: Find the most likely reversal point — where the dominant trend is most likely to be disrupted by events
+    - [x] **For Bull trend**: Look for event cluster in back half (0.5-1.0) — events late in a bull run can cause perceived reversal
+    - [x] **For Bear trend**: Look for event cluster in front half (0.0-0.5) — events early can arrest the decline
+    - [x] **No reversal cases (return ReversalTime = -1)**:
       - No events scheduled
       - Neutral trend (no dominant trend to reverse)
       - Very few events (≤ 1) in the relevant half
-    - [ ] **Cluster finding heuristic**: Among events in the relevant half, pick the one closest to the midpoint of that half (most impactful timing)
+    - [x] **Cluster finding heuristic**: Among events in the relevant half, pick the one closest to the midpoint of that half (most impactful timing)
     ```csharp
     if (ctx.ScheduledEventCount == 0 || ctx.ActiveStock.TrendDirection == TrendDirection.Neutral)
     {
@@ -296,22 +296,22 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         ReversalTime = bestTime
     };
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
+  - [x] File: `Assets/Scripts/Runtime/Shop/TipActivator.cs`
 
-- [ ] Task 11: Add TipOverlaysActivatedEvent (AC: 12)
-  - [ ] Open `Assets/Scripts/Runtime/Core/GameEvents.cs`
-  - [ ] Add new event struct:
+- [x] Task 11: Add TipOverlaysActivatedEvent (AC: 12)
+  - [x] Open `Assets/Scripts/Runtime/Core/GameEvents.cs`
+  - [x] Add new event struct:
     ```csharp
     public struct TipOverlaysActivatedEvent
     {
         public List<TipOverlayData> Overlays;
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Core/GameEvents.cs`
+  - [x] File: `Assets/Scripts/Runtime/Core/GameEvents.cs`
 
-- [ ] Task 12: Wire TipActivator into TradingState.Enter() (AC: 11, 12)
-  - [ ] Open `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs`
-  - [ ] After EventScheduler.InitializeRound() call (after line 113), add:
+- [x] Task 12: Wire TipActivator into TradingState.Enter() (AC: 11, 12)
+  - [x] Open `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs`
+  - [x] After EventScheduler.InitializeRound() call (after line 113), add:
     ```csharp
     // Activate insider tip overlays for this round
     if (ctx.RevealedTips != null && ctx.RevealedTips.Count > 0
@@ -332,7 +332,7 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         EventBus.Publish(new TipOverlaysActivatedEvent { Overlays = ctx.ActiveTipOverlays });
     }
     ```
-  - [ ] Add helper method to TradingState:
+  - [x] Add helper method to TradingState:
     ```csharp
     private static float[] BuildFireTimesArray(EventScheduler scheduler)
     {
@@ -344,27 +344,27 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         return times;
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs`
+  - [x] File: `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs`
 
-- [ ] Task 13: Expose EventScheduler.GetScheduledTime() if not already public (AC: 9)
-  - [ ] Open `Assets/Scripts/Runtime/Events/EventScheduler.cs`
-  - [ ] Verify `GetScheduledTime(int index)` is public (it exists at line 318)
-  - [ ] Verify `ScheduledEventCount` property is public (line 29)
-  - [ ] If either is missing or private, add public accessor
-  - [ ] File: `Assets/Scripts/Runtime/Events/EventScheduler.cs`
+- [x] Task 13: Expose EventScheduler.GetScheduledTime() if not already public (AC: 9)
+  - [x] Open `Assets/Scripts/Runtime/Events/EventScheduler.cs`
+  - [x] Verify `GetScheduledTime(int index)` is public (it exists at line 318)
+  - [x] Verify `ScheduledEventCount` property is public (line 29)
+  - [x] If either is missing or private, add public accessor
+  - [x] File: `Assets/Scripts/Runtime/Events/EventScheduler.cs`
 
-- [ ] Task 14: Update ShopState to pass NumericValue through purchase flow (AC: 4)
-  - [ ] Open `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs`
-  - [ ] In `OnTipPurchaseRequested()` (line 341): when constructing `RevealedTip`, pass `NumericValue` from `TipOffering`:
+- [x] Task 14: Update ShopState to pass NumericValue through purchase flow (AC: 4)
+  - [x] Open `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs`
+  - [x] In `OnTipPurchaseRequested()` (line 341): when constructing `RevealedTip`, pass `NumericValue` from `TipOffering`:
     ```csharp
     var tip = new RevealedTip(offering.Definition.Type, offering.RevealedText, offering.NumericValue);
     ```
-  - [ ] This requires TipOffering to carry NumericValue (Task 1)
-  - [ ] File: `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs`
+  - [x] This requires TipOffering to carry NumericValue (Task 1)
+  - [x] File: `Assets/Scripts/Runtime/Core/GameStates/ShopState.cs`
 
-- [ ] Task 15: Write TipActivator tests (AC: 14)
-  - [ ] Create `Assets/Tests/Runtime/Shop/TipActivatorTests.cs`
-  - [ ] Test helper: create `TipActivationContext` with controlled values:
+- [x] Task 15: Write TipActivator tests (AC: 14)
+  - [x] Create `Assets/Tests/Runtime/Shop/TipActivatorTests.cs`
+  - [x] Test helper: create `TipActivationContext` with controlled values:
     ```csharp
     private TipActivationContext CreateContext(
         TrendDirection trend = TrendDirection.Bull,
@@ -373,44 +373,44 @@ so that tips produce accurate, round-specific overlay geometry for the chart ren
         float roundDuration = 60f,
         int seed = 42)
     ```
-  - [ ] **Price overlay tests:**
-    - [ ] PriceFloor_ProducesPriceLevelOverlay — PriceLevel equals NumericValue
-    - [ ] PriceCeiling_ProducesPriceLevelOverlay — PriceLevel equals NumericValue
-    - [ ] PriceForecast_ProducesBandOverlay — BandCenter equals NumericValue, BandHalfWidth > 0
-  - [ ] **EventCount tests:**
-    - [ ] EventCount_UsesActualScheduledCount — EventCountdown matches context's ScheduledEventCount, not shop estimate
-    - [ ] EventCount_ZeroEvents_ReturnsZeroCountdown
-  - [ ] **DipMarker tests:**
-    - [ ] DipMarker_BullTrend_ZoneInFirstThird — TimeZoneCenter < 0.35
-    - [ ] DipMarker_BearTrend_ZoneInLastThird — TimeZoneCenter > 0.65
-    - [ ] DipMarker_NeutralTrend_ZoneNearCenter — TimeZoneCenter between 0.35 and 0.65
-    - [ ] DipMarker_ZoneWidthIsTenPercent — TimeZoneHalfWidth == 0.10f
-    - [ ] DipMarker_ZoneClamped_NeverOffChart — center always in [0.10, 0.90]
-  - [ ] **PeakMarker tests:**
-    - [ ] PeakMarker_BullTrend_ZoneInLastThird — TimeZoneCenter > 0.65
-    - [ ] PeakMarker_BearTrend_ZoneInFirstThird — TimeZoneCenter < 0.35
-    - [ ] PeakMarker_InverseOfDipMarker — bull peak > bull dip, bear peak < bear dip
-  - [ ] **ClosingDirection tests:**
-    - [ ] ClosingDirection_BullTrend_ReturnsPositive — DirectionSign == +1
-    - [ ] ClosingDirection_BearTrend_ReturnsNegative — DirectionSign == -1
-    - [ ] ClosingDirection_NeutralTrend_ReturnsEitherDirection — DirectionSign is +1 or -1 (not 0)
-  - [ ] **EventTiming tests:**
-    - [ ] EventTiming_MarkerCountMatchesEventCount — TimeMarkers.Length == ScheduledEventCount
-    - [ ] EventTiming_MarkersNormalized — all markers in [0, 1]
-    - [ ] EventTiming_MarkersSorted — markers in ascending order after fuzz
-    - [ ] EventTiming_MarkersWithinFuzzOfActual — each marker within ±5% of actual normalized time
-    - [ ] EventTiming_NoEvents_ReturnsEmptyArray
-  - [ ] **TrendReversal tests:**
-    - [ ] TrendReversal_NeutralTrend_ReturnsNegativeOne — no reversal for neutral
-    - [ ] TrendReversal_NoEvents_ReturnsNegativeOne
-    - [ ] TrendReversal_FewEventsInHalf_ReturnsNegativeOne — ≤1 event in relevant half
-    - [ ] TrendReversal_BullWithLateEvents_ReturnsTimeInBackHalf — ReversalTime > 0.5
-    - [ ] TrendReversal_BearWithEarlyEvents_ReturnsTimeInFrontHalf — ReversalTime < 0.5
-  - [ ] **Integration tests:**
-    - [ ] ActivateTips_EmptyList_ReturnsEmptyList
-    - [ ] ActivateTips_MultipleTips_ReturnsCorrectCount
-    - [ ] ActivateTips_Deterministic_SameSeedSameResults — verify with two identical calls
-  - [ ] File: `Assets/Tests/Runtime/Shop/TipActivatorTests.cs`
+  - [x] **Price overlay tests:**
+    - [x] PriceFloor_ProducesPriceLevelOverlay — PriceLevel equals NumericValue
+    - [x] PriceCeiling_ProducesPriceLevelOverlay — PriceLevel equals NumericValue
+    - [x] PriceForecast_ProducesBandOverlay — BandCenter equals NumericValue, BandHalfWidth > 0
+  - [x] **EventCount tests:**
+    - [x] EventCount_UsesActualScheduledCount — EventCountdown matches context's ScheduledEventCount, not shop estimate
+    - [x] EventCount_ZeroEvents_ReturnsZeroCountdown
+  - [x] **DipMarker tests:**
+    - [x] DipMarker_BullTrend_ZoneInFirstThird — TimeZoneCenter < 0.35
+    - [x] DipMarker_BearTrend_ZoneInLastThird — TimeZoneCenter > 0.65
+    - [x] DipMarker_NeutralTrend_ZoneNearCenter — TimeZoneCenter between 0.35 and 0.65
+    - [x] DipMarker_ZoneWidthIsTenPercent — TimeZoneHalfWidth == 0.10f
+    - [x] DipMarker_ZoneClamped_NeverOffChart — center always in [0.10, 0.90]
+  - [x] **PeakMarker tests:**
+    - [x] PeakMarker_BullTrend_ZoneInLastThird — TimeZoneCenter > 0.65
+    - [x] PeakMarker_BearTrend_ZoneInFirstThird — TimeZoneCenter < 0.35
+    - [x] PeakMarker_InverseOfDipMarker — bull peak > bull dip, bear peak < bear dip
+  - [x] **ClosingDirection tests:**
+    - [x] ClosingDirection_BullTrend_ReturnsPositive — DirectionSign == +1
+    - [x] ClosingDirection_BearTrend_ReturnsNegative — DirectionSign == -1
+    - [x] ClosingDirection_NeutralTrend_ReturnsEitherDirection — DirectionSign is +1 or -1 (not 0)
+  - [x] **EventTiming tests:**
+    - [x] EventTiming_MarkerCountMatchesEventCount — TimeMarkers.Length == ScheduledEventCount
+    - [x] EventTiming_MarkersNormalized — all markers in [0, 1]
+    - [x] EventTiming_MarkersSorted — markers in ascending order after fuzz
+    - [x] EventTiming_MarkersWithinFuzzOfActual — each marker within ±5% of actual normalized time
+    - [x] EventTiming_NoEvents_ReturnsEmptyArray
+  - [x] **TrendReversal tests:**
+    - [x] TrendReversal_NeutralTrend_ReturnsNegativeOne — no reversal for neutral
+    - [x] TrendReversal_NoEvents_ReturnsNegativeOne
+    - [x] TrendReversal_FewEventsInHalf_ReturnsNegativeOne — ≤1 event in relevant half
+    - [x] TrendReversal_BullWithLateEvents_ReturnsTimeInBackHalf — ReversalTime > 0.5
+    - [x] TrendReversal_BearWithEarlyEvents_ReturnsTimeInFrontHalf — ReversalTime < 0.5
+  - [x] **Integration tests:**
+    - [x] ActivateTips_EmptyList_ReturnsEmptyList
+    - [x] ActivateTips_MultipleTips_ReturnsCorrectCount
+    - [x] ActivateTips_Deterministic_SameSeedSameResults — verify with two identical calls
+  - [x] File: `Assets/Tests/Runtime/Shop/TipActivatorTests.cs`
 
 ## Dev Notes
 
@@ -539,8 +539,24 @@ N/A
 
 ### Completion Notes List
 
+- Tasks 1, 13, 14 were already implemented by Story 18.1 (InsiderTipGenerator already handles all 9 types, TipOffering has NumericValue, ShopState passes NumericValue, EventScheduler accessors are public)
+- Created TipActivator.cs with TipActivationContext struct and TipActivator static class containing all 9 overlay computation methods
+- Each overlay method uses TipOverlayData.CreateDefault() to ensure correct sentinel values for unused fields
+- TipOverlaysActivatedEvent added to GameEvents.cs for chart/HUD consumption
+- Wired TipActivator into TradingState.Enter() after EventScheduler.InitializeRound() — correct initialization sequence preserved
+- BuildFireTimesArray helper extracts scheduled fire times from EventScheduler
+- Deterministic random seed: `ctx.CurrentRound * 31 + ctx.CurrentAct` ensures same overlay geometry for same round
+- 31 unit tests covering all overlay types, edge cases, sentinel values, determinism, and integration
+
 ### File List
+
+- `Assets/Scripts/Runtime/Shop/TipActivator.cs` — NEW: TipActivationContext struct + TipActivator static class
+- `Assets/Scripts/Runtime/Core/GameEvents.cs` — MODIFIED: Added TipOverlaysActivatedEvent
+- `Assets/Scripts/Runtime/Core/GameStates/TradingState.cs` — MODIFIED: Added tip activation wiring + BuildFireTimesArray helper
+- `Assets/Tests/Runtime/Shop/TipActivatorTests.cs` — NEW: 28 tests for TipActivator
 
 ### Change Log
 
 - 2026-02-21: Story 18.2 created — comprehensive implementation guide for tip generation and round-start activation
+- 2026-02-21: Implemented TipActivator, TipActivationContext, TipOverlaysActivatedEvent, TradingState wiring, and 31 tests
+- 2026-02-21: Code review fixes — added null check in ComputeTrendReversalOverlay, set Label for no-reversal cases, added RoundDuration guard, strengthened PriceForecast test assertion, added Label assertions to 5 overlay tests, tightened TrendReversal bull test threshold

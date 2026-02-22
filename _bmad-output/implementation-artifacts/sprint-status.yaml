@@ -106,7 +106,7 @@ development_status:
   # === Epic 18: Insider Tips Overhaul — Visual Chart Overlays & New Tip Types ===
   epic-18: in-progress
   18-1-tip-data-model-type-overhaul: done                      # Code review: 6 findings (1H/2M/3L), 3 fixes applied — sentinel values, RevealedText rename completion, task clarification
-  18-2-tip-generation-round-start-activation: ready-for-dev
+  18-2-tip-generation-round-start-activation: done                      # Code review: 9 findings (3H/4M/2L), 6 fixes applied — null check, labels, test assertions
   18-3-chart-tip-overlay-rendering: ready-for-dev
   18-4-trading-hud-tip-panel-live-countdown: ready-for-dev
   18-5-shop-tip-card-refresh: ready-for-dev

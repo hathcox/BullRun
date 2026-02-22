@@ -411,3 +411,12 @@ public struct RelicActivatedEvent
 {
     public string RelicId;
 }
+
+/// <summary>
+/// Fired after TipActivator computes overlay data at round start.
+/// Story 18.2, AC 12: Chart and HUD subscribe to render tip overlays.
+/// </summary>
+public struct TipOverlaysActivatedEvent
+{
+    public System.Collections.Generic.List<TipOverlayData> Overlays;
+}
