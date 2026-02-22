@@ -122,6 +122,54 @@ public static class UISetup
             dashRefs.PositionEmptyText
         );
 
+        // Story 18.4: Create TipPanel above Control Deck panel
+        var tipPanelGo = new GameObject("TipPanel");
+        tipPanelGo.transform.SetParent(dashRefs.ControlDeckCanvas.transform, false);
+        var tipPanelRect = tipPanelGo.AddComponent<RectTransform>();
+
+        // Position above Control Deck panel, left-aligned
+        tipPanelRect.anchorMin = new Vector2(0.05f, 0f);
+        tipPanelRect.anchorMax = new Vector2(0.5f, 0f);
+        tipPanelRect.pivot = new Vector2(0f, 0f);
+        tipPanelRect.anchoredPosition = new Vector2(0f, 175f);
+        tipPanelRect.sizeDelta = new Vector2(0f, 30f);
+
+        // Semi-transparent background
+        var tipPanelBg = tipPanelGo.AddComponent<Image>();
+        tipPanelBg.color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.85f);
+        tipPanelBg.raycastTarget = false;
+
+        // HorizontalLayoutGroup for auto-arrangement
+        var tipHlg = tipPanelGo.AddComponent<HorizontalLayoutGroup>();
+        tipHlg.padding = new RectOffset(8, 8, 4, 4);
+        tipHlg.spacing = 6f;
+        tipHlg.childAlignment = TextAnchor.MiddleLeft;
+        tipHlg.childForceExpandWidth = false;
+        tipHlg.childForceExpandHeight = false;
+
+        // ContentSizeFitter so panel auto-sizes to content
+        var tipCsf = tipPanelGo.AddComponent<ContentSizeFitter>();
+        tipCsf.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        // Countdown text element (used by EventCount tip)
+        var countdownGo = new GameObject("CountdownText");
+        countdownGo.transform.SetParent(tipPanelGo.transform, false);
+        var countdownText = countdownGo.AddComponent<Text>();
+        countdownText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        countdownText.fontSize = 14;
+        countdownText.fontStyle = FontStyle.Bold;
+        countdownText.color = CRTThemeData.TextHigh;
+        countdownText.alignment = TextAnchor.MiddleCenter;
+        countdownText.raycastTarget = false;
+        var countdownLayout = countdownGo.AddComponent<LayoutElement>();
+        countdownLayout.preferredHeight = 22f;
+        countdownLayout.minWidth = 80f;
+        countdownGo.SetActive(false); // Hidden until EventCount tip is active
+
+        // Create and initialize TipPanel MonoBehaviour
+        var tipPanel = tipPanelGo.AddComponent<TipPanel>();
+        tipPanel.Initialize(tipPanelGo, countdownText);
+
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         Debug.Log($"[Setup] TradingHUD created: round={currentRound}, target=${MarginCallTargets.GetTarget(currentRound):F0}");
         #endif

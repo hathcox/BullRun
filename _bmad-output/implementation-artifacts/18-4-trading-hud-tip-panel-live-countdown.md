@@ -1,6 +1,6 @@
 # Story 18.4: Trading HUD Tip Panel & Live Event Countdown
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -25,45 +25,23 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Remove old tip text display from TradingHUD (AC: 1)
-  - [ ] Open `Assets/Scripts/Runtime/UI/TradingHUD.cs`
-  - [ ] Remove the private field `_tipsDisplayText` (line 49)
-  - [ ] Remove the `SetTipsDisplay(Text tipsDisplayText)` method (lines 139-142)
-  - [ ] Remove the "Story 13.5: Insider tips" block in `RefreshDisplay()` (lines 314-332):
-    ```csharp
-    // REMOVE THIS ENTIRE BLOCK:
-    // Story 13.5: Insider tips
-    if (_tipsDisplayText != null)
-    {
-        if (_runContext.RevealedTips != null && _runContext.RevealedTips.Count > 0)
-        {
-            var sb = new System.Text.StringBuilder();
-            for (int i = 0; i < _runContext.RevealedTips.Count; i++)
-            {
-                if (i > 0) sb.Append(" | ");
-                sb.Append(_runContext.RevealedTips[i].RevealedText);
-            }
-            _tipsDisplayText.text = sb.ToString();
-            _tipsDisplayText.gameObject.SetActive(true);
-        }
-        else
-        {
-            _tipsDisplayText.gameObject.SetActive(false);
-        }
-    }
-    ```
-  - [ ] File: `Assets/Scripts/Runtime/UI/TradingHUD.cs`
+- [x] Task 1: Remove old tip text display from TradingHUD (AC: 1)
+  - [x] Open `Assets/Scripts/Runtime/UI/TradingHUD.cs`
+  - [x] Remove the private field `_tipsDisplayText` (line 49)
+  - [x] Remove the `SetTipsDisplay(Text tipsDisplayText)` method (lines 139-142)
+  - [x] Remove the "Story 13.5: Insider tips" block in `RefreshDisplay()` (lines 314-332)
+  - [x] File: `Assets/Scripts/Runtime/UI/TradingHUD.cs`
 
-- [ ] Task 2: Remove old tip text creation from UISetup (AC: 1)
-  - [ ] Open `Assets/Scripts/Setup/UISetup.cs`
-  - [ ] Search for any code that creates a tips display Text element and calls `tradingHUD.SetTipsDisplay(...)` — remove it
-  - [ ] If a `DashboardReferences` field was used for tip text wiring, remove that field too
-  - [ ] Verify no other callers reference `SetTipsDisplay` — grep the codebase
-  - [ ] File: `Assets/Scripts/Setup/UISetup.cs`
+- [x] Task 2: Remove old tip text creation from UISetup (AC: 1)
+  - [x] Open `Assets/Scripts/Setup/UISetup.cs`
+  - [x] Search for any code that creates a tips display Text element and calls `tradingHUD.SetTipsDisplay(...)` — none found (never wired in UISetup)
+  - [x] If a `DashboardReferences` field was used for tip text wiring, remove that field too — none found
+  - [x] Verify no other callers reference `SetTipsDisplay` — grep confirmed zero references
+  - [x] File: `Assets/Scripts/Setup/UISetup.cs`
 
-- [ ] Task 3: Create TipPanel MonoBehaviour with static utility methods (AC: 2, 4, 5, 7, 8, 11)
-  - [ ] Create `Assets/Scripts/Runtime/UI/TipPanel.cs`
-  - [ ] Private fields:
+- [x] Task 3: Create TipPanel MonoBehaviour with static utility methods (AC: 2, 4, 5, 7, 8, 11)
+  - [x] Create `Assets/Scripts/Runtime/UI/TipPanel.cs`
+  - [x] Private fields:
     ```csharp
     private int _eventCountdown = -1;   // -1 = no event count tip active
     private Text _countdownText;
@@ -72,7 +50,7 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
     private GameObject _panelRoot;
     private bool _initialized;
     ```
-  - [ ] `Initialize(GameObject panelRoot, Text countdownText)` method:
+  - [x] `Initialize(GameObject panelRoot, Text countdownText)` method:
     ```csharp
     public void Initialize(GameObject panelRoot, Text countdownText)
     {
@@ -88,22 +66,22 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
         EventBus.Subscribe<ShopOpenedEvent>(OnShopOpened);
     }
     ```
-  - [ ] Event handler `OnTipOverlaysActivated(TipOverlaysActivatedEvent evt)`:
+  - [x] Event handler `OnTipOverlaysActivated(TipOverlaysActivatedEvent evt)`:
     - Clear existing badge slots (destroy children)
     - Iterate `evt.Overlays`
     - For EventCount type: set `_eventCountdown = overlay.EventCountdown`, update countdown text
     - For chart-overlay types: create a badge dot with abbreviation via helper method
     - Show or hide panel based on overlay count
-  - [ ] Event handler `OnMarketEventFired(MarketEventFiredEvent evt)`:
+  - [x] Event handler `OnMarketEventFired(MarketEventFiredEvent evt)`:
     - If `_eventCountdown > 0`: decrement, update text, play pulse animation
     - If `_eventCountdown == 0`: set text to "ALL CLEAR", color green
     - Never decrement below 0
-  - [ ] Event handler `OnRoundStarted(RoundStartedEvent evt)`:
+  - [x] Event handler `OnRoundStarted(RoundStartedEvent evt)`:
     - Hide panel, reset countdown to -1, clear badges
-  - [ ] Event handler `OnShopOpened(ShopOpenedEvent evt)`:
+  - [x] Event handler `OnShopOpened(ShopOpenedEvent evt)`:
     - Hide panel
-  - [ ] `OnDestroy()`: unsubscribe all 4 events
-  - [ ] Static utility methods (pure logic, testable):
+  - [x] `OnDestroy()`: unsubscribe all 4 events
+  - [x] Static utility methods (pure logic, testable):
     ```csharp
     /// <summary>
     /// Returns formatted countdown text. "ALL CLEAR" when count is 0,
@@ -159,10 +137,10 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
         }
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
+  - [x] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
 
-- [ ] Task 4: Implement countdown decrement and pulse animation (AC: 4, 5, 6)
-  - [ ] In `TipPanel.OnMarketEventFired()`:
+- [x] Task 4: Implement countdown decrement and pulse animation (AC: 4, 5, 6)
+  - [x] In `TipPanel.OnMarketEventFired()`:
     ```csharp
     private void OnMarketEventFired(MarketEventFiredEvent evt)
     {
@@ -185,7 +163,7 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
             : CRTThemeData.TextHigh;
     }
     ```
-  - [ ] Pulse animation using DOTween (already available in the project via DG.Tweening):
+  - [x] Pulse animation using DOTween (already available in the project via DG.Tweening):
     ```csharp
     public static readonly float PulseDuration = 0.15f;
     public static readonly float PulseScale = 1.2f;
@@ -199,10 +177,10 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
                 target.DOScale(1f, PulseDuration * 0.5f).SetUpdate(true));
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
+  - [x] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
 
-- [ ] Task 5: Implement badge dot creation for chart-overlay tips (AC: 7)
-  - [ ] In `TipPanel`, add method to create a badge dynamically:
+- [x] Task 5: Implement badge dot creation for chart-overlay tips (AC: 7)
+  - [x] In `TipPanel`, add method to create a badge dynamically:
     ```csharp
     private void CreateBadge(InsiderTipType type, Transform parent)
     {
@@ -243,13 +221,13 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
         _badgeSlots.Add(badgeGo);
     }
     ```
-  - [ ] EventCount type is NOT rendered as a badge — it is rendered as the live countdown text instead
-  - [ ] In `OnTipOverlaysActivated`, only call `CreateBadge()` for non-EventCount types
-  - [ ] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
+  - [x] EventCount type is NOT rendered as a badge — it is rendered as the live countdown text instead
+  - [x] In `OnTipOverlaysActivated`, only call `CreateBadge()` for non-EventCount types
+  - [x] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
 
-- [ ] Task 6: Create TipPanel UI hierarchy in UISetup (AC: 2, 10)
-  - [ ] Open `Assets/Scripts/Setup/UISetup.cs`
-  - [ ] Add a new section after the TradingHUD creation block (after line ~128):
+- [x] Task 6: Create TipPanel UI hierarchy in UISetup (AC: 2, 10)
+  - [x] Open `Assets/Scripts/Setup/UISetup.cs`
+  - [x] Add a new section after the TradingHUD creation block (after line ~128):
     ```csharp
     // Story 18.4: Create TipPanel below Control Deck
     var tipPanelGo = new GameObject("TipPanel");
@@ -299,10 +277,10 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
     var tipPanel = tipPanelGo.AddComponent<TipPanel>();
     tipPanel.Initialize(tipPanelGo, countdownText);
     ```
-  - [ ] File: `Assets/Scripts/Setup/UISetup.cs`
+  - [x] File: `Assets/Scripts/Setup/UISetup.cs`
 
-- [ ] Task 7: Wire panel visibility lifecycle (AC: 8, 9)
-  - [ ] In `TipPanel.OnTipOverlaysActivated()`:
+- [x] Task 7: Wire panel visibility lifecycle (AC: 8, 9)
+  - [x] In `TipPanel.OnTipOverlaysActivated()`:
     ```csharp
     private void OnTipOverlaysActivated(TipOverlaysActivatedEvent evt)
     {
@@ -341,7 +319,7 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
         _panelRoot.SetActive(true);
     }
     ```
-  - [ ] `ClearBadges()` helper:
+  - [x] `ClearBadges()` helper:
     ```csharp
     private void ClearBadges()
     {
@@ -352,13 +330,13 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
         _badgeSlots.Clear();
     }
     ```
-  - [ ] In `OnRoundStarted`: hide panel, clear badges, reset countdown
-  - [ ] In `OnShopOpened`: hide panel
-  - [ ] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
+  - [x] In `OnRoundStarted`: hide panel, clear badges, reset countdown
+  - [x] In `OnShopOpened`: hide panel
+  - [x] File: `Assets/Scripts/Runtime/UI/TipPanel.cs`
 
-- [ ] Task 8: Write TipPanel tests (AC: 11, 12)
-  - [ ] Create `Assets/Tests/Runtime/UI/TipPanelTests.cs`
-  - [ ] Test class structure following existing pattern (`BullRun.Tests.UI` namespace, `[TestFixture]`, `EventBus.Clear()` in SetUp/TearDown):
+- [x] Task 8: Write TipPanel tests (AC: 11, 12)
+  - [x] Create `Assets/Tests/Runtime/UI/TipPanelTests.cs`
+  - [x] Test class structure following existing pattern (`BullRun.Tests.UI` namespace, `[TestFixture]`, `EventBus.Clear()` in SetUp/TearDown):
     ```csharp
     using NUnit.Framework;
     using UnityEngine;
@@ -556,7 +534,7 @@ so that my purchased intel is prominent, easy to read at a glance, and the event
         }
     }
     ```
-  - [ ] File: `Assets/Tests/Runtime/UI/TipPanelTests.cs`
+  - [x] File: `Assets/Tests/Runtime/UI/TipPanelTests.cs`
 
 ## Dev Notes
 
@@ -619,13 +597,24 @@ Claude Opus 4.6
 - `[TipPanel] ALL CLEAR — no remaining events` when countdown hits zero
 
 ### Completion Notes List
-(To be filled during implementation)
+- Removed old pipe-separated `_tipsDisplayText` field, `SetTipsDisplay()` method, and `RefreshDisplay()` tips block from TradingHUD.cs (AC 1)
+- No UISetup code existed for old tips wiring — `SetTipsDisplay` was never called from UISetup (AC 1 confirmed via grep)
+- Created TipPanel.cs with full EventBus lifecycle: subscribes to TipOverlaysActivatedEvent, MarketEventFiredEvent, RoundStartedEvent, ShopOpenedEvent (AC 3, 8, 9)
+- Implemented live countdown: "EVENTS: X" decrement on each MarketEventFiredEvent, "ALL CLEAR" in green at zero, guard against negative (AC 4, 5)
+- Implemented DOTween pulse animation (0.15s, 1.2x scale) with SetUpdate(true) for unscaled time (AC 6)
+- Implemented colored badge dots (24x24) with 2-3 letter abbreviations for all 8 chart-overlay tip types (AC 7)
+- EventCount is rendered as live countdown text, NOT as a badge dot
+- TipPanel created programmatically in UISetup, parented to ControlDeckCanvas, with HorizontalLayoutGroup + ContentSizeFitter (AC 2, 10)
+- All three static utility methods (FormatCountdownText, GetBadgeAbbreviation, GetBadgeColor) are pure logic, testable without MonoBehaviour (AC 11)
+- 27 EditMode tests covering: countdown formatting (6), badge abbreviations (10), badge colors (9), pulse constants (2) (AC 12 — static pure-logic coverage; behavioral tests like decrement handler and visibility lifecycle require PlayMode)
 
 ### File List
 - **Create:** `Assets/Scripts/Runtime/UI/TipPanel.cs`
 - **Create:** `Assets/Tests/Runtime/UI/TipPanelTests.cs`
 - **Modify:** `Assets/Scripts/Runtime/UI/TradingHUD.cs` (remove old tip text display)
-- **Modify:** `Assets/Scripts/Setup/UISetup.cs` (remove old tip text creation, add TipPanel creation)
+- **Modify:** `Assets/Scripts/Setup/UISetup.cs` (add TipPanel creation)
 
 ### Change Log
 - 2026-02-21: Story created
+- 2026-02-21: Implementation complete — TipPanel MonoBehaviour with live countdown, badge dots, pulse animation, visibility lifecycle, and 22 tests
+- 2026-02-21: Code review fixes — stored DOTween pulse reference to prevent MissingReferenceException and tween stacking (H1), added 3 missing GetBadgeColor tests for PriceForecast/ClosingDirection/TrendReversal (H3), removed dead `_initialized` field (M1), made OnShopOpened cleanup consistent with OnRoundStarted (M3), fixed test count and misleading test comment (M2/H2), fixed UISetup comment and File List description (L1/L2). Total: 27 tests.

@@ -45,9 +45,6 @@ public class TradingHUD : MonoBehaviour
     // Tier theme reference — background image for tinting
     private Image _topBarBackground;
 
-    // Story 13.5: Insider tips display during trading
-    private Text _tipsDisplayText;
-
     // AC 2: Cash count-up animation state
     private float _displayedCash;
     private Tweener _cashTween;
@@ -131,14 +128,6 @@ public class TradingHUD : MonoBehaviour
     public void SetReputationDisplay(Text reputationText)
     {
         _reputationText = reputationText;
-    }
-
-    /// <summary>
-    /// Story 13.5: Sets the insider tips display text reference. Called by UISetup.
-    /// </summary>
-    public void SetTipsDisplay(Text tipsDisplayText)
-    {
-        _tipsDisplayText = tipsDisplayText;
     }
 
     /// <summary>
@@ -310,26 +299,6 @@ public class TradingHUD : MonoBehaviour
         // FIX-12: Reputation
         if (_reputationText != null)
             _reputationText.text = $"\u2605 {_runContext.Reputation.Current}";
-
-        // Story 13.5: Insider tips
-        if (_tipsDisplayText != null)
-        {
-            if (_runContext.RevealedTips != null && _runContext.RevealedTips.Count > 0)
-            {
-                var sb = new System.Text.StringBuilder();
-                for (int i = 0; i < _runContext.RevealedTips.Count; i++)
-                {
-                    if (i > 0) sb.Append(" | ");
-                    sb.Append(_runContext.RevealedTips[i].DisplayText);
-                }
-                _tipsDisplayText.text = sb.ToString();
-                _tipsDisplayText.gameObject.SetActive(true);
-            }
-            else
-            {
-                _tipsDisplayText.gameObject.SetActive(false);
-            }
-        }
 
         // Portfolio value + % change
         float totalValue = portfolio.GetTotalValue();
