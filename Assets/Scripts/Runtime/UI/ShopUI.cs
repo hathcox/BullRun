@@ -185,6 +185,7 @@ public class ShopUI : MonoBehaviour
     {
         public GameObject Root;
         public Text NameText;
+        public Text TypeBadgeText;
         public Text DescriptionText;
         public Text CostText;
         public Button PurchaseButton;
@@ -779,7 +780,7 @@ public class ShopUI : MonoBehaviour
 
         var cardLayout = cardGo.AddComponent<LayoutElement>();
         cardLayout.flexibleWidth = 1f;
-        cardLayout.preferredHeight = 100f;
+        cardLayout.preferredHeight = 116f;
 
         var vlg = cardGo.AddComponent<VerticalLayoutGroup>();
         vlg.spacing = 2f;
@@ -801,6 +802,21 @@ public class ShopUI : MonoBehaviour
         view.NameText.raycastTarget = false;
         var nameLayout = nameGo.AddComponent<LayoutElement>();
         nameLayout.preferredHeight = 18f;
+
+        // Type badge — shows [CHART], [LIVE], or [CALL] indicator
+        var badgeGo = new GameObject("TypeBadge");
+        badgeGo.transform.SetParent(cardGo.transform, false);
+        view.TypeBadgeText = badgeGo.AddComponent<Text>();
+        view.TypeBadgeText.font = DefaultFont;
+        var (badgeLabel, badgeColor) = GetTipTypeBadge(offering.Definition.Type);
+        view.TypeBadgeText.text = badgeLabel;
+        view.TypeBadgeText.fontSize = 10;
+        view.TypeBadgeText.fontStyle = FontStyle.Bold;
+        view.TypeBadgeText.color = badgeColor;
+        view.TypeBadgeText.alignment = TextAnchor.MiddleCenter;
+        view.TypeBadgeText.raycastTarget = false;
+        var badgeLayout = badgeGo.AddComponent<LayoutElement>();
+        badgeLayout.preferredHeight = 14f;
 
         // Description — brief hint of what the tip reveals (value hidden until purchase)
         var descGo = new GameObject("Description");
@@ -933,16 +949,44 @@ public class ShopUI : MonoBehaviour
     {
         switch (type)
         {
-            case InsiderTipType.PriceForecast: return "Predicts the average price";
-            case InsiderTipType.PriceFloor: return "Reveals the price floor";
-            case InsiderTipType.PriceCeiling: return "Reveals the price ceiling";
-            case InsiderTipType.EventCount: return "Reveals how many events";
+            case InsiderTipType.PriceForecast: return "What's the sweet spot?";
+            case InsiderTipType.PriceFloor: return "How low can it go?";
+            case InsiderTipType.PriceCeiling: return "What's the top?";
+            case InsiderTipType.EventCount: return "How many surprises?";
             case InsiderTipType.DipMarker: return "When's the best buy?";
             case InsiderTipType.PeakMarker: return "When should you sell?";
             case InsiderTipType.ClosingDirection: return "Up or down?";
             case InsiderTipType.EventTiming: return "When do shakeups hit?";
             case InsiderTipType.TrendReversal: return "When does it turn?";
             default: return "Unknown intel";
+        }
+    }
+
+    /// <summary>
+    /// Returns the type badge label and color for a tip type.
+    /// Chart overlay tips → [CHART] Cyan, live data → [LIVE] Green, directional → [CALL] Amber.
+    /// </summary>
+    public static (string label, Color color) GetTipTypeBadge(InsiderTipType type)
+    {
+        switch (type)
+        {
+            case InsiderTipType.PriceForecast:
+            case InsiderTipType.PriceFloor:
+            case InsiderTipType.PriceCeiling:
+            case InsiderTipType.DipMarker:
+            case InsiderTipType.PeakMarker:
+            case InsiderTipType.EventTiming:
+            case InsiderTipType.TrendReversal:
+                return ("[CHART]", ColorPalette.Cyan);
+
+            case InsiderTipType.EventCount:
+                return ("[LIVE]", ColorPalette.Green);
+
+            case InsiderTipType.ClosingDirection:
+                return ("[CALL]", ColorPalette.Amber);
+
+            default:
+                return ("", ColorPalette.WhiteDim);
         }
     }
 
@@ -1461,7 +1505,6 @@ public class ShopUI : MonoBehaviour
         // Swap to revealed content at midpoint
         card.IsRevealed = true;
         card.PurchaseButton.interactable = false;
-        card.ButtonText.text = "REVEALED";
         if (_tipOffering != null && cardIndex < _tipOffering.Length)
         {
             var offering = _tipOffering[cardIndex];
@@ -1470,6 +1513,9 @@ public class ShopUI : MonoBehaviour
             card.DescriptionText.fontSize = 12;
             card.DescriptionText.fontStyle = FontStyle.Normal;
             card.DescriptionText.color = ColorPalette.White;
+
+            if (card.TypeBadgeText != null)
+                card.TypeBadgeText.color = ColorPalette.White;
         }
         card.CardBackground.color = TipCardRevealedColor;
 

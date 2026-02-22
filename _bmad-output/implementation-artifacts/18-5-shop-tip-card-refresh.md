@@ -1,6 +1,6 @@
 # Story 18.5: Shop Tip Card Refresh
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -22,9 +22,9 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Update `FormatTipTypeName()` for 9 post-18.1 types (AC: 1)
-  - [ ] Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 911-925
-  - [ ] After Story 18.1 lands, the 4 removed type cases will already be deleted and 5 new ones added. Verify the switch matches this exact table:
+- [x] Task 1: Update `FormatTipTypeName()` for 9 post-18.1 types (AC: 1)
+  - [x]Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 911-925
+  - [x]After Story 18.1 lands, the 4 removed type cases will already be deleted and 5 new ones added. Verify the switch matches this exact table:
     ```csharp
     public static string FormatTipTypeName(InsiderTipType type)
     {
@@ -43,12 +43,12 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
         }
     }
     ```
-  - [ ] Confirm zero references to `OpeningPrice`, `VolatilityWarning`, `TrendDirection`, `EventForecast` anywhere in `ShopUI.cs`
-  - [ ] File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
+  - [x]Confirm zero references to `OpeningPrice`, `VolatilityWarning`, `TrendDirection`, `EventForecast` anywhere in `ShopUI.cs`
+  - [x]File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
 
-- [ ] Task 2: Update `GetTipFaceDownHint()` with engaging teasers (AC: 2)
-  - [ ] Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 931-945
-  - [ ] Replace the bland functional hints with curiosity-driven teasers:
+- [x] Task 2: Update `GetTipFaceDownHint()` with engaging teasers (AC: 2)
+  - [x]Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 931-945
+  - [x]Replace the bland functional hints with curiosity-driven teasers:
     ```csharp
     public static string GetTipFaceDownHint(InsiderTipType type)
     {
@@ -67,12 +67,12 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
         }
     }
     ```
-  - [ ] No references to removed types
-  - [ ] File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
+  - [x]No references to removed types
+  - [x]File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
 
-- [ ] Task 3: Add `TypeBadgeText` field to `TipCardView` and create badge helper (AC: 3, 4)
-  - [ ] Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, class at lines 184-195
-  - [ ] Add field to `TipCardView`:
+- [x] Task 3: Add `TypeBadgeText` field to `TipCardView` and create badge helper (AC: 3, 4)
+  - [x]Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, class at lines 184-195
+  - [x]Add field to `TipCardView`:
     ```csharp
     public class TipCardView
     {
@@ -88,7 +88,7 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
         public bool IsRevealed;
     }
     ```
-  - [ ] Add a new public static helper method to determine badge text and color:
+  - [x]Add a new public static helper method to determine badge text and color:
     ```csharp
     /// <summary>
     /// Returns the type badge label and color for a tip type.
@@ -119,11 +119,11 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
         }
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
+  - [x]File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
 
-- [ ] Task 4: Update `CreateTipCard()` to build the type badge element (AC: 5)
-  - [ ] Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 767-857
-  - [ ] Insert the badge creation BETWEEN the Name section (ends ~line 803) and the Description section (starts ~line 806). The badge sits below the type name and above the hint text:
+- [x] Task 4: Update `CreateTipCard()` to build the type badge element (AC: 5)
+  - [x]Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 767-857
+  - [x]Insert the badge creation BETWEEN the Name section (ends ~line 803) and the Description section (starts ~line 806). The badge sits below the type name and above the hint text:
     ```csharp
     // Type badge — shows [CHART], [LIVE], or [CALL] indicator
     var badgeGo = new GameObject("TypeBadge");
@@ -140,12 +140,12 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
     var badgeLayout = badgeGo.AddComponent<LayoutElement>();
     badgeLayout.preferredHeight = 14f;
     ```
-  - [ ] Increase `cardLayout.preferredHeight` from `100f` to `116f` to accommodate the new 14px badge row plus spacing
-  - [ ] File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
+  - [x]Increase `cardLayout.preferredHeight` from `100f` to `116f` to accommodate the new 14px badge row plus spacing
+  - [x]File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
 
-- [ ] Task 5: Update `InsiderTipDefinitions` description templates and `InsiderTipGenerator.CalculateRevealedText()` (AC: 6, 7)
-  - [ ] Open `Assets/Scripts/Setup/Data/InsiderTipDefinitions.cs`
-  - [ ] After Story 18.1 lands, update the `DescriptionTemplate` strings for the new "marked on chart" format. The templates use `{0}` for dynamic values:
+- [x] Task 5: Update `InsiderTipDefinitions` description templates and `InsiderTipGenerator.CalculateRevealedText()` (AC: 6, 7)
+  - [x]Open `Assets/Scripts/Setup/Data/InsiderTipDefinitions.cs`
+  - [x]After Story 18.1 lands, update the `DescriptionTemplate` strings for the new "marked on chart" format. The templates use `{0}` for dynamic values:
     ```csharp
     public static readonly InsiderTipDef[] All = new InsiderTipDef[]
     {
@@ -178,13 +178,13 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
             GameConfig.TipCostTrendReversal),
     };
     ```
-  - [ ] Open `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
-  - [ ] Verify `CalculateRevealedText()` switch cases match the template format. After 18.1 + 18.2, the price-based cases use `string.Format(def.DescriptionTemplate, FormatPrice(fuzzed))` which will now produce e.g., `"Sweet spot around ~$6.50 -- marked on chart"`. The non-parameterized templates (DipMarker, PeakMarker, EventTiming, TrendReversal) return `def.DescriptionTemplate` directly. ClosingDirection uses `string.Format(def.DescriptionTemplate, closesHigher ? "HIGHER" : "LOWER")` producing `"Round closes HIGHER"` or `"Round closes LOWER"`.
-  - [ ] Files: `Assets/Scripts/Setup/Data/InsiderTipDefinitions.cs`, `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
+  - [x]Open `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
+  - [x]Verify `CalculateRevealedText()` switch cases match the template format. After 18.1 + 18.2, the price-based cases use `string.Format(def.DescriptionTemplate, FormatPrice(fuzzed))` which will now produce e.g., `"Sweet spot around ~$6.50 -- marked on chart"`. The non-parameterized templates (DipMarker, PeakMarker, EventTiming, TrendReversal) return `def.DescriptionTemplate` directly. ClosingDirection uses `string.Format(def.DescriptionTemplate, closesHigher ? "HIGHER" : "LOWER")` producing `"Round closes HIGHER"` or `"Round closes LOWER"`.
+  - [x]Files: `Assets/Scripts/Setup/Data/InsiderTipDefinitions.cs`, `Assets/Scripts/Runtime/Shop/InsiderTipGenerator.cs`
 
-- [ ] Task 6: Update `AnimateTipFlip()` to handle badge on reveal (AC: 8)
-  - [ ] Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 1441-1506
-  - [ ] In the midpoint swap block (after `card.IsRevealed = true`, around line 1460), add badge color update:
+- [x] Task 6: Update `AnimateTipFlip()` to handle badge on reveal (AC: 8)
+  - [x]Open `Assets/Scripts/Runtime/UI/ShopUI.cs`, method at lines 1441-1506
+  - [x]In the midpoint swap block (after `card.IsRevealed = true`, around line 1460), add badge color update:
     ```csharp
     // Swap to revealed content at midpoint
     card.IsRevealed = true;
@@ -205,12 +205,12 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
     }
     card.CardBackground.color = TipCardRevealedColor;
     ```
-  - [ ] Note: After Story 18.1 the field may be `offering.DisplayText` instead of `offering.RevealedText` -- follow the rename from 18.1
-  - [ ] File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
+  - [x]Note: After Story 18.1 the field may be `offering.DisplayText` instead of `offering.RevealedText` -- follow the rename from 18.1
+  - [x]File: `Assets/Scripts/Runtime/UI/ShopUI.cs`
 
-- [ ] Task 7: Update and add tests (AC: 9)
-  - [ ] Open `Assets/Tests/Runtime/Shop/StoreVisualPolishTests.cs`
-  - [ ] After Story 18.1 lands, tests for removed types will already be deleted and replaced. Verify/add the following tests for all 9 types:
+- [x] Task 7: Update and add tests (AC: 9)
+  - [x]Open `Assets/Tests/Runtime/Shop/StoreVisualPolishTests.cs`
+  - [x]After Story 18.1 lands, tests for removed types will already be deleted and replaced. Verify/add the following tests for all 9 types:
 
   **FormatTipTypeName tests (9 type + 1 unknown = 10 tests):**
   ```csharp
@@ -418,8 +418,8 @@ so that I make informed purchasing decisions and feel rewarded when a card flips
   }
   ```
 
-  - [ ] Total new/updated tests: 10 (names) + 10 (hints) + 4 (badges) + 2 (no-dups) + 1 (view field) = 27 tests
-  - [ ] File: `Assets/Tests/Runtime/Shop/StoreVisualPolishTests.cs`
+  - [x]Total: 10 (names, pre-existing) + 10 (hints, new) + 4 (badges, new) + 2 (no-dups, new) + 1 (view field, new) + 4 (definitions coverage, review fix) = 31 tests (21 new, 10 pre-existing)
+  - [x]File: `Assets/Tests/Runtime/Shop/StoreVisualPolishTests.cs`
 
 ## Dev Notes
 
@@ -540,8 +540,22 @@ N/A -- UI text and visual changes, no complex runtime debugging expected. Verify
 
 ### Completion Notes List
 
+- Task 1: `FormatTipTypeName()` already had correct 9-type switch from Story 18.1 — verified, zero removed type references
+- Task 2: Updated 4 face-down hints from bland descriptions to curiosity-driven teasers (PriceForecast, PriceFloor, PriceCeiling, EventCount); 5 new types already had engaging hints from 18.1
+- Task 3: Added `TypeBadgeText` field to `TipCardView` class; added `GetTipTypeBadge()` static helper returning `[CHART]`/Cyan for 7 overlay types, `[LIVE]`/Green for EventCount, `[CALL]`/Amber for ClosingDirection
+- Task 4: Inserted badge creation in `CreateTipCard()` between Name and Description sections; fontSize 10, bold, centered, 14px height; increased card height from 100px to 116px
+- Task 5: Updated `InsiderTipDefinitions.All` templates — PriceForecast/PriceFloor/PriceCeiling now use "marked on chart" phrasing with em dash, EventCount uses "disruptions — live countdown active"; verified `CalculateDisplayText()` formats flow through correctly
+- Task 6: Added badge color update to white in `AnimateTipFlip()` midpoint swap block for visibility against revealed card background
+- Task 7: 17 new tests added — 10 hint tests, 4 badge tests, 2 no-duplicate validation tests, 1 TypeBadgeText field test; 10 pre-existing FormatTipTypeName tests verified correct
+
 ### File List
+
+- `Assets/Scripts/Runtime/UI/ShopUI.cs` — modified (TipCardView field, face-down hints, GetTipTypeBadge helper with docstring, badge creation in CreateTipCard, card height 100→116, badge color in AnimateTipFlip, removed dead "REVEALED" text on inactive GO)
+- `Assets/Scripts/Setup/Data/InsiderTipDefinitions.cs` — modified (4 description templates updated with "marked on chart" / "live countdown" phrasing)
+- `Assets/Tests/Runtime/Shop/StoreVisualPolishTests.cs` — modified (21 new tests: hints, badges, no-duplicates, TypeBadgeText field, InsiderTipDefinitions coverage; normalized 5 test method names)
 
 ### Change Log
 
-- 2026-02-21: Story 18.5 created -- shop tip card refresh with engaging teasers, type badges, updated revealed text templates, and 27 tests
+- 2026-02-21: Story 18.5 created -- shop tip card refresh with engaging teasers, type badges, updated revealed text templates
+- 2026-02-21: Story 18.5 implemented -- all 7 tasks complete, 17 new tests added, 3 files modified
+- 2026-02-21: Code review fixes -- corrected test count (17 new, not 27), added 4 InsiderTipDefinitions coverage tests, removed dead "REVEALED" code in AnimateTipFlip, added GetTipTypeBadge docstring, normalized 5 test method names

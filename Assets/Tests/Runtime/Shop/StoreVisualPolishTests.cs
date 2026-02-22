@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -222,31 +223,31 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
-        public void FormatTipTypeName_DipMarker_ReturnsDipMarker()
+        public void FormatTipTypeName_DipMarker_ReturnsCorrectString()
         {
             Assert.AreEqual("DIP MARKER", ShopUI.FormatTipTypeName(InsiderTipType.DipMarker));
         }
 
         [Test]
-        public void FormatTipTypeName_PeakMarker_ReturnsPeakMarker()
+        public void FormatTipTypeName_PeakMarker_ReturnsCorrectString()
         {
             Assert.AreEqual("PEAK MARKER", ShopUI.FormatTipTypeName(InsiderTipType.PeakMarker));
         }
 
         [Test]
-        public void FormatTipTypeName_ClosingDirection_ReturnsClosingCall()
+        public void FormatTipTypeName_ClosingDirection_ReturnsCorrectString()
         {
             Assert.AreEqual("CLOSING CALL", ShopUI.FormatTipTypeName(InsiderTipType.ClosingDirection));
         }
 
         [Test]
-        public void FormatTipTypeName_EventTiming_ReturnsEventTiming()
+        public void FormatTipTypeName_EventTiming_ReturnsCorrectString()
         {
             Assert.AreEqual("EVENT TIMING", ShopUI.FormatTipTypeName(InsiderTipType.EventTiming));
         }
 
         [Test]
-        public void FormatTipTypeName_TrendReversal_ReturnsTrendReversal()
+        public void FormatTipTypeName_TrendReversal_ReturnsCorrectString()
         {
             Assert.AreEqual("TREND REVERSAL", ShopUI.FormatTipTypeName(InsiderTipType.TrendReversal));
         }
@@ -255,6 +256,192 @@ namespace BullRun.Tests.Shop
         public void FormatTipTypeName_UnknownValue_ReturnsUnknown()
         {
             Assert.AreEqual("UNKNOWN", ShopUI.FormatTipTypeName((InsiderTipType)999));
+        }
+
+        // === TipCardView TypeBadgeText field test ===
+
+        [Test]
+        public void TipCardView_HasTypeBadgeTextField()
+        {
+            var view = new ShopUI.TipCardView();
+            Assert.IsNull(view.TypeBadgeText, "TypeBadgeText should be null by default (set during creation)");
+        }
+
+        // === GetTipFaceDownHint logic tests ===
+
+        [Test]
+        public void GetTipFaceDownHint_PriceForecast_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("What's the sweet spot?", ShopUI.GetTipFaceDownHint(InsiderTipType.PriceForecast));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_PriceFloor_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("How low can it go?", ShopUI.GetTipFaceDownHint(InsiderTipType.PriceFloor));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_PriceCeiling_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("What's the top?", ShopUI.GetTipFaceDownHint(InsiderTipType.PriceCeiling));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_EventCount_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("How many surprises?", ShopUI.GetTipFaceDownHint(InsiderTipType.EventCount));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_DipMarker_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("When's the best buy?", ShopUI.GetTipFaceDownHint(InsiderTipType.DipMarker));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_PeakMarker_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("When should you sell?", ShopUI.GetTipFaceDownHint(InsiderTipType.PeakMarker));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_ClosingDirection_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("Up or down?", ShopUI.GetTipFaceDownHint(InsiderTipType.ClosingDirection));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_EventTiming_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("When do shakeups hit?", ShopUI.GetTipFaceDownHint(InsiderTipType.EventTiming));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_TrendReversal_ReturnsEngagingHint()
+        {
+            Assert.AreEqual("When does it turn?", ShopUI.GetTipFaceDownHint(InsiderTipType.TrendReversal));
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_UnknownValue_ReturnsDefault()
+        {
+            Assert.AreEqual("Unknown intel", ShopUI.GetTipFaceDownHint((InsiderTipType)999));
+        }
+
+        // === GetTipTypeBadge tests ===
+
+        [Test]
+        public void GetTipTypeBadge_ChartOverlayTypes_ReturnChartInCyan()
+        {
+            var chartTypes = new[] {
+                InsiderTipType.PriceForecast, InsiderTipType.PriceFloor,
+                InsiderTipType.PriceCeiling, InsiderTipType.DipMarker,
+                InsiderTipType.PeakMarker, InsiderTipType.EventTiming,
+                InsiderTipType.TrendReversal
+            };
+            foreach (var t in chartTypes)
+            {
+                var (label, color) = ShopUI.GetTipTypeBadge(t);
+                Assert.AreEqual("[CHART]", label, $"Expected [CHART] for {t}");
+                Assert.AreEqual(ColorPalette.Cyan, color, $"Expected Cyan for {t}");
+            }
+        }
+
+        [Test]
+        public void GetTipTypeBadge_EventCount_ReturnsLiveInGreen()
+        {
+            var (label, color) = ShopUI.GetTipTypeBadge(InsiderTipType.EventCount);
+            Assert.AreEqual("[LIVE]", label);
+            Assert.AreEqual(ColorPalette.Green, color);
+        }
+
+        [Test]
+        public void GetTipTypeBadge_ClosingDirection_ReturnsCallInAmber()
+        {
+            var (label, color) = ShopUI.GetTipTypeBadge(InsiderTipType.ClosingDirection);
+            Assert.AreEqual("[CALL]", label);
+            Assert.AreEqual(ColorPalette.Amber, color);
+        }
+
+        [Test]
+        public void GetTipTypeBadge_UnknownType_ReturnsEmpty()
+        {
+            var (label, _) = ShopUI.GetTipTypeBadge((InsiderTipType)999);
+            Assert.AreEqual("", label);
+        }
+
+        // === No-duplicate validation tests ===
+
+        [Test]
+        public void FormatTipTypeName_AllNineTypes_NoDuplicateNames()
+        {
+            var names = new HashSet<string>();
+            foreach (InsiderTipType t in System.Enum.GetValues(typeof(InsiderTipType)))
+            {
+                string name = ShopUI.FormatTipTypeName(t);
+                Assert.IsTrue(names.Add(name), $"Duplicate display name: {name}");
+            }
+            Assert.AreEqual(9, names.Count, "Expected exactly 9 unique type names");
+        }
+
+        [Test]
+        public void GetTipFaceDownHint_AllNineTypes_NoDuplicateHints()
+        {
+            var hints = new HashSet<string>();
+            foreach (InsiderTipType t in System.Enum.GetValues(typeof(InsiderTipType)))
+            {
+                string hint = ShopUI.GetTipFaceDownHint(t);
+                Assert.IsTrue(hints.Add(hint), $"Duplicate face-down hint: {hint}");
+            }
+            Assert.AreEqual(9, hints.Count, "Expected exactly 9 unique face-down hints");
+        }
+
+        // === InsiderTipDefinitions coverage tests ===
+
+        [Test]
+        public void InsiderTipDefinitions_AllArrayCoversEveryEnumValue()
+        {
+            var enumValues = System.Enum.GetValues(typeof(InsiderTipType));
+            Assert.AreEqual(enumValues.Length, InsiderTipDefinitions.All.Length,
+                "InsiderTipDefinitions.All must have one entry per InsiderTipType enum value");
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_AllTypesPresent()
+        {
+            var found = new HashSet<InsiderTipType>();
+            foreach (var def in InsiderTipDefinitions.All)
+                found.Add(def.Type);
+            foreach (InsiderTipType t in System.Enum.GetValues(typeof(InsiderTipType)))
+                Assert.IsTrue(found.Contains(t), $"Missing InsiderTipDefinitions entry for {t}");
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_ChartOverlayTemplatesContainMarkedOnChart()
+        {
+            var chartTypes = new[] {
+                InsiderTipType.PriceForecast, InsiderTipType.PriceFloor,
+                InsiderTipType.PriceCeiling, InsiderTipType.DipMarker,
+                InsiderTipType.PeakMarker, InsiderTipType.EventTiming,
+                InsiderTipType.TrendReversal
+            };
+            foreach (var t in chartTypes)
+            {
+                var def = InsiderTipDefinitions.GetByType(t);
+                Assert.IsNotNull(def, $"Missing definition for {t}");
+                Assert.IsTrue(def.Value.DescriptionTemplate.Contains("marked on chart"),
+                    $"Template for {t} should contain 'marked on chart'");
+            }
+        }
+
+        [Test]
+        public void InsiderTipDefinitions_EventCountTemplateContainsLiveCountdown()
+        {
+            var def = InsiderTipDefinitions.GetByType(InsiderTipType.EventCount);
+            Assert.IsNotNull(def);
+            Assert.IsTrue(def.Value.DescriptionTemplate.Contains("live countdown"),
+                "EventCount template should contain 'live countdown'");
         }
 
         // === Animation constant relationship tests ===
