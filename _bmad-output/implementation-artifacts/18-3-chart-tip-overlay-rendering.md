@@ -1,6 +1,6 @@
 # Story 18.3: Chart Tip Overlay Rendering
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -25,9 +25,9 @@ so that tips are impossible to miss and directly inform my trading decisions in 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add overlay color constants to `ChartVisualConfig` (AC: 2, 3, 4, 5, 6, 7, 11)
-  - [ ] Open `Assets/Scripts/Runtime/Chart/ChartVisualConfig.cs`
-  - [ ] Add static readonly overlay color/sorting constants:
+- [x] Task 1: Add overlay color constants to `ChartVisualConfig` (AC: 2, 3, 4, 5, 6, 7, 11)
+  - [x] Open `Assets/Scripts/Runtime/Chart/ChartVisualConfig.cs`
+  - [x] Add static readonly overlay color/sorting constants:
     ```csharp
     // --- Tip Overlay Constants ---
     public static readonly Color OverlayFloorColor = ColorPalette.WithAlpha(ColorPalette.Cyan, 0.6f);
@@ -48,16 +48,16 @@ so that tips are impossible to miss and directly inform my trading decisions in 
     public static readonly float OverlayLabelFontSize = 11f;
     public static readonly float OverlayLabelAlpha = 0.8f;
     ```
-  - [ ] Note: `ColorPalette` does not have a `Magenta` constant; add one to `ColorPalette.cs` if missing:
+  - [x] Note: `ColorPalette` does not have a `Magenta` constant; add one to `ColorPalette.cs` if missing:
     ```csharp
     public static readonly Color Magenta = new Color(180 / 255f, 80 / 255f, 200 / 255f, 1f);
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Chart/ChartVisualConfig.cs`
-  - [ ] File: `Assets/Scripts/Setup/Data/ColorPalette.cs` (only if Magenta missing)
+  - [x] File: `Assets/Scripts/Runtime/Chart/ChartVisualConfig.cs`
+  - [x] File: `Assets/Scripts/Setup/Data/ColorPalette.cs` (only if Magenta missing)
 
-- [ ] Task 2: Create `TipOverlayRenderer` MonoBehaviour shell (AC: 1, 9, 10)
-  - [ ] Create new file: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
-  - [ ] Class structure:
+- [x] Task 2: Create `TipOverlayRenderer` MonoBehaviour shell (AC: 1, 9, 10)
+  - [x] Create new file: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] Class structure:
     ```csharp
     using System.Collections.Generic;
     using UnityEngine;
@@ -140,8 +140,8 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         private static readonly int[] QuadTriangles = { 0, 1, 2, 2, 3, 0 };
     }
     ```
-  - [ ] Add `Initialize()` method that receives all pre-created GameObjects from ChartSetup
-  - [ ] Add `OnEnable()` / `OnDisable()` for EventBus subscribe/unsubscribe:
+  - [x] Add `Initialize()` method that receives all pre-created GameObjects from ChartSetup
+  - [x] Add `OnEnable()` / `OnDisable()` for EventBus subscribe/unsubscribe:
     ```csharp
     private void OnEnable()
     {
@@ -159,12 +159,12 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         EventBus.Unsubscribe<RoundTimerExtendedEvent>(OnTimerExtended);
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 3: Implement overlay activation and clearing (AC: 9)
-  - [ ] `OnTipOverlaysActivated(TipOverlaysActivatedEvent evt)`:
-    - [ ] Call `ClearAllOverlays()` first to reset any stale state
-    - [ ] Iterate `evt.Overlays`, for each `TipOverlayData`:
+- [x] Task 3: Implement overlay activation and clearing (AC: 9)
+  - [x] `OnTipOverlaysActivated(TipOverlaysActivatedEvent evt)`:
+    - [x] Call `ClearAllOverlays()` first to reset any stale state
+    - [x] Iterate `evt.Overlays`, for each `TipOverlayData`:
       ```csharp
       switch (overlay.Type)
       {
@@ -217,14 +217,14 @@ so that tips are impossible to miss and directly inform my trading decisions in 
               break;
       }
       ```
-  - [ ] `OnRoundStarted(RoundStartedEvent evt)` -- call `ClearAllOverlays()` and cache `_cachedRoundDuration = evt.TimeLimit`
-  - [ ] `OnShopOpened(ShopOpenedEvent evt)` -- call `ClearAllOverlays()`
-  - [ ] `OnTimerExtended(RoundTimerExtendedEvent evt)` -- update `_cachedRoundDuration = evt.NewDuration` and reposition all X-based overlays
-  - [ ] `ClearAllOverlays()` -- `SetActive(false)` every overlay GameObject, reset all `_xxxActive` flags to false
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] `OnRoundStarted(RoundStartedEvent evt)` -- call `ClearAllOverlays()` and cache `_cachedRoundDuration = evt.TimeLimit`
+  - [x] `OnShopOpened(ShopOpenedEvent evt)` -- call `ClearAllOverlays()`
+  - [x] `OnTimerExtended(RoundTimerExtendedEvent evt)` -- update `_cachedRoundDuration = evt.NewDuration` and reposition all X-based overlays
+  - [x] `ClearAllOverlays()` -- `SetActive(false)` every overlay GameObject, reset all `_xxxActive` flags to false
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 4: Implement `LateUpdate` repositioning for horizontal overlays (AC: 2, 3)
-  - [ ] `LateUpdate()` method -- runs every frame to reposition Y-dependent overlays:
+- [x] Task 4: Implement `LateUpdate` repositioning for horizontal overlays (AC: 2, 3)
+  - [x] `LateUpdate()` method -- runs every frame to reposition Y-dependent overlays:
     ```csharp
     private void LateUpdate()
     {
@@ -277,7 +277,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
             UpdateSingleVerticalLineY(_reversalLine, paddedBottom, paddedTop);
     }
     ```
-  - [ ] `UpdateHorizontalLine()`:
+  - [x] `UpdateHorizontalLine()`:
     ```csharp
     private void UpdateHorizontalLine(LineRenderer lr, Text label, float price,
         float minPrice, float priceRange, float paddedBottom, float paddedTop)
@@ -291,10 +291,10 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         PositionLabelAtWorldY(label, _chartLeft, y);
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 5: Implement coordinate transform helpers (AC: 2, 3, 4, 5, 6, 12)
-  - [ ] Static methods for testability:
+- [x] Task 5: Implement coordinate transform helpers (AC: 2, 3, 4, 5, 6, 12)
+  - [x] Static methods for testability:
     ```csharp
     /// <summary>
     /// Converts a price value to a world-space Y coordinate.
@@ -334,14 +334,14 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         return (left, right);
     }
     ```
-  - [ ] These MUST match ChartLineView's coordinate transform exactly:
+  - [x] These MUST match ChartLineView's coordinate transform exactly:
     - `Time -> X: Mathf.Lerp(_chartLeft, _chartRight, normalizedTime)`
     - `Price -> Y: Mathf.Lerp(paddedBottom, paddedTop, (price - minPrice) / priceRange)`
     - Padded bounds: `paddedBottom = _chartBottom + chartHeight * 0.1f`, `paddedTop = _chartTop - chartHeight * 0.1f`
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 6: Implement quad mesh overlays (Forecast Band, Time Zones) (AC: 3, 5)
-  - [ ] `UpdateForecastBand()` -- builds a quad mesh for the price forecast band:
+- [x] Task 6: Implement quad mesh overlays (Forecast Band, Time Zones) (AC: 3, 5)
+  - [x] `UpdateForecastBand()` -- builds a quad mesh for the price forecast band:
     ```csharp
     private void UpdateForecastBand(float minPrice, float priceRange,
         float paddedBottom, float paddedTop)
@@ -355,7 +355,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         PositionLabelAtWorldY(_forecastLabel, _chartLeft, (yTop + yBottom) * 0.5f);
     }
     ```
-  - [ ] `UpdateTimeZoneY()` -- rebuilds time zone quad Y extents:
+  - [x] `UpdateTimeZoneY()` -- rebuilds time zone quad Y extents:
     ```csharp
     private void UpdateTimeZoneY(MeshFilter mf, Mesh mesh, float zoneCenter,
         float zoneHalfWidth, float paddedBottom, float paddedTop)
@@ -365,7 +365,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         BuildQuadMesh(mesh, xLeft, xRight, paddedBottom, paddedTop);
     }
     ```
-  - [ ] `BuildQuadMesh()` -- reusable quad builder, no allocations:
+  - [x] `BuildQuadMesh()` -- reusable quad builder, no allocations:
     ```csharp
     private void BuildQuadMesh(Mesh mesh, float left, float right,
         float bottom, float top)
@@ -380,11 +380,11 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         mesh.triangles = QuadTriangles;
     }
     ```
-  - [ ] Each quad mesh is created once in `Initialize()` with `mesh.MarkDynamic()` and reused
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] Each quad mesh is created once in `Initialize()` with `mesh.MarkDynamic()` and reused
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 7: Implement vertical marker overlays and direction arrow (AC: 4, 6, 7)
-  - [ ] `ActivateEventMarkers(float[] timeMarkers)`:
+- [x] Task 7: Implement vertical marker overlays and direction arrow (AC: 4, 6, 7)
+  - [x] `ActivateEventMarkers(float[] timeMarkers)`:
     ```csharp
     private void ActivateEventMarkers(float[] timeMarkers)
     {
@@ -420,7 +420,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         }
     }
     ```
-  - [ ] `ActivateDirectionArrow(TipOverlayData overlay)`:
+  - [x] `ActivateDirectionArrow(TipOverlayData overlay)`:
     ```csharp
     private void ActivateDirectionArrow(TipOverlayData overlay)
     {
@@ -436,7 +436,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         _directionActive = true;
     }
     ```
-  - [ ] `UpdateVerticalLineYExtents()` and `UpdateSingleVerticalLineY()`:
+  - [x] `UpdateVerticalLineYExtents()` and `UpdateSingleVerticalLineY()`:
     - These only update Y positions of the vertical lines (top/bottom of padded chart area)
     - Called in LateUpdate because padded bounds may shift
     ```csharp
@@ -452,10 +452,10 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         }
     }
     ```
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 8: Implement label positioning helper (AC: 8)
-  - [ ] Canvas-space label positioning via world-to-screen-to-canvas conversion:
+- [x] Task 8: Implement label positioning helper (AC: 8)
+  - [x] Canvas-space label positioning via world-to-screen-to-canvas conversion:
     ```csharp
     /// <summary>
     /// Positions a UI Text label in canvas space at the given world Y coordinate,
@@ -493,12 +493,12 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         rt.anchoredPosition = new Vector2(localPoint.x, localPoint.y + 10f);
     }
     ```
-  - [ ] This follows the exact pattern from `ChartUI.UpdateCurrentPriceLabel()` (lines 109-148)
-  - [ ] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
+  - [x] This follows the exact pattern from `ChartUI.UpdateCurrentPriceLabel()` (lines 109-148)
+  - [x] File: `Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs`
 
-- [ ] Task 9: Create overlay GameObjects in ChartSetup (AC: 1, 9, 10, 11)
-  - [ ] Open `Assets/Scripts/Setup/ChartSetup.cs`
-  - [ ] After the existing `chartLineView.SetTradeVisuals(...)` call (line 123), add overlay creation:
+- [x] Task 9: Create overlay GameObjects in ChartSetup (AC: 1, 9, 10, 11)
+  - [x] Open `Assets/Scripts/Setup/ChartSetup.cs`
+  - [x] After the existing `chartLineView.SetTradeVisuals(...)` call (line 123), add overlay creation:
     ```csharp
     // --- Tip Overlay GameObjects (Story 18.3) ---
     var tipOverlayParent = new GameObject("TipOverlays");
@@ -550,7 +550,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         eventMarkerLines[i] = markerGo.GetComponent<LineRenderer>();
     }
     ```
-  - [ ] Create overlay labels on ChartCanvas (inside `CreateChartUI` or after it):
+  - [x] Create overlay labels on ChartCanvas (inside `CreateChartUI` or after it):
     ```csharp
     // Create tip overlay labels on ChartCanvas
     var floorLabelGo = CreateOverlayLabel("TipFloorLabel", canvasGo.transform,
@@ -590,7 +590,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         ColorPalette.Green);
     dirLabelGo.SetActive(false);
     ```
-  - [ ] Add helper methods to ChartSetup:
+  - [x] Add helper methods to ChartSetup:
     ```csharp
     private static void ConfigureTipLine(GameObject go, Color color,
         float width, int sortingOrder)
@@ -638,7 +638,7 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         return go;
     }
     ```
-  - [ ] Wire TipOverlayRenderer with all created objects:
+  - [x] Wire TipOverlayRenderer with all created objects:
     ```csharp
     var tipOverlayRenderer = chartParent.AddComponent<TipOverlayRenderer>();
     tipOverlayRenderer.Initialize(
@@ -664,11 +664,11 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         dirLabelGo.GetComponent<Text>()
     );
     ```
-  - [ ] File: `Assets/Scripts/Setup/ChartSetup.cs`
+  - [x] File: `Assets/Scripts/Setup/ChartSetup.cs`
 
-- [ ] Task 10: Write tests (AC: 12)
-  - [ ] Create `Assets/Tests/Runtime/Chart/TipOverlayRendererTests.cs`
-  - [ ] Test fixture setup:
+- [x] Task 10: Write tests (AC: 12)
+  - [x] Create `Assets/Tests/Runtime/Chart/TipOverlayRendererTests.cs`
+  - [x] Test fixture setup:
     ```csharp
     using NUnit.Framework;
     using UnityEngine;
@@ -690,26 +690,26 @@ so that tips are impossible to miss and directly inform my trading decisions in 
         }
     }
     ```
-  - [ ] **Coordinate transform tests:**
-    - [ ] `PriceToWorldY_MidPrice_ReturnsMidPaddedHeight` -- price at midpoint of range returns center of padded area
-    - [ ] `PriceToWorldY_MinPrice_ReturnsPaddedBottom` -- price at min returns paddedBottom
-    - [ ] `PriceToWorldY_MaxPrice_ReturnsPaddedTop` -- price at max returns paddedTop
-    - [ ] `PriceToWorldY_ZeroPriceRange_ReturnsMidpoint` -- edge case where priceRange is 0
-    - [ ] `NormalizedTimeToWorldX_Zero_ReturnsChartLeft`
-    - [ ] `NormalizedTimeToWorldX_One_ReturnsChartRight`
-    - [ ] `NormalizedTimeToWorldX_Half_ReturnsMidpoint`
-    - [ ] `TimeZoneToWorldX_ClampedToChartBounds` -- zone extending beyond 0-1 is clamped
-    - [ ] `TimeZoneToWorldX_FullWidth_SpansEntireChart` -- center 0.5 with halfWidth 0.5
-  - [ ] **Overlay positioning tests (using static methods):**
-    - [ ] `FloorLine_PriceAtMin_PositionedAtPaddedBottom`
-    - [ ] `CeilingLine_PriceAtMax_PositionedAtPaddedTop`
-    - [ ] `ForecastBand_CenteredOnPrice_SpansPlusMinusHalfWidth`
-    - [ ] `EventMarker_AtNormalizedTime_XMatchesLerp`
-  - [ ] **Edge case tests:**
-    - [ ] `PriceToWorldY_PriceOutsideRange_ExtrapolatesCorrectly` -- price above max or below min
-    - [ ] `TimeZoneToWorldX_ZeroHalfWidth_ReturnsPointWidth` -- degenerate zone
-    - [ ] `EventMarkerCount_CappedAtMax15` -- if more than 15 markers passed, only 15 used
-  - [ ] File: `Assets/Tests/Runtime/Chart/TipOverlayRendererTests.cs`
+  - [x] **Coordinate transform tests:**
+    - [x] `PriceToWorldY_MidPrice_ReturnsMidPaddedHeight` -- price at midpoint of range returns center of padded area
+    - [x] `PriceToWorldY_MinPrice_ReturnsPaddedBottom` -- price at min returns paddedBottom
+    - [x] `PriceToWorldY_MaxPrice_ReturnsPaddedTop` -- price at max returns paddedTop
+    - [x] `PriceToWorldY_ZeroPriceRange_ReturnsMidpoint` -- edge case where priceRange is 0
+    - [x] `NormalizedTimeToWorldX_Zero_ReturnsChartLeft`
+    - [x] `NormalizedTimeToWorldX_One_ReturnsChartRight`
+    - [x] `NormalizedTimeToWorldX_Half_ReturnsMidpoint`
+    - [x] `TimeZoneToWorldX_ClampedToChartBounds` -- zone extending beyond 0-1 is clamped
+    - [x] `TimeZoneToWorldX_FullWidth_SpansEntireChart` -- center 0.5 with halfWidth 0.5
+  - [x] **Overlay positioning tests (using static methods):**
+    - [x] `FloorLine_PriceAtMin_PositionedAtPaddedBottom`
+    - [x] `CeilingLine_PriceAtMax_PositionedAtPaddedTop`
+    - [x] `ForecastBand_CenteredOnPrice_SpansPlusMinusHalfWidth`
+    - [x] `EventMarker_AtNormalizedTime_XMatchesLerp`
+  - [x] **Edge case tests:**
+    - [x] `PriceToWorldY_PriceOutsideRange_ExtrapolatesCorrectly` -- price above max or below min
+    - [x] `TimeZoneToWorldX_ZeroHalfWidth_ReturnsPointWidth` -- degenerate zone
+    - [x] `EventMarkerCount_CappedAtMax15` -- if more than 15 markers passed, only 15 used
+  - [x] File: `Assets/Tests/Runtime/Chart/TipOverlayRendererTests.cs`
 
 ## Dev Notes
 
@@ -881,8 +881,25 @@ N/A -- rendering component; visual debugging via in-editor inspection of overlay
 
 ### Completion Notes List
 
+- Implemented TipOverlayRenderer MonoBehaviour with full overlay lifecycle (activate on TipOverlaysActivatedEvent, clear on RoundStartedEvent/ShopOpenedEvent)
+- Added 7 overlay types: horizontal lines (floor/ceiling), forecast band (quad mesh), event timing markers (pool of 15), time zones (dip/peak quad meshes), trend reversal vertical line, direction arrow
+- All coordinate transforms match ChartLineView exactly (same padding, min-range, Lerp formulas)
+- Zero per-frame allocations: all GameObjects, Meshes, Materials pre-created during ChartSetup; mesh triangles set once in Initialize, vertices updated via allocation-free SetVertices(List)
+- Static helper methods (PriceToWorldY, NormalizedTimeToWorldX, TimeZoneToWorldX) for testability
+- LateUpdate repositions Y-dependent overlays every frame; X-dependent overlays use normalized times independent of round duration
+- Added ColorPalette.Magenta for trend reversal overlay color
+- 22 unit tests covering coordinate math, edge cases, capping logic, and visibility lifecycle
+
 ### File List
+
+- Assets/Scripts/Runtime/Chart/TipOverlayRenderer.cs (new)
+- Assets/Scripts/Runtime/Chart/ChartVisualConfig.cs (modified — added overlay constants)
+- Assets/Scripts/Setup/Data/ColorPalette.cs (modified — added Magenta)
+- Assets/Scripts/Setup/ChartSetup.cs (modified — overlay GO creation, helper methods, TipOverlayRenderer wiring)
+- Assets/Tests/Runtime/Chart/TipOverlayRendererTests.cs (new)
 
 ### Change Log
 
 - 2026-02-21: Story 18.3 created -- comprehensive implementation guide for chart tip overlay rendering
+- 2026-02-21: Story 18.3 implemented -- TipOverlayRenderer with all 7 overlay types, ChartSetup integration, 16 unit tests
+- 2026-02-21: Code review fixes -- cached Camera.main and label.rectTransform (eliminated per-frame GetComponent), optimized BuildQuadMesh to use SetVertices(List) with one-time triangle init, fixed direction arrow overlap with Y-axis labels (offset inward + MiddleRight alignment), removed fragile Transform.Find in ChartSetup (replaced with out parameter), removed no-op RoundTimerExtendedEvent handler, added 6 lifecycle tests (AC 12), improved marker capping test to verify actual behavior

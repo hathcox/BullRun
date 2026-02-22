@@ -33,6 +33,9 @@ public static class ColorPalette
     public static readonly Color Cyan       = new Color(56 / 255f, 160 / 255f, 176 / 255f, 1f);        // #38a0b0
     public static readonly Color CyanDim    = new Color(32 / 255f, 96 / 255f, 104 / 255f, 1f);         // #206068
 
+    // ── 7. Magenta (Tip Overlays) ────────────────────────────────────
+    public static readonly Color Magenta    = new Color(180 / 255f, 80 / 255f, 200 / 255f, 1f);        // #b450c8
+
     // ── Utility Methods ────────────────────────────────────────────────
 
     /// <summary>

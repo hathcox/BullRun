@@ -122,8 +122,120 @@ public static class ChartSetup
         // Wire trade visuals to ChartLineView
         chartLineView.SetTradeVisuals(breakEvenLR, shortPositionLR, markerPoolGo.transform);
 
+        // --- Tip Overlay GameObjects (Story 18.3) ---
+        var tipOverlayParent = new GameObject("TipOverlays");
+        tipOverlayParent.transform.SetParent(chartParent.transform);
+
+        // Horizontal line overlays: Floor and Ceiling
+        var floorLineGo = CreateLineRendererObject("TipFloorLine", tipOverlayParent.transform);
+        ConfigureTipLine(floorLineGo, ChartVisualConfig.OverlayFloorColor,
+            ChartVisualConfig.OverlayLineWidth, ChartVisualConfig.OverlayLineSortingOrder);
+        floorLineGo.SetActive(false);
+
+        var ceilingLineGo = CreateLineRendererObject("TipCeilingLine", tipOverlayParent.transform);
+        ConfigureTipLine(ceilingLineGo, ChartVisualConfig.OverlayCeilingColor,
+            ChartVisualConfig.OverlayLineWidth, ChartVisualConfig.OverlayLineSortingOrder);
+        ceilingLineGo.SetActive(false);
+
+        // Forecast band quad mesh
+        var forecastBandGo = CreateQuadMeshObject("TipForecastBand", tipOverlayParent.transform,
+            ChartVisualConfig.OverlayForecastColor, ChartVisualConfig.OverlayQuadSortingOrder);
+        forecastBandGo.SetActive(false);
+
+        // Time zone quad meshes: Dip and Peak
+        var dipZoneGo = CreateQuadMeshObject("TipDipZone", tipOverlayParent.transform,
+            ChartVisualConfig.OverlayDipZoneColor, ChartVisualConfig.OverlayQuadSortingOrder);
+        dipZoneGo.SetActive(false);
+
+        var peakZoneGo = CreateQuadMeshObject("TipPeakZone", tipOverlayParent.transform,
+            ChartVisualConfig.OverlayPeakZoneColor, ChartVisualConfig.OverlayQuadSortingOrder);
+        peakZoneGo.SetActive(false);
+
+        // Reversal vertical line
+        var reversalLineGo = CreateLineRendererObject("TipReversalLine", tipOverlayParent.transform);
+        ConfigureTipLine(reversalLineGo, ChartVisualConfig.OverlayReversalColor,
+            ChartVisualConfig.OverlayVerticalLineWidth, ChartVisualConfig.OverlayLineSortingOrder);
+        reversalLineGo.SetActive(false);
+
+        // Event timing marker pool (max 15)
+        var eventMarkerParent = new GameObject("TipEventMarkers");
+        eventMarkerParent.transform.SetParent(tipOverlayParent.transform);
+        var eventMarkerLines = new LineRenderer[ChartVisualConfig.MaxEventTimingMarkers];
+        for (int i = 0; i < ChartVisualConfig.MaxEventTimingMarkers; i++)
+        {
+            var markerGo = CreateLineRendererObject($"EventMarker_{i}", eventMarkerParent.transform);
+            ConfigureTipLine(markerGo, ChartVisualConfig.OverlayEventMarkerColor,
+                ChartVisualConfig.OverlayVerticalLineWidth,
+                ChartVisualConfig.OverlayLineSortingOrder);
+            markerGo.SetActive(false);
+            eventMarkerLines[i] = markerGo.GetComponent<LineRenderer>();
+        }
+
         // Create chart UI Canvas — returns ChartUI for event wiring
-        var chartUI = CreateChartUI(chartParent, chartRenderer, chartBounds, worldHeight);
+        var chartUI = CreateChartUI(chartParent, chartRenderer, chartBounds, worldHeight,
+            out RectTransform canvasRect);
+
+        // Create tip overlay labels on ChartCanvas (Story 18.3)
+        var canvasGo = canvasRect.gameObject;
+
+        var floorLabelGo = CreateOverlayLabel("TipFloorLabel", canvasGo.transform,
+            ChartVisualConfig.OverlayFloorColor);
+        var ceilingLabelGo = CreateOverlayLabel("TipCeilingLabel", canvasGo.transform,
+            ChartVisualConfig.OverlayCeilingColor);
+        var forecastLabelGo = CreateOverlayLabel("TipForecastLabel", canvasGo.transform,
+            ColorPalette.WithAlpha(new Color(0.4f, 0.3f, 0.8f, 1f),
+                ChartVisualConfig.OverlayLabelAlpha));
+        var dipZoneLabelGo = CreateOverlayLabel("TipDipZoneLabel", canvasGo.transform,
+            ChartVisualConfig.OverlayDipZoneColor);
+        var peakZoneLabelGo = CreateOverlayLabel("TipPeakZoneLabel", canvasGo.transform,
+            ChartVisualConfig.OverlayPeakZoneColor);
+        var reversalLabelGo = CreateOverlayLabel("TipReversalLabel", canvasGo.transform,
+            ChartVisualConfig.OverlayReversalColor);
+
+        var eventMarkerLabels = new Text[ChartVisualConfig.MaxEventTimingMarkers];
+        for (int i = 0; i < ChartVisualConfig.MaxEventTimingMarkers; i++)
+        {
+            var labelGo = CreateOverlayLabel($"EventMarkerLabel_{i}",
+                canvasGo.transform, ChartVisualConfig.OverlayEventMarkerColor);
+            labelGo.GetComponent<Text>().text = "!";
+            labelGo.SetActive(false);
+            eventMarkerLabels[i] = labelGo.GetComponent<Text>();
+        }
+
+        // Direction arrow (right edge of chart)
+        var arrowGo = CreateOverlayLabel("TipDirectionArrow", canvasGo.transform,
+            ColorPalette.Green);
+        var arrowText = arrowGo.GetComponent<Text>();
+        arrowText.fontSize = 22;
+        arrowText.alignment = TextAnchor.MiddleRight;
+        arrowGo.SetActive(false);
+
+        var dirLabelGo = CreateOverlayLabel("TipDirectionLabel", canvasGo.transform,
+            ColorPalette.Green);
+        dirLabelGo.GetComponent<Text>().alignment = TextAnchor.MiddleRight;
+        dirLabelGo.SetActive(false);
+
+        // Wire TipOverlayRenderer
+        var tipOverlayRenderer = chartParent.AddComponent<TipOverlayRenderer>();
+        tipOverlayRenderer.Initialize(
+            chartRenderer, chartBounds, canvasRect,
+            floorLineGo.GetComponent<LineRenderer>(),
+            ceilingLineGo.GetComponent<LineRenderer>(),
+            forecastBandGo.GetComponent<MeshFilter>(),
+            dipZoneGo.GetComponent<MeshFilter>(),
+            peakZoneGo.GetComponent<MeshFilter>(),
+            reversalLineGo.GetComponent<LineRenderer>(),
+            eventMarkerLines,
+            floorLabelGo.GetComponent<Text>(),
+            ceilingLabelGo.GetComponent<Text>(),
+            forecastLabelGo.GetComponent<Text>(),
+            dipZoneLabelGo.GetComponent<Text>(),
+            peakZoneLabelGo.GetComponent<Text>(),
+            reversalLabelGo.GetComponent<Text>(),
+            eventMarkerLabels,
+            arrowText,
+            dirLabelGo.GetComponent<Text>()
+        );
 
         // Subscribe ChartRenderer to EventBus
         EventBus.Subscribe<PriceUpdatedEvent>(chartRenderer.ProcessPriceUpdate);
@@ -217,7 +329,52 @@ public static class ChartSetup
         return go;
     }
 
-    private static ChartUI CreateChartUI(GameObject chartParent, ChartRenderer chartRenderer, Rect chartBounds, float worldHeight)
+    private static void ConfigureTipLine(GameObject go, Color color,
+        float width, int sortingOrder)
+    {
+        var lr = go.GetComponent<LineRenderer>();
+        lr.startColor = color;
+        lr.endColor = color;
+        lr.startWidth = width;
+        lr.endWidth = width;
+        lr.sortingOrder = sortingOrder;
+        lr.alignment = LineAlignment.TransformZ;
+    }
+
+    private static GameObject CreateQuadMeshObject(string name, Transform parent,
+        Color color, int sortingOrder)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent);
+        go.AddComponent<MeshFilter>();
+        var mr = go.AddComponent<MeshRenderer>();
+        var shader = Shader.Find("Sprites/Default");
+        if (shader == null) shader = Shader.Find("UI/Default");
+        var mat = new Material(shader);
+        mat.color = color;
+        mr.sharedMaterial = mat;
+        mr.sortingOrder = sortingOrder;
+        return go;
+    }
+
+    private static GameObject CreateOverlayLabel(string name, Transform parent,
+        Color color)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent);
+        go.AddComponent<RectTransform>().sizeDelta = new Vector2(120f, 20f);
+        var text = go.AddComponent<Text>();
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.fontSize = (int)ChartVisualConfig.OverlayLabelFontSize;
+        text.color = ColorPalette.WithAlpha(color, ChartVisualConfig.OverlayLabelAlpha);
+        text.alignment = TextAnchor.MiddleLeft;
+        text.raycastTarget = false;
+        go.SetActive(false);
+        return go;
+    }
+
+    private static ChartUI CreateChartUI(GameObject chartParent, ChartRenderer chartRenderer, Rect chartBounds, float worldHeight,
+        out RectTransform outCanvasRect)
     {
         // Create Canvas for chart UI elements
         var canvasGo = new GameObject("ChartCanvas");
@@ -231,6 +388,7 @@ public static class ChartSetup
         scaler.referenceResolution = new Vector2(1920f, 1080f);
 
         canvasGo.AddComponent<GraphicRaycaster>();
+        outCanvasRect = canvasGo.GetComponent<RectTransform>();
 
         // Create Y-axis labels on right side (FIX-7: no positions panel, labels at chart edge)
         var axisLabels = new Text[AxisLabelCount];
