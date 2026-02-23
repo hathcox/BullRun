@@ -57,11 +57,11 @@ public static class GameConfig
 
     // Store: expansion costs in Reputation (Epic 13, Story 13.4)
     // FIX-15: ExpansionCostMultiStock removed — Multi-Stock expansion permanently removed
-    public static readonly int ExpansionCostLeverage = 60;
-    public static readonly int ExpansionCostExpandedInventory = 50;
-    public static readonly int ExpansionCostDualShort = 70;
-    public static readonly int ExpansionCostIntelExpansion = 40;
-    public static readonly int ExpansionCostExtendedTrading = 55;
+    public static readonly int ExpansionCostLeverage = 30;
+    public static readonly int ExpansionCostExpandedInventory = 20;
+    public static readonly int ExpansionCostDualShort = 25;
+    public static readonly int ExpansionCostIntelExpansion = 15;
+    public static readonly int ExpansionCostExtendedTrading = 25;
 
     // Store: number of expansion cards shown per shop visit (Epic 13, Story 13.4)
     public static readonly int ExpansionsPerShopVisit = 1;

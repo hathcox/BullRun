@@ -152,6 +152,12 @@ public class ShopUI : MonoBehaviour
     public static readonly Color OwnedRelicSellColor = ColorPalette.Dimmed(ColorPalette.Red, 0.5f);
     public const float InventoryFullFlashDuration = 1.5f;
 
+    // Owned relic tooltip (hover to see relic details in shop)
+    private GameObject _ownedRelicTooltipPanel;
+    private Text _ownedRelicTooltipName;
+    private Text _ownedRelicTooltipDesc;
+    private CanvasGroup _ownedRelicTooltipCg;
+
     // Relic reordering state (Story 17.9)
     private int _selectedRelicIndex = -1;
     private bool _isRelicReorderMode;
@@ -400,6 +406,7 @@ public class ShopUI : MonoBehaviour
 
     public void Hide()
     {
+        HideOwnedRelicTooltip();
         if (_root != null)
             _root.SetActive(false);
     }
@@ -1889,6 +1896,18 @@ public class ShopUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Sets owned relic tooltip references. Called by UISetup during store construction.
+    /// </summary>
+    public void SetOwnedRelicTooltip(GameObject panel, Text nameText, Text descText)
+    {
+        _ownedRelicTooltipPanel = panel;
+        _ownedRelicTooltipName = nameText;
+        _ownedRelicTooltipDesc = descText;
+        if (_ownedRelicTooltipPanel != null)
+            _ownedRelicTooltipCg = _ownedRelicTooltipPanel.GetComponent<CanvasGroup>();
+    }
+
+    /// <summary>
     /// Sets the sell callback for owned relics bar. Called by ShopState during Enter.
     /// </summary>
     public void SetSellRelicCallback(System.Action<int> onSellRelic)
@@ -1924,6 +1943,16 @@ public class ShopUI : MonoBehaviour
                 continue;
             }
             slot.Root.SetActive(true);
+
+            // Clean up existing EventTriggers to avoid duplicates on refresh
+            var existingTrigger = slot.Root.GetComponent<EventTrigger>();
+            if (existingTrigger != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(existingTrigger);
+                else
+                    DestroyImmediate(existingTrigger);
+            }
 
             if (i < _ctx.OwnedRelics.Count)
             {
@@ -1968,6 +1997,9 @@ public class ShopUI : MonoBehaviour
                 int reorderIdx = i;
                 slotButton.onClick.AddListener(() => SelectRelicForReorder(reorderIdx));
 
+                // Hover tooltip for owned relic
+                AddOwnedRelicHoverHandler(slot.Root, relicId);
+
                 slot.Background.color = OwnedRelicSlotColor;
             }
             else
@@ -1984,6 +2016,97 @@ public class ShopUI : MonoBehaviour
 
                 slot.Background.color = OwnedRelicEmptyColor;
             }
+        }
+    }
+
+    // ── Owned Relic Tooltips ──
+
+    private void AddOwnedRelicHoverHandler(GameObject slot, string relicId)
+    {
+        if (_ownedRelicTooltipPanel == null) return;
+
+        var trigger = slot.AddComponent<EventTrigger>();
+
+        var enterEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerEnter };
+        enterEntry.callback.AddListener(_ => ShowOwnedRelicTooltip(relicId, slot.GetComponent<RectTransform>()));
+        trigger.triggers.Add(enterEntry);
+
+        var exitEntry = new EventTrigger.Entry { eventID = EventTriggerType.PointerExit };
+        exitEntry.callback.AddListener(_ => HideOwnedRelicTooltip());
+        trigger.triggers.Add(exitEntry);
+    }
+
+    private void ShowOwnedRelicTooltip(string relicId, RectTransform slotRect)
+    {
+        if (_ownedRelicTooltipPanel == null) return;
+
+        var def = ItemLookup.GetRelicById(relicId);
+        if (!def.HasValue) return;
+
+        if (_ownedRelicTooltipName != null)
+            _ownedRelicTooltipName.text = $"<b>{def.Value.Name}</b>";
+        if (_ownedRelicTooltipDesc != null)
+            _ownedRelicTooltipDesc.text = def.Value.Description;
+
+        PositionOwnedRelicTooltip(slotRect);
+
+        _ownedRelicTooltipPanel.SetActive(true);
+        _ownedRelicTooltipPanel.transform.SetAsLastSibling();
+        if (_ownedRelicTooltipCg != null)
+        {
+            _ownedRelicTooltipCg.alpha = 1f;
+            _ownedRelicTooltipCg.blocksRaycasts = false;
+        }
+    }
+
+    private void HideOwnedRelicTooltip()
+    {
+        if (_ownedRelicTooltipPanel == null) return;
+        _ownedRelicTooltipPanel.SetActive(false);
+    }
+
+    private void PositionOwnedRelicTooltip(RectTransform slotRect)
+    {
+        if (_ownedRelicTooltipPanel == null || slotRect == null) return;
+
+        var tooltipRect = _ownedRelicTooltipPanel.GetComponent<RectTransform>();
+        if (tooltipRect == null) return;
+
+        var canvas = _ownedRelicTooltipPanel.GetComponentInParent<Canvas>();
+        float scale = canvas != null ? canvas.scaleFactor : 1f;
+        float yOffset = 50f * scale;
+        float edgePadding = 10f * scale;
+
+        // Position below the slot (owned bar is near top of screen)
+        Vector3 slotWorldPos = slotRect.position;
+        tooltipRect.position = new Vector3(slotWorldPos.x, slotWorldPos.y - yOffset, slotWorldPos.z);
+
+        // Clamp to screen bounds
+        if (canvas == null) return;
+
+        Vector3[] corners = new Vector3[4];
+        tooltipRect.GetWorldCorners(corners);
+
+        float screenWidth = Screen.width;
+        float screenHeight = Screen.height;
+
+        if (corners[2].x > screenWidth)
+        {
+            float overflow = corners[2].x - screenWidth;
+            tooltipRect.position -= new Vector3(overflow + edgePadding, 0f, 0f);
+        }
+
+        if (corners[0].x < 0)
+        {
+            float overflow = -corners[0].x;
+            tooltipRect.position += new Vector3(overflow + edgePadding, 0f, 0f);
+        }
+
+        // If tooltip goes off the bottom, position above the slot instead
+        if (corners[0].y < 0)
+        {
+            tooltipRect.position = new Vector3(tooltipRect.position.x,
+                slotWorldPos.y + yOffset, tooltipRect.position.z);
         }
     }
 

@@ -24,7 +24,6 @@ public class RelicBar : MonoBehaviour
     private GameObject _tooltipPanel;
     private Text _tooltipNameText;
     private Text _tooltipDescText;
-    private Text _tooltipEffectText;
     private CanvasGroup _tooltipCanvasGroup;
 
     // Layout parent for icons
@@ -36,14 +35,13 @@ public class RelicBar : MonoBehaviour
     private static readonly Color IconBgColor = CRTThemeData.Panel;
 
     public void Initialize(RunContext ctx, Transform iconParent, GameObject tooltipPanel,
-        Text tooltipNameText, Text tooltipDescText, Text tooltipEffectText)
+        Text tooltipNameText, Text tooltipDescText)
     {
         _ctx = ctx;
         _iconParent = iconParent;
         _tooltipPanel = tooltipPanel;
         _tooltipNameText = tooltipNameText;
         _tooltipDescText = tooltipDescText;
-        _tooltipEffectText = tooltipEffectText;
 
         if (_tooltipPanel != null)
             _tooltipCanvasGroup = _tooltipPanel.GetComponent<CanvasGroup>();
@@ -201,23 +199,6 @@ public class RelicBar : MonoBehaviour
         if (_tooltipDescText != null)
             _tooltipDescText.text = def.Value.Description;
 
-        string effectText = def.Value.EffectDescription;
-
-        // AC 6: Special case for Compound Rep — show dynamic sell value
-        if (relicId == "relic_compound_rep" && _ctx != null && _ctx.RelicManager != null)
-        {
-            var relicInstance = _ctx.RelicManager.GetRelicById(relicId);
-            if (relicInstance != null)
-            {
-                int? sellValue = relicInstance.GetSellValue(_ctx);
-                if (sellValue.HasValue)
-                    effectText += $"\nSell value: {sellValue.Value} Rep";
-            }
-        }
-
-        if (_tooltipEffectText != null)
-            _tooltipEffectText.text = effectText;
-
         // Position tooltip above the icon, clamped to screen
         PositionTooltip(iconRect);
 
@@ -226,7 +207,7 @@ public class RelicBar : MonoBehaviour
         if (_tooltipCanvasGroup != null)
         {
             _tooltipCanvasGroup.alpha = 1f;
-            _tooltipCanvasGroup.blocksRaycasts = true;
+            _tooltipCanvasGroup.blocksRaycasts = false;
         }
     }
 
@@ -392,6 +373,5 @@ public class RelicBar : MonoBehaviour
     internal IReadOnlyDictionary<string, float> GlowTimers => _glowTimers;
     internal string TooltipNameContent => _tooltipNameText != null ? _tooltipNameText.text : null;
     internal string TooltipDescContent => _tooltipDescText != null ? _tooltipDescText.text : null;
-    internal string TooltipEffectContent => _tooltipEffectText != null ? _tooltipEffectText.text : null;
     internal void TestShowTooltip(string relicId) => ShowTooltip(relicId, null);
 }

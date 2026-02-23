@@ -1323,6 +1323,42 @@ public static class UISetup
             ownedSlots[i] = CreateOwnedRelicSlot(i, ownedRelicsBar.transform);
         }
 
+        // ── Owned Relic Tooltip Panel ──
+        var ownedTooltipGo = new GameObject("OwnedRelicTooltip");
+        ownedTooltipGo.transform.SetParent(bgGo.transform, false);
+        var ownedTooltipRect = ownedTooltipGo.AddComponent<RectTransform>();
+        ownedTooltipRect.sizeDelta = new Vector2(260f, 120f);
+        ownedTooltipRect.pivot = new Vector2(0.5f, 1f);
+
+        var ownedTooltipBg = ownedTooltipGo.AddComponent<Image>();
+        ownedTooltipBg.color = ColorPalette.WithAlpha(CRTThemeData.Background, 0.95f);
+        CRTThemeData.ApplyPanelStyle(ownedTooltipBg);
+
+        var ownedTooltipCg = ownedTooltipGo.AddComponent<CanvasGroup>();
+        ownedTooltipCg.alpha = 0f;
+        ownedTooltipCg.blocksRaycasts = false;
+
+        var ownedTooltipVlg = ownedTooltipGo.AddComponent<VerticalLayoutGroup>();
+        ownedTooltipVlg.padding = new RectOffset(8, 8, 6, 6);
+        ownedTooltipVlg.spacing = 3f;
+        ownedTooltipVlg.childAlignment = TextAnchor.UpperLeft;
+        ownedTooltipVlg.childForceExpandWidth = true;
+        ownedTooltipVlg.childForceExpandHeight = false;
+
+        var ownedTooltipCsf = ownedTooltipGo.AddComponent<ContentSizeFitter>();
+        ownedTooltipCsf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        var ownedTtNameGo = CreateLabel("TooltipName", ownedTooltipGo.transform, "", CRTThemeData.TextHigh, 16);
+        ownedTtNameGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
+        ownedTtNameGo.GetComponent<Text>().supportRichText = true;
+        var ownedTtNameText = ownedTtNameGo.GetComponent<Text>();
+
+        var ownedTtDescGo = CreateLabel("TooltipDesc", ownedTooltipGo.transform, "", CRTThemeData.TextLow, 13);
+        ownedTtDescGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
+        var ownedTtDescText = ownedTtDescGo.GetComponent<Text>();
+
+        ownedTooltipGo.SetActive(false);
+
         // ── TOP SECTION: Control panel (left) + 3 Relic slots (right) ──
         var topSection = new GameObject("TopSection");
         topSection.transform.SetParent(bgGo.transform, false);
@@ -1423,6 +1459,7 @@ public static class UISetup
         shopUI.SetRerollButton(rerollButton, rerollCostGo.GetComponent<Text>());
         shopUI.SetBottomPanels(expansionsPanel, tipsPanel, bondsPanel);
         shopUI.SetOwnedRelicSlots(ownedSlots); // Sell callback wired by ShopState
+        shopUI.SetOwnedRelicTooltip(ownedTooltipGo, ownedTtNameText, ownedTtDescText);
 
         // Wire to ShopState
         ShopState.ShopUIInstance = shopUI;
@@ -2795,11 +2832,6 @@ public static class UISetup
         descGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
         var descText = descGo.GetComponent<Text>();
 
-        var effectGo = CreateLabel("TooltipEffect", tooltipGo.transform, "", ColorPalette.Amber, 13);
-        effectGo.GetComponent<Text>().alignment = TextAnchor.UpperLeft;
-        effectGo.GetComponent<Text>().fontStyle = FontStyle.Italic;
-        var effectText = effectGo.GetComponent<Text>();
-
         tooltipGo.SetActive(false);
 
         // Wire DashboardReferences
@@ -2811,7 +2843,7 @@ public static class UISetup
 
         // Create RelicBar MonoBehaviour and initialize
         var relicBar = barGo.AddComponent<RelicBar>();
-        relicBar.Initialize(ctx, barGo.transform, tooltipGo, nameText, descText, effectText);
+        relicBar.Initialize(ctx, barGo.transform, tooltipGo, nameText, descText);
 
         return relicBar;
     }

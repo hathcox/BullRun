@@ -13,8 +13,6 @@ namespace BullRun.Tests.UI
         private GameObject _tooltipPanel;
         private Text _tooltipNameText;
         private Text _tooltipDescText;
-        private Text _tooltipEffectText;
-
         [SetUp]
         public void SetUp()
         {
@@ -45,15 +43,9 @@ namespace BullRun.Tests.UI
             _tooltipDescText = descGo.AddComponent<Text>();
             _tooltipDescText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-            var effectGo = new GameObject("EffectText");
-            effectGo.transform.SetParent(_tooltipPanel.transform, false);
-            effectGo.AddComponent<RectTransform>();
-            _tooltipEffectText = effectGo.AddComponent<Text>();
-            _tooltipEffectText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
             _relicBar = _barGo.AddComponent<RelicBar>();
             _relicBar.Initialize(_ctx, _barGo.transform, _tooltipPanel,
-                _tooltipNameText, _tooltipDescText, _tooltipEffectText);
+                _tooltipNameText, _tooltipDescText);
         }
 
         [TearDown]
@@ -147,9 +139,9 @@ namespace BullRun.Tests.UI
         }
 
         [Test]
-        public void ShowTooltip_PopulatesNameDescEffect()
+        public void ShowTooltip_PopulatesNameAndDesc()
         {
-            // AC 5: Tooltip contains relic name, description, effect
+            // AC 5: Tooltip contains relic name and description
             _ctx.RelicManager.AddRelic("relic_double_dealer");
             _relicBar.RefreshRelicIcons();
 
@@ -159,23 +151,6 @@ namespace BullRun.Tests.UI
             Assert.IsTrue(def.HasValue, "relic_double_dealer should exist in ItemLookup");
             Assert.IsTrue(_relicBar.TooltipNameContent.Contains(def.Value.Name));
             Assert.AreEqual(def.Value.Description, _relicBar.TooltipDescContent);
-            Assert.AreEqual(def.Value.EffectDescription, _relicBar.TooltipEffectContent);
-        }
-
-        [Test]
-        public void ShowTooltip_CompoundRep_ShowsDynamicSellValue()
-        {
-            // AC 6: Compound Rep tooltip shows current sell value
-            _ctx.RelicManager.AddRelic("relic_compound_rep");
-            _relicBar.RefreshRelicIcons();
-
-            _relicBar.TestShowTooltip("relic_compound_rep");
-
-            // CompoundRepRelic starts at 0 rounds held → sell value = 3 * 2^0 = 3
-            Assert.IsTrue(_relicBar.TooltipEffectContent.Contains("Sell value:"),
-                "Compound Rep tooltip should include dynamic sell value");
-            Assert.IsTrue(_relicBar.TooltipEffectContent.Contains("3 Rep"),
-                "Initial sell value should be 3 Rep");
         }
 
         [Test]

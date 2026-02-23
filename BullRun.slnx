@@ -11,5 +11,6 @@
   <Project Path="Lofelt.NiceVibrations.Editor.csproj" />
   <Project Path="DOTweenPro.EditorScripts.csproj" />
   <Project Path="DOTweenPro.Scripts.csproj" />
+  <Project Path="BullRun.Tests.PlayMode.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
 </Solution>
