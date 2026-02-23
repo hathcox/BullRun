@@ -458,15 +458,26 @@ public static class ChartSetup
         priceText.fontStyle = FontStyle.Bold;
         priceText.alignment = TextAnchor.MiddleLeft;
 
-        // Story 14.5: Stock name label — centered at top, larger font for CRT readability
+        // Stock info panel — CRT-styled panel matching bottom control deck
+        var stockNamePanelGo = new GameObject("StockNamePanel");
+        stockNamePanelGo.transform.SetParent(canvasGo.transform, false);
+        var stockNamePanelRect = stockNamePanelGo.AddComponent<RectTransform>();
+        stockNamePanelRect.anchorMin = new Vector2(0.5f, 1f);
+        stockNamePanelRect.anchorMax = new Vector2(0.5f, 1f);
+        stockNamePanelRect.pivot = new Vector2(0.5f, 1f);
+        stockNamePanelRect.anchoredPosition = new Vector2(0f, -20f);
+        stockNamePanelRect.sizeDelta = new Vector2(440f, 80f);
+        var stockNamePanelImage = stockNamePanelGo.AddComponent<Image>();
+        CRTThemeData.ApplyPanelStyle(stockNamePanelImage);
+
+        // Story 14.5: Stock name label — top half of panel
         var stockNameGo = new GameObject("StockNameLabel");
-        stockNameGo.transform.SetParent(canvasGo.transform);
+        stockNameGo.transform.SetParent(stockNamePanelGo.transform, false);
         var stockNameRect = stockNameGo.AddComponent<RectTransform>();
-        stockNameRect.anchorMin = new Vector2(0.5f, 1f);
-        stockNameRect.anchorMax = new Vector2(0.5f, 1f);
-        stockNameRect.pivot = new Vector2(0.5f, 1f);
-        stockNameRect.anchoredPosition = new Vector2(0f, -30f);
-        stockNameRect.sizeDelta = new Vector2(400f, 36f);
+        stockNameRect.anchorMin = new Vector2(0f, 0.4f);
+        stockNameRect.anchorMax = Vector2.one;
+        stockNameRect.offsetMin = Vector2.zero;
+        stockNameRect.offsetMax = Vector2.zero;
         var stockNameText = stockNameGo.AddComponent<Text>();
         stockNameText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         stockNameText.fontSize = 28; // AC 3: larger 28pt for CRT readability
@@ -475,15 +486,14 @@ public static class ChartSetup
         stockNameText.alignment = TextAnchor.MiddleCenter;
         stockNameText.text = "";
 
-        // Story 14.5: Stock price label — just below ticker, 20pt white
+        // Story 14.5: Stock price label — bottom half of panel
         var stockPriceGo = new GameObject("StockPriceLabel");
-        stockPriceGo.transform.SetParent(canvasGo.transform);
+        stockPriceGo.transform.SetParent(stockNamePanelGo.transform, false);
         var stockPriceRect = stockPriceGo.AddComponent<RectTransform>();
-        stockPriceRect.anchorMin = new Vector2(0.5f, 1f);
-        stockPriceRect.anchorMax = new Vector2(0.5f, 1f);
-        stockPriceRect.pivot = new Vector2(0.5f, 1f);
-        stockPriceRect.anchoredPosition = new Vector2(0f, -66f);
-        stockPriceRect.sizeDelta = new Vector2(400f, 28f);
+        stockPriceRect.anchorMin = Vector2.zero;
+        stockPriceRect.anchorMax = new Vector2(1f, 0.4f);
+        stockPriceRect.offsetMin = Vector2.zero;
+        stockPriceRect.offsetMax = Vector2.zero;
         var stockPriceText = stockPriceGo.AddComponent<Text>();
         stockPriceText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         stockPriceText.fontSize = 20; // AC 3: larger 20pt for CRT readability

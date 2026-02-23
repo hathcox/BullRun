@@ -45,6 +45,8 @@ public class ChartLineView : MonoBehaviour
 
     // Reusable position list to avoid allocations
     private readonly List<Vector3> _positionBuffer = new List<Vector3>();
+    private readonly List<Color> _colorBuffer = new List<Color>();
+    private readonly List<Color> _glowColorBuffer = new List<Color>();
 
     public void Initialize(ChartRenderer chartRenderer, MeshFilter mainMeshFilter, MeshFilter glowMeshFilter,
         Transform indicator, ChartVisualConfig config, Rect chartBounds)
@@ -75,7 +77,7 @@ public class ChartLineView : MonoBehaviour
     {
         _config = newConfig;
         if (_indicatorRenderer != null)
-            _indicatorRenderer.color = newConfig.LineColor;
+            _indicatorRenderer.color = newConfig.LineUpColor;
     }
 
     public void SetGridlines(LineRenderer[] gridlines)
@@ -165,15 +167,25 @@ public class ChartLineView : MonoBehaviour
             _positionBuffer.Add(new Vector3(x, y, 0f));
         }
 
+        // Build per-point directional color buffers
+        _colorBuffer.Clear();
+        _glowColorBuffer.Clear();
+        for (int i = 0; i < pointCount; i++)
+        {
+            bool isUp = i == 0 || _positionBuffer[i].y >= _positionBuffer[i - 1].y;
+            _colorBuffer.Add(isUp ? _config.LineUpColor : _config.LineDownColor);
+            _glowColorBuffer.Add(isUp ? _config.GlowUpColor : _config.GlowDownColor);
+        }
+
         // Convert pixel widths to world units
         float mainWidth = _config.GetWorldWidth(_config.LineWidthPixels);
         float glowWidth = _config.GetWorldWidth(_config.GlowWidthPixels);
 
-        // Update meshes
-        _mainMeshLine.UpdateMesh(_positionBuffer, mainWidth, _config.LineColor);
-        _glowMeshLine.UpdateMesh(_positionBuffer, glowWidth, _config.GlowColor);
+        // Update meshes with per-point colors
+        _mainMeshLine.UpdateMesh(_positionBuffer, mainWidth, _colorBuffer);
+        _glowMeshLine.UpdateMesh(_positionBuffer, glowWidth, _glowColorBuffer);
 
-        // Update indicator position to chart head
+        // Update indicator position and color to chart head
         if (_indicator != null)
         {
             _indicator.position = _positionBuffer[pointCount - 1];
@@ -182,11 +194,11 @@ public class ChartLineView : MonoBehaviour
             // AC 10: Sinusoidal alpha pulse on the indicator SpriteRenderer
             if (_indicatorRenderer != null && _indicator.gameObject.activeSelf)
             {
+                Color baseColor = _colorBuffer[pointCount - 1];
                 float alpha = IndicatorPulseMin + (1f - IndicatorPulseMin) *
                     ((Mathf.Sin(Time.time * Mathf.PI * IndicatorPulseFrequency) + 1f) * 0.5f);
-                var c = _indicatorRenderer.color;
-                c.a = alpha;
-                _indicatorRenderer.color = c;
+                baseColor.a = alpha;
+                _indicatorRenderer.color = baseColor;
             }
         }
 

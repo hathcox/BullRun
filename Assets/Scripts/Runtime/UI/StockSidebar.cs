@@ -18,8 +18,8 @@ public class StockSidebar : MonoBehaviour
     private bool _dirty;
 
     // Story 14.6: Color constants migrated to CRTThemeData
-    private static readonly Color DefaultSelectedBgColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 1.5f), 0.9f);
-    private static readonly Color DefaultNormalBgColor = ColorPalette.WithAlpha(ColorPalette.Panel, 0.6f);
+    private static readonly Color DefaultSelectedBgColor = ColorPalette.Dimmed(ColorPalette.Panel, 1.5f);
+    private static readonly Color DefaultNormalBgColor = ColorPalette.Panel;
     private static Color ProfitGreen => CRTThemeData.TextHigh;
     private static Color LossRed => CRTThemeData.Danger;
 

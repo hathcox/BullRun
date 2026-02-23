@@ -98,8 +98,8 @@ public class ShopUI : MonoBehaviour
     private int _focusedPanelIndex = -1;
 
     // Expansion card color (teal accent)
-    public static readonly Color ExpansionCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2.5f), 0.95f);
-    public static readonly Color OwnedOverlayColor = new Color(0.1f, 0.2f, 0.1f, 0.85f);
+    public static readonly Color ExpansionCardColor = ColorPalette.Dimmed(ColorPalette.Panel, 2.5f);
+    public static readonly Color OwnedOverlayColor = new Color(0.1f, 0.2f, 0.1f, 1f);
 
     // State — now uses RelicDef
     private RelicDef?[] _relicOffering;
@@ -120,8 +120,8 @@ public class ShopUI : MonoBehaviour
     private System.Action<int> _onTipPurchase;
 
     // Tip card colors (mystery theme — cyan-tinted)
-    public static readonly Color TipCardFaceDownColor = ColorPalette.WithAlpha(ColorPalette.CyanDim, 0.9f);
-    public static readonly Color TipCardRevealedColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2.5f), 0.95f);
+    public static readonly Color TipCardFaceDownColor = ColorPalette.CyanDim;
+    public static readonly Color TipCardRevealedColor = ColorPalette.Dimmed(ColorPalette.Panel, 2.5f);
 
     // Button colors — clear affordability contrast
     public static readonly Color BuyButtonColor = ColorPalette.Dimmed(ColorPalette.Green, 0.8f);
@@ -129,7 +129,7 @@ public class ShopUI : MonoBehaviour
     public static readonly Color SellButtonColor = ColorPalette.Dimmed(ColorPalette.Red, 0.6f);
 
     // Bond panel colors (green/cash theme — Story 13.6)
-    public static readonly Color BondCardColor = ColorPalette.WithAlpha(ColorPalette.Dimmed(ColorPalette.Panel, 2.5f), 0.95f);
+    public static readonly Color BondCardColor = ColorPalette.Dimmed(ColorPalette.Panel, 2.5f);
 
     // Hover animation state (Story 13.8)
     private Coroutine[] _hoverCoroutines;

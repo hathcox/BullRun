@@ -1,26 +1,28 @@
 /// <summary>
-/// Per-round portfolio value targets (FIX-14: rebalanced for $10 economy).
+/// Per-round portfolio value targets (FIX-19: accelerating exponential for skilled play).
 /// Players must reach these TOTAL CASH values or face margin call at round end.
 /// These are cumulative value targets, not per-round profit deltas.
 /// Values are public static readonly for easy balance tuning.
+/// Accelerating growth rate (2.0x→3.25x) — accessible early, brutal late game.
+/// Skilled players win ~50% of runs.
 /// </summary>
 public static class MarginCallTargets
 {
     /// <summary>
     /// Portfolio value targets per round (0-indexed internally, 1-based access via GetTarget).
-    /// FIX-14: $20, $35, $60, $100, $175, $300, $500, $800 (cumulative value targets).
+    /// FIX-19: $20, $55, $160, $500, $1600, $5500, $20000, $65000 (accelerating exponential).
     /// Player must end round with total cash >= target to avoid margin call.
     /// </summary>
     public static readonly float[] Targets = new float[]
     {
-        20f,    // Round 1 — Act 1 (double your $10)
-        35f,    // Round 2 — Act 1
-        60f,    // Round 3 — Act 2
-        100f,   // Round 4 — Act 2
-        175f,   // Round 5 — Act 3
-        300f,   // Round 6 — Act 3
-        500f,   // Round 7 — Act 4
-        800f,   // Round 8 — Act 4 (Final)
+        20f,      // Round 1 — Act 1 (2.0x your $10)
+        55f,      // Round 2 — Act 1
+        160f,     // Round 3 — Act 2
+        500f,     // Round 4 — Act 2
+        1600f,    // Round 5 — Act 3
+        5500f,    // Round 6 — Act 3
+        20000f,   // Round 7 — Act 4
+        65000f,   // Round 8 — Act 4 (Final)
     };
 
     /// <summary>
@@ -31,14 +33,14 @@ public static class MarginCallTargets
     /// </summary>
     public static readonly float[] ScalingMultipliers = new float[]
     {
-        2.0f,   // Round 1 — Act 1 (2x from $10)
-        3.5f,   // Round 2 — Act 1
-        6.0f,   // Round 3 — Act 2
-        10.0f,  // Round 4 — Act 2
-        17.5f,  // Round 5 — Act 3
-        30.0f,  // Round 6 — Act 3
-        50.0f,  // Round 7 — Act 4
-        80.0f,  // Round 8 — Act 4
+        2.0f,     // Round 1 — Act 1 (2.0x from $10)
+        5.5f,     // Round 2 — Act 1
+        16.0f,    // Round 3 — Act 2
+        50.0f,    // Round 4 — Act 2
+        160.0f,   // Round 5 — Act 3
+        550.0f,   // Round 6 — Act 3
+        2000.0f,  // Round 7 — Act 4
+        6500.0f,  // Round 8 — Act 4
     };
 
     public static int TotalRounds => Targets.Length;

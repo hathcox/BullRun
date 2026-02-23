@@ -9,6 +9,10 @@ public struct ChartVisualConfig
 {
     public Color LineColor;
     public Color GlowColor;
+    public Color LineUpColor;
+    public Color LineDownColor;
+    public Color GlowUpColor;
+    public Color GlowDownColor;
     public float LineWidthPixels;
     public float GlowWidthPixels;
     public float IndicatorSize;
@@ -50,6 +54,10 @@ public struct ChartVisualConfig
     {
         LineColor = ColorPalette.Green,
         GlowColor = ColorPalette.WithAlpha(ColorPalette.Green, 0.3f),
+        LineUpColor = ColorPalette.Green,
+        LineDownColor = ColorPalette.Red,
+        GlowUpColor = ColorPalette.WithAlpha(ColorPalette.Green, 0.3f),
+        GlowDownColor = ColorPalette.WithAlpha(ColorPalette.Red, 0.3f),
         LineWidthPixels = 3f,
         GlowWidthPixels = 7.5f, // 2.5x main line
         IndicatorSize = 0.15f

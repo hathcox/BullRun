@@ -9,7 +9,7 @@ public static class ColorPalette
 {
     // ── 1. Teal (Background Family) ────────────────────────────────────
     public static readonly Color Background = new Color(5 / 255f, 10 / 255f, 10 / 255f, 1f);          // #050a0a
-    public static readonly Color Panel      = new Color(6 / 255f, 24 / 255f, 24 / 255f, 0.9f);         // #061818 @90%
+    public static readonly Color Panel      = new Color(6 / 255f, 24 / 255f, 24 / 255f, 1f);           // #061818
     public static readonly Color Border     = new Color(34 / 255f, 68 / 255f, 68 / 255f, 1f);          // #224444
 
     // ── 2. Green (Profit / Buy / Long / Primary Text) ──────────────────

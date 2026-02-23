@@ -145,18 +145,19 @@ public static class GameConfig
     /// <summary>
     /// Debug starting cash per round for F3 skip-to-round.
     /// Approximate expected cash at each round based on hitting targets + compounding.
-    /// 0-indexed (index 0 = Round 1). FIX-14: Rebalanced for $10 economy.
+    /// 0-indexed (index 0 = Round 1). FIX-19: Rebalanced for accelerating targets.
+    /// Values are ~20-25% above the previous round's target.
     /// </summary>
     public static readonly float[] DebugStartingCash = new float[]
     {
-        10f,    // Round 1
-        20f,    // Round 2
-        40f,    // Round 3
-        75f,    // Round 4
-        130f,   // Round 5
-        225f,   // Round 6
-        400f,   // Round 7
-        700f,   // Round 8
+        10f,      // Round 1
+        25f,      // Round 2
+        70f,      // Round 3
+        200f,     // Round 4
+        600f,     // Round 5
+        2000f,    // Round 6
+        7000f,    // Round 7
+        25000f,   // Round 8
     };
 
     /// <summary>

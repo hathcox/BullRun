@@ -332,17 +332,19 @@ public class RelicBar : MonoBehaviour
     {
         if (evt.ItemId == null || !evt.ItemId.StartsWith("relic_")) return;
         RefreshRelicIcons();
+        gameObject.SetActive(_iconSlots.Count > 0);
     }
 
     private void OnShopItemSold(ShopItemSoldEvent evt)
     {
         RefreshRelicIcons();
+        gameObject.SetActive(_iconSlots.Count > 0);
     }
 
     private void OnRoundStarted(RoundStartedEvent evt)
     {
-        gameObject.SetActive(true);
         RefreshRelicIcons();
+        gameObject.SetActive(_iconSlots.Count > 0);
     }
 
     private void OnTradingPhaseEnded(TradingPhaseEndedEvent evt)

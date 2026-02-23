@@ -136,7 +136,7 @@ public static class UISetup
 
         // Semi-transparent background
         var tipPanelBg = tipPanelGo.AddComponent<Image>();
-        tipPanelBg.color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.85f);
+        tipPanelBg.color = ColorPalette.Panel;
         tipPanelBg.raycastTarget = false;
 
         // HorizontalLayoutGroup for auto-arrangement
@@ -625,7 +625,7 @@ public static class UISetup
         var entryRect = entryGo.GetComponent<RectTransform>();
         entryRect.sizeDelta = new Vector2(0f, EntryHeight);
         view.Background = entryGo.GetComponent<Image>();
-        view.Background.color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.6f);
+        view.Background.color = ColorPalette.Panel;
 
         // Single-row layout: [1] TICK  $100.00  +1.2%
         // All elements vertically centered at Y=0.5
@@ -744,7 +744,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.92f);
+        bgGo.GetComponent<Image>().color = ColorPalette.Background;
 
         // CanvasGroup for fade-in
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
@@ -846,7 +846,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.95f);
+        bgGo.GetComponent<Image>().color = ColorPalette.Background;
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -922,7 +922,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.9f);
+        bgGo.GetComponent<Image>().color = ColorPalette.Background;
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -1000,7 +1000,7 @@ public static class UISetup
         bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
-        bgGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Background, 0.95f);
+        bgGo.GetComponent<Image>().color = ColorPalette.Background;
 
         var canvasGroup = bgGo.AddComponent<CanvasGroup>();
 
@@ -1120,7 +1120,7 @@ public static class UISetup
         barRect.pivot = new Vector2(0.5f, 0f);
         barRect.anchoredPosition = Vector2.zero;
         barRect.sizeDelta = new Vector2(0f, tickerHeight);
-        barGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.85f);
+        barGo.GetComponent<Image>().color = ColorPalette.Panel;
 
         // Scroll container — clipped by parent
         var scrollGo = new GameObject("ScrollContainer");
@@ -1331,7 +1331,7 @@ public static class UISetup
         ownedTooltipRect.pivot = new Vector2(0.5f, 1f);
 
         var ownedTooltipBg = ownedTooltipGo.AddComponent<Image>();
-        ownedTooltipBg.color = ColorPalette.WithAlpha(CRTThemeData.Background, 0.95f);
+        ownedTooltipBg.color = CRTThemeData.Background;
         CRTThemeData.ApplyPanelStyle(ownedTooltipBg);
 
         var ownedTooltipCg = ownedTooltipGo.AddComponent<CanvasGroup>();
@@ -1773,7 +1773,7 @@ public static class UISetup
         containerRect.pivot = new Vector2(0.5f, 0.5f);
         containerRect.anchoredPosition = new Vector2(0f, -120f);
         containerRect.sizeDelta = new Vector2(420f, 50f);
-        containerGo.GetComponent<Image>().color = ColorPalette.WithAlpha(ColorPalette.Panel, 0.85f);
+        containerGo.GetComponent<Image>().color = ColorPalette.Panel;
         containerGo.GetComponent<Image>().raycastTarget = false;
 
         var canvasGroup = containerGo.AddComponent<CanvasGroup>();
@@ -2540,7 +2540,7 @@ public static class UISetup
         bgRect.offsetMin = Vector2.zero;
         bgRect.offsetMax = Vector2.zero;
         var bgImg = bgGo.AddComponent<Image>();
-        bgImg.color = ColorPalette.WithAlpha(ColorPalette.Background, 0.8f);
+        bgImg.color = ColorPalette.Background;
         bgImg.raycastTarget = true;
 
         // Content container (centered vertical layout)
@@ -2803,7 +2803,7 @@ public static class UISetup
         tooltipRect.pivot = new Vector2(0.5f, 0f);
 
         var tooltipBg = tooltipGo.AddComponent<Image>();
-        tooltipBg.color = ColorPalette.WithAlpha(CRTThemeData.Background, 0.95f);
+        tooltipBg.color = CRTThemeData.Background;
         CRTThemeData.ApplyPanelStyle(tooltipBg);
 
         var tooltipCg = tooltipGo.AddComponent<CanvasGroup>();

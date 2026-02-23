@@ -93,6 +93,10 @@ public static class TierVisualData
         {
             LineColor = theme.ChartLineColor,
             GlowColor = ColorPalette.WithAlpha(theme.ChartLineColor, 0.3f),
+            LineUpColor = ColorPalette.Green,
+            LineDownColor = ColorPalette.Red,
+            GlowUpColor = ColorPalette.WithAlpha(ColorPalette.Green, 0.3f),
+            GlowDownColor = ColorPalette.WithAlpha(ColorPalette.Red, 0.3f),
             LineWidthPixels = defaults.LineWidthPixels,
             GlowWidthPixels = defaults.GlowWidthPixels,
             IndicatorSize = defaults.IndicatorSize

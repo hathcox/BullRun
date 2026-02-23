@@ -72,6 +72,51 @@ public class ChartMeshLine
         Mesh.SetColors(_colors);
     }
 
+    /// <summary>
+    /// Rebuilds the entire mesh with per-point colors. Colors list must match positions length.
+    /// </summary>
+    public void UpdateMesh(List<Vector3> positions, float width, List<Color> colors)
+    {
+        int count = positions.Count;
+        if (count < 2)
+        {
+            Clear();
+            return;
+        }
+
+        float halfWidth = width * 0.5f;
+
+        _vertices.Clear();
+        _triangles.Clear();
+        _colors.Clear();
+
+        for (int i = 0; i < count; i++)
+        {
+            Vector2 perp = GetPerp(positions, i, count);
+            Vector3 offset = new Vector3(perp.x, perp.y, 0f) * halfWidth;
+            _vertices.Add(positions[i] + offset);
+            _vertices.Add(positions[i] - offset);
+            _colors.Add(colors[i]);
+            _colors.Add(colors[i]);
+        }
+
+        for (int i = 0; i < count - 1; i++)
+        {
+            int vi = i * 2;
+            _triangles.Add(vi);
+            _triangles.Add(vi + 2);
+            _triangles.Add(vi + 1);
+            _triangles.Add(vi + 1);
+            _triangles.Add(vi + 2);
+            _triangles.Add(vi + 3);
+        }
+
+        Mesh.Clear();
+        Mesh.SetVertices(_vertices);
+        Mesh.SetTriangles(_triangles, 0);
+        Mesh.SetColors(_colors);
+    }
+
     public void Clear()
     {
         Mesh.Clear();
