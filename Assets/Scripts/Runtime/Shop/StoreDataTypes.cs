@@ -70,6 +70,10 @@ public struct TipOverlayData
     // Live counter (EventCount)
     public int EventCountdown;      // -1 = not applicable
 
+    // Event fire times in absolute seconds from round start (EventCount)
+    // Sorted chronologically. Used by TipPanel for next-event countdown display.
+    public float[] EventFireTimes;  // null = not applicable
+
     /// <summary>
     /// Creates a TipOverlayData with correct sentinel values for "not applicable" fields.
     /// Use this instead of default constructor, since C# struct defaults zero all fields.

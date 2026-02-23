@@ -11,13 +11,22 @@ public class PriceGenerator
 {
     private readonly List<StockInstance> _activeStocks = new List<StockInstance>();
     private readonly System.Random _random;
+    private System.Random _noiseRandom;
     private EventEffects _eventEffects;
+
+    public bool SilentMode { get; set; }
 
     public PriceGenerator() : this(new System.Random()) { }
 
     public PriceGenerator(System.Random random)
     {
         _random = random;
+        _noiseRandom = random;
+    }
+
+    public void SetNoiseSeed(int seed)
+    {
+        _noiseRandom = new System.Random(seed);
     }
 
     public IReadOnlyList<StockInstance> ActiveStocks => _activeStocks;
@@ -94,14 +103,14 @@ public class PriceGenerator
         if (stock.SegmentTimeRemaining <= 0f)
         {
             // FIX-17: Increased min from 0.3s to 0.5s, max from 0.8s to 1.0s for smoother movement
-            stock.SegmentDuration = RandomRange(0.5f, 1.0f);
+            stock.SegmentDuration = NoiseRandomRange(0.5f, 1.0f);
             stock.SegmentTimeRemaining = stock.SegmentDuration;
 
             // FIX-17: Ramp noise amplitude from 0% to 100% over NoiseRampUpSeconds
             float noiseRamp = System.Math.Min(1f, stock.TimeIntoTrading / GameConfig.NoiseRampUpSeconds);
 
             // Random slope: scaled by noise amplitude (with ramp) and current price
-            float baseSlope = ((float)_random.NextDouble() * 2f - 1f) * stock.NoiseAmplitude * noiseRamp * stock.CurrentPrice;
+            float baseSlope = ((float)_noiseRandom.NextDouble() * 2f - 1f) * stock.NoiseAmplitude * noiseRamp * stock.CurrentPrice;
 
             // Trend bias: slight pull toward trend direction
             float trendBias = stock.TrendPerSecond * 0.5f;
@@ -133,7 +142,7 @@ public class PriceGenerator
                 // Nudge slope so the net movement reaches the minimum threshold
                 float targetNet = (netMovement >= 0f) ? minNet : -minNet;
                 if (netMovement == 0f)
-                    targetNet = ((float)_random.NextDouble() < 0.5f) ? minNet : -minNet;
+                    targetNet = ((float)_noiseRandom.NextDouble() < 0.5f) ? minNet : -minNet;
                 stock.SegmentSlope += targetNet - netMovement;
             }
         }
@@ -173,27 +182,30 @@ public class PriceGenerator
                 stock.SegmentSlope = minBounceSlope;
         }
 
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        // Diagnostic: detect truly flat price movement (delta < 0.001% of price)
-        float priceDelta = System.Math.Abs(stock.CurrentPrice - previousPrice);
-        float flatThreshold = stock.CurrentPrice * 0.00001f;
-        if (priceDelta < flatThreshold)
+        if (!SilentMode)
         {
-            Debug.LogWarning($"[PriceEngine] FLAT DETECTED {stock.TickerSymbol}: " +
-                $"price=${stock.CurrentPrice:F4}, delta=${priceDelta:F6}, " +
-                $"slope={stock.SegmentSlope:F6}, segTimeLeft={stock.SegmentTimeRemaining:F3}, " +
-                $"trend/s={stock.TrendPerSecond:F4}, trendLine=${stock.TrendLinePrice:F4}, " +
-                $"hasEvent={hasActiveEvent}, dt={deltaTime:F4}");
-        }
-        #endif
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Diagnostic: detect truly flat price movement (delta < 0.001% of price)
+            float priceDelta = System.Math.Abs(stock.CurrentPrice - previousPrice);
+            float flatThreshold = stock.CurrentPrice * 0.00001f;
+            if (priceDelta < flatThreshold)
+            {
+                Debug.LogWarning($"[PriceEngine] FLAT DETECTED {stock.TickerSymbol}: " +
+                    $"price=${stock.CurrentPrice:F4}, delta=${priceDelta:F6}, " +
+                    $"slope={stock.SegmentSlope:F6}, segTimeLeft={stock.SegmentTimeRemaining:F3}, " +
+                    $"trend/s={stock.TrendPerSecond:F4}, trendLine=${stock.TrendLinePrice:F4}, " +
+                    $"hasEvent={hasActiveEvent}, dt={deltaTime:F4}");
+            }
+            #endif
 
-        EventBus.Publish(new PriceUpdatedEvent
-        {
-            StockId = stock.StockId,
-            NewPrice = stock.CurrentPrice,
-            PreviousPrice = previousPrice,
-            DeltaTime = deltaTime
-        });
+            EventBus.Publish(new PriceUpdatedEvent
+            {
+                StockId = stock.StockId,
+                NewPrice = stock.CurrentPrice,
+                PreviousPrice = previousPrice,
+                DeltaTime = deltaTime
+            });
+        }
     }
 
     /// <summary>
@@ -350,6 +362,11 @@ public class PriceGenerator
     private float RandomRange(float min, float max)
     {
         return min + (float)_random.NextDouble() * (max - min);
+    }
+
+    private float NoiseRandomRange(float min, float max)
+    {
+        return min + (float)_noiseRandom.NextDouble() * (max - min);
     }
 }
 

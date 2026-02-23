@@ -10,6 +10,9 @@ public class TradingState : IGameState
 {
     private float _timeRemaining;
     private float _roundDuration;
+    private float _timeAccumulator;
+    private float _totalSimTime;
+    private float _elapsedSinceFreeze;
     private GameStateMachine _stateMachine;
     private PriceGenerator _priceGenerator;
     private TradeExecutor _tradeExecutor;
@@ -56,6 +59,9 @@ public class TradingState : IGameState
         _roundDuration = GameConfig.RoundDurationSeconds
             + (ctx.OwnedExpansions.Contains(ExpansionDefinitions.ExtendedTrading) ? 15f : 0f);
         _timeRemaining = _roundDuration;
+        _timeAccumulator = 0f;
+        _totalSimTime = 0f;
+        _elapsedSinceFreeze = 0f;
 
         Debug.Assert(NextConfig != null,
             "[TradingState] NextConfig is null! Set TradingState.NextConfig before calling TransitionTo<TradingState>().");
@@ -112,6 +118,11 @@ public class TradingState : IGameState
                 _roundDuration);
         }
 
+        // Seed the noise RNG for deterministic replay
+        int noiseSeed = ctx.CurrentRound * 7919 + ctx.CurrentAct * 6271;
+        if (_priceGenerator != null)
+            _priceGenerator.SetNoiseSeed(noiseSeed);
+
         // Story 18.2 + 18.6: Activate insider tip overlays using pre-decided event data
         if (ctx.RevealedTips != null && ctx.RevealedTips.Count > 0
             && _priceGenerator != null && _priceGenerator.ActiveStocks.Count > 0)
@@ -122,7 +133,8 @@ public class TradingState : IGameState
                 PreDecidedEvents = _eventScheduler != null ? _eventScheduler.PreDecidedEvents : null,
                 RoundDuration = _roundDuration,
                 TierConfig = StockTierData.GetTierConfig(ctx.CurrentTier),
-                Random = new System.Random(ctx.CurrentRound * 31 + ctx.CurrentAct)
+                Random = new System.Random(ctx.CurrentRound * 31 + ctx.CurrentAct),
+                NoiseSeed = noiseSeed
             };
             ctx.ActiveTipOverlays.Clear();
             // Story 18.6, AC 5: ActivateTips also updates RevealedTip display text in-place
@@ -143,15 +155,84 @@ public class TradingState : IGameState
 
     /// <summary>
     /// Core timer and price update logic. Separated from Update for testability.
+    /// Uses a fixed-step accumulator so the noise RNG advances in identical increments
+    /// regardless of frame rate, making tip predictions deterministically exact.
+    /// The freeze check is per sub-step (inside the accumulator), matching
+    /// TipActivator.SimulateRound's loop structure exactly.
     /// </summary>
     public void AdvanceTime(RunContext ctx, float deltaTime)
     {
         _timeRemaining -= deltaTime;
+        bool expired = _timeRemaining <= 0f;
 
-        // Check for timer expiry BEFORE price updates to avoid processing past deadline
-        if (_timeRemaining <= 0f)
+        // Cap delta to avoid processing past the deadline
+        float effectiveDelta = expired ? (deltaTime + _timeRemaining) : deltaTime;
+        if (effectiveDelta < 0f) effectiveDelta = 0f;
+        if (expired) _timeRemaining = 0f;
+
+        // Update static accessors for UI reads
+        ActiveTimeRemaining = _timeRemaining;
+
+        // Fixed-step accumulator: process ALL updates (frozen + non-frozen) in identical
+        // increments to TipActivator.SimulateRound so the noise RNG produces the same
+        // sequence regardless of frame rate.
+        _timeAccumulator += effectiveDelta;
+        float step = GameConfig.PriceStepSeconds;
+
+        while (_timeAccumulator >= step)
         {
-            _timeRemaining = 0f;
+            _timeAccumulator -= step;
+
+            bool frozen = _totalSimTime < GameConfig.PriceFreezeSeconds;
+
+            if (frozen)
+            {
+                // Publish price event at current (unchanged) price so chart draws flat line
+                if (_priceGenerator != null)
+                {
+                    for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
+                    {
+                        var stock = _priceGenerator.ActiveStocks[i];
+                        EventBus.Publish(new PriceUpdatedEvent
+                        {
+                            StockId = stock.StockId,
+                            NewPrice = stock.CurrentPrice,
+                            PreviousPrice = stock.CurrentPrice,
+                            DeltaTime = step
+                        });
+                    }
+                }
+            }
+            else
+            {
+                // Update event scheduler BEFORE price updates so newly fired events
+                // affect prices this step
+                if (_eventScheduler != null && _priceGenerator != null)
+                {
+                    _eventScheduler.Update(
+                        _elapsedSinceFreeze,
+                        step,
+                        _priceGenerator.ActiveStocks,
+                        ctx.CurrentTier);
+                }
+
+                // Drive PriceGenerator updates
+                if (_priceGenerator != null)
+                {
+                    for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
+                    {
+                        _priceGenerator.UpdatePrice(_priceGenerator.ActiveStocks[i], step);
+                    }
+                }
+
+                _elapsedSinceFreeze += step;
+            }
+
+            _totalSimTime += step;
+        }
+
+        if (expired)
+        {
             ActiveTimeRemaining = 0f;
             IsActive = false;
 
@@ -171,47 +252,6 @@ public class TradingState : IGameState
                     EventScheduler = _eventScheduler
                 };
                 _stateMachine.TransitionTo<MarketCloseState>();
-            }
-            return;
-        }
-
-        // Update static accessors for UI reads
-        ActiveTimeRemaining = _timeRemaining;
-
-        // Skip all price/event processing during initial price freeze
-        bool frozen = TimeElapsed < GameConfig.PriceFreezeSeconds;
-
-        // Update event scheduler BEFORE price updates so newly fired events affect prices this frame
-        if (!frozen && _eventScheduler != null && _priceGenerator != null)
-        {
-            _eventScheduler.Update(
-                TimeElapsed - GameConfig.PriceFreezeSeconds,
-                deltaTime,
-                _priceGenerator.ActiveStocks,
-                ctx.CurrentTier);
-        }
-
-        // Drive PriceGenerator updates
-        if (_priceGenerator != null)
-        {
-            for (int i = 0; i < _priceGenerator.ActiveStocks.Count; i++)
-            {
-                var stock = _priceGenerator.ActiveStocks[i];
-                if (frozen)
-                {
-                    // Publish price event at current (unchanged) price so chart draws flat line
-                    EventBus.Publish(new PriceUpdatedEvent
-                    {
-                        StockId = stock.StockId,
-                        NewPrice = stock.CurrentPrice,
-                        PreviousPrice = stock.CurrentPrice,
-                        DeltaTime = deltaTime
-                    });
-                }
-                else
-                {
-                    _priceGenerator.UpdatePrice(stock, deltaTime);
-                }
             }
         }
     }

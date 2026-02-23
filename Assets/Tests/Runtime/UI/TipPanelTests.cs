@@ -201,6 +201,53 @@ namespace BullRun.Tests.UI
             Assert.AreEqual("ALL CLEAR", TipPanel.FormatCountdownText(0));
         }
 
+        // --- FormatCountdownText with next-event countdown ---
+
+        [Test]
+        public void FormatCountdownText_WithSecondsUntilNext_ShowsNextCountdown()
+        {
+            Assert.AreEqual("EVENTS: 3 | NEXT: 12s", TipPanel.FormatCountdownText(3, 11.2f));
+        }
+
+        [Test]
+        public void FormatCountdownText_WithSecondsUntilNext_CeilsSeconds()
+        {
+            // 0.1 seconds remaining should show "1s" not "0s"
+            Assert.AreEqual("EVENTS: 2 | NEXT: 1s", TipPanel.FormatCountdownText(2, 0.1f));
+        }
+
+        [Test]
+        public void FormatCountdownText_WithZeroSeconds_ShowsZero()
+        {
+            Assert.AreEqual("EVENTS: 1 | NEXT: 0s", TipPanel.FormatCountdownText(1, 0f));
+        }
+
+        [Test]
+        public void FormatCountdownText_WithNegativeSeconds_FallsBackToBase()
+        {
+            // -1 seconds means no more events — fall back to base format
+            Assert.AreEqual("EVENTS: 2", TipPanel.FormatCountdownText(2, -1f));
+        }
+
+        [Test]
+        public void FormatCountdownText_WithZeroCount_IgnoresSeconds()
+        {
+            // When count is 0, show ALL CLEAR regardless of seconds
+            Assert.AreEqual("ALL CLEAR", TipPanel.FormatCountdownText(0, 5f));
+        }
+
+        [Test]
+        public void FormatCountdownText_WithNegativeCount_IgnoresSeconds()
+        {
+            Assert.AreEqual("", TipPanel.FormatCountdownText(-1, 10f));
+        }
+
+        [Test]
+        public void FormatCountdownText_WithLargeSeconds_FormatsCorrectly()
+        {
+            Assert.AreEqual("EVENTS: 4 | NEXT: 45s", TipPanel.FormatCountdownText(4, 44.3f));
+        }
+
         // --- PulseDuration and PulseScale are sane ---
 
         [Test]

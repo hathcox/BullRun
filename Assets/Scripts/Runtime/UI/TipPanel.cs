@@ -15,6 +15,8 @@ public class TipPanel : MonoBehaviour
     public static readonly float PulseScale = 1.2f;
 
     private int _eventCountdown = -1;   // -1 = no event count tip active
+    private float[] _eventFireTimes;    // absolute seconds from round start, sorted
+    private int _nextEventIndex;        // index of next unfired event in _eventFireTimes
     private Text _countdownText;
     private RectTransform _countdownRect;
     private readonly List<GameObject> _badgeSlots = new List<GameObject>();
@@ -63,6 +65,8 @@ public class TipPanel : MonoBehaviour
             if (overlay.Type == InsiderTipType.EventCount && overlay.EventCountdown >= 0)
             {
                 _eventCountdown = overlay.EventCountdown;
+                _eventFireTimes = overlay.EventFireTimes;
+                _nextEventIndex = 0;
                 hasCountdown = true;
             }
             else
@@ -92,6 +96,7 @@ public class TipPanel : MonoBehaviour
 
         int old = _eventCountdown;
         _eventCountdown--;
+        _nextEventIndex++;
         UpdateCountdownDisplay();
 
         // AC 6: Pulse animation on decrement
@@ -109,6 +114,8 @@ public class TipPanel : MonoBehaviour
     {
         ClearBadges();
         _eventCountdown = -1;
+        _eventFireTimes = null;
+        _nextEventIndex = 0;
         _pulseTween?.Kill();
         if (_countdownText != null)
             _countdownText.gameObject.SetActive(false);
@@ -119,21 +126,57 @@ public class TipPanel : MonoBehaviour
     {
         ClearBadges();
         _eventCountdown = -1;
+        _eventFireTimes = null;
+        _nextEventIndex = 0;
         _pulseTween?.Kill();
         if (_countdownText != null)
             _countdownText.gameObject.SetActive(false);
         _panelRoot.SetActive(false);
     }
 
+    // ── Per-Frame Update ────────────────────────────────────────────────
+
+    private void Update()
+    {
+        if (_eventCountdown <= 0 || !TradingState.IsActive) return;
+        if (_countdownText == null) return;
+
+        float secondsUntilNext = GetSecondsUntilNextEvent();
+        _countdownText.text = FormatCountdownText(_eventCountdown, secondsUntilNext);
+    }
+
     // ── Internal Helpers ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns seconds until the next event fires, or -1 if no more events.
+    /// </summary>
+    private float GetSecondsUntilNextEvent()
+    {
+        if (_eventFireTimes == null || _nextEventIndex >= _eventFireTimes.Length)
+            return -1f;
+
+        float elapsed = TradingState.ActiveRoundDuration - TradingState.ActiveTimeRemaining;
+        float secondsUntil = _eventFireTimes[_nextEventIndex] - elapsed;
+        return secondsUntil > 0f ? secondsUntil : 0f;
+    }
 
     private void UpdateCountdownDisplay()
     {
         if (_countdownText == null) return;
-        _countdownText.text = FormatCountdownText(_eventCountdown);
-        _countdownText.color = _eventCountdown == 0
-            ? ColorPalette.Green
-            : CRTThemeData.TextHigh;
+
+        if (_eventCountdown <= 0)
+        {
+            _countdownText.text = FormatCountdownText(_eventCountdown);
+            _countdownText.color = _eventCountdown == 0
+                ? ColorPalette.Green
+                : CRTThemeData.TextHigh;
+        }
+        else
+        {
+            float secondsUntil = GetSecondsUntilNextEvent();
+            _countdownText.text = FormatCountdownText(_eventCountdown, secondsUntil);
+            _countdownText.color = CRTThemeData.TextHigh;
+        }
     }
 
     private void PlayPulse(RectTransform target)
@@ -205,6 +248,18 @@ public class TipPanel : MonoBehaviour
         if (count < 0) return "";
         if (count == 0) return "ALL CLEAR";
         return $"EVENTS: {count}";
+    }
+
+    /// <summary>
+    /// Returns formatted countdown text with seconds until the next event.
+    /// Shows "EVENTS: X | NEXT: Ns" when countdown is available,
+    /// falls back to the base format otherwise.
+    /// </summary>
+    public static string FormatCountdownText(int count, float secondsUntilNext)
+    {
+        if (count <= 0 || secondsUntilNext < 0f) return FormatCountdownText(count);
+        int secs = Mathf.CeilToInt(secondsUntilNext);
+        return $"EVENTS: {count} | NEXT: {secs}s";
     }
 
     /// <summary>

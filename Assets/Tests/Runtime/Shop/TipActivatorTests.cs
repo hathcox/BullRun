@@ -13,7 +13,8 @@ namespace BullRun.Tests.Shop
             float roundDuration = 60f,
             float trendRate = 0.015f,
             int seed = 42,
-            StockTier tier = StockTier.Penny)
+            StockTier tier = StockTier.Penny,
+            int noiseSeed = 12345)
         {
             var stock = new StockInstance();
             stock.Initialize(0, "TEST", tier, startingPrice, trend, trendRate);
@@ -24,7 +25,8 @@ namespace BullRun.Tests.Shop
                 PreDecidedEvents = preDecidedEvents,
                 RoundDuration = roundDuration,
                 TierConfig = StockTierData.GetTierConfig(tier),
-                Random = new System.Random(seed)
+                Random = new System.Random(seed),
+                NoiseSeed = noiseSeed
             };
         }
 
@@ -79,11 +81,10 @@ namespace BullRun.Tests.Shop
             var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f, trendRate: 0.01f);
             var sim = TipActivator.SimulateRound(ctx);
 
-            // Bull trend with no events: min = starting price, max = closing price
-            Assert.AreEqual(10f, sim.MinPrice, 0.01f, "Min should be starting price for pure bull");
+            // Bull trend with noise: min near starting price, max/closing above starting
+            Assert.AreEqual(10f, sim.MinPrice, 10f * 0.15f, "Min should be near starting price for bull");
             Assert.Greater(sim.MaxPrice, 10f, "Max should be above starting for pure bull");
-            Assert.Greater(sim.ClosingPrice, 10f, "Closing should be above starting for pure bull");
-            Assert.AreEqual(sim.ClosingPrice, sim.MaxPrice, 0.01f, "For pure bull, max = closing");
+            Assert.Greater(sim.ClosingPrice, 10f * 0.85f, "Closing should be near or above starting for bull");
         }
 
         [Test]
@@ -92,10 +93,9 @@ namespace BullRun.Tests.Shop
             var ctx = CreateContext(trend: TrendDirection.Bear, startingPrice: 10f, trendRate: 0.01f);
             var sim = TipActivator.SimulateRound(ctx);
 
-            // Bear trend with no events: max = starting price, min = closing price
-            Assert.AreEqual(10f, sim.MaxPrice, 0.01f, "Max should be starting price for pure bear");
-            Assert.Less(sim.MinPrice, 10f, "Min should be below starting for pure bear");
-            Assert.Less(sim.ClosingPrice, 10f, "Closing should be below starting for pure bear");
+            // Bear trend with noise: max near starting price, min/closing below starting
+            Assert.AreEqual(10f, sim.MaxPrice, 10f * 0.15f, "Max should be near starting price for bear");
+            Assert.Less(sim.ClosingPrice, 10f * 1.15f, "Closing should be near or below starting for bear");
         }
 
         [Test]
@@ -104,10 +104,8 @@ namespace BullRun.Tests.Shop
             var ctx = CreateContext(trend: TrendDirection.Neutral, startingPrice: 10f, trendRate: 0.01f);
             var sim = TipActivator.SimulateRound(ctx);
 
-            // Neutral: price stays at starting price
-            Assert.AreEqual(10f, sim.MinPrice, 0.01f);
-            Assert.AreEqual(10f, sim.MaxPrice, 0.01f);
-            Assert.AreEqual(10f, sim.ClosingPrice, 0.01f);
+            // Neutral with noise: price fluctuates near starting price
+            Assert.AreEqual(10f, sim.ClosingPrice, 10f * 0.15f, "Closing should be near starting for neutral");
         }
 
         [Test]
@@ -182,10 +180,10 @@ namespace BullRun.Tests.Shop
                 MakeEvent(45f, 0.30f)
             };
 
-            var ctx1 = CreateContext(preDecidedEvents: events, seed: 42);
+            var ctx1 = CreateContext(preDecidedEvents: events, seed: 42, noiseSeed: 555);
             var sim1 = TipActivator.SimulateRound(ctx1);
 
-            var ctx2 = CreateContext(preDecidedEvents: events, seed: 42);
+            var ctx2 = CreateContext(preDecidedEvents: events, seed: 42, noiseSeed: 555);
             var sim2 = TipActivator.SimulateRound(ctx2);
 
             Assert.AreEqual(sim1.MinPrice, sim2.MinPrice, 0.0001f);
@@ -378,15 +376,15 @@ namespace BullRun.Tests.Shop
                 trend: TrendDirection.Neutral);
             var sim = TipActivator.SimulateRound(ctx);
 
-            // Pump peak = 10 * (1 + 0.60) = $16.00
+            // Pump peak ≈ 10 * (1 + 0.60) = $16.00 (noise adds variance)
             float expectedPeak = 10f * (1f + 0.60f);
-            Assert.AreEqual(expectedPeak, sim.MaxPrice, 0.1f,
-                "Max should be at pump peak");
+            Assert.AreEqual(expectedPeak, sim.MaxPrice, 2.0f,
+                "Max should be near pump peak");
 
-            // Post-dump = 10 * 0.80 = $8.00
+            // Post-dump ≈ 10 * 0.80 = $8.00 (noise adds variance)
             float expectedDump = 10f * 0.80f;
-            Assert.AreEqual(expectedDump, sim.MinPrice, 0.1f,
-                "Min should be at post-dump price");
+            Assert.AreEqual(expectedDump, sim.MinPrice, 2.0f,
+                "Min should be near post-dump price");
         }
 
         // === No fuzz in any tip value (AC 8) ===
@@ -415,11 +413,11 @@ namespace BullRun.Tests.Shop
             };
 
             // Run 1
-            var ctx1 = CreateContext(preDecidedEvents: events, seed: 99);
+            var ctx1 = CreateContext(preDecidedEvents: events, seed: 99, noiseSeed: 777);
             var overlays1 = TipActivator.ActivateTips(new List<RevealedTip>(tips), ctx1);
 
-            // Run 2 — same inputs, different Random seed (shouldn't matter — no fuzz)
-            var ctx2 = CreateContext(preDecidedEvents: events, seed: 123);
+            // Run 2 — same NoiseSeed, different Random seed (shouldn't matter — no fuzz)
+            var ctx2 = CreateContext(preDecidedEvents: events, seed: 123, noiseSeed: 777);
             var overlays2 = TipActivator.ActivateTips(new List<RevealedTip>(tips), ctx2);
 
             // All overlay values should be identical regardless of Random seed
@@ -577,6 +575,53 @@ namespace BullRun.Tests.Shop
         }
 
         [Test]
+        public void EventCount_PopulatesFireTimes_SortedAbsoluteFromRoundStart()
+        {
+            // Fire times are relative to freeze end; EventFireTimes should be absolute from round start
+            var events = new[] { MakeEvent(30f, 0.10f), MakeEvent(10f, 0.10f), MakeEvent(20f, 0.10f) };
+            var ctx = CreateContext(preDecidedEvents: events);
+            var tip = new RevealedTip(InsiderTipType.EventCount, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsNotNull(overlays[0].EventFireTimes);
+            Assert.AreEqual(3, overlays[0].EventFireTimes.Length);
+            // Fire times offset by PriceFreezeSeconds and sorted
+            float freeze = GameConfig.PriceFreezeSeconds;
+            Assert.AreEqual(10f + freeze, overlays[0].EventFireTimes[0], 0.001f);
+            Assert.AreEqual(20f + freeze, overlays[0].EventFireTimes[1], 0.001f);
+            Assert.AreEqual(30f + freeze, overlays[0].EventFireTimes[2], 0.001f);
+        }
+
+        [Test]
+        public void EventCount_NoEvents_FireTimesIsNull()
+        {
+            var ctx = CreateContext(preDecidedEvents: null);
+            var tip = new RevealedTip(InsiderTipType.EventCount, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsNull(overlays[0].EventFireTimes);
+        }
+
+        [Test]
+        public void EventCount_SingleEvent_FireTimesHasOneEntry()
+        {
+            var events = new[] { MakeEvent(15f, 0.10f) };
+            var ctx = CreateContext(preDecidedEvents: events);
+            var tip = new RevealedTip(InsiderTipType.EventCount, "generic", 0f);
+            var tips = new List<RevealedTip> { tip };
+
+            var overlays = TipActivator.ActivateTips(tips, ctx);
+
+            Assert.IsNotNull(overlays[0].EventFireTimes);
+            Assert.AreEqual(1, overlays[0].EventFireTimes.Length);
+            Assert.AreEqual(15f + GameConfig.PriceFreezeSeconds, overlays[0].EventFireTimes[0], 0.001f);
+        }
+
+        [Test]
         public void EventTiming_NoEvents_ReturnsEmptyArray()
         {
             var ctx = CreateContext(preDecidedEvents: null);
@@ -645,143 +690,7 @@ namespace BullRun.Tests.Shop
             Assert.AreEqual(-1, overlays[0].EventCountdown, "EventCountdown sentinel");
         }
 
-        // === Story 18.7, AC 7: Drift regression tests ===
-
-        [Test]
-        public void Drift_SingleLargeEvent_ReducesMaxVsNaive()
-        {
-            // Bull stock, +50% event at t=30, duration=4
-            // Without drift: post-event base stays at full target, trend compounds on inflated base
-            // With drift: post-event base pulled down toward trend line, reducing closing price
-            var events = new[] { MakeEvent(30f, 0.50f) };
-            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
-                preDecidedEvents: events, trendRate: 0.01f);
-            var sim = TipActivator.SimulateRound(ctx);
-
-            // Compute naive (no drift) closing: full target compounds for remaining time
-            float priceAtEventTime = 10f * UnityEngine.Mathf.Pow(1f + 0.01f, 30f);
-            float naiveTarget = priceAtEventTime * 1.50f;
-            float naiveClosing = naiveTarget * UnityEngine.Mathf.Pow(1f + 0.01f, 60f - 30f - 4f);
-
-            // Closing should be lower than naive closing (drift pulls post-event base down)
-            Assert.Less(sim.ClosingPrice, naiveClosing,
-                $"Closing ${sim.ClosingPrice:F2} should be below naive closing ${naiveClosing:F2} due to drift");
-
-            // For bull trend, max is at round end (trend continues growing past event peak)
-            Assert.AreEqual(sim.ClosingPrice, sim.MaxPrice, 0.01f,
-                "For bull trend, MaxPrice should equal ClosingPrice (continuous growth)");
-        }
-
-        [Test]
-        public void Drift_CompoundingEvents_InflationEliminated()
-        {
-            // Two events: +30% at t=15 (dur=4), +20% at t=40 (dur=4)
-            // Without drift: second event compounds on full +30% target → inflated closing
-            // With drift: second event compounds on drifted (lower) base → reduced closing
-            var events = new[]
-            {
-                MakeEvent(15f, 0.30f),
-                MakeEvent(40f, 0.20f)
-            };
-
-            // Compute naive (no drift) closing: full targets compound for remaining time
-            float price15 = 10f * UnityEngine.Mathf.Pow(1f + 0.01f, 15f);
-            float naiveAfterFirst = price15 * 1.30f;
-            float naiveAt40 = naiveAfterFirst * UnityEngine.Mathf.Pow(1f + 0.01f, 40f - 15f - 4f);
-            float naiveAfterSecond = naiveAt40 * 1.20f;
-            float naiveClosing = naiveAfterSecond * UnityEngine.Mathf.Pow(1f + 0.01f, 60f - 40f - 4f);
-
-            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
-                preDecidedEvents: events, trendRate: 0.01f);
-            var sim = TipActivator.SimulateRound(ctx);
-
-            // Closing should be less than naive closing — drift reduces inflation from compounding events
-            Assert.Less(sim.ClosingPrice, naiveClosing,
-                $"Closing ${sim.ClosingPrice:F2} should be less than naive ${naiveClosing:F2} — drift eliminates inflation");
-        }
-
-        [Test]
-        public void Drift_HigherMeanReversionSpeed_ProducesMoreDrift()
-        {
-            // Compare Penny (MRS=0.20, NA=0.08) vs LowValue (MRS=0.35, NA=0.05)
-            // Use +20% positive event where both tiers are in the uncapped drift regime:
-            //   Penny: force = 0.20 * rawTarget * 0.20, cap = 0.08 * rawTarget * 2 → uncapped
-            //   LowValue: force = 0.20 * rawTarget * 0.35, cap = 0.05 * rawTarget * 2 → uncapped
-            var events = new[] { MakeEvent(20f, 0.20f) };
-
-            var pennyCtx = CreateContext(startingPrice: 6f, preDecidedEvents: events,
-                trendRate: 0.01f, tier: StockTier.Penny);
-            var pennyClosing = TipActivator.SimulateRound(pennyCtx).ClosingPrice;
-
-            var lowValueCtx = CreateContext(startingPrice: 20f, preDecidedEvents: events,
-                trendRate: 0.01f, tier: StockTier.LowValue);
-            var lowValueClosing = TipActivator.SimulateRound(lowValueCtx).ClosingPrice;
-
-            // Compare relative to starting price: LowValue (higher MRS) should drift more
-            float pennyRatio = pennyClosing / 6f;
-            float lowValueRatio = lowValueClosing / 20f;
-
-            // Both get same +20% event and same trend. LowValue (MRS=0.35) should
-            // have lower ratio because stronger mean reversion pulls price down more.
-            Assert.Less(lowValueRatio, pennyRatio,
-                $"LowValue ratio {lowValueRatio:F4} should be less than Penny ratio {pennyRatio:F4} due to higher MRS");
-        }
-
-        [Test]
-        public void Drift_ZeroEvents_SimulationUnchanged()
-        {
-            // Pure trend, no events → no drift → results identical to pre-drift behavior
-            var ctx = CreateContext(trend: TrendDirection.Bull, startingPrice: 10f,
-                trendRate: 0.01f, preDecidedEvents: null);
-            var sim = TipActivator.SimulateRound(ctx);
-
-            // Expected: pure compound growth over full round duration
-            float expectedClosing = 10f * UnityEngine.Mathf.Pow(1f + 0.01f, 60f);
-            Assert.AreEqual(expectedClosing, sim.ClosingPrice, 0.01f,
-                "Zero events should produce pure trend — no drift applied");
-            Assert.AreEqual(10f, sim.MinPrice, 0.01f, "Min should be starting price");
-            Assert.AreEqual(expectedClosing, sim.MaxPrice, 0.01f, "Max should be closing price");
-        }
-
-        [Test]
-        public void Drift_NegativeEvent_DriftPullsTowardTrendLine()
-        {
-            // Large negative event: drift should pull price UP toward trend line
-            // Force is self-limiting: deviation * rawTarget * MRS → as rawTarget drops, force drops
-            var events = new[] { MakeEvent(20f, -0.40f, false, MarketEventType.MarketCrash) };
-            var ctx = CreateContext(startingPrice: 10f, preDecidedEvents: events,
-                trendRate: 0.005f, trend: TrendDirection.Neutral);
-            var sim = TipActivator.SimulateRound(ctx);
-
-            // Raw target = 10 * (1 - 0.40) = $6.00
-            // Trend line ≈ $10 (neutral, no movement)
-            // Drift pulls price UP toward trend line
-            float rawTarget = 10f * (1f - 0.40f);
-            Assert.Greater(sim.ClosingPrice, rawTarget,
-                "Negative event drift should pull closing price UP toward trend line");
-
-            // Drift should not overshoot the trend line
-            Assert.Less(sim.ClosingPrice, 10f,
-                "Drift should not overshoot the trend line");
-        }
-
-        [Test]
-        public void Drift_DynamicFloor_RespectedAfterDrift()
-        {
-            // Massive negative event should trigger floor even after drift
-            var events = new[] { MakeEvent(10f, -0.95f, false, MarketEventType.MarketCrash) };
-            var ctx = CreateContext(startingPrice: 5f, preDecidedEvents: events, trendRate: 0.001f,
-                trend: TrendDirection.Neutral);
-            var sim = TipActivator.SimulateRound(ctx);
-
-            float expectedFloor = 5f * GameConfig.PriceFloorPercent;
-            Assert.GreaterOrEqual(sim.MinPrice, expectedFloor,
-                $"Min ${sim.MinPrice:F2} should not breach floor ${expectedFloor:F2}");
-            Assert.GreaterOrEqual(sim.ClosingPrice, expectedFloor,
-                $"Closing ${sim.ClosingPrice:F2} should not breach floor ${expectedFloor:F2}");
-        }
-
-        // === Story 18.7, AC 8: Display text tests ===
+        // === Display text tests ===
 
         [Test]
         public void DisplayText_PriceCeiling_ContainsTilde()

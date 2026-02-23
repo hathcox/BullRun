@@ -24,6 +24,7 @@ public class EventEffects
     private IReadOnlyList<StockInstance> _activeStocks;
     private System.Random _headlineRandom = new System.Random();
 
+    public bool SilentMode { get; set; }
     public int ActiveEventCount => _activeEvents.Count;
 
     /// <summary>
@@ -85,22 +86,25 @@ public class EventEffects
             }
         }
 
-        string headline = EventHeadlineData.GetHeadline(evt.EventType, tickerForHeadline, _headlineRandom);
-
-        EventBus.Publish(new MarketEventFiredEvent
+        if (!SilentMode)
         {
-            EventType = evt.EventType,
-            AffectedStockIds = new[] { evt.TargetStockId.Value },
-            PriceEffectPercent = evt.PriceEffectPercent,
-            Headline = headline,
-            AffectedTickerSymbols = new[] { tickerForHeadline },
-            IsPositive = EventHeadlineData.IsPositiveEvent(evt.EventType),
-            Duration = evt.Duration
-        });
+            string headline = EventHeadlineData.GetHeadline(evt.EventType, tickerForHeadline, _headlineRandom);
 
-        #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        Debug.Log($"[Events] Event fired: {evt.EventType} on {tickerForHeadline} ({evt.PriceEffectPercent:+0.0%;-0.0%} over {evt.Duration}s) — \"{headline}\"");
-        #endif
+            EventBus.Publish(new MarketEventFiredEvent
+            {
+                EventType = evt.EventType,
+                AffectedStockIds = new[] { evt.TargetStockId.Value },
+                PriceEffectPercent = evt.PriceEffectPercent,
+                Headline = headline,
+                AffectedTickerSymbols = new[] { tickerForHeadline },
+                IsPositive = EventHeadlineData.IsPositiveEvent(evt.EventType),
+                Duration = evt.Duration
+            });
+
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[Events] Event fired: {evt.EventType} on {tickerForHeadline} ({evt.PriceEffectPercent:+0.0%;-0.0%} over {evt.Duration}s) — \"{headline}\"");
+            #endif
+        }
     }
 
     /// <summary>
@@ -228,16 +232,19 @@ public class EventEffects
                 }
             }
 
-            EventBus.Publish(new MarketEventEndedEvent
+            if (!SilentMode)
             {
-                EventType = expired.EventType,
-                AffectedStockIds = new[] { expired.TargetStockId.Value },
-                AffectedTickerSymbols = new[] { endedTicker }
-            });
+                EventBus.Publish(new MarketEventEndedEvent
+                {
+                    EventType = expired.EventType,
+                    AffectedStockIds = new[] { expired.TargetStockId.Value },
+                    AffectedTickerSymbols = new[] { endedTicker }
+                });
 
-            #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            Debug.Log($"[Events] Event ended: {expired.EventType}");
-            #endif
+                #if UNITY_EDITOR || DEVELOPMENT_BUILD
+                Debug.Log($"[Events] Event ended: {expired.EventType}");
+                #endif
+            }
 
             // Clean up tracked prices for all stocks affected by this event
             _keysToRemoveBuffer.Clear();

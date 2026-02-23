@@ -127,6 +127,10 @@ public static class GameConfig
     // Prevents jarring teleport by easing noise amplitude from 0% to 100%
     public static readonly float NoiseRampUpSeconds = 2.0f;
 
+    // Fixed sub-step for price/event simulation. Both TradingState and TipActivator.SimulateRound
+    // process in this increment so the noise RNG advances identically, making tips deterministic.
+    public static readonly float PriceStepSeconds = 1f / 60f;
+
     // Market Open preview duration before trading begins
     public static readonly float MarketOpenDurationSeconds = 3f;
 

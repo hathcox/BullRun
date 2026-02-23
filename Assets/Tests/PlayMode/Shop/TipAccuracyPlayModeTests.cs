@@ -12,12 +12,13 @@ namespace BullRun.Tests.PlayMode.Shop
     /// 1. Creates PriceGenerator + EventScheduler (seeded for reproducibility)
     /// 2. Configures TradingState.NextConfig and calls Enter() (real integration path)
     /// 3. Loops calling AdvanceTime(ctx, Time.deltaTime) each frame via yield return null
-    /// 4. Tracks actual min/max/close prices from PriceGenerator output
+    /// 4. Tracks actual min/max/close prices via PriceUpdatedEvent (per sub-step)
     /// 5. Compares tip predictions (captured from TipOverlaysActivatedEvent) against actuals
     ///
     /// Time.timeScale is set to 10x to keep test execution under ~7s per round.
-    /// Variable frame timing is the core value of PlayMode — proves tips stay accurate
-    /// even with coarser dt values than the 1/60 used in EditMode tests.
+    /// TradingState uses a fixed-step accumulator (GameConfig.PriceStepSeconds) so the
+    /// noise RNG advances identically regardless of frame rate. Tips are deterministically
+    /// exact — tolerances are near-zero.
     /// </summary>
     [TestFixture]
     public class TipAccuracyPlayModeTests
@@ -93,7 +94,7 @@ namespace BullRun.Tests.PlayMode.Shop
 
         /// <summary>
         /// Runs 10 seeds and checks that ClosingDirection tip matches actual direction
-        /// at least 60% of the time. Variable frame timing makes this harder than EditMode.
+        /// 100% of the time. Fixed-step accumulator ensures deterministic replay match.
         /// Uses class-based result holder so coroutine can write back to caller.
         /// </summary>
         [UnityTest]
@@ -136,9 +137,9 @@ namespace BullRun.Tests.PlayMode.Shop
             }
 
             float matchRate = (float)matches / total;
-            Assert.GreaterOrEqual(matchRate, 0.60f,
-                $"ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be >= 60% " +
-                "with variable frame timing");
+            Assert.GreaterOrEqual(matchRate, 1.00f,
+                $"ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be 100% " +
+                "with fixed-step accumulator ensuring deterministic replay");
         }
 
         // =====================================================================
@@ -157,6 +158,8 @@ namespace BullRun.Tests.PlayMode.Shop
 
         /// <summary>
         /// Runs a full round through TradingState with real Unity timing and verifies all 9 tips.
+        /// Prices are tracked via PriceUpdatedEvent (per sub-step) for exact match with the
+        /// tip replay, which also processes at GameConfig.PriceStepSeconds intervals.
         /// </summary>
         private IEnumerator RunFullRoundAndVerifyAllTips(int act, int round, int seed)
         {
@@ -164,6 +167,8 @@ namespace BullRun.Tests.PlayMode.Shop
 
             // === 1. Create PriceGenerator with seeded Random ===
             var priceGen = new PriceGenerator(new System.Random(seed));
+            int noiseSeed = round * 7919 + act * 6271;
+            priceGen.SetNoiseSeed(noiseSeed);
             priceGen.InitializeRound(act, round);
             Assert.IsTrue(priceGen.ActiveStocks.Count > 0,
                 $"[Seed {seed}] PriceGenerator.InitializeRound produced no stocks");
@@ -186,6 +191,28 @@ namespace BullRun.Tests.PlayMode.Shop
             EventBus.Subscribe<TipOverlaysActivatedEvent>(e =>
                 _capturedOverlays = new List<TipOverlayData>(e.Overlays));
             EventBus.Subscribe<MarketEventFiredEvent>(e => _eventsFired++);
+
+            // === 4b. Subscribe to PriceUpdatedEvent for per-sub-step tracking ===
+            // This matches TipActivator.SimulateRound's per-step tracking exactly.
+            // Time is recorded BEFORE incrementing to match the replay's totalTime order.
+            int trackStockId = stock.StockId;
+            float trackMin = startingPrice;
+            float trackMax = startingPrice;
+            float trackMinTime = 0f;
+            float trackMaxTime = 0f;
+            float trackElapsed = 0f;
+            float trackWeightedSum = 0f;
+            float trackWeightedTime = 0f;
+
+            EventBus.Subscribe<PriceUpdatedEvent>(e =>
+            {
+                if (e.StockId != trackStockId) return;
+                if (e.NewPrice < trackMin) { trackMin = e.NewPrice; trackMinTime = trackElapsed; }
+                if (e.NewPrice > trackMax) { trackMax = e.NewPrice; trackMaxTime = trackElapsed; }
+                trackWeightedSum += e.NewPrice * e.DeltaTime;
+                trackWeightedTime += e.DeltaTime;
+                trackElapsed += e.DeltaTime;
+            });
 
             // === 5. Configure TradingState (no StateMachine to prevent MarketClose transition) ===
             TradingState.NextConfig = new TradingStateConfig
@@ -210,12 +237,7 @@ namespace BullRun.Tests.PlayMode.Shop
             float roundDuration = TradingState.ActiveRoundDuration;
 
             // === 7. Run the round with real Unity frame timing ===
-            float actualMinPrice = startingPrice;
-            float actualMaxPrice = startingPrice;
-            float actualMinPriceTime = 0f;
-            float actualMaxPriceTime = 0f;
-            float priceSum = 0f;
-            int priceCount = 0;
+            int frameCount = 0;
             float elapsedTime = 0f;
 
             while (TradingState.IsActive)
@@ -223,64 +245,49 @@ namespace BullRun.Tests.PlayMode.Shop
                 float dt = Time.deltaTime;
                 tradingState.AdvanceTime(ctx, dt);
                 elapsedTime += dt;
-
-                // Track actual prices every frame
-                float price = stock.CurrentPrice;
-                if (price < actualMinPrice) { actualMinPrice = price; actualMinPriceTime = elapsedTime; }
-                if (price > actualMaxPrice) { actualMaxPrice = price; actualMaxPriceTime = elapsedTime; }
-                priceSum += price;
-                priceCount++;
-
+                frameCount++;
                 yield return null; // Real Unity frame boundary
             }
 
+            float actualMinPrice = trackMin;
+            float actualMaxPrice = trackMax;
             float actualClosingPrice = stock.CurrentPrice;
-            float actualAvgPrice = priceCount > 0 ? priceSum / priceCount : startingPrice;
-            float actualMinNormTime = actualMinPriceTime / roundDuration;
-            float actualMaxNormTime = actualMaxPriceTime / roundDuration;
+            float actualAvgPrice = trackWeightedTime > 0f ? trackWeightedSum / trackWeightedTime : startingPrice;
+            float actualMinNormTime = trackMinTime / roundDuration;
+            float actualMaxNormTime = trackMaxTime / roundDuration;
 
-            // === 8. Verify all 9 tip types ===
+            // === 8. Verify all 9 tip types (near-zero tolerances) ===
             var overlaysByType = new Dictionary<InsiderTipType, TipOverlayData>();
             foreach (var overlay in _capturedOverlays)
                 overlaysByType[overlay.Type] = overlay;
 
-            // -- PriceFloor --
-            // Tip floor is analytical (no noise), so actual can go lower due to noise.
-            // With 10x timeScale, larger dt amplifies noise effects.
-            // Scale tolerance by event count: more events = more noise-driven divergence.
+            // -- PriceFloor (0.1% tolerance) --
             if (overlaysByType.TryGetValue(InsiderTipType.PriceFloor, out var floorOverlay))
             {
-                int eventCount = scheduler.ScheduledEventCount;
-                float scaledRate = 0.35f + eventCount * 0.04f;
                 float baseValue = Mathf.Max(actualMinPrice, floorOverlay.PriceLevel);
-                float tolerance = Mathf.Max(baseValue * scaledRate, 0.50f);
+                float tolerance = Mathf.Max(baseValue * 0.001f, 0.01f);
                 Assert.AreEqual(actualMinPrice, floorOverlay.PriceLevel, tolerance,
-                    $"[Seed {seed}] PriceFloor: tip=${floorOverlay.PriceLevel:F2}, actual=${actualMinPrice:F2}, " +
-                    $"tolerance=+-{tolerance:F2} ({eventCount} events, rate={scaledRate:P0})");
+                    $"[Seed {seed}] PriceFloor: tip=${floorOverlay.PriceLevel:F4}, actual=${actualMinPrice:F4}, " +
+                    $"tolerance=+-{tolerance:F4}");
             }
 
-            // -- PriceCeiling --
-            // Tip ceiling is analytical (no noise), so actual can go higher due to noise.
+            // -- PriceCeiling (0.1% tolerance) --
             if (overlaysByType.TryGetValue(InsiderTipType.PriceCeiling, out var ceilingOverlay))
             {
-                int eventCount = scheduler.ScheduledEventCount;
-                float scaledRate = 0.35f + eventCount * 0.04f;
                 float baseValue = Mathf.Max(actualMaxPrice, ceilingOverlay.PriceLevel);
-                float tolerance = Mathf.Max(baseValue * scaledRate, 0.50f);
+                float tolerance = Mathf.Max(baseValue * 0.001f, 0.01f);
                 Assert.AreEqual(actualMaxPrice, ceilingOverlay.PriceLevel, tolerance,
-                    $"[Seed {seed}] PriceCeiling: tip=${ceilingOverlay.PriceLevel:F2}, actual=${actualMaxPrice:F2}, " +
-                    $"tolerance=+-{tolerance:F2} ({eventCount} events, rate={scaledRate:P0})");
+                    $"[Seed {seed}] PriceCeiling: tip=${ceilingOverlay.PriceLevel:F4}, actual=${actualMaxPrice:F4}, " +
+                    $"tolerance=+-{tolerance:F4}");
             }
 
-            // -- PriceForecast --
+            // -- PriceForecast (0.1% tolerance) --
             if (overlaysByType.TryGetValue(InsiderTipType.PriceForecast, out var forecastOverlay))
             {
-                // Wider tolerance: average price is sensitive to noise accumulation over variable dt
-                float range = Mathf.Abs(actualMaxPrice - actualMinPrice);
-                float tolerance = Mathf.Max(range * 0.50f, actualAvgPrice * 0.45f);
+                float tolerance = Mathf.Max(actualAvgPrice * 0.001f, 0.01f);
                 Assert.AreEqual(actualAvgPrice, forecastOverlay.BandCenter, tolerance,
-                    $"[Seed {seed}] PriceForecast: tip=${forecastOverlay.BandCenter:F2}, actual=${actualAvgPrice:F2}, " +
-                    $"tolerance=+-{tolerance:F2}");
+                    $"[Seed {seed}] PriceForecast: tip=${forecastOverlay.BandCenter:F4}, actual=${actualAvgPrice:F4}, " +
+                    $"tolerance=+-{tolerance:F4}");
             }
 
             // -- EventCount (exact match — count doesn't depend on timing) --
@@ -291,30 +298,25 @@ namespace BullRun.Tests.PlayMode.Shop
                     $"scheduled={scheduler.ScheduledEventCount}");
             }
 
-            // -- DipMarker (time zone) --
-            // Noise shifts WHEN the min/max occur, not just their values.
-            // With 10x timeScale and coarser dt, timing diverges more than values.
-            // Scale margin by event count: more events = more timing uncertainty.
+            // -- DipMarker (near-zero timing tolerance) --
             if (overlaysByType.TryGetValue(InsiderTipType.DipMarker, out var dipOverlay))
             {
-                int eventCount = scheduler.ScheduledEventCount;
-                float margin = dipOverlay.TimeZoneHalfWidth + 0.25f + eventCount * 0.03f;
+                float margin = dipOverlay.TimeZoneHalfWidth + 0.001f;
                 Assert.AreEqual(actualMinNormTime, dipOverlay.TimeZoneCenter, margin,
-                    $"[Seed {seed}] DipMarker: tipCenter={dipOverlay.TimeZoneCenter:F3}, " +
-                    $"actual={actualMinNormTime:F3}, margin=+-{margin:F3} ({eventCount} events)");
+                    $"[Seed {seed}] DipMarker: tipCenter={dipOverlay.TimeZoneCenter:F4}, " +
+                    $"actual={actualMinNormTime:F4}, margin=+-{margin:F4}");
             }
 
-            // -- PeakMarker (time zone) --
+            // -- PeakMarker (near-zero timing tolerance) --
             if (overlaysByType.TryGetValue(InsiderTipType.PeakMarker, out var peakOverlay))
             {
-                int eventCount = scheduler.ScheduledEventCount;
-                float margin = peakOverlay.TimeZoneHalfWidth + 0.25f + eventCount * 0.03f;
+                float margin = peakOverlay.TimeZoneHalfWidth + 0.001f;
                 Assert.AreEqual(actualMaxNormTime, peakOverlay.TimeZoneCenter, margin,
-                    $"[Seed {seed}] PeakMarker: tipCenter={peakOverlay.TimeZoneCenter:F3}, " +
-                    $"actual={actualMaxNormTime:F3}, margin=+-{margin:F3} ({eventCount} events)");
+                    $"[Seed {seed}] PeakMarker: tipCenter={peakOverlay.TimeZoneCenter:F4}, " +
+                    $"actual={actualMaxNormTime:F4}, margin=+-{margin:F4}");
             }
 
-            // -- ClosingDirection (non-failing — noise can flip close calls) --
+            // -- ClosingDirection (exact match — deterministic replay) --
             if (overlaysByType.TryGetValue(InsiderTipType.ClosingDirection, out var dirOverlay))
             {
                 Assert.IsTrue(dirOverlay.DirectionSign == 1 || dirOverlay.DirectionSign == -1,
@@ -322,13 +324,10 @@ namespace BullRun.Tests.PlayMode.Shop
 
                 bool tipSaysUp = dirOverlay.DirectionSign > 0;
                 bool actualUp = actualClosingPrice >= startingPrice;
-                #if UNITY_EDITOR || DEVELOPMENT_BUILD
-                if (tipSaysUp != actualUp)
-                {
-                    Debug.LogWarning($"[TipTest] ClosingDirection mismatch seed {seed}: " +
-                        $"tip={dirOverlay.DirectionSign}, actual close=${actualClosingPrice:F2} vs start=${startingPrice:F2}");
-                }
-                #endif
+                Assert.AreEqual(tipSaysUp, actualUp,
+                    $"[Seed {seed}] ClosingDirection: tip says {(tipSaysUp ? "UP" : "DOWN")}, " +
+                    $"actual close=${actualClosingPrice:F4} vs start=${startingPrice:F4} " +
+                    $"({(actualUp ? "UP" : "DOWN")})");
             }
 
             // -- EventTiming (exact fire times — no timing dependency) --
@@ -369,9 +368,9 @@ namespace BullRun.Tests.PlayMode.Shop
             #if UNITY_EDITOR || DEVELOPMENT_BUILD
             Debug.Log($"[TipTest] Seed {seed} | {stock.TickerSymbol} ({stock.Tier}, {stock.TrendDirection}) " +
                 $"| Start=${startingPrice:F2} Close=${actualClosingPrice:F2} " +
-                $"| Min=${actualMinPrice:F2}@{actualMinNormTime:F3} Max=${actualMaxPrice:F2}@{actualMaxNormTime:F3} " +
-                $"| Avg=${actualAvgPrice:F2} | Events={_eventsFired} | Frames={priceCount} " +
-                $"| AvgDt={(priceCount > 0 ? elapsedTime / priceCount : 0f):F4}s");
+                $"| Min=${actualMinPrice:F4}@{actualMinNormTime:F4} Max=${actualMaxPrice:F4}@{actualMaxNormTime:F4} " +
+                $"| Avg=${actualAvgPrice:F4} | Events={_eventsFired} | Frames={frameCount} " +
+                $"| AvgDt={(frameCount > 0 ? elapsedTime / frameCount : 0f):F4}s");
             #endif
         }
 
@@ -384,6 +383,8 @@ namespace BullRun.Tests.PlayMode.Shop
             Time.timeScale = 10f;
 
             var priceGen = new PriceGenerator(new System.Random(seed));
+            int noiseSeed = round * 7919 + act * 6271;
+            priceGen.SetNoiseSeed(noiseSeed);
             priceGen.InitializeRound(act, round);
             if (priceGen.ActiveStocks.Count == 0) yield break;
 

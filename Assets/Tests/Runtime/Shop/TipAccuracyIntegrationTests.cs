@@ -39,6 +39,7 @@ namespace BullRun.Tests.Shop
             float roundDuration, float fixedDeltaTime, StockTier tier)
         {
             float totalTime = 0f;
+            float elapsedSinceFreeze = 0f;
             float minPrice = float.MaxValue;
             float maxPrice = float.MinValue;
             float minPriceTime = 0f;
@@ -53,9 +54,9 @@ namespace BullRun.Tests.Shop
 
                 if (!frozen)
                 {
-                    float elapsedSinceFreeze = totalTime - GameConfig.PriceFreezeSeconds;
                     scheduler.Update(elapsedSinceFreeze, fixedDeltaTime, stocks, tier);
                     priceGen.UpdatePrice(stock, fixedDeltaTime);
+                    elapsedSinceFreeze += fixedDeltaTime;
                 }
 
                 float price = stock.CurrentPrice;
@@ -85,7 +86,7 @@ namespace BullRun.Tests.Shop
         /// Must be called BEFORE RunFullRound (stock state is preserved in readonly fields).
         /// </summary>
         private TipActivationContext BuildTestContext(
-            StockInstance stock, EventScheduler scheduler, float roundDuration)
+            StockInstance stock, EventScheduler scheduler, float roundDuration, int noiseSeed)
         {
             return new TipActivationContext
             {
@@ -93,15 +94,17 @@ namespace BullRun.Tests.Shop
                 PreDecidedEvents = scheduler.PreDecidedEvents,
                 RoundDuration = roundDuration,
                 TierConfig = StockTierData.GetTierConfig(stock.Tier),
-                Random = new System.Random(42)
+                Random = new System.Random(42),
+                NoiseSeed = noiseSeed
             };
         }
 
         /// <summary>
         /// Sets up a complete round with stock, scheduler, and price generator.
         /// Uses separate random seeds for events vs noise to avoid correlation.
+        /// Returns noiseSeed for deterministic tip replay matching.
         /// </summary>
-        private (StockInstance stock, EventScheduler scheduler, PriceGenerator priceGen) SetupRound(
+        private (StockInstance stock, EventScheduler scheduler, PriceGenerator priceGen, int noiseSeed) SetupRound(
             StockTier tier, float startingPrice, TrendDirection trend, float trendRate,
             int seed, float roundDuration = 60f)
         {
@@ -115,60 +118,60 @@ namespace BullRun.Tests.Shop
             var scheduler = new EventScheduler(eventEffects, new System.Random(seed));
             scheduler.InitializeRound(1, 1, tier, stocks, roundDuration);
 
+            int noiseSeed = seed + 5000;
             var priceGen = new PriceGenerator(new System.Random(seed + 1000));
+            priceGen.SetNoiseSeed(noiseSeed);
             priceGen.SetEventEffects(eventEffects);
 
-            return (stock, scheduler, priceGen);
+            return (stock, scheduler, priceGen, noiseSeed);
         }
 
-        // === PriceCeiling accuracy (±15%) ===
+        // === PriceCeiling accuracy (near-zero tolerance with deterministic replay) ===
 
         [Test]
         public void PriceCeiling_Accuracy_BullWithEvents([Values(42, 99, 200, 777, 1234)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.Penny, 6f, TrendDirection.Bull, 0.015f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.Penny);
 
-            float tolerance = actual.MaxPrice * 0.25f;
+            float tolerance = actual.MaxPrice * 0.001f;
             Assert.AreEqual(actual.MaxPrice, sim.MaxPrice, tolerance,
                 $"[Seed {seed}] Ceiling sim={sim.MaxPrice:F2} vs actual={actual.MaxPrice:F2}, " +
-                $"tolerance=±{tolerance:F2} ({scheduler.ScheduledEventCount} events)");
+                $"tolerance=±{tolerance:F4} ({scheduler.ScheduledEventCount} events)");
         }
 
         [Test]
         public void PriceCeiling_Accuracy_BearWithEvents([Values(55, 123, 456)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.MidValue, 100f, TrendDirection.Bear, 0.005f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.MidValue);
 
-            float tolerance = actual.MaxPrice * 0.25f;
+            float tolerance = actual.MaxPrice * 0.001f;
             Assert.AreEqual(actual.MaxPrice, sim.MaxPrice, tolerance,
                 $"[Seed {seed}] Ceiling sim={sim.MaxPrice:F2} vs actual={actual.MaxPrice:F2}");
         }
 
-        // === PriceFloor accuracy (±15%) ===
+        // === PriceFloor accuracy (near-zero tolerance) ===
 
         [Test]
         public void PriceFloor_Accuracy_BearWithEvents([Values(42, 88, 300, 555, 999)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.LowValue, 20f, TrendDirection.Bear, 0.008f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.LowValue);
 
-            float tolerance = actual.MinPrice * 0.25f;
-            // Guard against near-zero prices where percentage tolerance breaks down
-            tolerance = Mathf.Max(tolerance, 0.50f);
+            float tolerance = Mathf.Max(actual.MinPrice * 0.001f, 0.01f);
             Assert.AreEqual(actual.MinPrice, sim.MinPrice, tolerance,
                 $"[Seed {seed}] Floor sim={sim.MinPrice:F2} vs actual={actual.MinPrice:F2}");
         }
@@ -176,73 +179,68 @@ namespace BullRun.Tests.Shop
         [Test]
         public void PriceFloor_Accuracy_BullWithEvents([Values(77, 150, 400)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.Penny, 7f, TrendDirection.Bull, 0.012f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.Penny);
 
-            float tolerance = Mathf.Max(actual.MinPrice * 0.30f, 0.50f);
+            float tolerance = Mathf.Max(actual.MinPrice * 0.001f, 0.01f);
             Assert.AreEqual(actual.MinPrice, sim.MinPrice, tolerance,
                 $"[Seed {seed}] Floor sim={sim.MinPrice:F2} vs actual={actual.MinPrice:F2}");
         }
 
-        // === PriceForecast accuracy (±40%, scaled by event count) ===
+        // === PriceForecast accuracy (near-zero tolerance) ===
 
         [Test]
         public void PriceForecast_Accuracy([Values(42, 100, 250, 600, 888)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.Penny, 6f, TrendDirection.Bull, 0.015f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.Penny);
 
-            // Scale tolerance by event count: more events → more noise-driven divergence
-            int eventCount = scheduler.PreDecidedEvents != null ? scheduler.PreDecidedEvents.Length : 0;
-            float baseRate = 0.40f;
-            float scaledRate = baseRate + eventCount * 0.10f; // +10% per event
-            float tolerance = actual.TimeWeightedAverage * scaledRate;
+            float tolerance = actual.TimeWeightedAverage * 0.001f;
             Assert.AreEqual(actual.TimeWeightedAverage, sim.AveragePrice, tolerance,
-                $"[Seed {seed}] Forecast sim={sim.AveragePrice:F2} vs actual={actual.TimeWeightedAverage:F2} " +
-                $"({eventCount} events, tolerance=±{scaledRate:P0})");
+                $"[Seed {seed}] Forecast sim={sim.AveragePrice:F2} vs actual={actual.TimeWeightedAverage:F2}");
         }
 
-        // === DipMarker timing (±0.15 normalized time) ===
+        // === DipMarker timing (near-zero tolerance) ===
 
         [Test]
         public void DipMarker_Timing_Accuracy([Values(42, 99, 200, 500, 750)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.LowValue, 15f, TrendDirection.Bear, 0.006f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.LowValue);
 
-            Assert.AreEqual(actual.MinPriceNormalizedTime, sim.MinPriceNormalizedTime, 0.20f,
+            Assert.AreEqual(actual.MinPriceNormalizedTime, sim.MinPriceNormalizedTime, 0.001f,
                 $"[Seed {seed}] DipMarker sim={sim.MinPriceNormalizedTime:F3} vs actual={actual.MinPriceNormalizedTime:F3}");
         }
 
-        // === PeakMarker timing (±0.15 normalized time) ===
+        // === PeakMarker timing (near-zero tolerance) ===
 
         [Test]
         public void PeakMarker_Timing_Accuracy([Values(42, 99, 200, 500, 750)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.Penny, 6f, TrendDirection.Bull, 0.015f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var sim = TipActivator.SimulateRound(ctx);
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.Penny);
 
-            Assert.AreEqual(actual.MaxPriceNormalizedTime, sim.MaxPriceNormalizedTime, 0.15f,
+            Assert.AreEqual(actual.MaxPriceNormalizedTime, sim.MaxPriceNormalizedTime, 0.001f,
                 $"[Seed {seed}] PeakMarker sim={sim.MaxPriceNormalizedTime:F3} vs actual={actual.MaxPriceNormalizedTime:F3}");
         }
 
-        // === ClosingDirection match rate (≥80% over 20 seeds) ===
+        // === ClosingDirection match rate (100% with deterministic replay) ===
 
         [Test]
         public void ClosingDirection_MatchRate_Over20Seeds()
@@ -254,11 +252,11 @@ namespace BullRun.Tests.Shop
             {
                 EventBus.Clear();
 
-                var (stock, scheduler, priceGen) = SetupRound(
+                var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                     StockTier.Penny, 6f, TrendDirection.Bull, 0.012f, seed * 37);
 
                 float startingPrice = stock.StartingPrice;
-                var ctx = BuildTestContext(stock, scheduler, 60f);
+                var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
                 var sim = TipActivator.SimulateRound(ctx);
                 var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.Penny);
 
@@ -270,8 +268,8 @@ namespace BullRun.Tests.Shop
             }
 
             float matchRate = (float)matches / total;
-            Assert.GreaterOrEqual(matchRate, 0.80f,
-                $"ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be >= 80%");
+            Assert.GreaterOrEqual(matchRate, 1.00f,
+                $"ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be 100%");
         }
 
         [Test]
@@ -284,11 +282,11 @@ namespace BullRun.Tests.Shop
             {
                 EventBus.Clear();
 
-                var (stock, scheduler, priceGen) = SetupRound(
+                var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                     StockTier.MidValue, 100f, TrendDirection.Bear, 0.008f, seed * 41);
 
                 float startingPrice = stock.StartingPrice;
-                var ctx = BuildTestContext(stock, scheduler, 60f);
+                var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
                 var sim = TipActivator.SimulateRound(ctx);
                 var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.MidValue);
 
@@ -300,8 +298,8 @@ namespace BullRun.Tests.Shop
             }
 
             float matchRate = (float)matches / total;
-            Assert.GreaterOrEqual(matchRate, 0.70f,
-                $"Bear ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be >= 70%");
+            Assert.GreaterOrEqual(matchRate, 1.00f,
+                $"Bear ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be 100%");
         }
 
         [Test]
@@ -314,11 +312,11 @@ namespace BullRun.Tests.Shop
             {
                 EventBus.Clear();
 
-                var (stock, scheduler, priceGen) = SetupRound(
+                var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                     StockTier.LowValue, 20f, TrendDirection.Neutral, 0.005f, seed * 53);
 
                 float startingPrice = stock.StartingPrice;
-                var ctx = BuildTestContext(stock, scheduler, 60f);
+                var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
                 var sim = TipActivator.SimulateRound(ctx);
                 var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.LowValue);
 
@@ -329,10 +327,9 @@ namespace BullRun.Tests.Shop
                     matches++;
             }
 
-            // Neutral trend is harder to predict — allow 60% match rate
             float matchRate = (float)matches / total;
-            Assert.GreaterOrEqual(matchRate, 0.60f,
-                $"Neutral ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be >= 60%");
+            Assert.GreaterOrEqual(matchRate, 1.00f,
+                $"Neutral ClosingDirection match rate {matchRate:P0} ({matches}/{total}) should be 100%");
         }
 
         // === EventTiming exact match ===
@@ -340,10 +337,10 @@ namespace BullRun.Tests.Shop
         [Test]
         public void EventTiming_ExactMatch([Values(42, 99, 300)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.Penny, 6f, TrendDirection.Bull, 0.015f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var tip = new RevealedTip(InsiderTipType.EventTiming, "generic", 0f);
             var tips = new List<RevealedTip> { tip };
             var overlays = TipActivator.ActivateTips(tips, ctx);
@@ -372,10 +369,10 @@ namespace BullRun.Tests.Shop
         [Test]
         public void EventCount_ExactMatch([Values(42, 150, 500)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.MidValue, 100f, TrendDirection.Bull, 0.005f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
             var tip = new RevealedTip(InsiderTipType.EventCount, "generic", 0f);
             var tips = new List<RevealedTip> { tip };
             var overlays = TipActivator.ActivateTips(tips, ctx);
@@ -389,10 +386,10 @@ namespace BullRun.Tests.Shop
         [Test]
         public void TrendReversal_Consistency([Values(42, 88, 200, 500, 777)] int seed)
         {
-            var (stock, scheduler, priceGen) = SetupRound(
+            var (stock, scheduler, priceGen, noiseSeed) = SetupRound(
                 StockTier.Penny, 6f, TrendDirection.Bull, 0.015f, seed);
 
-            var ctx = BuildTestContext(stock, scheduler, 60f);
+            var ctx = BuildTestContext(stock, scheduler, 60f, noiseSeed);
 
             // Get simulation's reversal prediction
             var tip = new RevealedTip(InsiderTipType.TrendReversal, "generic", 0f);
@@ -403,27 +400,14 @@ namespace BullRun.Tests.Shop
             // Run actual round and check for direction changes at event boundaries
             var actual = RunFullRound(stock, scheduler, priceGen, 60f, 1f / 60f, StockTier.Penny);
 
-            // If simulation detects no reversal, the actual trajectory should be monotonic
-            // in the trend direction (with noise fluctuations).
-            // If simulation detects a reversal, the actual trajectory should show a
-            // direction change at or near an event boundary.
-            // We just verify consistency — both detect or both miss reversal.
-            // Note: noise can cause false positives in actual, so we only check that
-            // simulation reversal implies actual had a significant price correction.
-            // Analytical reversal detection is inherently approximate:
-            // - Noise can mask event-driven reversals in the actual runtime
-            // - Strong trends can overpower moderate negative events
-            // We verify consistency in the "no reversal" direction: if sim says
-            // no reversal AND actual clearly reversed, that would be a bug.
+            // With deterministic replay, if sim says no reversal,
+            // actual shouldn't have an obvious one either
             if (!simDetectsReversal)
             {
-                // If sim says no reversal, verify actual didn't have an obvious one
-                // (closing significantly below max for bull, or above min for bear)
                 bool actualHasObviousReversal = actual.ClosingPrice < actual.MaxPrice * 0.60f;
                 Assert.IsFalse(actualHasObviousReversal,
                     $"[Seed {seed}] Sim missed obvious reversal: closing={actual.ClosingPrice:F2}, max={actual.MaxPrice:F2}");
             }
-            // If sim detects reversal, noise may have masked it — no assertion needed
         }
     }
 }
